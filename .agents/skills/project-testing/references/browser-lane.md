@@ -49,9 +49,10 @@ another in one test process. Every file shares one Chrome and one global object:
   `RIG_BROWSER_BUILD_DIR`. A suite reads the build through
   [`readBrowserBuild`](../../../../apps/web/src/test-utils/read-browser-build.ts), which throws when
   that variable is not set.
-- **Change the Chrome version only in [`chrome-pin.json`](../../../../chrome-pin.json), together
-  with the `playwright-core` version, in a pull request of its own.** The browser tests depend on
-  exact Chrome behaviour, so both lane commands run through
+- **Change the Chrome version only in
+  [`chrome-pin.json`](../../../../scripts/test-utils/chrome-pin.json), together with the
+  `playwright-core` version, in a pull request of its own.** The browser tests depend on exact
+  Chrome behaviour, so both lane commands run through
   [`run-with-pinned-chrome.ts`](../../../../scripts/test-utils/run-with-pinned-chrome.ts). On Linux
   on x64 the script downloads the pinned Chrome for Testing build, refuses a build whose SHA-256 or
   version differs from the pin, and sets `BUN_CHROME_PATH` to it. The computer and render guests run

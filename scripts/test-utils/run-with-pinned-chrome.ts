@@ -14,7 +14,7 @@ if (command.length === 0) {
   throw new Error('usage: run-with-pinned-chrome.ts <command> [args...]');
 }
 
-const pinText = await Bun.file(join(root, 'chrome-pin.json')).text();
+const pinText = await Bun.file(join(import.meta.dir, 'chrome-pin.json')).text();
 
 const pin = parseChromePin(pinText);
 

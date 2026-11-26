@@ -7,7 +7,7 @@ import { parseChromePin } from './parse-chrome-pin';
 // chrome-pin.json moves with it.
 const root = join(import.meta.dir, '..', '..');
 
-const pinText = await Bun.file(join(root, 'chrome-pin.json')).text();
+const pinText = await Bun.file(join(import.meta.dir, 'chrome-pin.json')).text();
 
 const pin = parseChromePin(pinText);
 

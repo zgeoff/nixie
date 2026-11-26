@@ -20,7 +20,7 @@ jobs:
     with:
       paths: |
         .github/workflows/journeys.yml
-        chrome-pin.json
+        scripts/test-utils/chrome-pin.json
         scripts/test-utils/run-with-pinned-chrome.ts
         scripts/test-utils/check-playwright-chrome.ts
         scripts/test-utils/check-chrome-version.ts
