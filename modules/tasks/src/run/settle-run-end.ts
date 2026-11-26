@@ -9,9 +9,9 @@ import { writeMeterRead } from './write-meter-read';
 // open. 'waiting': the gateway did not answer a read, so the task run must not end yet.
 export type RunEndSettlement = 'settled' | 'waiting';
 
-// Writes the end read of each sandbox that the open task run read and that the running end attempt
-// has not settled, whether or not an earlier attempt saved one. A sandbox that
-// the gateway no longer holds keeps its last count, because no later spend can land on it.
+// Each pass reads every sandbox again, because one that answered in a pass that went on to wait can
+// spend before the next. A sandbox that the gateway no longer holds keeps its last count, because no
+// later spend can land on it.
 export async function settleRunEnd(
   context: Pick<TasksContext, 'definitions' | 'log' | 'runSettings'>,
   taskID: string,
@@ -25,6 +25,8 @@ export async function settleRunEnd(
   const reads = await readMeterReads(context, run);
 
   const settled = settledSandboxes.getStore();
+
+  settled?.clear();
   let settlement: RunEndSettlement = 'settled';
 
   for (const unsettled of collectUnsettledSandboxes(reads, taskID, settled)) {

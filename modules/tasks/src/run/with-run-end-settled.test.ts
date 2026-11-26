@@ -200,3 +200,39 @@ test('it reads the sandbox again at the end when an earlier attempt saved an end
     countMicros: 500_000,
   });
 });
+
+test('it reads every sandbox again at the retry when one sandbox did not answer and another spent since', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRead('sandbox-a', 'run_start', 100_000);
+  await ctx.writeRead('sandbox-b', 'run_start', 100_000);
+
+  ctx.readSandboxMicros
+    .mockResolvedValueOnce({ kind: 'ok', micros: 250_000 })
+    .mockResolvedValueOnce({ kind: 'unreachable' })
+    .mockResolvedValueOnce({ kind: 'ok', micros: 500_000 })
+    .mockResolvedValueOnce({ kind: 'ok', micros: 300_000 });
+
+  const stopping = writeTaskControl(ctx.context, { taskID: ctx.taskID, control: 'stop' });
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(5000);
+
+  await stopping;
+
+  const reads = await readMeterReads(ctx.context, ctx.run);
+
+  expect(ctx.readSandboxMicros.mock.calls).toStrictEqual([
+    ['sandbox-a'],
+    ['sandbox-b'],
+    ['sandbox-a'],
+    ['sandbox-b'],
+  ]);
+
+  expect(reads.filter((read) => read.reason === 'run_end')).toStrictEqual([
+    { sandbox: 'sandbox-a', reason: 'run_end', countMicros: 250_000 },
+    { sandbox: 'sandbox-a', reason: 'run_end', countMicros: 500_000 },
+    { sandbox: 'sandbox-b', reason: 'run_end', countMicros: 300_000 },
+  ]);
+});
