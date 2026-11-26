@@ -25,9 +25,10 @@ Before you start:
 - Run this journey once per `up`, because each step expects the first call since that `up`. To run
   it again, run the `up --restart` and `doctor` above first.
 
-When a step exits with a code other than 0, do what its row in [Exit codes](exit-codes.md) says.
-When a step exits 0 and its `data` differs from the Expect line, compare the app with the end state
-below, as step 5 of Check a change in the [verify skill](../SKILL.md#check-a-change) says.
+When a step exits with a code other than 0, follow the row for that code in
+[Exit codes](exit-codes.md). When a step exits 0 and its `data` differs from the Expect line,
+compare the app with the end state below, following step 5 of Check a change in the
+[verify skill](../SKILL.md#check-a-change).
 
 ## Journey
 

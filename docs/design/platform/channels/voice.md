@@ -15,13 +15,12 @@ it. A call runs as its own thread beside the conversation, with nixie's persona 
 posts a summary to the conversation when it ends.
 
 The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records, the
-per-minute charge, the call screen, the call bar and a call's reconnect are built:
+per-minute charge, the call screen, the call bar and a call's reconnect are built. Read
 [Voice calls](../../../architecture/channels/calls.md) and
-[the client](../../../architecture/channels/client.md#the-call) describe them. This design holds
-what is left to build: answering a ring, the captions on the call screen, and ringing you. The work
-item [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864) builds it from the contracts and
-constraints below. [Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item
-of its own.
+[the client](../../../architecture/channels/client.md#the-call) for them. What is left to build is
+answering a ring, the captions on the call screen, and ringing you. Build it from the contracts and
+constraints below, under the work item [nixie rings you](https://linear.app/zgeoff/issue/GEO-2864).
+[Tuning on real calls](https://linear.app/zgeoff/issue/GEO-1868) has a work item of its own.
 
 Terms:
 

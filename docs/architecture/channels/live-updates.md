@@ -73,8 +73,8 @@ interval and the idle limit, and a test asserts that 3 keepalive intervals fit i
 ## Topics
 
 A topic is a root of the web client's query keys, one to one. The contract's `liveTopicSchema` lists
-them, and a test fails when a topic names no query-key root, or when a root that a topic covers has
-no topic.
+them, and a test fails when a topic matches no query-key root, or when a root that a topic covers
+has no topic.
 
 | Topic         | Reads under the root                             |
 | ------------- | ------------------------------------------------ |
@@ -91,13 +91,14 @@ no topic.
 | `notebook`    | the notebook's reads                             |
 | `images`      | `images.list`                                    |
 
-Each module that owns record kinds gives the topics each kind changes, and the server registers them
-with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry, an
-empty list included, and a test walks every kind the modules declare and fails on a kind with none.
-The log marks the topics of every record a transaction appends. A write that creates a task marks
-`tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or skip
-marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run of a
-definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same reason.
+Each module that owns record kinds declares the topics each kind changes, and the server registers
+them with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry,
+an empty list included, and a test walks every kind the modules declare and fails on a kind with
+none. The log marks the topics of every record a transaction appends. A write that creates a task
+marks `tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or
+skip marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run
+of a definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same
+reason.
 
 Two other marks cover a change with no record. `markChanged(tx, topics)` adds topics to the commit
 of a transaction, and a transaction that rolls back drops them. `publishChanged(writer, topics)`
@@ -107,8 +108,8 @@ the gateway answers, differs from its last read.
 A test for each topic makes the change and asserts that an open stream receives `changed` with that
 topic.
 
-A task due on a schedule moves in the task list with no write, so no topic announces it.
-`tasks.list` answers `changesAt`, the earliest next run of a listed task, and the client reads the
+A task that comes due on a schedule changes the task list with no write, so no topic announces it.
+`tasks.list` returns `changesAt`, the earliest next run of a listed task, and the client reads the
 list again at that time.
 
 A forget turns stuck once it stays open long enough, with no write, so the `erasure` root has no

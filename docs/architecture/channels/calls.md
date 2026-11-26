@@ -99,19 +99,19 @@ A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who 
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `calls.start`   | A full-scope session starts a call, and a retry of one action ID answers with the call's thread. One write transaction checks the refusals, creates the call, asks the server to create the call task, and writes `call.started` and `call.answered`. The call is `connecting`, and the starting session carries it. |
 | `calls.connect` | The carrying session sends its SDP offer. The module opens a speech session, and the transaction that makes the call `live` charges its first minute.                                                                                                                                                                |
-| `calls.get`     | Reads the call as the carrying device needs it: its state, who ended it, and `reconnect`, which names why the call waits for a new offer.                                                                                                                                                                            |
+| `calls.get`     | Reads the call as the carrying device needs it: its state, who ended it, and `reconnect`, the reason the call waits for a new offer.                                                                                                                                                                                 |
 | `calls.hangUp`  | Ends the call with `endedBy: 'you'`, and answers with the call's `endedBy`. A call that the server ended first, as `budget` for one, answers with that reason, so the device never shows its own hang up for it. A second hang up of an ended call returns the same result.                                          |
 | `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                                                                                  |
 
 `calls.start` refuses with one of these errors, checked in this order:
 
-| Error                 | When                                                                       |
-| --------------------- | -------------------------------------------------------------------------- |
-| `VOICE_OFF`           | The config holds no `voice` section.                                       |
-| `SPEECH_UNAVAILABLE`  | The config holds `voice`, and the server wired no speech adapter.          |
-| `VOICE_PRICE_MISSING` | `voice/voice.yaml` sets no `price_per_minute`. The message names the file. |
-| `CALL_RUNNING`        | Another call has not ended.                                                |
-| `CALL_BUDGET_REACHED` | `call-day` or `call-month` has no room for a minute.                       |
+| Error                 | When                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `VOICE_OFF`           | The config holds no `voice` section.                                               |
+| `SPEECH_UNAVAILABLE`  | The config holds `voice`, and the server wired no speech adapter.                  |
+| `VOICE_PRICE_MISSING` | `price_per_minute` is missing from `voice/voice.yaml`. The message names the file. |
+| `CALL_RUNNING`        | Another call has not ended.                                                        |
+| `CALL_BUDGET_REACHED` | `call-day` or `call-month` has no room for a minute.                               |
 
 `calls.start` returns the call's `thread`, which is its task's ID, so the carrying device can find
 the proposals that the call's turn makes.
@@ -158,7 +158,7 @@ one of those minutes ends as `budget`, with the budget line, in place of the way
 charge reads the call inside its own transaction, so a call that ended since a sweep looked is never
 charged. A budget line that fails to speak never keeps the speech session open.
 
-A sweep closes the gaps that a crash or a silent provider leaves. On a short interval it ends a call
+A sweep runs on a short interval and cleans up after a crash or a silent provider. It ends a call
 that stayed `connecting` past its limit, starts the reconnect wait of a `live` call whose speech
 session is gone and ends the call when the wait runs out, and charges each further started minute of
 a live call. It also writes the report of a call whose task stopped before its last turn, as
