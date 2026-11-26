@@ -29,6 +29,7 @@ export function mapPromptProposalRecord(record: EnvelopeRecord): ProposalChange 
         taskID: null,
         lapsesAt: record.recordedAt.getTime() + legacyLapseMs,
         deadlineAt: null,
+        sameThing: proposed.promptID,
       },
     };
   }

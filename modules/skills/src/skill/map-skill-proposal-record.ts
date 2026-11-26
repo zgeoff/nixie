@@ -26,6 +26,7 @@ export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange |
         taskID: null,
         lapsesAt: record.recordedAt.getTime() + legacyLapseMs,
         deadlineAt: null,
+        sameThing: proposed.name,
       },
     };
   }

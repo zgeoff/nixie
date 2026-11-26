@@ -61,9 +61,19 @@ export const proposalsPromptFamilyMigration: Migration = {
     await sql`create index if not exists proposals_by_same_thing
       on proposals (family, thread, same_thing) where same_thing is not null`.execute(tx);
 
+    await backfillSkillSameThing(tx);
     await backfillPromptProposals(tx);
   },
 };
+
+// A skill proposal replaces the open one of the same skill from the same thread, so the rows that
+// exist before this migration take the skill's name as their key, as the proposals projection does.
+async function backfillSkillSameThing(tx: Transaction<unknown>): Promise<void> {
+  await sql`update proposals set same_thing = (
+      select json_extract(records.payload, '$.name') from records
+      where records.kind = 'skills.write_proposed' and records.sequence = proposals.created_sequence
+    ) where family = 'skill' and same_thing is null`.execute(tx);
+}
 
 const recordSchema = z.object({
   sequence: z.number(),
@@ -73,7 +83,17 @@ const recordSchema = z.object({
   payload: z.string(),
 });
 
-const proposedSchema = z.object({ proposalID: z.string(), proposalHash: z.string() });
+const proposedSchema = z.object({
+  proposalID: z.string(),
+  promptID: z.string(),
+  proposalHash: z.string(),
+});
+
+const approvedSchema = z.object({
+  proposalID: z.string(),
+  approvalID: z.string(),
+  identityID: z.string().optional(),
+});
 
 const closingStates: Readonly<Record<string, string | undefined>> = {
   'prompts.override_approved': 'approved',
@@ -104,17 +124,31 @@ async function backfillPromptProposals(tx: Transaction<unknown>): Promise<void> 
 
       await sql`insert or ignore into proposals (
           proposal_id, short_id, family, kind, risk_class, action_hash, rule_hash, cause, task_id,
-          thread, created_sequence, created_at, lapses_at, deadline_at, state
+          thread, created_sequence, created_at, lapses_at, deadline_at, state, same_thing
         ) values (
           ${proposed.proposalID}, ${proposed.proposalID}, 'prompt', 'internal_change',
           'always_ask', ${proposed.proposalHash}, null, 'prompt_override', null, ${row.thread},
-          ${row.sequence}, ${row.recorded_at}, ${row.recorded_at + lapseMs}, null, 'pending'
+          ${row.sequence}, ${row.recorded_at}, ${row.recorded_at + lapseMs}, null, 'pending',
+          ${proposed.promptID}
         )`.execute(tx);
 
       continue;
     }
 
     const state = closingStates[row.kind];
+
+    if (row.kind === 'prompts.override_approved') {
+      const approved = approvedSchema.parse(payload);
+
+      await sql`update proposals set state = ${state}, used_by = ${approved.approvalID},
+        answered_by = ${approved.identityID ?? null}, defer_until = null, return_at = null
+        where proposal_id = ${approved.proposalID} and state in ('pending', 'deferred')`.execute(
+        tx,
+      );
+
+      continue;
+    }
+
     const proposalID = z.object({ proposalID: z.string() }).parse(payload).proposalID;
 
     await sql`update proposals set state = ${state}, defer_until = null, return_at = null

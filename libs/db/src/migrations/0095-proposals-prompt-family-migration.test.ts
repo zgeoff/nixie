@@ -64,22 +64,26 @@ test('it folds each prompt override that the log holds into one row with its fin
 
   await ctx.writeRecord(1, 'prompts.override_proposed', 'conversation', {
     proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
     proposalHash: 'hash-a',
   });
 
   await ctx.writeRecord(2, 'prompts.override_proposed', 'conversation', {
     proposalID: 'w7tn4c9rhz',
+    promptID: 'session',
     proposalHash: 'hash-b',
   });
 
   await ctx.writeRecord(3, 'prompts.override_approved', 'conversation', {
     proposalID: 'k3x9m2p7qa',
+    approvalID: 'approval-a',
   });
 
   await ctx.migrateAgain();
 
   const rows =
-    await sql`select proposal_id, family, state, thread, action_hash, lapses_at - created_at as wait
+    await sql`select proposal_id, family, state, thread, action_hash, same_thing, used_by,
+    lapses_at - created_at as wait
     from proposals order by created_sequence`.execute(ctx.db);
 
   expect(rows.rows).toStrictEqual([
@@ -89,6 +93,8 @@ test('it folds each prompt override that the log holds into one row with its fin
       state: 'approved',
       thread: 'conversation',
       action_hash: 'hash-a',
+      same_thing: 'compaction',
+      used_by: 'approval-a',
       wait: 14 * 24 * 60 * 60 * 1000,
     },
     {
@@ -97,6 +103,8 @@ test('it folds each prompt override that the log holds into one row with its fin
       state: 'pending',
       thread: 'conversation',
       action_hash: 'hash-b',
+      same_thing: 'session',
+      used_by: null,
       wait: 14 * 24 * 60 * 60 * 1000,
     },
   ]);

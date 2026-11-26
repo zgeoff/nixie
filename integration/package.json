@@ -26,6 +26,7 @@
     "@heynixie/model-gateway": "workspace:*",
     "@heynixie/models": "workspace:*",
     "@heynixie/policy": "workspace:*",
+    "@heynixie/prompts": "workspace:*",
     "@heynixie/proposals": "workspace:*",
     "@heynixie/reminders": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
