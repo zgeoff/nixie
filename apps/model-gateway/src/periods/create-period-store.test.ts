@@ -212,6 +212,43 @@ test('it carries a version 2 store into the one route of a single-route gateway,
   });
 });
 
+test('it gives a route no count from a version 2 period that ended before the current one', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await writeFile(
+    ctx.path,
+    JSON.stringify({
+      version: 2,
+      periods: {
+        day: {
+          start: '2026-11-12',
+          dollars: 40,
+          tokens: 70,
+          limit: null,
+          raise: null,
+          trippedAt: null,
+        },
+        month: {
+          start: '2026-11-01',
+          dollars: 500,
+          tokens: 90,
+          limit: null,
+          raise: null,
+          trippedAt: null,
+        },
+      },
+      sandboxes: {},
+    }),
+  );
+
+  const store = await ctx.start(ctx.limits);
+  const stored = await store.read();
+
+  expect([stored.routes['plan']?.day.micros, stored.routes['plan']?.month.micros]).toStrictEqual([
+    0, 500_000_000,
+  ]);
+});
+
 test('it adds up replies that each cost less than half a micro', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 

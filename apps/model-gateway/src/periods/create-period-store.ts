@@ -56,6 +56,10 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
   // and a reset and the count that follows it never interleave
   let tail = Promise.resolve();
 
+  // the instant of the latest write that moved a trip stamp, so that a trip cleared and reached
+  // again in the same millisecond still gets a stamp of its own
+  let lastStampMs = 0;
+
   const withTurn = async <T>(run: () => Promise<T>): Promise<T> => {
     const previous = tail;
     const turn = Promise.withResolvers<undefined>();
@@ -116,9 +120,18 @@ export async function createPeriodStore(options: PeriodStoreOptions): Promise<Pe
 
       const overrides = await options.readOverrides();
 
-      const at = new Date(options.now()).toISOString();
+      const stampMs = Math.max(options.now(), lastStampMs + 1);
 
-      const next = buildTrippedStore(decidedStore, options.limits, overrides, at);
+      const next = buildTrippedStore(
+        decidedStore,
+        options.limits,
+        overrides,
+        new Date(stampMs).toISOString(),
+      );
+
+      if (next !== decidedStore) {
+        lastStampMs = stampMs;
+      }
 
       if (decided.store !== null || read.didChange || next !== decidedStore) {
         await writeStore(path, next);

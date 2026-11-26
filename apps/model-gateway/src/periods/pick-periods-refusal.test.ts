@@ -315,6 +315,18 @@ test.each([
     { status: 503 },
   ],
   [
+    'the lost mark before a provider at its day limit',
+    { lost: true, main: { day: 100 } },
+    {},
+    { status: 503 },
+  ],
+  [
+    'a sandbox the store lacks before a provider at its day limit',
+    { main: { day: 100 } },
+    { sandbox: 'ghost', countBySandbox: true },
+    { type: 'permission_error' },
+  ],
+  [
     'the route day before the route month',
     { plan: { day: 40, month: 600 } },
     {},

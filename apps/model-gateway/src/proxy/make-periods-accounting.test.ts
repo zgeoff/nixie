@@ -7,20 +7,21 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createPeriodStore } from '../periods/create-period-store';
 import { buildMockLimitTable } from '../test-utils/build-mock-limit-table';
+import type { RouteLimits } from '../types';
 import { buildReplyEstimate } from '../usage/build-reply-estimate';
 import type { CountedReply } from './accounting';
 import { makePeriodsAccounting } from './make-periods-accounting';
 
-async function setupTest() {
+async function setupTest(providerLimits?: RouteLimits) {
   const previewLimits = { day: 0.002, month: 10, dayCap: 1 };
-  const limits = buildMockLimitTable({ preview: previewLimits });
+  const limits = buildMockLimitTable({ preview: previewLimits }, providerLimits);
 
   const directory = await mkdtemp(join(tmpdir(), 'model-gateway-accounting-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const storePath = join(directory, 'counter.json');
-  let currentMs = Date.parse('2026-11-13T10:00:00Z');
+  const currentMs = Date.parse('2026-11-13T10:00:00Z');
 
   const store = await createPeriodStore({
     path: storePath,
@@ -58,9 +59,6 @@ async function setupTest() {
   return {
     store,
     storePath,
-    moveByMs: (deltaMs: number) => {
-      currentMs += deltaMs;
-    },
     clearDayCount: () =>
       store.change((held) => {
         const preview = held.routes['preview'];
@@ -306,17 +304,44 @@ test('it logs once that a limit was reached', async () => {
   expect(ctx.log.mock.calls.filter(([event]) => event === 'limit.reached')).toHaveLength(1);
 });
 
-test('it logs a limit reached again when a correction cleared the trip and the period trips a second time', async () => {
+test('it logs a limit reached again when a correction cleared the trip and the period trips a second time in the same millisecond', async () => {
   const ctx = await setupTest();
 
   await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
   await ctx.clearDayCount();
-
-  ctx.moveByMs(60_000);
-
   await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
 
   expect(ctx.log.mock.calls.filter(([event]) => event === 'limit.reached')).toHaveLength(2);
+});
+
+test('it logs a provider limit reached again when a correction cleared the trip and the provider trips a second time in the same millisecond', async () => {
+  const ctx = await setupTest({ day: 0.002, month: 10, dayCap: 1 });
+
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
+
+  await ctx.store.change((held) => {
+    const provider = held.providers['test'];
+
+    invariant(provider !== undefined, 'the store holds the provider test');
+
+    return {
+      store: {
+        ...held,
+        providers: {
+          ...held.providers,
+          test: { ...provider, day: { ...provider.day, micros: 0 } },
+        },
+      },
+      result: undefined,
+    };
+  });
+
+  await ctx.clearDayCount();
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 500) }));
+
+  const logged = ctx.log.mock.calls.filter(([event]) => event === 'limit.reached');
+
+  expect(logged).toHaveLength(2);
 });
 
 test('it refuses a request with the limit 403 once the day reaches its limit', async () => {
