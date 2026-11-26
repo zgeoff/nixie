@@ -254,6 +254,39 @@ test('it keeps the call live on the device route, which has no app shell, and sh
   expect(records.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
 });
 
+test('it keeps the call live on the device view, whose size leaves room for the call bar, and ends it from the bar there', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startCall();
+  await ctx.waitForConnected();
+
+  // the router client-side navigates, which a new page load would not
+  await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/device-view' })");
+
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'[aria-label="Call in progress"]\') !== null && document.querySelector(\'[aria-label="Device view"]\') !== null',
+    8000,
+  );
+
+  await waitForPage(
+    ctx.view,
+    'Math.round(document.querySelector(\'[aria-label="Device view"]\').getBoundingClientRect().bottom) === innerHeight',
+    8000,
+  );
+
+  const requests: unknown = await ctx.view.evaluate('window.microphoneRequests');
+
+  await ctx.view.click('[aria-label="Call in progress"] button[name="hang-up"]');
+
+  const ended = await ctx.nixie.waitForRecord((record) => record.kind === 'call.ended');
+
+  expect([requests, ended.payload['endedBy']]).toStrictEqual([
+    ['{"audio":{"echoCancellation":true,"noiseSuppression":true,"autoGainControl":true}}'],
+    'you',
+  ]);
+});
+
 test('it reconnects the call with an ICE-restart offer and a fresh connect within 30 s after a server restart', async () => {
   const ctx = await setupTest();
 

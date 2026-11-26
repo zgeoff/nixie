@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Kysely, sql } from 'kysely';
 import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
+import { SchemaTooNewError } from '../schema/schema-too-new-error';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { clientDevicesMigration } from './0095-client-devices-migration';
@@ -39,12 +40,28 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  await runMigrations(db, { schema: nixieSchema, copyDir: directory });
+  await runMigrations(db, {
+    schema: {
+      migrations: nixieSchema.migrations.slice(
+        0,
+        nixieSchema.migrations.indexOf(clientDevicesMigration),
+      ),
+      oldestReader: 0,
+    },
+    copyDir: directory,
+  });
 
-  await sql`pragma foreign_keys = off`.execute(db);
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'identity.paired', 'snapshot-a', '{}')`.execute(db);
 
   return {
     db,
+    upgrade: () => runMigrations(db, { schema: nixieSchema, copyDir: directory }),
+    startPreviousRelease: () =>
+      runMigrations(db, {
+        schema: { migrations: nixieSchema.migrations.slice(0, 94), oldestReader: 0 },
+        copyDir: directory,
+      }),
     runAgain: () => db.transaction().execute((tx) => clientDevicesMigration.up(tx)),
     writeIdentity: (identity: IdentityRow) =>
       sql`insert into identities (
@@ -71,15 +88,16 @@ async function setupTest() {
   };
 }
 
-test('it registers as migration 95', () => {
+test('it registers as migration 95, which the release before cannot read', () => {
   expect(nixieSchema.migrations.indexOf(clientDevicesMigration) + 1).toBe(95);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(95);
 });
 
 test('it gives a full session with no row a client row named with its label and the screen on', async () => {
   const ctx = await setupTest();
 
   await ctx.writeIdentity({ id: 'full-1', scope: 'full', label: 'Kitchen laptop' });
-  await ctx.runAgain();
+  await ctx.upgrade();
 
   const devices = await ctx.readDevices();
 
@@ -105,7 +123,7 @@ test('it makes the row that a full session registered a client row that keeps it
     screen: false,
   });
 
-  await ctx.runAgain();
+  await ctx.upgrade();
 
   const devices = await ctx.readDevices();
 
@@ -132,7 +150,7 @@ test('it keeps the row of a device session a screen row and gives a revoked sess
   });
 
   await ctx.writeIdentity({ id: 'gone-1', scope: 'full', label: 'Old phone', revokedAt: 9 });
-  await ctx.runAgain();
+  await ctx.upgrade();
 
   const devices = await ctx.readDevices();
 
@@ -150,10 +168,22 @@ test('it writes no second row when it runs again', async () => {
   const ctx = await setupTest();
 
   await ctx.writeIdentity({ id: 'full-1', scope: 'full', label: 'Kitchen laptop' });
-  await ctx.runAgain();
+  await ctx.upgrade();
   await ctx.runAgain();
 
   const devices = await ctx.readDevices();
 
   expect(devices).toHaveLength(1);
+});
+
+test('it refuses to open the upgraded database to the release before it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.upgrade();
+
+  const run = ctx.startPreviousRelease();
+
+  await Promise.allSettled([run]);
+
+  expect(run).rejects.toBeInstanceOf(SchemaTooNewError);
 });

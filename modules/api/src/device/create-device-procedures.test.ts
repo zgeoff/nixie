@@ -17,6 +17,7 @@ import { collectContractPaths } from '../test-utils/collect-contract-paths';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { dropLiveStream } from '../test-utils/drop-live-stream';
 import { followTestDevice } from '../test-utils/follow-test-device';
+import { readRecordEvents } from '../test-utils/read-record-events';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
@@ -219,6 +220,9 @@ test.each(['cookie', 'bearer'] as const)(
 test('it removes the client device row when its full session signs out', async () => {
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
+  const before = await ctx.readDevice(session.sessionID);
+
+  invariant(before, 'the enrolled full session has its device row');
 
   await session.client.sessions.signOut({});
 
@@ -288,6 +292,34 @@ test('it renames the client row at register and leaves its screen on', async () 
       idleSequence: null,
     },
   ]);
+});
+
+test('it leaves the screen of a client device that switched it off off at register', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.enrol('full', 'phone');
+
+  await session.client.devices.setCapability({ capability: 'screen', isOn: false });
+
+  await session.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  const row = await ctx.readDevice(session.sessionID);
+
+  expect(row?.capabilities.screen).toBeFalse();
+});
+
+test('it answers the screen of the device as it is when setCapability takes no isOn, and changes nothing', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.enrol('full', 'phone');
+
+  await session.client.devices.setCapability({ capability: 'screen', isOn: false });
+
+  const answer = await session.client.devices.setCapability({ capability: 'screen' });
+  const row = await ctx.readDevice(session.sessionID);
+
+  expect([answer, row?.capabilities.screen]).toStrictEqual([{ screen: 'off' }, false]);
 });
 
 test('it gives a full session whose row is gone a client row with its screen on at register', async () => {
@@ -1020,22 +1052,39 @@ test('it lets a full session follow its device stream and its conversation strea
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
 
+  await createConversationTask(ctx.context);
+
   const device = await session.client.live.follow({
     device: { pixels: { width: 800, height: 600 } },
   });
 
-  const page = await session.client.live.follow({});
+  const page = await session.client.live.follow({ afterSequence: 0, thread: 'conversation' });
   const deviceOpened = await device.next();
   const deviceScreen = await device.next();
   const pageOpened = await page.next();
 
+  await session.client.conversation.send({
+    clientMessageId: '00000000-0000-4000-8000-000000000001',
+    thread: 'conversation',
+    text: 'Bins go out tonight.',
+    spans: [{ start: 0, end: 20, source: 'typed' }],
+  });
+
+  const records = await readRecordEvents(page, 2);
+
   await device.return(undefined);
   await page.return(undefined);
 
-  expect([deviceOpened.value, deviceScreen.value, pageOpened.value]).toStrictEqual([
+  expect([
+    deviceOpened.value,
+    deviceScreen.value,
+    pageOpened.value,
+    records.map((event) => event.record.message?.text),
+  ]).toStrictEqual([
     { kind: 'opened' },
     { kind: 'device', event: { kind: 'idle', scene: [] } },
     { kind: 'opened' },
+    [undefined, 'Bins go out tonight.'],
   ]);
 });
 

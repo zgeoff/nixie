@@ -39,7 +39,7 @@ test('it holds one stream on a thread page, and overlaps two while it switches t
   await waitFor(
     () => {
       expect(mockLive.openedThreads).toContain('conversation');
-      expect(mockLive.openCount).toBe(1);
+      expect([mockLive.openCount, mockLive.deviceOpenCount]).toStrictEqual([1, 1]);
     },
     { timeout: 10_000 },
   );

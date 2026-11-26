@@ -454,19 +454,22 @@ page.
   while any signed-in page of the tab shows, so the device is online whenever nixie is open. The
   feed closes the stream once no signed-in page retains it, and a route change that drops one page
   and mounts the next keeps it open. A full session follows its device stream and its conversation
-  stream on one session. A refusal ends the feed's reconnects.
+  stream on one session. A refusal ends the feed's reconnects and drops what the feed held, so a
+  revoked tab shows nothing the device showed.
 - **What it draws.** The page draws what the feed holds, in the order the screen draws it: a show,
   the layout while a region shows content or has a background, then the idle scene. It reads only
   the device's stream, so later UI work can show it beside the chat.
-- **Its size.** The page draws the device at the size of the page's content area, the box below the
-  app bar, and reports that size in device pixels through `devices.resize`. A stream that opens
-  while the page shows sends the same size at connect. A change of the area sends the size again
-  after a short debounce, and a failed call is sent again on the next change.
+- **Its size.** The page draws the device at the size of the window below everything above it: the
+  app bar, the call bar and each banner. It reports that size in device pixels through
+  `devices.resize`, and again each time a stream opens, because a stream that another tab opens sets
+  a size of its own. A change of the area sends the size again after a short debounce, and a failed
+  call is sent again on the next change.
 - **During a call.** The call bar shows on this page, and its link goes back to the call screen.
   Opening the device view, the chat or the call screen keeps the call's audio, its microphone grant
   and its live stream.
 - **Device mode.** `/device` is a separate page, which [devices](./devices.md#device-mode)
-  describes. It holds its own device stream and shows the device full screen with no app shell.
+  describes. It shows the device full screen with no app shell, and keeps the device stream open
+  while the screen is off. Its sign-out ends a live call first.
 
 ## The handover banner
 

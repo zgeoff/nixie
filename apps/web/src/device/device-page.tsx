@@ -3,12 +3,13 @@ import { ORPCError } from '@orpc/client';
 import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import { useCall } from '../call/call-context';
 import { EnrolForm } from '../components/enrol-form';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { DeviceConnection } from './device-connection';
 import { DeviceScreen } from './device-screen';
 import { FullscreenButton } from './fullscreen-button';
-import { hasStoredScreen, readStoredScreen, writeStoredScreen } from './read-stored-screen';
 import { RegisterDeviceForm } from './register-device-form';
 
 type Phase =
@@ -29,12 +30,13 @@ const page = css({
   '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
 });
 
-// Device mode: this browser's device full screen. The page asks the server to set its screen the way
-// this device left it, which tells it what this browser holds: no session shows the enrolment form,
-// and a full session with no device shows the form that names one.
+// Device mode: this browser's device full screen. The page asks the server for the screen of its
+// device as it is, which tells it what this browser holds: no session shows the enrolment form, and
+// a full session with no device shows the form that names one.
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
   const navigate = useNavigate();
+  const call = useCall();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
   const [attempt, setAttempt] = useState(0);
 
@@ -53,7 +55,7 @@ export function DevicePage(): ReactNode {
   };
 
   const signOut = (): void => {
-    void signOutDevice(nixie.client, setPhase);
+    void signOutDevice(nixie.client, call.session.hangUp, setPhase);
   };
 
   if (phase.kind === 'checking') {
@@ -79,8 +81,7 @@ export function DevicePage(): ReactNode {
     return (
       <RegisterDeviceForm
         onRegistered={() => {
-          writeStoredScreen(false);
-          setPhase({ kind: 'ready', isScreenOn: false });
+          setAttempt((count) => count + 1);
         }}
       />
     );
@@ -131,6 +132,7 @@ export function DevicePage(): ReactNode {
 
   return (
     <main className={page}>
+      <DeviceConnection />
       <h1>Device mode</h1>
       <p>The screen of this device is off, so the assistant cannot show anything on it.</p>
       <button
@@ -156,10 +158,8 @@ async function startDevice(
   signal: AbortSignal,
   setPhase: SetPhase,
 ): Promise<void> {
-  const isOn = await readScreenSwitch(client, signal);
-
   try {
-    const answer = await client.devices.setCapability({ capability: 'screen', isOn }, { signal });
+    const answer = await client.devices.setCapability({ capability: 'screen' }, { signal });
 
     setPhase({ kind: 'ready', isScreenOn: answer.screen === 'on' });
   } catch (error) {
@@ -168,28 +168,6 @@ async function startDevice(
     }
 
     setPhase(pickRefusedPhase(error));
-  }
-}
-
-// A device left its screen as it stored it. With nothing stored, a client device shows its screen
-// and a screen device starts with it off.
-function readScreenSwitch(client: ContractClient, signal: AbortSignal): Promise<boolean> {
-  if (hasStoredScreen()) {
-    return Promise.resolve(readStoredScreen());
-  }
-
-  return probeFullSession(client, signal);
-}
-
-// A full session holds a client device, whose screen starts on, so device mode shows it as it is
-// until the device switches the screen off. A device session may not list sessions.
-async function probeFullSession(client: ContractClient, signal: AbortSignal): Promise<boolean> {
-  try {
-    await client.sessions.list({}, { signal });
-
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -214,15 +192,21 @@ async function switchScreen(
   try {
     const answer = await client.devices.setCapability({ capability: 'screen', isOn });
 
-    writeStoredScreen(answer.screen === 'on');
     setPhase({ kind: 'ready', isScreenOn: answer.screen === 'on' });
   } catch {
     setPhase({ kind: 'failed' });
   }
 }
 
-async function signOutDevice(client: ContractClient, setPhase: SetPhase): Promise<void> {
+// A call ends before the sign-out, so its microphone and peer connection close with the session.
+async function signOutDevice(
+  client: ContractClient,
+  hangUp: () => Promise<void>,
+  setPhase: SetPhase,
+): Promise<void> {
   try {
+    await hangUp();
+
     await client.sessions.signOut({});
   } catch (error) {
     // a session that is already gone is signed out

@@ -139,7 +139,7 @@ test('it shows no pop-up, badge or notice on another page when the device conten
   const page = await rendered.findByText('The conversation');
 
   await waitFor(() => {
-    expect(mockLive.openCount).toBe(2);
+    expect([mockLive.openCount, mockLive.deviceOpenCount]).toStrictEqual([1, 1]);
   });
 
   expect([
@@ -171,7 +171,7 @@ test('it reports the new size of the page area to the device when the area chang
   const area = await rendered.findByRole('region', { name: 'Device view' });
 
   await waitFor(() => {
-    expect(mockLive.openCount).toBe(2);
+    expect(mockLive.deviceOpenCount).toBe(1);
   });
 
   await rendered.findByRole('heading', { name: 'Saturday' });

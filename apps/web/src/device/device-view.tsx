@@ -4,9 +4,10 @@ import { css } from '../styled-system/css';
 import { DeviceSurface } from './device-surface';
 import { useDeviceFeed } from './use-device-feed';
 import { useViewPixels } from './use-view-pixels';
+import { useViewTop } from './use-view-top';
 
 const page = css({
-  height: 'calc(100dvh - token(sizes.appBar))',
+  height: 'calc(100dvh - var(--device-view-top, token(sizes.appBar)))',
   position: 'relative',
   width: '100%',
 });
@@ -23,14 +24,15 @@ const status = css({
   zIndex: '1',
 });
 
-// This client's own device, drawn at the size of the page's content area. It reads the device
-// stream that the tab holds, so it shows what the assistant put on the screen while the page was
-// closed, and the page never tells the user when that content changes.
+// This client's own device, drawn at the size of the window below the bars above it. It reads the
+// device stream that the tab holds, so it shows what the assistant put on the screen while the page
+// was closed, and the page never tells the user when that content changes.
 export function DeviceView(): ReactNode {
   const feed = useDeviceFeed();
   const events = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
   const area = useRef<HTMLDivElement>(null);
 
+  useViewTop(area);
   useViewPixels(area);
 
   return (

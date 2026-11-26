@@ -140,6 +140,35 @@ test('#createDeviceStreams gives every open stream of a device the new size on a
   });
 });
 
+test('#createDeviceStreams keeps the size of a resize when another stream opens', () => {
+  const ctx = setupTest();
+
+  ctx.streams.open('dk4m7q2w9x', { width: 700, height: 500, pixelRatio: 1 });
+  ctx.streams.resize('dk4m7q2w9x', { width: 700, height: 500, pixelRatio: 1 });
+  ctx.streams.open('dk4m7q2w9x', { width: 800, height: 600, pixelRatio: 2 });
+
+  expect(ctx.streams.readPixels('dk4m7q2w9x')).toStrictEqual({
+    width: 700,
+    height: 500,
+    pixelRatio: 1,
+  });
+});
+
+test('#createDeviceStreams reports the size of a new stream once the streams before it closed', () => {
+  const ctx = setupTest();
+  const first = ctx.streams.open('dk4m7q2w9x', { width: 700, height: 500, pixelRatio: 1 });
+
+  ctx.streams.resize('dk4m7q2w9x', { width: 1024, height: 768, pixelRatio: 1 });
+  first.close();
+  ctx.streams.open('dk4m7q2w9x', { width: 800, height: 600, pixelRatio: 2 });
+
+  expect(ctx.streams.readPixels('dk4m7q2w9x')).toStrictEqual({
+    width: 800,
+    height: 600,
+    pixelRatio: 2,
+  });
+});
+
 test('#createDeviceStreams keeps no size for a resize of a device with no open stream', () => {
   const ctx = setupTest();
 

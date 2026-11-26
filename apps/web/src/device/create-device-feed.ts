@@ -14,8 +14,9 @@ export interface DeviceFeed {
   readonly subscribe: (onChange: () => void) => () => void;
   readonly getSnapshot: () => DeviceEvents;
 
-  // The size of the device view's content area in device pixels, or null once the view closes.
-  // The server learns it from the next stream that opens, or from a resize while one is open.
+  // The size of the device view's content area in device pixels, or null once the view closes. The
+  // server learns it from a resize each time a stream opens and when the size changes, because a
+  // stream that another tab opens must not replace it.
   readonly setViewPixels: (pixels: ScreenPixels | null) => void;
 }
 
@@ -32,10 +33,14 @@ interface FeedState {
   controller: AbortController | null;
   viewPixels: ScreenPixels | null;
 
-  // the size the server holds for the open stream, or null while none is open
-  serverPixels: ScreenPixels | null;
+  // the size the last resize call gave the server since the stream opened, or null before one did
+  resizedPixels: ScreenPixels | null;
   stopResizeTimer: (() => void) | null;
   isResizing: boolean;
+  isOpen: boolean;
+
+  // counts the streams that opened, so a call in flight knows a reconnect came before it settled
+  openings: number;
 }
 
 // The tab's own device stream, held above every page so a route change keeps it open and the
@@ -46,9 +51,11 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
     retained: 0,
     controller: null,
     viewPixels: null,
-    serverPixels: null,
+    resizedPixels: null,
     stopResizeTimer: null,
     isResizing: false,
+    isOpen: false,
+    openings: 0,
   };
 
   const listeners = new Set<() => void>();
@@ -65,17 +72,18 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
     state.stopResizeTimer = null;
 
     const viewPixels = state.viewPixels;
-    const sent = state.serverPixels;
 
-    if (state.isResizing || viewPixels === null || sent === null) {
+    if (state.isResizing || !state.isOpen || viewPixels === null) {
       return;
     }
 
-    const pixels = pickPixelsToSend(sent, viewPixels);
+    const pixels = pickPixelsToSend(state.resizedPixels, viewPixels);
 
     if (pixels === null) {
       return;
     }
+
+    const openings = state.openings;
 
     state.isResizing = true;
 
@@ -83,9 +91,9 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
 
     state.isResizing = false;
 
-    // a reconnect while the call was in flight sent its own size, which is what the server keeps
-    if (isSent && state.serverPixels === sent) {
-      state.serverPixels = pixels;
+    // a stream that opened while the call was in flight sends the size again
+    if (isSent && state.openings === openings) {
+      state.resizedPixels = pixels;
     }
 
     // a failed call leaves the old size, and the next change sends the size again
@@ -96,9 +104,9 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
 
   const scheduleSize = (): void => {
     const isStale =
-      state.serverPixels !== null &&
+      state.isOpen &&
       state.viewPixels !== null &&
-      pickPixelsToSend(state.serverPixels, state.viewPixels) !== null;
+      pickPixelsToSend(state.resizedPixels, state.viewPixels) !== null;
 
     if (isStale && state.stopResizeTimer === null && state.controller !== null) {
       state.stopResizeTimer = options.startTimer(() => {
@@ -114,23 +122,36 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
 
     void subscribeToDeviceEvents({
       client: options.client,
-      readPixels: () => {
-        const pixels = state.viewPixels ?? readScreenPixels();
-
-        state.serverPixels = pixels;
-
-        return pixels;
-      },
+      readPixels: () => state.viewPixels ?? readScreenPixels(),
       onConnection: (connection) => {
         if (state.controller !== controller) {
           return;
         }
 
+        // a refusal means the session is gone, so the device keeps nothing it showed
+        if (connection === 'refused') {
+          state.isOpen = false;
+
+          setEvents({ ...initialDeviceEvents, connection });
+
+          return;
+        }
+
         setEvents({ ...state.events, connection });
 
-        if (connection === 'open') {
-          scheduleSize();
+        if (connection !== 'open') {
+          state.isOpen = false;
+
+          return;
         }
+
+        if (!state.isOpen) {
+          state.isOpen = true;
+          state.openings += 1;
+          state.resizedPixels = null;
+        }
+
+        scheduleSize();
       },
       onEvent: (event) => {
         if (state.controller !== controller) {
@@ -147,7 +168,8 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
   const stop = (): void => {
     state.controller?.abort();
     state.controller = null;
-    state.serverPixels = null;
+    state.isOpen = false;
+    state.resizedPixels = null;
     state.stopResizeTimer?.();
     state.stopResizeTimer = null;
 

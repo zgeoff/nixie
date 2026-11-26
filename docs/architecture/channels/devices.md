@@ -42,7 +42,8 @@ makes the row that `devices.register` wrote a client row that keeps its name and
    client action ID and name returns the same ID, and the same ID with another name gets
    `CLIENT_ACTION_ID_REUSED`.
 4. The device switches its screen on with `devices.setCapability`. The call sets only `screen`, and
-   only on the session's own device row.
+   only on the session's own device row. A call with no `isOn` changes nothing and answers the
+   screen as the row holds it.
 
 `live.follow` in its device form, `devices.setCapability`, `devices.readImage` and `devices.resize`
 act on the caller's own row. A full session whose row is missing gets `NOT_A_DEVICE` and may
@@ -165,7 +166,9 @@ offline.
 For an offline device, `devices.list` gives the time its last stream closed, unless the process
 restarted since. `devices.resize(pixels)`, which takes the fields that `live.follow` opens with,
 gives every open stream of the caller's device a new size, and `devices.list` reads the new size at
-once. One pixels schema bounds the size in both calls. The stream sends `opened` first, then what
+once. A resize also keeps its size against a stream that opens later, so a second tab of the same
+client never replaces the size that the device view reported, until every stream of the device has
+closed. One pixels schema bounds the size in both calls. The stream sends `opened` first, then what
 the screen shows now. A later event follows a commit that touches the device, or the end of a show
 or of a region's minutes. The stream sends an event only when the state changes. The event of a show
 carries the `fit` of an image, `whole` or `fill`.
@@ -569,16 +572,20 @@ can draw text that it fetched.
 ## Device mode
 
 Device mode is the route `/device` of the web client, a separate page from the
-[device view](client.md#the-device-view). On load, the page calls `devices.setCapability` with the
-screen setting the browser stored, and the answer shows what the browser holds:
+[device view](client.md#the-device-view). On load, the page calls `devices.setCapability` with no
+`isOn`, so the server's screen setting stays as it is, and the answer shows what the browser holds:
 
 - A browser with no session shows the enrolment form, which makes a device session.
-- A browser with a full session shows that client's own device full screen. A browser that stored no
-  screen setting starts with the screen on, and one that stored it off starts with it off, with a
-  button that switches the screen on. A full session whose row is missing shows a form that names
-  the device and calls `devices.register`.
-- A browser with a device session comes back with the screen on or off as it stored, and starts with
-  it off when it stored nothing. A button switches the screen.
+- A browser with a full session shows that client's own device with the screen as the row holds it:
+  full screen when it is on, and a button that switches it on when it is off. A full session whose
+  row is missing shows a form that names the device and calls `devices.register`, then reads the
+  screen again.
+- A browser with a device session comes back with the screen as the row holds it, which starts off.
+  A button switches the screen.
+
+While the screen is off, the page keeps the tab's device stream open, so the device stays online.
+Sign out ends a live call before it signs the session out, so the call's microphone and peer
+connection close with it.
 
 With the screen on, the page opens the device form of `live.follow`. A layout draws as a CSS grid,
 and each region keeps its place as another updates. A region with a `background` draws it, with

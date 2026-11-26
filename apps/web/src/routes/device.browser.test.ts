@@ -23,11 +23,6 @@ async function setupTest() {
 
   const view = new Bun.WebView({ backend: 'chrome' });
 
-  // the screen setting that the device page stores outlives the test in the one Chrome
-  onTestFinished(async () => {
-    await view.evaluate('localStorage.clear()');
-  });
-
   onTestFinished(async () => {
     await view.cdp('Emulation.clearDeviceMetricsOverride');
   });
@@ -44,8 +39,6 @@ async function setupTest() {
   await deviceStore.screenSessions.create({ sessionID: session.sessionID });
 
   await setupSignedInBrowser(view, { appURL: proxy.url, token: session.token });
-
-  await view.evaluate('localStorage.clear()');
 
   return {
     appURL: proxy.url,

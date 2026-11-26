@@ -6,6 +6,7 @@ import type { LogRecord } from '@heynixie/contract';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createTestClient } from '../test-utils/create-test-client';
+import { sendClientMessage } from '../test-utils/send-client-message';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 
 test('it boots with a voice file that is not text and a voice credential that is missing, and answers SPEECH_UNAVAILABLE', async () => {
@@ -248,7 +249,7 @@ test('it gives the call turn the rule to keep speech short and put long material
   });
 });
 
-test('it marks the device of the carrying session onCall in the call turn devices.list, and no device before the call is live', async () => {
+test('it marks the device of the carrying session onCall in the call turn devices.list once the call is live', async () => {
   const ctx = await setupTest();
 
   ctx.nixie.guest.addKindReplies(
@@ -269,6 +270,31 @@ test('it marks the device of the carrying session onCall in the call turn device
   expect(devices).toMatchObject({
     structuredContent: {
       devices: [expect.objectContaining({ name: 'laptop', deviceKind: 'client', onCall: true })],
+    },
+  });
+});
+
+test('it marks no device onCall in devices.list while the call is still connecting', async () => {
+  const ctx = await setupTest();
+
+  await ctx.api.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await waitForCondition(() =>
+    ctx.nixie.guest.received.some(
+      (received) => received.frame.type === 'turn' && received.owner === 'conversation',
+    ),
+  );
+
+  ctx.nixie.guest.addReplies({ toolUse: { name: 'devices.list', input: {} } }, { text: 'Listed.' });
+
+  await sendClientMessage(ctx.api.client, { text: 'Which devices do I have?' }, 'Listed.');
+
+  const listed = ctx.nixie.toolResults.findLast((result) => result.name === 'devices.list');
+  const devices: unknown = JSON.parse(listed?.result ?? '{}');
+
+  expect(devices).toMatchObject({
+    structuredContent: {
+      devices: [expect.objectContaining({ name: 'laptop', onCall: false })],
     },
   });
 });

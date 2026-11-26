@@ -142,16 +142,22 @@ export function createDeviceProcedures(context: APIContext) {
         buildNotADevice: options.errors.NOT_A_DEVICE,
       });
 
+      const isOn = options.input.isOn;
+
+      if (isOn === undefined) {
+        return { screen: caller.device.capabilities.screen ? 'on' : 'off' };
+      }
+
       await withWriteTransaction(context.log.writer, (tx) =>
         writeScreenSwitch(tx, context.log, {
           device: caller.device,
-          isOn: options.input.isOn,
+          isOn,
           nowMs: context.clock.now(),
           definitions: context.definitions(),
         }),
       );
 
-      return { screen: options.input.isOn ? 'on' : 'off' };
+      return { screen: isOn ? 'on' : 'off' };
     }),
 
     readImage: apiImplementer.devices.readImage.handler(async (options) => {

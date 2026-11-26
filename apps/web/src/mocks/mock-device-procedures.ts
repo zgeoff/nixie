@@ -84,14 +84,26 @@ export const mockDeviceProcedures = {
     throw options.errors.NOT_DECLARED();
   }),
 
-  setCapability: os.devices.setCapability.handler((options) => {
+  setCapability: os.devices.setCapability.handler(async (options) => {
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
     if (!deviceStore.hasDevice(session.sessionID)) {
       throw options.errors.NOT_A_DEVICE();
     }
 
-    return { screen: options.input.isOn ? ('on' as const) : ('off' as const) };
+    const isOn = options.input.isOn;
+
+    if (isOn === undefined) {
+      return {
+        screen: deviceStore.readScreen(session.sessionID) ? ('on' as const) : ('off' as const),
+      };
+    }
+
+    deviceStore.screenSwitches.delete((query) => query.where({ sessionID: session.sessionID }));
+
+    await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn });
+
+    return { screen: isOn ? ('on' as const) : ('off' as const) };
   }),
 
   readImage: os.devices.readImage.handler((options) => {
