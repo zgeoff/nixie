@@ -29,7 +29,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: ['session_cleanup', 'code_run', 'notebook', 'computer', 'erasure', 'connections'],
+    uses: ['session_cleanup', 'code_run', 'notebook', 'computer', 'erasure', 'connections', 'mcp'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -117,6 +117,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
           readConnections: () => parts.find('connections') ?? null,
+          readMcp: () => parts.find('mcp') ?? null,
           readErasure: makeReadErasureStuckPort(() => parts.find('erasure'), {
             nowMs: () => context.apiContext.clock.now(),
             stuckAfterMs: options.config.erasure.stuckAfterMs,

@@ -64,3 +64,17 @@ test('it answers 400 without calling the API when the state is missing', async (
 
   expect([response.status, ctx.api.requests]).toStrictEqual([400, []]);
 });
+
+test('it finishes the sign-in of an MCP server when the state carries the MCP prefix', async () => {
+  const ctx = await setupTest();
+
+  await ctx.handleReturn('?state=mcp.abc&code=4%2F0Ab&iss=https%3A%2F%2Fauth.example', ctx.cookie);
+
+  expect(ctx.api.requests).toStrictEqual([
+    {
+      authorization: `Bearer ${ctx.token}`,
+      cookie: null,
+      path: '/rpc/mcp/finishSignIn',
+    },
+  ]);
+});

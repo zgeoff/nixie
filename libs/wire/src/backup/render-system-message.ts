@@ -23,7 +23,8 @@ export type SystemMessageType =
   | 'computer'
   | 'call'
   | 'page-event'
-  | 'mail';
+  | 'mail'
+  | 'mcp';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

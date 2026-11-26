@@ -2,6 +2,7 @@ import type { JSONObject, Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { z } from 'zod';
+import { isDefinitionMoved } from '../call-record/is-definition-moved';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
 import { runPaidCall } from '../paid/run-paid-call';
 import { pickVariant } from '../policy-call/pick-variant';
@@ -77,9 +78,24 @@ export async function runApprovedCall(
     return { status: 'unavailable' };
   }
 
+  // the snapshot the call records is the one that supplied the declaration it runs under
+  const definitions = options.definitions();
+
+  if (
+    found.definition.definitionsHash !== undefined &&
+    found.definition.definitionsHash !== definitions.snapshotHash
+  ) {
+    return { status: 'changed' };
+  }
+
   const stored = await readApprovedCall(options.log, request);
 
   if (stored === null) {
+    return { status: 'changed' };
+  }
+
+  // the owner approved the call under the form the call loaded
+  if (stored.pinHash !== found.definition.pinHash) {
     return { status: 'changed' };
   }
 
@@ -103,6 +119,22 @@ export async function runApprovedCall(
     return { status: 'changed' };
   }
 
+  // The reads above wait, and a relist or a seed can move the pin or the declaration meanwhile.
+  const current = options.registry.findTool(request.tool);
+
+  if (
+    isDefinitionMoved(
+      { pinHash: found.definition.pinHash, definitionsHash: found.definition.definitionsHash },
+      {
+        pinHash: current?.definition.pinHash,
+        definitionsHash: current?.definition.definitionsHash,
+      },
+      options.definitions().snapshotHash,
+    )
+  ) {
+    return { status: 'changed' };
+  }
+
   const settled = await tryRunApproved(registered, call, options, {
     run,
     callSequence: request.callSequence,
@@ -110,8 +142,9 @@ export async function runApprovedCall(
   });
 
   const recorder = makeCallRecorder(call, run, options, {
-    definitions: options.definitions(),
+    definitions,
     parent: undefined,
+    pinHash: found.definition.pinHash,
   });
 
   const written = await recorder.writeSettled(request.callSequence, settled);
@@ -123,6 +156,7 @@ interface StoredApprovedCall {
   readonly callID: string;
   readonly toolUseID: string | null;
   readonly destinations: readonly string[];
+  readonly pinHash: string | undefined;
 }
 
 const approvedCalledSchema = z.object({
@@ -160,6 +194,7 @@ async function readApprovedCall(
     ? {
         callID: payload.callID,
         toolUseID: payload.toolUseID,
+        pinHash: payload.pinHash,
         destinations: erasable.destinations.map((destination) => destination.value),
       }
     : null;
@@ -216,7 +251,12 @@ async function tryRunApproved(
 }
 
 function toApprovedRun(resultSequence: number, settled: Settled): ApprovedRun {
-  if (settled.outcome !== 'result' || settled.reply.kind !== 'typed') {
+  // a result that reports its service's own failure is no done action
+  if (
+    settled.outcome !== 'result' ||
+    settled.reply.kind !== 'typed' ||
+    settled.reply.isError === true
+  ) {
     return { status: 'failed', resultSequence };
   }
 

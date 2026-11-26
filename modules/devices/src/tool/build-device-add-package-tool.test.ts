@@ -89,6 +89,7 @@ async function setupTest() {
         tool: 'device.addPackage',
         arguments: input,
         attempt: 1,
+        snapshotHash: 'sha256:test',
         idempotencyKey: 'action-1:1',
         destinations: ['registry.test'],
         actionHash: 'sha256:test',

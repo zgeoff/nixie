@@ -17,6 +17,7 @@
     "@heynixie/logger": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
+    "@heynixie/wire": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",
     "ajv": "catalog:",
     "kysely": "catalog:",

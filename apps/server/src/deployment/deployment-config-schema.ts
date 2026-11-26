@@ -12,6 +12,7 @@ import {
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { mailConfigSchema } from '@heynixie/mail';
+import { mcpConfigSchema } from '@heynixie/mcp';
 import { memoryConfigSchema } from '@heynixie/memory';
 import { collectMissingPriceIssues } from '@heynixie/models';
 import { notebookConfigSchema } from '@heynixie/notebook';
@@ -52,6 +53,7 @@ export const deploymentConfigSchema = z
     notebook: notebookConfigSchema.default(notebookConfigSchema.parse({})),
     forget_notices: forgetNoticesConfigSchema.default(forgetNoticesConfigSchema.parse({})),
     erasure: erasureConfigSchema.default(erasureConfigSchema.parse({})),
+    mcp: mcpConfigSchema.default(mcpConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
     approvals: approvalsConfigSchema.default(approvalsConfigSchema.parse({})),
     quiet_hours: quietHoursSchema.optional(),

@@ -6,6 +6,7 @@ import type { MemoryKillRead } from '@heynixie/sandbox';
 import { waitForCondition } from '@heynixie/testing';
 import type { ToolImage, ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { parseFencedResult } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -189,13 +190,10 @@ test('it returns the output and the exit code of a program that ends', async () 
 
   const result = await code.call({});
 
-  expect(result).toStrictEqual({
-    content: [],
-    structuredContent: {
-      ...ctx.okResult,
-      stdout: { text: 'north 412.50\n', bytes: 13, isCut: false, file: null },
-      seconds: 2.4,
-    },
+  expect(parseFencedResult(result)).toStrictEqual({
+    ...ctx.okResult,
+    stdout: { text: 'north 412.50\n', bytes: 13, isCut: false, file: null },
+    seconds: 2.4,
   });
 });
 
@@ -378,16 +376,13 @@ test('it returns the wall-time limit when nixie stops a program at 60 s', async 
 
   const outcome = await running;
 
-  expect(outcome).toStrictEqual({
-    content: [],
-    structuredContent: {
-      ...ctx.okResult,
-      exitCode: null,
-      stdout: { text: 'so far\n', bytes: 7, isCut: false, file: null },
-      limit: {
-        kind: 'wall_time',
-        sentence: 'The program ran past its limit of 60 s, so nixie stopped it.',
-      },
+  expect(parseFencedResult(outcome)).toStrictEqual({
+    ...ctx.okResult,
+    exitCode: null,
+    stdout: { text: 'so far\n', bytes: 7, isCut: false, file: null },
+    limit: {
+      kind: 'wall_time',
+      sentence: 'The program ran past its limit of 60 s, so nixie stopped it.',
     },
   });
 });
@@ -407,7 +402,7 @@ test('it returns the memory limit when the memory-kill count rose during the pro
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     exitCode: null,
     limit: {
       kind: 'memory',
@@ -427,7 +422,7 @@ test('it returns the killed limit for a SIGKILL that nixie did not send when the
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     limit: {
       kind: 'killed',
       sentence:
@@ -446,7 +441,7 @@ test('it returns no limit for a SIGKILL when the memory-kill count did not rise'
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({ limit: null });
+  expect(parseFencedResult(result)).toMatchObject({ limit: null });
 });
 
 test('it returns the output limit, and keeps the stream as a file, when a stream passes 1 MiB', async () => {
@@ -462,7 +457,7 @@ test('it returns the output limit, and keeps the stream as a file, when a stream
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     stdout: {
       text: 'x'.repeat(32_768),
       bytes: 2_097_152,
@@ -492,7 +487,7 @@ test('it returns the files limit and no files when out/ holds more than 50 files
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     files: [],
     limit: {
       kind: 'files',
@@ -511,7 +506,7 @@ test('it returns the files limit when out/ holds more than 20 MiB', async () => 
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     files: [],
     limit: { kind: 'files' },
   });
@@ -527,7 +522,7 @@ test('it returns the files limit and no files when a file grew past 20 MiB after
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({ files: [], limit: { kind: 'files' } });
+  expect(parseFencedResult(result)).toMatchObject({ files: [], limit: { kind: 'files' } });
 });
 
 test('it returns the call-time error at 120 s when the sandbox destroy hangs', async () => {
@@ -596,7 +591,7 @@ test('it returns the files limit when the listing of out/ passes the exec cap', 
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({ files: [], limit: { kind: 'files' } });
+  expect(parseFencedResult(result)).toMatchObject({ files: [], limit: { kind: 'files' } });
 });
 
 test('it returns the output limit and no files when a program passes both output and files', async () => {
@@ -618,7 +613,7 @@ test('it returns the output limit and no files when a program passes both output
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     files: [],
     limit: { kind: 'output' },
   });
@@ -866,7 +861,7 @@ test('it refuses a call when the sandbox fails to start, and starts a new one on
     buildToolErrorResult('nixie could not start the code sandbox. A second call starts a new one.'),
   );
 
-  expect(next.structuredContent).toStrictEqual(ctx.okResult);
+  expect(parseFencedResult(next)).toStrictEqual(ctx.okResult);
 });
 
 test('it refuses a third code run while two are in progress, and creates nothing for it', async () => {
@@ -922,7 +917,7 @@ test('it seals the files a program wrote as attachments of the result record, wi
   const attachments = await readRecordAttachments(ctx.log, [stored.record.sequence]);
   const rows = await sql`select * from code_files order by position`.execute(ctx.log.writer.db);
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     files: [
       { path: 'out/a.csv', bytes: 5, mediaType: 'text/csv', isShown: false },
       { path: 'out/b.txt', bytes: 6, mediaType: 'text/plain', isShown: false },
@@ -1109,7 +1104,7 @@ test('it shows no image when the session refuses its reservation', async () => {
     { session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => false } },
   );
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     files: [{ path: 'out/chart.png', mediaType: 'image/png', isShown: false }],
   });
 });
@@ -1126,7 +1121,7 @@ test('it shows no image for a call with no session', async () => {
 
   const result = await code.call({});
 
-  expect(result.structuredContent).toMatchObject({ files: [{ isShown: false }] });
+  expect(parseFencedResult(result)).toMatchObject({ files: [{ isShown: false }] });
 });
 
 test('it returns a stream past 32 KiB as a file that counts toward neither files limit', async () => {
@@ -1151,7 +1146,7 @@ test('it returns a stream past 32 KiB as a file that counts toward neither files
 
   const attachments = await readRecordAttachments(ctx.log, [stored.record.sequence]);
 
-  expect(result.structuredContent).toMatchObject({
+  expect(parseFencedResult(result)).toMatchObject({
     stdout: { bytes: 40_000, file: expect.stringMatching(/^[a-z][\da-z]{9}$/u) },
     limit: null,
   });

@@ -30,6 +30,8 @@ import {
   startPageFetches,
 } from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
+import { buildMcpServersTool, findServerIDClash } from '@heynixie/mcp';
+import type { Mcp } from '@heynixie/mcp';
 import type { ConversationMemoryStore } from '@heynixie/memory';
 import {
   buildLogReadImageTool,
@@ -60,7 +62,13 @@ import {
   buildTasksRunsTool,
   readTaskNames,
 } from '@heynixie/tasks';
-import type { ActionQueue, ToolDefinition, ToolEndpoint, ToolRegistry } from '@heynixie/tools';
+import type {
+  ActionQueue,
+  ToolDefinition,
+  ToolEndpoint,
+  ToolRegistry,
+  ToolSource,
+} from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { readActionCallSource } from '../action/read-action-call-source';
 import { buildContactTool } from '../cli/build-contact-tool';
@@ -130,6 +138,12 @@ export interface ConversationEndpointTools {
   readonly worker: WorkerTool | null;
 
   readonly testTools: readonly ToolDefinition[];
+
+  // sources of more tools, which join the registry as they start
+  readonly toolSources: readonly ToolSource[];
+
+  // the MCP proxy, which `mcp.servers` reads once it starts
+  readonly readMcp: () => Mcp | null;
 
   // the values nixie holds as its own, which every tool result is scanned for
   readonly readOwnValues: () => readonly string[];
@@ -362,6 +376,7 @@ export async function startConversationEndpoint(
       ? []
       : [tools.buildCodingStart({ messaging, bounds, relatedMemory })]),
     ...tools.mail,
+    buildMcpServersTool(tools.readMcp),
     ...tools.google,
     ...search,
     ...images,
@@ -384,7 +399,22 @@ export async function startConversationEndpoint(
 
   // Only a call's thread holds the hang-up, so it stays out of the conversation's own list.
   const hangUp = buildHangUpTool(() => tools.calls, options.context);
-  const registry = buildToolRegistry([...definitions, hangUp, ...tools.testTools]);
+
+  const clash = findServerIDClash(
+    Object.keys(options.config.mcp.servers),
+    [...definitions, hangUp, ...tools.testTools].map((definition) => definition.name),
+  );
+
+  if (clash !== null) {
+    throw new Error(
+      `the mcp server ID ${clash.serverID} is the first segment of the tool ${clash.tool}; rename the server`,
+    );
+  }
+
+  const registry = buildToolRegistry(
+    [...definitions, hangUp, ...tools.testTools],
+    tools.toolSources,
+  );
 
   registryHolder.current = registry;
 

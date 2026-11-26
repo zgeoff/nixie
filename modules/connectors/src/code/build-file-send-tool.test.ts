@@ -4,6 +4,7 @@ import { readRecords, removeRecordKey } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import type { ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { parseFencedResult } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -114,16 +115,8 @@ test('it sends a file that a code run wrote and records the send beside the resu
   const [, sendSequence] = await ctx.readResultSequences();
   const sends = await ctx.readSends();
 
-  expect({ sent, sends }).toStrictEqual({
-    sent: {
-      content: [],
-      structuredContent: {
-        file: written.file,
-        name: 'orders.csv',
-        bytes: 8,
-        mediaType: 'text/csv',
-      },
-    },
+  expect({ sent: parseFencedResult(sent), sends }).toStrictEqual({
+    sent: { file: written.file, name: 'orders.csv', bytes: 8, mediaType: 'text/csv' },
     sends: [{ sequence: sendSequence ?? 0, file_id: written.file, thread: 'conversation' }],
   });
 });
@@ -177,8 +170,7 @@ test('it refuses a kept stream of a code run', async () => {
 
   const ran = await code.runCode();
 
-  const block = ran.content.find((candidate) => candidate.type === 'text');
-  const raw: unknown = block === undefined ? ran.structuredContent : JSON.parse(block.text);
+  const raw = parseFencedResult(ran);
   const stream = z.object({ stdout: z.object({ file: z.string() }) }).parse(raw).stdout;
 
   const result = await code.send({ file: stream.file });
@@ -218,16 +210,8 @@ test('it sends an image by its short ID from any thread and writes no send row',
 
   const sends = await ctx.readSends();
 
-  expect({ sent, sends }).toStrictEqual({
-    sent: {
-      content: [],
-      structuredContent: {
-        file: 'im4k9q2x7a',
-        name: 'im4k9q2x7a.png',
-        bytes: 30,
-        mediaType: 'image/png',
-      },
-    },
+  expect({ sent: parseFencedResult(sent), sends }).toStrictEqual({
+    sent: { file: 'im4k9q2x7a', name: 'im4k9q2x7a.png', bytes: 30, mediaType: 'image/png' },
     sends: [],
   });
 });

@@ -1,15 +1,21 @@
 import { startActionRunners } from '@heynixie/actions';
 import { codingActionDeclarations } from '@heynixie/coding';
 import { toErrorFields } from '@heynixie/logger';
+import type { Mcp } from '@heynixie/mcp';
 import type { RunStep } from '@heynixie/tasks';
 import { startTaskClaimPools } from '@heynixie/tasks';
 import { buildToolRegistry } from '@heynixie/tools';
 import { makeAttemptCheck } from '../action/make-attempt-check';
 import { makeConversationFailureMarker } from '../conversation/make-conversation-failure-marker';
 import type { ServerParts } from '../types';
+import { makeLazyToolSource } from './make-lazy-tool-source';
 import { makeStepErrorLogger } from './make-step-error-logger';
 
-export async function startRunners(parts: ServerParts, runStep: RunStep): Promise<void> {
+export async function startRunners(
+  parts: ServerParts,
+  runStep: RunStep,
+  readMcp: () => Mcp | null,
+): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
     parts.onFailure(error);
@@ -37,13 +43,16 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
     size: parts.config.tasks.runners,
   });
 
-  const registry = buildToolRegistry([
-    ...parts.tools.definitions,
-    parts.tools.actions.logConnector.tool,
-  ]);
+  const registry = buildToolRegistry(
+    [...parts.tools.definitions, parts.tools.actions.logConnector.tool],
+    [makeLazyToolSource(() => readMcp()?.tools ?? null)],
+  );
+
+  const readConnector = (tool: string) =>
+    parts.tools.actions.connectors.get(tool) ?? readMcp()?.findConnector(tool);
 
   const actions = startActionRunners(parts.context, {
-    connectors: parts.tools.actions.connectors,
+    connectors: { get: readConnector },
     ...pickHeld(parts.tools.actions.readHeldToolPrefixes),
     ...(parts.tools.actions.admitTool === undefined
       ? {}

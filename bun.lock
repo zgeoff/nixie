@@ -218,6 +218,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/mail": "workspace:*",
+        "@heynixie/mcp": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/notebook": "workspace:*",
@@ -618,6 +619,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/mail": "workspace:*",
+        "@heynixie/mcp": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/notebook": "workspace:*",
@@ -895,6 +897,33 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/mcp": {
+      "name": "@heynixie/mcp",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/contract": "workspace:*",
+        "@heynixie/credentials": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/proposals": "workspace:*",
+        "@heynixie/retry": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@modelcontextprotocol/client": "catalog:",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/budgets": "workspace:*",
+        "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -1188,6 +1217,7 @@
         "@heynixie/logger": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",
         "ajv": "catalog:",
         "kysely": "catalog:",
@@ -1801,6 +1831,8 @@
     "@heynixie/logger": ["@heynixie/logger@workspace:libs/logger"],
 
     "@heynixie/mail": ["@heynixie/mail@workspace:modules/mail"],
+
+    "@heynixie/mcp": ["@heynixie/mcp@workspace:modules/mcp"],
 
     "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 

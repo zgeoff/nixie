@@ -1681,6 +1681,63 @@
       },
       "additionalProperties": false
     },
+    "mcp": {
+      "default": {
+        "listingTimeoutSeconds": 10,
+        "servers": {}
+      },
+      "type": "object",
+      "properties": {
+        "listingTimeoutSeconds": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "servers": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "minLength": 1
+              },
+              "clientID": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scope": {
+                "type": "string",
+                "minLength": 1
+              },
+              "trusted": {
+                "default": false,
+                "type": "boolean"
+              },
+              "privateRange": {
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "url",
+              "clientID",
+              "scope"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "policy": {
       "type": "object",
       "properties": {

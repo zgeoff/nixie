@@ -11,12 +11,16 @@ import type {
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { isDefinitionMoved } from './call-record/is-definition-moved';
+import type { DefinitionVersion } from './call-record/is-definition-moved';
 import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
+import { renderChangedSentence } from './call-record/render-changed-sentence';
 import { callCapRefusal } from './cap/call-cap-refusal';
-import { preparePaidCall } from './paid/prepare-paid-call';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
-import type { PaidGate, PaidPreparation } from './paid/types';
+import type { PaidState } from './paid/try-prepare-paid-call';
+import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
+import type { PaidGate } from './paid/types';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { pickVariant } from './policy-call/pick-variant';
@@ -27,6 +31,7 @@ import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts'
 import { buildMessage } from './settle/build-message';
 import { buildTypedResult } from './settle/build-typed-result';
 import { readQueuedResult } from './settle/read-queued-result';
+import { toCallToolResult } from './settle/to-call-tool-result';
 import type { Settled } from './settle/types';
 import type {
   ActionQueue,
@@ -87,8 +92,21 @@ export async function runToolCall(
   const { parent, ...fields } = request;
   const requested: ToolCall = { ...fields, callID: crypto.randomUUID() };
   const definitions = options.definitions();
-  const requestRecorder = makeCallRecorder(requested, run, options, { definitions, parent });
   const found = options.registry.findTool(requested.tool);
+  const pinHash = found?.definition.pinHash;
+  const recordedFields = { definitions, parent, pinHash };
+  const requestRecorder = makeCallRecorder(requested, run, options, recordedFields);
+  const loaded = { pinHash, definitionsHash: found?.definition.definitionsHash };
+
+  if (
+    found !== null &&
+    run.tools.includes(requested.tool) &&
+    found.definition.definitionsHash !== undefined &&
+    found.definition.definitionsHash !== definitions.snapshotHash
+  ) {
+    return writeRefusedCall(requestRecorder, renderChangedSentence(requested.tool));
+  }
+
   const inputCheck = checkListedInput(found, requested, run);
 
   if (!inputCheck.isValid) {
@@ -108,7 +126,7 @@ export async function runToolCall(
   }
 
   const call: ToolCall = { ...requested, input: inputResolution.input };
-  const recorder = makeCallRecorder(call, run, options, { definitions, parent });
+  const recorder = makeCallRecorder(call, run, options, recordedFields);
   const variant = isListed ? pickVariant(found, call) : null;
 
   if (variant?.status === 'error') {
@@ -125,6 +143,15 @@ export async function runToolCall(
 
   if (resolution.status === 'error') {
     return writeInvalidCall(recorder, resolution.message);
+  }
+
+  const refusal =
+    registered !== null && isListed
+      ? await registered.definition.clear?.(call.input, { run })
+      : null;
+
+  if (refusal !== null && refusal !== undefined) {
+    return writeRefusedCall(recorder, refusal);
   }
 
   const prepare = registered !== null && isListed ? registered.definition.prepare : undefined;
@@ -209,7 +236,13 @@ export async function runToolCall(
     actionHash,
   });
 
-  const paid = await tryPreparePaidCall({ policy, registered, call, run, options });
+  const paid = await tryPreparePaidCall({
+    policy,
+    registered,
+    call,
+    run,
+    budgets: options.budgets,
+  });
 
   const plan = paid.status === 'plan' ? paid.plan : undefined;
 
@@ -257,12 +290,25 @@ export async function runToolCall(
         destinations,
         deadlineAt,
         prepared,
+        loaded,
         options,
       });
 
   const recorded = await recorder.writeSettled(written.sequence, settled);
 
   return toCallToolResult(recorded.settled);
+}
+
+// A refusal is nixie's own sentence, so it reaches the model as plain error text.
+async function writeRefusedCall(recorder: CallRecorder, refusal: string): Promise<CallToolResult> {
+  const written = await recorder.writeCall(null);
+
+  const refused = await recorder.writeSettled(
+    written.sequence,
+    buildMessage('error', refusal, { source: 'owner_data' }),
+  );
+
+  return toCallToolResult(refused.settled);
 }
 
 // A tool missing from the run's list skips the schema, so its errors never show the tool to the
@@ -287,33 +333,6 @@ async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise
   );
 
   return toCallToolResult(invalid.settled);
-}
-
-function toCallToolResult(settled: Settled): CallToolResult {
-  const reply = settled.reply;
-
-  if (reply.kind === 'text') {
-    return { content: [{ type: 'text', text: reply.text }], isError: reply.isError };
-  }
-
-  // The Claude Code CLI ends its turn after a result with this key and makes no further model call.
-  const endTurn = settled.endsTurn === true ? { _meta: { 'claude/endTurn': true } } : {};
-
-  if (reply.images.length === 0) {
-    return { content: [], structuredContent: reply.result, ...endTurn };
-  }
-
-  return {
-    content: [
-      { type: 'text', text: JSON.stringify(reply.result) },
-      ...reply.images.map((image) => ({
-        type: 'image' as const,
-        data: Buffer.from(image.bytes).toString('base64'),
-        mimeType: image.mediaType,
-      })),
-    ],
-    ...endTurn,
-  };
 }
 
 function isPrepareRefusal(
@@ -356,46 +375,6 @@ function withPreparedAmount(
 
 // What the call charges: a plan for a paid tool that runs, a result that its check ended with, or
 // the failure of that check, which the call settles as the tool's failure.
-type PaidState = PaidPreparation | { readonly status: 'failed'; readonly error: unknown };
-
-interface PaidFacts {
-  readonly policy: PolicyDecision;
-  readonly registered: RegisteredTool | null;
-  readonly call: ToolCall;
-  readonly run: ToolRun;
-  readonly options: ToolCallOptions;
-}
-
-// Only a call that the policy lets run, on a tool that runs inside the turn, charges. The check and
-// the price come first, because the charge lands in the transaction that writes the call record.
-async function tryPreparePaidCall(facts: PaidFacts): Promise<PaidState> {
-  const policy = facts.policy;
-  const registered = facts.registered;
-  const isAsk = policy.decision.outcome === 'ask' && !isMemoryRuleAsk(policy);
-
-  if (
-    registered === null ||
-    registered.definition.paid === undefined ||
-    registered.definition.execution !== 'direct' ||
-    isAsk ||
-    policy.decision.outcome === 'deny'
-  ) {
-    return { status: 'free' };
-  }
-
-  try {
-    const prepared = await preparePaidCall(
-      registered,
-      { call: facts.call, run: facts.run },
-      facts.options.budgets,
-    );
-
-    return prepared;
-  } catch (error) {
-    return { status: 'failed', error };
-  }
-}
-
 // A prepared call's effects join the declared ones in the proposal the call may write.
 function pickCallDeclaration(
   registered: RegisteredTool | null,
@@ -432,6 +411,7 @@ interface DecidedCall {
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly prepared: Prepared | null;
+  readonly loaded: DefinitionVersion;
   readonly options: ToolCallOptions;
 }
 
@@ -498,6 +478,7 @@ interface AllowedCall {
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly prepared: Prepared | null;
+  readonly loaded: DefinitionVersion;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -505,6 +486,26 @@ interface AllowedCall {
 }
 
 async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
+  // A relist can move the pin, and a seed can move the declaration, while the decision was pending.
+  // The call's input was read against the form and the declaration it loaded, so it runs only under
+  // those.
+  const current = allowed.options.registry.findTool(allowed.call.tool);
+
+  if (
+    isDefinitionMoved(
+      allowed.loaded,
+      {
+        pinHash: current?.definition.pinHash,
+        definitionsHash: current?.definition.definitionsHash,
+      },
+      allowed.options.definitions().snapshotHash,
+    )
+  ) {
+    return buildMessage('error', renderChangedSentence(allowed.call.tool), {
+      source: 'owner_data',
+    });
+  }
+
   try {
     return await runAllowedCall(allowed);
   } catch (error) {

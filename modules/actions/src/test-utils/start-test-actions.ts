@@ -5,15 +5,11 @@ import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
-import {
-  buildTestDefinitionStore,
-  buildTestRunSettings,
-  buildTestTaskRunners,
-} from '@heynixie/tasks/test-utils';
+import { buildTestDefinitionStore } from '@heynixie/tasks/test-utils';
 import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { actionsProjection } from '../action/actions-projection';
-import { makeQueueRunnerActions } from '../action/make-queue-runner-actions';
+import { buildTestActionsContext } from './build-test-actions-context';
 
 export async function startTestActions(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
@@ -50,20 +46,10 @@ export async function startTestActions(): Promise<TestTasks> {
     writer,
     clock,
     definitionStore,
-    context: {
+    context: buildTestActionsContext({
       log,
       clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
-      runSettings: buildTestRunSettings(),
-      readDefinitionVersion: definitionStore.readDefinitionVersion,
-      readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
-      readDefinitionNextFire: definitionStore.readDefinitionNextFire,
-      runners: buildTestTaskRunners(),
-      queueRunnerActions: makeQueueRunnerActions({
-        log,
-        clock,
-        definitions: () => ({ snapshotHash: 'sha256:test' }),
-      }),
-    },
+    }),
   };
 }

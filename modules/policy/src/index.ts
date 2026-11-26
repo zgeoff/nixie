@@ -46,6 +46,16 @@ export type { PolicyConfig } from './policy/policy-config-schema';
 export { policyConfigSchema } from './policy/policy-config-schema';
 export type { EffectOverrideProblem, ParsedEffectOverrides } from './effect/parse-effect-overrides';
 export { parseEffectOverrides } from './effect/parse-effect-overrides';
+export type { McpOverrideProblem, ParsedMcpOverrides } from './mcp/parse-mcp-overrides';
+export { findMcpToolOverride } from './mcp/find-mcp-tool-override';
+export { parseMcpOverrides } from './mcp/parse-mcp-overrides';
+
+export {
+  mcpOverridesFileSchema,
+  mcpOverridesFormSchema,
+  mcpToolOverrideSchema,
+} from './mcp/mcp-overrides-file-schema';
+
 export { parseRule } from './rule/parse-rule';
 
 export type {
@@ -91,6 +101,9 @@ export type {
   Effect,
   EffectDeclaration,
   EffectOverride,
+  McpOverrides,
+  McpReconcile,
+  McpToolOverride,
   KnownContact,
   MemoryWriteFacts,
   NamingRule,

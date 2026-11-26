@@ -26,6 +26,7 @@ test.each(['coding.spawn', 'coding.start'])(
         target: { daemon: 'cloud', target: 'cloud' },
       },
       attempt: 1,
+      snapshotHash: 'sha256:test',
       idempotencyKey: 'key-1',
       destinations: [],
       actionHash: 'hash-1',

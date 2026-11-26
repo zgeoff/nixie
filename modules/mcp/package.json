@@ -1,0 +1,36 @@
+{
+  "name": "@heynixie/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/connectors": "workspace:*",
+    "@heynixie/contract": "workspace:*",
+    "@heynixie/credentials": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/egress": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/policy": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
+    "@heynixie/retry": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "@modelcontextprotocol/client": "catalog:",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/actions": "workspace:*",
+    "@heynixie/budgets": "workspace:*",
+    "@heynixie/testing": "workspace:*",
+    "@zgeoff/testing": "catalog:"
+  }
+}

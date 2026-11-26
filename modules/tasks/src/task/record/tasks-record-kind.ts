@@ -23,6 +23,7 @@ export type TasksRecordKind =
   | 'task.failed_turn_spent'
   | 'task.limit_notice'
   | 'recovery.notice'
+  | 'tool_changed'
   | 'task.limits_raised'
   | 'task.wake'
   | 'task.run_opened'

@@ -1,3 +1,4 @@
+import type { AddressCheck } from '@heynixie/egress';
 import type { Log } from '@heynixie/log';
 import { createCredentialStore } from '../create-credential-store';
 import type { CredentialStore } from '../create-credential-store';
@@ -19,6 +20,9 @@ export interface HeldTestStoreOptions {
   // the lookup of a host name; every name goes to the loopback address by default
   readonly resolveHost?: (host: string) => Promise<readonly string[]>;
   readonly tokenRequestTimeoutMs?: number;
+
+  // which resolved addresses count as public; only the loopback address does by default
+  readonly checkAddress?: AddressCheck;
 
   // runs after a token saves and before its record is written
   readonly afterTokenSaved?: () => Promise<void>;
@@ -71,7 +75,10 @@ export async function createHeldTestStore(options: HeldTestStoreOptions): Promis
     ...(options.tokenRequestTimeoutMs === undefined
       ? {}
       : { tokenRequestTimeoutMs: options.tokenRequestTimeoutMs }),
-    test: { checkAddress: (address) => address === '127.0.0.1', ca: options.ca },
+    test: {
+      checkAddress: options.checkAddress ?? ((address) => address === '127.0.0.1'),
+      ca: options.ca,
+    },
   });
 
   return { store, backend, ownValues };

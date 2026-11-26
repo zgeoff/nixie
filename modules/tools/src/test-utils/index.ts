@@ -5,6 +5,7 @@ export { buildMockToolDefinition } from './build-mock-tool-definition';
 export { buildMockVariantToolDefinition } from './build-mock-variant-tool-definition';
 export type { StubActionQueue, StubActionQueueOptions } from './build-stub-action-queue';
 export { buildStubActionQueue } from './build-stub-action-queue';
+export { parseFencedResult } from './parse-fenced-result';
 export { readTestToolNames } from './read-test-tool-names';
 export type { TestToolCall } from './send-test-tool-call';
 export { sendTestToolCall } from './send-test-tool-call';

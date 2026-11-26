@@ -8,6 +8,7 @@ import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostDefinitionProcedures } from './create-host-definition-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostMandateProcedures } from './create-host-mandate-procedures';
+import { createHostMcpProcedures } from './create-host-mcp-procedures';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
 import { createHostPasskeyProcedures } from './create-host-passkey-procedures';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
@@ -79,6 +80,7 @@ export function createHostRouter(options: HostRouterOptions) {
       .router(
         createHostMandateProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
       ),
+    mcp: hostImplementer.mcp.use(gated).router(createHostMcpProcedures(options.context)),
     budgets: hostImplementer.budgets.use(gated).router(createHostBudgetProcedures(options.context)),
     definitions: hostImplementer.definitions
       .use(gated)

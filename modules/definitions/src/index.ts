@@ -130,6 +130,7 @@ export type { StandingRule } from './rule/collect-standing-rules';
 export { collectStandingRules } from './rule/collect-standing-rules';
 export type { SnapshotPolicyRead } from './snapshot/read-snapshot-policy';
 export { readSnapshotPolicy } from './snapshot/read-snapshot-policy';
+export { readSnapshotMcpOverrides } from './snapshot/read-snapshot-mcp-overrides';
 export { readRuleConflicts } from './rule/read-rule-conflicts';
 export { readRuleProposals } from './rule/read-rule-proposals';
 export type { PendingRuleProposal } from './rule/read-pending-rule-proposals';
