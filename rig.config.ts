@@ -14,6 +14,9 @@ export default defineRig({
     e2e: { start: 'scripts/test-utils/prepare-e2e-lane.ts' },
     restic: { limit: '40s', start: 'scripts/test-utils/prepare-restic-lane.ts' },
     'agent-sdk': { start: 'scripts/test-utils/prepare-agent-sdk-lane.ts' },
+
+    // GPT-Live speaks about 18 characters a second, so its eval of a long answer runs past 2 minutes
+    'model-api': { limit: '300s' },
     bundle: { limit: '15s', start: 'scripts/test-utils/prepare-bundle-lane.ts' },
   },
 
