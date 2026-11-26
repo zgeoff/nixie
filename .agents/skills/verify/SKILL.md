@@ -74,6 +74,8 @@ The mistakes that cost the most time:
 | mail-wake          | Mail wakes the chat                                                       | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
 | gmail-tools        | Search and read a mail, and approve the reply the assistant writes        | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
 | gmail-wake         | A Gmail mail wakes the chat when a rule matches                           | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
+| calendar-tools     | Read the calendar, and approve an invitation the assistant writes         | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
+| drive-tools        | Search the files, and create a text file                                  | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
 
 <!-- /wringer:features -->
 

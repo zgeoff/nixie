@@ -56,7 +56,12 @@ export function buildProposalCoreDeps(
       log: context.log,
       definitions: context.definitions,
       readBodyFields: (_db, request) =>
-        readActionBodyFields(context.log, request, context.settings?.mail),
+        readActionBodyFields(
+          context.log,
+          request,
+          context.settings?.mail,
+          context.settings?.approvals?.defaultZone ?? 'UTC',
+        ),
       writeThreadRecord,
       queueApproved: (tx, approved) => createApprovedAction(tx, context, approved),
       failHeld: (tx, row, reason) => failHeldAction(tx, context, { proposalID: row.id, reason }),

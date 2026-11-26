@@ -44,6 +44,10 @@ export interface ControlHandlers {
   readonly readLiveOpens: () => number;
 
   readonly readGmailSent: () => z.input<typeof controlRoutes.gmailSent.output>;
+
+  readonly readCalendarWrites: () => z.input<typeof controlRoutes.calendarWrites.output>;
+
+  readonly readDriveFiles: () => z.input<typeof controlRoutes.driveFiles.output>;
 }
 
 export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
@@ -67,6 +71,12 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.gmailSent.path]: {
         GET: makeRouteHandler(controlRoutes.gmailSent, handlers.readGmailSent),
+      },
+      [controlRoutes.calendarWrites.path]: {
+        GET: makeRouteHandler(controlRoutes.calendarWrites, handlers.readCalendarWrites),
+      },
+      [controlRoutes.driveFiles.path]: {
+        GET: makeRouteHandler(controlRoutes.driveFiles, handlers.readDriveFiles),
       },
       [controlRoutes.liveOpens.path]: {
         GET: makeRouteHandler(controlRoutes.liveOpens, () => ({

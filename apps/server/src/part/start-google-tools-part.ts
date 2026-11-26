@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { ConnectionContext, ConnectionState } from '@heynixie/connections';
 import type { ConnectorAction, GoogleHosts } from '@heynixie/connectors';
 import {
-  buildGmailActions,
+  buildGoogleActions,
   collectGmailConnections,
   googleHosts,
   isGmailPolled,
@@ -67,7 +67,7 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
 
   const webFetch = inputs.options.config.web_fetch;
 
-  const actions = buildGmailActions({
+  const actions = buildGoogleActions({
     hosts,
     access: {
       readLiveContexts: (connection) => {

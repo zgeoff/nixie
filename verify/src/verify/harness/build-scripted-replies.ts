@@ -69,6 +69,12 @@ export function buildScriptedReplies(
 
   const gmailReply = reply.gmailReply === undefined ? [] : buildGmailReplyReplies(reply.gmailReply);
 
+  const calendarInvite =
+    reply.calendarInvite === undefined ? [] : buildCalendarInviteReplies(reply.calendarInvite);
+
+  const driveCreate =
+    reply.driveCreate === undefined ? [] : buildDriveCreateReplies(reply.driveCreate);
+
   const forgetNote =
     reply.forgetNote === undefined
       ? []
@@ -117,6 +123,8 @@ export function buildScriptedReplies(
       ...mailRead,
       ...gmailWatch,
       ...gmailReply,
+      ...calendarInvite,
+      ...driveCreate,
       ...forgetNote,
       ...handover,
       ...codingStart,
@@ -136,6 +144,8 @@ export function buildScriptedReplies(
     ...mailRead,
     ...gmailWatch,
     ...gmailReply,
+    ...calendarInvite,
+    ...driveCreate,
     ...forgetNote,
     ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
@@ -395,4 +405,45 @@ function readSearchedMailID(body: ScriptedBody): string {
   invariant(mailID !== undefined, 'the result of the search names no mail');
 
   return mailID;
+}
+
+// A list of the connected Google account's events in the span of the new event, and an invitation
+// of the guest to it.
+function buildCalendarInviteReplies(
+  invite: NonNullable<z.output<typeof controlRoutes.addReply.input>['calendarInvite']>,
+) {
+  return [
+    {
+      toolUse: {
+        name: 'mcp__nixie__calendar_list_events',
+        input: { from: invite.start, to: invite.end },
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__calendar_create_event_with_guests',
+        input: {
+          title: invite.title,
+          start: invite.start,
+          end: invite.end,
+          guests: [invite.guest],
+        },
+      },
+    },
+  ];
+}
+
+// A search of the connected Google account's files, and the creation of a text file.
+function buildDriveCreateReplies(
+  create: NonNullable<z.output<typeof controlRoutes.addReply.input>['driveCreate']>,
+) {
+  return [
+    { toolUse: { name: 'mcp__nixie__drive_search', input: { query: create.query } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__drive_create',
+        input: { name: create.name, text: create.text, as: 'text' },
+      },
+    },
+  ];
 }

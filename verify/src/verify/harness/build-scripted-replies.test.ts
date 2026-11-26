@@ -632,3 +632,54 @@ test('it gives the reply the output tokens that price it', () => {
     { text: 'The heron left.', usage: { input_tokens: 10, output_tokens: 125_000 } },
   ]);
 });
+
+test('it lists the events of the span, then invites the guest to the new event', () => {
+  const replies = buildScriptedReplies({
+    text: 'The invitation waits for your approval.',
+    calendarInvite: {
+      title: 'Lunch',
+      start: '2026-12-02T12:00:00+11:00',
+      end: '2026-12-02T13:00:00+11:00',
+      guest: 'lee@example.org',
+    },
+  });
+
+  expect(replies).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__calendar_list_events',
+        input: { from: '2026-12-02T12:00:00+11:00', to: '2026-12-02T13:00:00+11:00' },
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__calendar_create_event_with_guests',
+        input: {
+          title: 'Lunch',
+          start: '2026-12-02T12:00:00+11:00',
+          end: '2026-12-02T13:00:00+11:00',
+          guests: ['lee@example.org'],
+        },
+      },
+    },
+    { text: 'The invitation waits for your approval.' },
+  ]);
+});
+
+test('it searches the files, then creates the text file', () => {
+  const replies = buildScriptedReplies({
+    text: 'The file is made.',
+    driveCreate: { query: 'plan', name: 'Packing list', text: 'Passport.' },
+  });
+
+  expect(replies).toStrictEqual([
+    { toolUse: { name: 'mcp__nixie__drive_search', input: { query: 'plan' } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__drive_create',
+        input: { name: 'Packing list', text: 'Passport.', as: 'text' },
+      },
+    },
+    { text: 'The file is made.' },
+  ]);
+});
