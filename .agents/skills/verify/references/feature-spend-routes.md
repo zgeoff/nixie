@@ -7,7 +7,8 @@ dollars, with a day limit and a month limit per provider and an optional pair pe
 the provider of a route, at its day limit refuses requests with `limit_reached` and names the route
 and the provider, while a turn on a route of another provider completes. The spending page,
 `/spend`, lists each provider with its routes, and each count and limit in US dollars, with an
-approximate amount in the display currency beside each figure. Each count has a Reset button.
+approximate amount in the display currency beside each figure. Each count has a Reset button, and a
+provider at its day limit offers a raise.
 
 Run this journey on `local` only, on an `up` of its own:
 
@@ -53,22 +54,34 @@ Before you start:
    Expect: `conversation turn` exits 0, so the turn completed on `scripted` while the provider
    `reserve` was stopped.
 
-3. Read the spending page, then reset the day count of the provider `reserve` with one confirm, and
-   probe the route again:
+3. Read the spending page, then raise the day limit of the provider `reserve` to the amount that the
+   offer proposes, and probe the route again. Before the raise, the provider refuses the route:
 
    ```bash
    bun verify browser goto /spend
    bun verify browser snapshot
+   bun verify browser click --role button --name 'Raise the day limit of reserve'
+   bun verify browser click --role button --name 'Confirm raise of reserve'
+   bun verify browser snapshot
+   bun verify action probe-route --route second
+   ```
+
+   Expect: the probe's `data` is `{"status":200,"error":null}`, so the new limit took effect. Read
+   the first snapshot for the end state's counts, and the second for the raised limit.
+
+4. The probe of step 3 cost 2 dollars more, which passes the raised limit. Reset the day count of
+   the provider `reserve` with one confirm, and probe the route again:
+
+   ```bash
    bun verify browser click --role button --name 'Reset today for reserve'
    bun verify browser click --role button --name 'Confirm reset today for reserve'
    bun verify browser snapshot
    bun verify action probe-route --route second
    ```
 
-   Expect: the probe's `data` is `{"status":200,"error":null}`. Read the first snapshot for the end
-   state's counts, and the second for the reset.
+   Expect: the probe's `data` is `{"status":200,"error":null}`. Read the snapshot for the reset.
 
-4. Start a task on the route `scripted`, and read the dollars of its task run. The gateway counts
+5. Start a task on the route `scripted`, and read the dollars of its task run. The gateway counts
    the task's sandbox, so the task run's dollars are that count, which the task meter writes:
 
    ```bash
@@ -94,8 +107,11 @@ Before you start:
   A$2.28) (limit reached)" and "This month: $2.00 (about A$3.04) of $50.00 (about A$76)". Its route
   `second` sits under it, and reads "$2.00 (about A$3.04) no limit of its own" on both lines. Each
   count has a Reset button.
-- After the reset, the second snapshot reads "Today: $0.00 (about A$0.00) of $1.50 (about A$2.28)"
-  under "Provider reserve", and the probe of `second` is answered with status 200.
+- After the raise, the second snapshot of step 3 reads "Today: $2.00 (about A$3.04) of $2.25 (about
+  A$3.42)" under "Provider reserve", with no "(limit reached)", and the probe of `second` is
+  answered with status 200.
+- After the reset, the snapshot of step 4 reads "Today: $0.00 (about A$0.00) of $2.25 (about
+  A$3.42)" under "Provider reserve", and the probe of `second` is answered with status 200.
 - The page says that the figures in Australian dollars are approximate.
 - The first query shows a `run_start` read of 0 and a `step_end` read above 0, in that order. The
   second shows one row, whose `amount` equals the `step_end` micros, so the task run's dollars are

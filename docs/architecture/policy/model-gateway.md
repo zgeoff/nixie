@@ -404,13 +404,15 @@ under half a micro counts as one micro. A period's trip time is the instant the 
 its count at the limit in force, and a reset or a raise that lifts the limit clears it.
 
 At start, the gateway rewrites a store file of an earlier shape, a count of one total, a version 2
-store or a version 3 store, as a version 4 store in one write. A count of one total says nothing of
-a route's spend, so every route starts at zero. A version 2 store did not split its count by route,
-so each route takes the whole count of each period still under way, with its raise and its trip.
-Every provider starts at zero, because a version 3 route can hold that shared total. The count of a
-route is then an upper bound, and a restart never reopens a limit. The lost mark and the sandboxes
-carry over, and the gateway logs the old totals. The gateway refuses to start on a store file in any
-other shape. A route or a provider that the config gained starts at zero.
+store or a version 3 store, as a version 4 store in one write. A count of one total and a version 2
+store move through version 3 first, and then every version 3 store moves to version 4. A count of
+one total says nothing of a route's spend, so every route starts at zero. A version 2 store did not
+split its count by route, so each route takes the whole count of each period still under way, with
+its raise and its trip. Every provider starts at zero, because a version 3 route can hold that
+shared total. The count of a route is then an upper bound, and a restart never reopens a limit. The
+lost mark and the sandboxes carry over, and the gateway logs the old totals. The gateway refuses to
+start on a store file in any other shape. A route or a provider that the config gained starts at
+zero.
 
 ### Admission and the reset
 
@@ -458,15 +460,15 @@ A second listener on `control.listen` serves the server alone. It answers 401 to
 `Authorization: Bearer <token>`, with the token read from `control.tokenFile` at start. The model
 listener serves no control path.
 
-| Call                       | Effect                                                                                                                                                                                                                                                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /status`              | the zone, the lost mark, and for each provider and each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`; a route also names its provider, and a period with no limit of its own has a null limit and cap and is never `tripped`                                                 |
-| `POST /raise`              | raises one route's or one provider's day for its start, never below that day's earlier raise; 409 `above_cap` with the route or the provider and its cap, 409 `no_route_limit` for a route with no limit of its own, 409 `period_ended` for another start, 404 `unknown_route` or `unknown_provider`, 400 `bad_target` |
-| `POST /count`              | sets the dollars of one route's or one provider's day or month for its start, to correct a wrong count, and never changes a limit; a new count under the limit in force clears the trip; 409 `period_ended` for another start, 404 `unknown_route` or `unknown_provider`, 400 `bad_target`                             |
-| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                                                                                                                                                          |
-| `PATCH /sandboxes/<name>`  | sets the sandbox's limit whole, or `null` to count only, and keeps its count; 204, or 404 for a name the store lacks. A limit with no `tokens` sets no token limit; a limit of 0 dollars refuses at once. With a `revision`, 409 `revision_changed` once the limit's revision is another                               |
-| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit, its last refusal and its `limitRevision`; 404 for a name the store lacks                                                                                                                                                                                            |
-| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                                                                                                                                                               |
+| Call                       | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`              | the zone, the lost mark, and for each provider and each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`; a route also names its provider, and a period with no limit of its own has a null limit and cap and is never `tripped`                                                                                                                                                                        |
+| `POST /raise`              | raises one route's or one provider's day for its start, never below that day's earlier raise, and answers 204; 409 `above_cap` with the route or the provider and its cap, 409 `no_route_limit` for a route with no limit of its own, 409 `period_ended` for another start, 404 `unknown_route` or `unknown_provider`, 400 `bad_target`                                                                                                       |
+| `POST /count`              | sets the dollars of one route's or one provider's day or month for its start, to correct a wrong count, and never changes a limit, and refuses a count above 9,007,199,254 dollars with 400, which the store cannot hold; a new count under the limit in force clears the trip; 200 with `replacedDollars`, the dollars the period held, or 409 `period_ended` for another start, 404 `unknown_route` or `unknown_provider`, 400 `bad_target` |
+| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                                                                                                                                                                                                                                                                                 |
+| `PATCH /sandboxes/<name>`  | sets the sandbox's limit whole, or `null` to count only, and keeps its count; 204, or 404 for a name the store lacks. A limit with no `tokens` sets no token limit; a limit of 0 dollars refuses at once. With a `revision`, 409 `revision_changed` once the limit's revision is another                                                                                                                                                      |
+| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit, its last refusal and its `limitRevision`; 404 for a name the store lacks                                                                                                                                                                                                                                                                                                                   |
+| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                                                                                                                                                                                                                                                                                      |
 
 A refused call changes nothing. A raise body is `{ route, start, dollars }` or
 `{ provider, start, dollars }`, never both, and a raise changes the day's limit only. A count body
@@ -574,14 +576,15 @@ run. The server logs a delete that fails.
 A worker run ends at `workerRun.turns`, which the guest passes to the Agent SDK as its turn cap, and
 at `workerRun.minutes`. The gateway ends it at the sandbox's dollar and token limits. At the end of
 a worker run the server reads `GET /sandboxes/<name>`. The `worker.run_ended` record holds the
-gateway's dollars and tokens, and a sandbox the gateway found past its limit ends the run with the
-limit `dollars` or `tokens`, unless the run ended with an answer, a stop, its minutes or a failed
-start first. When the gateway does not answer that read, the record holds the run's planned dollars
-and tokens, where the gateway starts to refuse the sandbox's requests, because the guest's own count
-can miss spend. The run's dollars still count toward the calling task run's dollar limit. A task run
-has no token limit: it ends at its turns and its dollars. The same read holds the sandbox's last
-refusal, with the counter, the route and the provider that refused it, so a run that a limit stopped
-shows which one.
+gateway's dollars and tokens, and the counter, route and provider of a route or provider limit that
+refused the sandbox since the run began, and a sandbox the gateway found past its limit ends the run
+with the limit `dollars` or `tokens`, unless the run ended with an answer, a stop, its minutes or a
+failed start first. When the gateway does not answer that read, the record holds the run's planned
+dollars and tokens, where the gateway starts to refuse the sandbox's requests, because the guest's
+own count can miss spend. The run's dollars still count toward the calling task run's dollar limit.
+A task run has no token limit: it ends at its turns and its dollars. The same read holds the
+sandbox's last refusal, with the counter, the route and the provider that refused it, so a run that
+a limit stopped shows which one.
 
 ## The capture
 

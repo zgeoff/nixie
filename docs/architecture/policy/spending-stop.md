@@ -158,16 +158,17 @@ pauses nixie while the stop stands, the cause becomes `owner`, and the clear lea
 `spend.read` gives the stop of nixie, each route that stands stopped and each provider that stands
 stopped. `spend.raise` takes the day's start and either a route or a provider with its dollars, the
 turns, or both, and works for a day trip only. It calls the gateway's `POST /raise` with the route
-or provider and its dollars, then writes `spend.limit_raised` with the session as `by`. A total
-above a cap, the gateway's for a route's or a provider's dollars or the config's for turns, comes
-back as `above_cap` with the measure, the route, the provider and the cap, and writes nothing. A
-route or a provider the gateway does not hold comes back as `unknown_route` or `unknown_provider`,
-and a route with no limit of its own as `no_route_limit`, because only its provider's limit binds
-it. A raise made while the gateway gives no status comes back as `unreachable` and writes nothing,
-and one whose post to the gateway got no answer comes back as `unanswered`, with its record kept for
-the watcher to send again. The client tells the user that an `unanswered` raise is saved and that an
-`unreachable` one is not. A raise of dollars never pauses nixie. It clears the stop when the raised
-limit passes the spend, and restates the stop when it does not.
+or provider and its dollars, reads the status again, then writes `spend.limit_raised` with the
+session as `by`. A total above a cap, the gateway's for a route's or a provider's dollars or the
+config's for turns, comes back as `above_cap` with the measure, the route, the provider and the cap,
+and writes nothing. A route or a provider the gateway does not hold comes back as `unknown_route` or
+`unknown_provider`, and a route with no limit of its own as `no_route_limit`, because only its
+provider's limit binds it. A raise made while the gateway gives no status comes back as
+`unreachable` and writes nothing, and one whose post to the gateway got no answer comes back as
+`unanswered`, with its record kept for the watcher to send again. The client tells the user that an
+`unanswered` raise is saved and that an `unreachable` one is not. A raise of dollars never pauses
+nixie. It clears the stop when the raised limit passes the spend, and restates the stop when it does
+not.
 
 The host command `nixie spend raise --turns <n>` raises the day's turns past the turn cap, and
 writes the host as `by`. A route's or a provider's dollars pass its cap only through the gateway's
@@ -175,10 +176,10 @@ own `raise` command, and the month's limits move only in the gateway's config.
 
 `spend.setCount` takes a route or a provider, a period, the period's start and the new dollars. It
 calls the gateway's `POST /count`, then writes `spend.count_set` with the target, the period, the
-old and the new dollars and the session as `by`, and settles the stops, so a stop that the new count
-leaves room under clears at once with the reason `corrected`. It changes no limit. It answers
-`period_ended`, `unknown_route`, `unknown_provider` or `unreachable` and writes nothing when the
-gateway does not take the change.
+dollars that the gateway answers it replaced and the new dollars and the session as `by`, and
+settles the stops, so a stop that the new count leaves room under clears at once with the reason
+`corrected`. It changes no limit. It answers `period_ended`, `unknown_route`, `unknown_provider` or
+`unreachable` and writes nothing when the gateway does not take the change.
 
 `spend.counts` gives each provider's and each route's day and month count, period start and limit in
 US dollars, with each route's provider, and the display currency with the rate of one US dollar in
