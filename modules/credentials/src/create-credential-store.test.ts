@@ -810,3 +810,37 @@ test('it gives a rotated value a new broker name', async () => {
 
   expect(after.secret).not.toBe(before.secret);
 });
+
+test('it opens a socket with the credential in the handshake, and refuses an origin outside the binding', async () => {
+  const ctx = await setupTest();
+
+  const site = await startTestSite({
+    names: ['service.test'],
+    respond: () => new Response('no'),
+    socket: {},
+  });
+
+  const store = ctx.createStore({ ca: site.ca });
+  const origin = `https://service.test:${site.port}`;
+  const binding = store.register(ctx.ref, ctx.spec([origin]));
+
+  const socket = await store
+    .fetcher(binding, [origin])
+    .openSocket(`wss://service.test:${site.port}/live`);
+
+  socket.close();
+
+  expect(site.requests[0]?.headers['authorization']).toBe(`Bearer ${ctx.value}`);
+
+  expect(() => store.fetcher(binding, ['https://other.test'])).toThrow(
+    'https://other.test is not an origin of the credential',
+  );
+});
+
+test('it refuses a socket on a fetcher with no credential', async () => {
+  const ctx = await setupTest();
+
+  expect(
+    ctx.store.fetcher(null, ['https://service.test']).openSocket('wss://service.test/live'),
+  ).rejects.toThrow('a socket takes a file credential');
+});

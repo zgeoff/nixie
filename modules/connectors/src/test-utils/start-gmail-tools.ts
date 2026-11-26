@@ -1,6 +1,8 @@
 import type { ToolContext } from '@heynixie/tools';
+import type { TestTriggers } from '@heynixie/triggers/test-utils';
 import type { FetchReply } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import invariant from 'tiny-invariant';
 import { buildGmailActions } from '../google/gmail/build-gmail-actions';
 import type { GmailDeps } from '../google/gmail/types';
 import type { ConnectorAction } from '../types';
@@ -12,6 +14,13 @@ export interface GmailToolsOptions {
   // answers the fetch sandbox's read of a mail's HTML; a page of the HTML's own text by default
   readonly readHTML?: GmailDeps['readHTML'];
   readonly textBytes?: number;
+
+  // the log, clock and trigger core of a test that sets wake rules; the tools use them in place of
+  // a log of their own
+  readonly triggers?: TestTriggers;
+
+  // the fake account to reach, when a test also polls it
+  readonly site?: FakeGmailSite;
 }
 
 export interface GmailTools {
@@ -29,16 +38,25 @@ export interface GmailTools {
 
 // The Gmail tools over a fake Gmail account on a loopback port, with a real log for the link IDs.
 export async function startGmailTools(options: GmailToolsOptions = {}): Promise<GmailTools> {
-  const site = await startFakeGmailSite();
-  const log = await startTestLog();
+  const started = options.site === undefined ? await startFakeGmailSite() : null;
+  const site = options.site ?? started;
 
-  const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
+  invariant(site, 'the tools reach a fake account');
+
+  const triggers = options.triggers;
+  const log = triggers === undefined ? await startTestLog() : triggers.context.log;
+  const clock = triggers?.clock ?? createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
 
   const deps: GmailDeps = {
     hosts: site.hosts,
     access: site.access,
     log,
     clock,
+    wake: {
+      context: () => ({ log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) }),
+      defaultWindowMs: 15 * 60_000,
+      replyExpiryMs: 7 * 86_400_000,
+    },
     readHTML: options.readHTML ?? ((html) => Promise.resolve(buildTextReply(html))),
     textBytes: options.textBytes ?? 20_000,
     linkPathChars: 24,

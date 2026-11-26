@@ -2,11 +2,13 @@ import type { RecordInput } from '@heynixie/log';
 import { triggerMailWokeCodec } from '@heynixie/tasks';
 import { wakeMatchSchema } from '../record/wake-match-schema';
 import type { TriggerCoreContext, WakeRule } from '../types';
-import { buildMailboxKey } from './build-mailbox-key';
 
 export interface WokeMail {
   // the sequence of the mail's arrival record
   readonly arrived: number;
+
+  // the key of the mail's mailbox
+  readonly mailbox: string;
   readonly messageID: string;
   readonly threadID: string;
   readonly receivedAt: number;
@@ -34,7 +36,6 @@ export function buildMailWokeInput(
     contentSource: 'untrusted',
     payload: triggerMailWokeCodec.encode({
       taskID: wake.targetTaskID,
-      mailbox: buildMailboxKey({ kind: 'mail' }),
       rules: wake.rules.map((rule) => ({
         ruleID: rule.ruleID,
         shortID: rule.shortID,
@@ -43,6 +44,7 @@ export function buildMailWokeInput(
       })),
       mails: wake.mails.map((mail) => ({
         arrived: mail.arrived,
+        mailbox: mail.mailbox,
         messageID: mail.messageID,
         threadID: mail.threadID,
         receivedAt: mail.receivedAt,

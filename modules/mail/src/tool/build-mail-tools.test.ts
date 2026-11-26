@@ -297,7 +297,6 @@ test('#mail.wake_set refuses a task that has ended and one that never existed', 
 test.each([
   ['an expiry under a minute', { expires: '30s' }],
   ['an expiry past the last date', { expires: '100000000d' }],
-  ['an expiry past 3650 days', { expires: '3651d' }],
   ['a window past the last date', { window: '100000000d', expires: '5m' }],
   ['a window under a minute', { window: '10s' }],
   ['a window past the expiry', { expires: '5m', window: '10m' }],
@@ -307,6 +306,13 @@ test.each([
   const set = await ctx.callTool('mail.wake_set', input);
 
   expect(set).toMatchObject({ status: 'error', message: expect.stringContaining('BAD_DURATION') });
+});
+
+test('#mail.wake_set takes an expiry past 3650 days', async () => {
+  const ctx = await setupTest();
+  const set = await ctx.callTool('mail.wake_set', { expires: '3651d' });
+
+  expect(set).toMatchObject({ status: 'ok', result: { rule: expect.any(String) } });
 });
 
 test('#mail.wake_set shortens the default window to an expiry under it', async () => {

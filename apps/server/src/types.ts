@@ -82,7 +82,7 @@ export interface CLIIO {
 
   readonly credentialSite?: TestCredentialSite;
 
-  // the speech layer of a test build, because the server holds no speech adapter
+  // a speech layer that takes the place of the provider's, which a test build passes
   readonly speech?: SpeechLayer;
 }
 

@@ -8,10 +8,9 @@ import invariant from 'tiny-invariant';
 import { createTestClient } from '../test-utils/create-test-client';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 
-test('it boots with a voice file that is not text and a voice file with no price, and keeps serving', async () => {
+test('it boots with a voice file that is not text and a voice credential that is missing, and answers SPEECH_UNAVAILABLE', async () => {
   const nixie = await startInProcessNixie({
     extraConfig: ['voice:', '  provider: gpt-live', '  credential: deployment:speech'],
-    extraSecrets: ['connector_credentials:', '  speech: speech-key-a'],
     beforeStart: async (files) => {
       const root = join(dirname(files.dataDir), 'definitions');
 
@@ -281,4 +280,19 @@ test('it reports a call whose task was stopped when the call ends, with a wake a
     text: `The call ${callID} ended with no summary. Its record is the thread of the task ${taskID}.`,
     woke: true,
   });
+});
+
+test('it wires the GPT-Live adapter when the voice credential is set, so a start reaches the price check', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: ['voice:', '  provider: gpt-live', '  credential: deployment:speech'],
+    extraSecrets: ['connector_credentials:', '  speech: speech-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  const refused = api.client.calls.start({ clientActionID: crypto.randomUUID() });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'VOICE_PRICE_MISSING' });
 });

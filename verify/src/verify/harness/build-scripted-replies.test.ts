@@ -533,6 +533,23 @@ test('it queues the wake rule call of the mailbox before the reply', () => {
   ]);
 });
 
+test('it keeps the Gmail wake rule call and the reply for a request that offers the wake tool', () => {
+  const replies = buildScriptedReplies({
+    text: 'I will watch for it.',
+    gmailWatch: { from: '@library.example.org' },
+  });
+
+  const checker = { tools: [{ name: 'StructuredOutput' }], messages: [] };
+  const conversation = { tools: [{ name: 'mcp__nixie__gmail_wake_set' }], messages: [] };
+
+  expect(replies.map((reply) => [reply.when?.(checker), reply.when?.(conversation)])).toStrictEqual(
+    [
+      [false, true],
+      [false, true],
+    ],
+  );
+});
+
 test('it opens the mail that the list of unread mail named', () => {
   const replies = buildScriptedReplies({
     text: 'I read it.',

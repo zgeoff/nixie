@@ -28,7 +28,7 @@ export interface ServerCallsOptions {
   readonly voice: VoiceConfig | null;
   readonly logEvent: Logger;
 
-  // null where the server wires no adapter
+  // null where the server wires no adapter, as when the voice credential is missing
   readonly speech: SpeechLayer | null;
 
   // the conversation's place in the task directory, which a call's report goes to
@@ -41,8 +41,8 @@ export interface ServerCallsOptions {
   >;
 }
 
-// The calls module's context. The server holds no speech adapter yet, so `calls.start` answers
-// SPEECH_UNAVAILABLE for a configured voice unless a test build passes a speech layer.
+// The calls module's context. `calls.start` answers SPEECH_UNAVAILABLE for a configured voice
+// while `speech` is null.
 export function buildServerCalls(options: ServerCallsOptions): CallsContext {
   return {
     log: options.log,

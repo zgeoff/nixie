@@ -1,19 +1,21 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
-import { setWakeRuleInTransaction } from '@heynixie/triggers';
+import {
+  formatDurationText,
+  pickWakeTiming,
+  resolveWakeTarget,
+  setWakeRuleInTransaction,
+} from '@heynixie/triggers';
 import { z } from 'zod';
 import { mailDeclarations } from '../connector/mail-declarations';
 import { mailToolNames } from '../connector/mail-tool-names';
 import { readMailPage } from '../store/read-mail-page';
 import type { MailToolContext } from '../types';
-import { formatDurationText } from './format-duration-text';
-import { pickWakeTiming } from './pick-wake-timing';
 import { renderOutsideText } from './render-outside-text';
-import { resolveWakeTarget } from './resolve-wake-target';
 
 const recentMs = 10 * 60_000;
-const durationPattern = '^[1-9][0-9]{0,6}(ms|s|m|h|d)$';
+const durationPattern = '^[1-9][0-9]*(ms|s|m|h|d)$';
 const addressPattern = String.raw`^(@[^@\s]+\.[^@\s]+|[^@\s]+@[^@\s]+\.[^@\s]+)$`;
 
 const inputSchema = z.strictObject({
@@ -94,8 +96,8 @@ export function buildMailWakeSetTool(context: MailToolContext): ToolDefinition {
         return {
           status: 'error',
           message:
-            'BAD_DURATION: expires and window take a duration such as 1m, 30m or 7d, from 1m to ' +
-            '3650d, and the window is at most the expiry',
+            'BAD_DURATION: expires and window take a duration such as 1m, 30m or 7d, from 1m, and ' +
+            'the window is at most the expiry',
         };
       }
 

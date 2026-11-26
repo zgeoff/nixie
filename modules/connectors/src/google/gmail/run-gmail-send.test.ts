@@ -58,7 +58,11 @@ test('it sends a mail whose Message-ID is the action ID at the account domain', 
   ]).toStrictEqual([
     {
       kind: 'success',
-      result: { message: expect.stringMatching(/^k3x9m2p7qa\./u), thread: expect.any(String) },
+      result: {
+        message: expect.stringMatching(/^k3x9m2p7qa\./u),
+        thread: expect.any(String),
+        replyRule: expect.any(String),
+      },
     },
     `<0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03@example.test>`,
   ]);

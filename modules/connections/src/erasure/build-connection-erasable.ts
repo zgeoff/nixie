@@ -4,12 +4,16 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { RevocationDependencies } from '../revocation/revoke-connection';
 import { revokeConnection } from '../revocation/revoke-connection';
 import type { ConnectionTables } from '../types';
-import type { ConnectionErasureRequest } from './start-connection-erasure';
+import type { ConnectionErasureRequest, ReadConnectionWakes } from './start-connection-erasure';
 import { startConnectionErasure } from './start-connection-erasure';
 
 export interface ConnectionErasableOptions extends RevocationDependencies {
   readonly store: Pick<CredentialStore, 'register' | 'revoke' | 'remove'>;
   readonly now: () => number;
+  readonly eraseDependents: (connectionID: string) => Promise<void>;
+
+  // the wakes that show mail of the connection
+  readonly readWakes: ReadConnectionWakes;
 }
 
 // The connection's runner methods. A forget stops every request in flight on the connection, sends
@@ -19,13 +23,19 @@ export function buildConnectionErasable(
   options: ConnectionErasableOptions,
 ): Erasable<ConnectionErasureRequest> {
   return {
-    start: (tx, request) => startConnectionErasure(tx, request, options.now()),
-    hide: (target) => options.store.remove({ backend: 'database', credentialID: target.targetID }),
+    start: (tx, request) =>
+      startConnectionErasure(tx, request, { nowMs: options.now(), readWakes: options.readWakes }),
+    hide: async (target) => {
+      await options.store.remove({ backend: 'database', credentialID: target.targetID });
+      await options.eraseDependents(target.targetID);
+    },
     revoke: (target) => revokeConnection(options, target.targetID),
     readChildren: () => Promise.resolve([]),
     toRequest: (target) => ({ connection: target.targetID }),
-    cleanIndexes: (target) =>
-      withWriteTransaction(options.log.writer, async (tx) => {
+    cleanIndexes: async (target) => {
+      await options.eraseDependents(target.targetID);
+
+      await withWriteTransaction(options.log.writer, async (tx) => {
         await tx
           .$extendTables<ConnectionTables>()
           .updateTable('connections')
@@ -38,6 +48,7 @@ export function buildConnectionErasable(
           })
           .where('connection_id', '=', target.targetID)
           .execute();
-      }),
+      });
+    },
   };
 }

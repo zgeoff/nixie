@@ -1,5 +1,5 @@
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
-import { formatDurationText } from '../tool/format-duration-text';
+import { formatDurationText } from '@heynixie/triggers';
 import { mailToolNames } from './mail-tool-names';
 import type { SendFile } from './read-send-files';
 

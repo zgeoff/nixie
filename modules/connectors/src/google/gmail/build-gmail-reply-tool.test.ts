@@ -129,7 +129,11 @@ test('it sends the reply in the thread of the message with the action as its Mes
   expect([response, sent?.threadID, sent?.headers.map(([name]) => name)]).toStrictEqual([
     {
       kind: 'success',
-      result: { message: expect.stringMatching(/^k3x9m2p7qa\./u), thread: 'k3x9m2p7qa.thread-9' },
+      result: {
+        message: expect.stringMatching(/^k3x9m2p7qa\./u),
+        thread: 'k3x9m2p7qa.thread-9',
+        replyRule: expect.any(String),
+      },
     },
     'thread-9',
     expect.arrayContaining(['Message-ID', 'In-Reply-To', 'References', 'Subject']),

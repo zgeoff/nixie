@@ -9,6 +9,9 @@ export const gmailToolNames = {
   send: 'gmail.send',
   reply: 'gmail.reply',
   sendDraft: 'gmail.send_draft',
+  wakeSet: 'gmail.wake_set',
+  wakeList: 'gmail.wake_list',
+  wakeCancel: 'gmail.wake_cancel',
 } as const;
 
 // The read-only checks that only the action queue calls. No tool list holds them.
