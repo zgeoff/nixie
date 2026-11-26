@@ -1,38 +1,16 @@
 import { expect, test } from 'bun:test';
 import { planTaskTurnEnd } from './plan-task-turn-end';
 
-test('it ends a completed turn that reached the budget as a limit, leaves its spend to the commit and sleeps the imp', () => {
+test('it ends a completed turn that reached the limit as a limit and sleeps the imp', () => {
   expect(
-    planTaskTurnEnd({
-      isBudgetReached: true,
-      spentDollars: 0.25,
-      isPauseRequested: false,
-      next: 'wait',
-    }),
-  ).toStrictEqual({
-    isLimitReached: true,
-    failedDollars: null,
-    commitDollars: 0.25,
-    limitDollars: 0.25,
-    isImpReleased: true,
-  });
+    planTaskTurnEnd({ isLimitReached: true, isPauseRequested: false, next: 'wait' }),
+  ).toStrictEqual({ isLimitReached: true, isImpReleased: true });
 });
 
-test('it records the spend of a step that threw after its calls reached the budget', () => {
+test('it sleeps the imp of a step that threw after its turn reached the limit', () => {
   expect(
-    planTaskTurnEnd({
-      isBudgetReached: true,
-      spentDollars: 0.25,
-      isPauseRequested: false,
-      next: null,
-    }),
-  ).toStrictEqual({
-    isLimitReached: true,
-    failedDollars: 0.25,
-    commitDollars: null,
-    limitDollars: null,
-    isImpReleased: true,
-  });
+    planTaskTurnEnd({ isLimitReached: true, isPauseRequested: false, next: null }),
+  ).toStrictEqual({ isLimitReached: true, isImpReleased: true });
 });
 
 test.each([
@@ -41,55 +19,25 @@ test.each([
   ['hold', false],
   ['done', false],
 ] as const)(
-  'it ends nothing under the budget, leaves the spend to the commit, and sleeps the imp after a step whose next is %s: %s',
+  'it ends nothing under the limit and sleeps the imp after a step whose next is %s: %s',
   (next, isImpReleased) => {
-    expect(
-      planTaskTurnEnd({
-        isBudgetReached: false,
-        spentDollars: 0.004,
-        isPauseRequested: false,
-        next,
-      }),
-    ).toStrictEqual({
-      isLimitReached: false,
-      failedDollars: null,
-      commitDollars: 0.004,
-      limitDollars: null,
-      isImpReleased,
-    });
+    expect(planTaskTurnEnd({ isLimitReached: false, isPauseRequested: false, next })).toStrictEqual(
+      {
+        isLimitReached: false,
+        isImpReleased,
+      },
+    );
   },
 );
 
-test('it sleeps the imp of a step whose task the owner asked to pause', () => {
+test('it sleeps the imp of a step whose task the user asked to pause', () => {
   expect(
-    planTaskTurnEnd({
-      isBudgetReached: false,
-      spentDollars: 0,
-      isPauseRequested: true,
-      next: 'continue',
-    }),
-  ).toStrictEqual({
-    isLimitReached: false,
-    failedDollars: null,
-    commitDollars: null,
-    limitDollars: null,
-    isImpReleased: true,
-  });
+    planTaskTurnEnd({ isLimitReached: false, isPauseRequested: true, next: 'continue' }),
+  ).toStrictEqual({ isLimitReached: false, isImpReleased: true });
 });
 
-test('it records no spend for a step that threw having spent nothing', () => {
+test('it leaves the imp awake after a step that threw under the limit', () => {
   expect(
-    planTaskTurnEnd({
-      isBudgetReached: false,
-      spentDollars: 0,
-      isPauseRequested: false,
-      next: null,
-    }),
-  ).toStrictEqual({
-    isLimitReached: false,
-    failedDollars: null,
-    commitDollars: null,
-    limitDollars: null,
-    isImpReleased: false,
-  });
+    planTaskTurnEnd({ isLimitReached: false, isPauseRequested: false, next: null }),
+  ).toStrictEqual({ isLimitReached: false, isImpReleased: false });
 });

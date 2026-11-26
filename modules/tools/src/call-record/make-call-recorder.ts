@@ -93,6 +93,9 @@ export interface CallRecorder {
 export interface CallRecordFields {
   readonly definitions: Definitions;
   readonly parent: number | undefined;
+
+  // the version of the tool that the call loaded, which its record keeps
+  readonly pinHash?: string | undefined;
 }
 
 export function makeCallRecorder(
@@ -131,6 +134,7 @@ export function makeCallRecorder(
               tool: call.tool,
               model: run.model.model,
               profile: run.model.profile,
+              ...(fields.pinHash === undefined ? {} : { pinHash: fields.pinHash }),
               ...(decided === null || decided.deadlineAt === null
                 ? {}
                 : { deadlineAt: decided.deadlineAt }),

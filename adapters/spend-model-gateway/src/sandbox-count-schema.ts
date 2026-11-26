@@ -11,4 +11,5 @@ export const sandboxCountSchema = z.looseObject({
       atMs: z.number(),
     })
     .nullable(),
+  limitRevision: z.int().nonnegative(),
 });

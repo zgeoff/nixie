@@ -82,6 +82,11 @@ const MANDATE_ID_OPTIONS = {
   mandateID: { type: 'positional', required: true },
 } as const;
 
+const MCP_TOOL_OPTIONS = {
+  ...CLI_OPTIONS,
+  tool: { type: 'positional', required: true },
+} as const;
+
 const BUDGET_ID_OPTIONS = {
   ...CLI_OPTIONS,
   budgetID: { type: 'positional', required: true },
@@ -110,6 +115,7 @@ type ActionOptions =
   | typeof DEFINITION_RESOLVE_OPTIONS
   | typeof PROPOSAL_ID_OPTIONS
   | typeof MANDATE_ID_OPTIONS
+  | typeof MCP_TOOL_OPTIONS
   | typeof BUDGET_ID_OPTIONS
   | typeof CONTACT_MARK_OPTIONS
   | typeof CONTACT_UNMARK_OPTIONS
@@ -121,6 +127,7 @@ const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
   'proposals approve': PROPOSAL_ID_OPTIONS,
   'proposals reject': PROPOSAL_ID_OPTIONS,
   'mandates end': MANDATE_ID_OPTIONS,
+  'mcp allow': MCP_TOOL_OPTIONS,
   'budgets ledger': BUDGET_ID_OPTIONS,
   'contacts mark-known': CONTACT_MARK_OPTIONS,
   'contacts unmark': CONTACT_UNMARK_OPTIONS,

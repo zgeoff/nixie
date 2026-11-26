@@ -1073,6 +1073,7 @@ test('it counts no step error for a step that the gateway refused on its route, 
         route: ctx.profile.id,
         atMs: spend.clock.now() + 60_000,
       },
+      limitRevision: 0,
     },
   });
 

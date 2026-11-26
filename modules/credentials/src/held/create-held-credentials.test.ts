@@ -27,7 +27,8 @@ async function setupTest() {
   const hooks: {
     afterCounterRead: ((credentialID: string) => Promise<void>) | null;
     beforeKeyCreated: (() => Promise<void>) | null;
-  } = { afterCounterRead: null, beforeKeyCreated: null };
+    checkAddress: ((address: string) => boolean) | null;
+  } = { afterCounterRead: null, beforeKeyCreated: null, checkAddress: null };
 
   const held = await createHeldTestStore({
     afterCounterRead: async (credentialID) => {
@@ -39,6 +40,7 @@ async function setupTest() {
     log: testLog.log,
     ca: provider.ca,
     now: () => clock.now(),
+    checkAddress: (address) => hooks.checkAddress?.(address) ?? address === '127.0.0.1',
     resolveHost: async () => {
       lookups.count += 1;
 
@@ -1656,4 +1658,64 @@ test('it still sends the token and revoke requests of a refresh to the provider'
   const sent = await ctx.store.revoke(connection.token);
 
   expect([ctx.countRefreshRequests(), sent.outcome]).toStrictEqual([1, 'confirmed']);
+});
+
+test('it exchanges a code at a token endpoint on the host that a pairing names', async () => {
+  const ctx = await setupTest();
+
+  ctx.hooks.checkAddress = () => false;
+
+  const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
+
+  await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
+    clientSecret: '',
+  });
+
+  const spec = ctx.spec('oauth_client');
+
+  const client = await ctx.store.register(clientRef, {
+    ...spec,
+    provider: {
+      tokenURL: ctx.provider.tokenURL,
+      issuer: 'https://issuer.example',
+      clientID: 'client-123',
+      pairing: { host: 'auth.test', range: '127.0.0.0/8' },
+    },
+  });
+
+  expect(ctx.exchangeCode(client)).resolves.toBeDefined();
+});
+
+test('it refuses a code exchange at a private host that no pairing names', async () => {
+  const ctx = await setupTest();
+
+  ctx.hooks.checkAddress = () => false;
+
+  const clientRef = { backend: 'database', credentialID: crypto.randomUUID() } as const;
+
+  await ctx.backend.writeClient(clientRef.credentialID, {
+    clientID: 'client-123',
+    clientSecret: '',
+  });
+
+  const client = await ctx.store.register(clientRef, ctx.spec('oauth_client'));
+
+  const exchanging = ctx.exchangeCode(client);
+
+  await Promise.allSettled([exchanging]);
+
+  expect(exchanging).rejects.toBeDefined();
+});
+
+test('it forgets a credential and deletes the key that sealed its token, with no token read by the caller', async () => {
+  const ctx = await setupTest();
+  const connection = await ctx.connectCredential();
+
+  await ctx.store.forget(connection.tokenRef);
+
+  expect([
+    await ctx.store.readStatus(connection.token).catch(() => 'refused'),
+    ctx.backend.readKeyIDs(),
+  ]).toStrictEqual(['refused', []]);
 });

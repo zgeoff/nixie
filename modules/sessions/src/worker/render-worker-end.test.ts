@@ -22,13 +22,27 @@ test('it names the limit a worker stopped at, with what it used', () => {
   expect(sentence).toEndWith('Ask a narrower question, or do the work yourself.');
 });
 
-test('it says the task has the dollars left when the task limit capped the worker', () => {
+test('it says the task reached its dollar limit, with no figure, when the task limit capped the worker', () => {
   const sentence = renderWorkerEnd(
     { outcome: 'limit', limit: 'dollars' },
     { ...setupTest(), isTaskLimit: true },
   );
 
-  expect(sentence).toContain('stopped because this task has $2.00 left of its dollar limit');
+  expect(sentence).toContain(
+    'stopped because this task reached its dollar limit and gave no answer.',
+  );
+
+  expect(sentence).not.toInclude('$');
+});
+
+test('it names no figure for the dollar limit of a worker', () => {
+  const sentence = renderWorkerEnd(
+    { outcome: 'limit', limit: 'dollars' },
+    { ...setupTest(), isTaskLimit: false },
+  );
+
+  expect(sentence).toStartWith('The worker w3k8 stopped at its dollar limit and gave no answer.');
+  expect(sentence).not.toInclude('$');
 });
 
 test.each([

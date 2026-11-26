@@ -170,3 +170,46 @@ test('it refuses a paid tool that runs queued', () => {
     'the paid tool shop_order runs direct, and a queued tool is not paid',
   );
 });
+
+test('it serves a tool of a source, and reads the source names again at each read', () => {
+  const names = ['tracker.item_get'];
+  const served = buildToolRegistry([buildMockToolDefinition({ name: 'tracker.item_get' })]);
+
+  const registry = buildToolRegistry(
+    [buildMockToolDefinition({ name: 'notes_read' })],
+    [
+      {
+        toolNames: () => names,
+        findTool: (name) => served.findTool(name),
+      },
+    ],
+  );
+
+  const before = registry.toolNames;
+
+  names.push('tracker.item_list');
+
+  expect([
+    before,
+    registry.toolNames,
+    registry.findTool('tracker.item_get')?.definition.name,
+  ]).toStrictEqual([
+    ['notes_read', 'tracker.item_get'],
+    ['notes_read', 'tracker.item_get', 'tracker.item_list'],
+    'tracker.item_get',
+  ]);
+});
+
+test('it keeps its own tool when a source holds the same name', () => {
+  const own = buildMockToolDefinition({ name: 'notes_read' });
+
+  const registry = buildToolRegistry(
+    [own],
+    [{ toolNames: () => ['notes_read'], findTool: () => null }],
+  );
+
+  expect([registry.toolNames, registry.findTool('notes_read')?.definition]).toStrictEqual([
+    ['notes_read'],
+    own,
+  ]);
+});

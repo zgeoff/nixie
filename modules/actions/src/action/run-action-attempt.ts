@@ -8,8 +8,8 @@ import { buildAttemptKey } from './build-attempt-key';
 import { buildUnknownRecords } from './build-unknown-records';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { isKeyExpired } from './is-key-expired';
-import type { Attempt, Settlement } from './leased-records';
-import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
+import type { Attempt, QueuedCall, Settlement } from './leased-records';
+import { buildOutcomeRecord, readQueuedCall, writeLeasedRecords } from './leased-records';
 import { pickOutcome } from './pick-outcome';
 import { readAttemptStep } from './read-attempt-step';
 import { runReconcileCheck } from './run-reconcile-check';
@@ -105,9 +105,9 @@ async function runAttempt(
   const attempt = { ...claimed, attempt: claimed.action.attempt_count + 1 };
   const connector = options.connectors.get(claimed.action.tool);
 
-  const args = await readArguments(context, claimed.action.queued_sequence);
+  const queued = await readQueuedCall(context, claimed.action);
 
-  if (connector === undefined || args === null) {
+  if (connector === undefined || queued === null) {
     const reason = connector === undefined ? 'unknown_tool' : 'arguments_unreadable';
 
     await writeOutcome(context, attempt, { outcome: { status: 'failed', reason } });
@@ -136,7 +136,7 @@ async function runAttempt(
 
   const step = await readAttemptStep(options.checkAttempt, {
     action: claimed.action,
-    arguments: args,
+    arguments: queued.arguments,
   });
 
   if (step.kind !== 'go') {
@@ -176,7 +176,7 @@ async function runAttempt(
     .run(() =>
       runConnector(context, attempt, {
         connector,
-        args,
+        queued,
         destinations: step.destinations,
         replyTargets: step.replyTargets,
         startedAt,
@@ -226,7 +226,7 @@ function writeFailure(
 
 interface ConnectorCall {
   readonly connector: ActionConnector;
-  readonly args: JSONObject;
+  readonly queued: QueuedCall;
   readonly destinations: readonly string[];
   readonly replyTargets: readonly string[];
   readonly startedAt: number;
@@ -245,7 +245,8 @@ async function runConnector(
     return await call.connector.run({
       actionID: attempt.action.action_id,
       tool: attempt.action.tool,
-      arguments: call.args,
+      arguments: call.queued.arguments,
+      snapshotHash: call.queued.snapshotHash,
       attempt: attempt.attempt,
       idempotencyKey: buildAttemptKey(attempt.action),
       destinations: call.destinations,

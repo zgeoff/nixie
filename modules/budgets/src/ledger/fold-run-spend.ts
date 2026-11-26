@@ -1,11 +1,15 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { sql } from 'kysely';
 import { z } from 'zod';
 import type { BudgetsTables } from '../types';
+import type { MeterRead } from './pick-task-run-micros';
+import { pickTaskRunMicros } from './pick-task-run-micros';
 import { splitLedgerKey } from './split-ledger-key';
 import { toMicrosUp } from './to-micros-up';
 
 const taskRunEndedKind = 'task.run_ended';
+const taskMeterReadKind = 'task.meter_read';
 const workerRunEndedKind = 'worker.run_ended';
 
 // Only the fields the ledger reads. The kinds belong to the tasks and sessions modules, which depend
@@ -15,13 +19,16 @@ const taskRunEndedSchema = z.object({
   used: z.object({ dollars: z.number() }),
 });
 
+const taskMeterReadSchema = z.object({ taskRunID: z.string() });
+
 const workerRunEndedSchema = z.object({
   workerRunID: z.string(),
   used: z.object({ dollars: z.number(), tokens: z.number() }),
 });
 
-// A task run's or a worker run's row holds what the run spent: a run ends once, so its record sets
-// the row and never adds to it. Returns the keys that it set.
+// A record sets a task run's or a worker run's row and never adds to it: a meter read sets the task
+// run's, a worker run's end sets its own, and so does the end of a task run that has no meter read.
+// Returns the keys that it set.
 export async function foldRunSpend(
   tx: Transaction<unknown>,
   record: EnvelopeRecord,
@@ -29,8 +36,22 @@ export async function foldRunSpend(
   // the registry here lacks these kinds, so the comparison reads the kind as plain text
   const kind: string = record.kind;
 
+  if (kind === taskMeterReadKind) {
+    const read = taskMeterReadSchema.parse(record.payload);
+
+    const micros = await readTaskRunMicros(tx, record, read.taskRunID);
+
+    return [await setRow(tx, `task_run:${read.taskRunID}`, 'micros:USD', micros)];
+  }
+
   if (kind === taskRunEndedKind) {
     const ended = taskRunEndedSchema.parse(record.payload);
+
+    const isMetered = await probeRunIsMetered(tx, record, ended.runID);
+
+    if (isMetered) {
+      return [];
+    }
 
     return [
       await setRow(tx, `task_run:${ended.runID}`, 'micros:USD', toMicrosUp(ended.used.dollars)),
@@ -48,6 +69,43 @@ export async function foldRunSpend(
   }
 
   return [];
+}
+
+const meterReadRowSchema = z.object({
+  sandbox: z.string(),
+  reason: z.string(),
+  countMicros: z.number(),
+});
+
+// The reads of the task run up to this record, and the dollars its worker runs charged up to it, so
+// a rebuild that folds each record in order reproduces every row.
+async function readTaskRunMicros(
+  tx: Transaction<unknown>,
+  record: EnvelopeRecord,
+  taskRunID: string,
+): Promise<number> {
+  const reads = await sql`select
+      json_extract(payload, '$.sandbox') as sandbox,
+      json_extract(payload, '$.reason') as reason,
+      json_extract(payload, '$.countMicros') as countMicros
+    from records
+    where thread = ${record.thread}
+      and kind = ${taskMeterReadKind}
+      and json_extract(payload, '$.taskRunID') = ${taskRunID}
+      and sequence <= ${record.sequence}
+    order by sequence`.execute(tx);
+
+  const workers = await sql`select coalesce(sum(json_extract(payload, '$.dollars')), 0) as dollars
+    from records
+    where thread = ${record.thread}
+      and kind in ('worker.turn_ended', 'worker.gateway_charged')
+      and json_extract(payload, '$.taskRunID') = ${taskRunID}
+      and sequence <= ${record.sequence}`.execute(tx);
+
+  const parsed: readonly MeterRead[] = reads.rows.map((row) => meterReadRowSchema.parse(row));
+  const dollars = z.object({ dollars: z.number() }).parse(workers.rows[0]).dollars;
+
+  return pickTaskRunMicros(parsed, dollars);
 }
 
 async function setRow(
@@ -74,4 +132,33 @@ async function setRow(
     .execute();
 
   return ledgerKey;
+}
+
+// A task run that began with a meter, or that has a meter read before its end, has its row set by
+// its reads, so its end sets none.
+async function probeRunIsMetered(
+  tx: Transaction<unknown>,
+  record: EnvelopeRecord,
+  runID: string,
+): Promise<boolean> {
+  const opened = await sql`select json_extract(payload, '$.meter') as meter
+    from records
+    where thread = ${record.thread}
+      and kind = 'task.run_opened'
+      and json_extract(payload, '$.runID') = ${runID}`.execute(tx);
+
+  const row = z.object({ meter: z.string().nullable() }).safeParse(opened.rows[0]);
+
+  if (row.success && typeof row.data.meter === 'string') {
+    return true;
+  }
+
+  const reads = await sql`select 1 as found
+    from records
+    where thread = ${record.thread}
+      and kind = ${taskMeterReadKind}
+      and json_extract(payload, '$.taskRunID') = ${runID}
+    limit 1`.execute(tx);
+
+  return reads.rows.length > 0;
 }

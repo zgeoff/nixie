@@ -15,6 +15,7 @@ import { checkEncoder } from './check-encoder';
 import { createContactCommands } from './create-contact-commands';
 import { createDefinitionCommands } from './create-definition-commands';
 import { createMandateCommands } from './create-mandate-commands';
+import { createMcpCommands } from './create-mcp-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createPasskeyCommands } from './create-passkey-commands';
 import { createResetCommands } from './create-reset-commands';
@@ -48,6 +49,7 @@ const commands = new Map<string, Command>([
   ...createRuleCommands(host),
   ...createDefinitionCommands(host),
   ...createMandateCommands(host),
+  ...createMcpCommands(host),
   ...createContactCommands(host),
   ...createTurnInputCommands(host),
   ...buildBackupCommands(),

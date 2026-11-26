@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
-import { collectMissingPriceIssues } from './collect-missing-price-issues';
+import {
+  collectGatewayPriceIssues,
+  collectMissingPriceIssues,
+} from './collect-missing-price-issues';
 
 function setupTest() {
   return {
@@ -86,4 +89,25 @@ test('it names a selectable model whose profile sets no prices', () => {
         'the selectable model second-look names the profile second-bare, which sets no prices',
     },
   ]);
+});
+
+test('it names each profile that sets prices beside a gateway, and names the route prices', () => {
+  const ctx = setupTest();
+
+  expect(
+    collectGatewayPriceIssues({
+      'chat-direct': { prices: ctx.prices },
+      'worker-bare': { prices: null },
+    }),
+  ).toStrictEqual([
+    {
+      path: ['models', 'profiles', 'chat-direct', 'prices'],
+      message:
+        "the profile chat-direct sets prices, and the spendStop section is set, so the model gateway prices each reply from the prices of its route: remove the profile's prices and set the route's prices in the gateway's config",
+    },
+  ]);
+});
+
+test('it names nothing beside a gateway when no profile sets prices', () => {
+  expect(collectGatewayPriceIssues({ 'worker-bare': { prices: null } })).toStrictEqual([]);
 });

@@ -358,11 +358,12 @@ last whole count. It adds one reply at a time, so two replies that end together 
 
 ## The periods
 
-The gateway counts the day and the month of each route in US dollars, and limits each route on its
-own. No limit spans routes, and the gateway holds no limit in tokens. Each period resets at local
-midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone, and
-[`periodOf`](metering.md#periods) works out each start. The route's limits and the cap above its day
-limit sit in the gateway's own config, so code in the deployment cannot move a limit or a cap.
+The gateway counts each route's spend per day and per month in US dollars, and limits each route on
+its own. No route limit is in tokens. Each period resets at local midnight in `periods.zone`, an
+IANA zone that equals the deployment's default time zone, and [`periodOf`](metering.md#periods)
+works out each start. Each route's limits and the cap above its day limit sit in the gateway's own
+config, so code in the deployment cannot lower a limit or move a cap. That code can only raise a
+day's limit within the cap, with `POST /raise`.
 
 ```yaml
 periods:
@@ -435,20 +436,21 @@ A second listener on `control.listen` serves the server alone. It answers 401 to
 `Authorization: Bearer <token>`, with the token read from `control.tokenFile` at start. The model
 listener serves no control path.
 
-| Call                       | Effect                                                                                                                                                                            |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /status`              | the zone, the lost mark, and for each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`                                                      |
-| `POST /raise`              | raises one route's day for its start, never below that day's earlier raise; 409 `above_cap` with the route and its cap, 409 `period_ended` for another start, 404 `unknown_route` |
-| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                     |
-| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit and its last refusal; 404 for a name the store lacks                                                                            |
-| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                          |
+| Call                       | Effect                                                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`              | the zone, the lost mark, and for each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`                                                                                                                                                             |
+| `POST /raise`              | raises one route's day for its start, never below that day's earlier raise; 409 `above_cap` with the route and its cap, 409 `period_ended` for another start, 404 `unknown_route`                                                                                                        |
+| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                                                                                                                            |
+| `PATCH /sandboxes/<name>`  | sets the sandbox's limit whole, or `null` to count only, and keeps its count; 204, or 404 for a name the store lacks. A limit with no `tokens` sets no token limit; a limit of 0 dollars refuses at once. With a `revision`, 409 `revision_changed` once the limit's revision is another |
+| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit, its last refusal and its `limitRevision`; 404 for a name the store lacks                                                                                                                                                              |
+| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                                                                                                                                 |
 
-A refused call changes nothing. A raise body is `{ route, start, dollars }`, and the raise is for
-the day only: the month's limit moves only in the gateway's config. A period's `tripped` is true
-while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The status
-holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. The
-status lists only the routes in the config: the store keeps the count of a route the config dropped,
-and the status leaves that route out. A count reaches a limit in whole micros of a dollar, so ten
+A refused call changes nothing. A raise body is `{ route, start, dollars }`, and a raise changes the
+day's limit only. To change the month's limit, edit the gateway's config. A period's `tripped` is
+true while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The
+status gives the lost mark on its own, apart from the routes, and still shows each route's count
+while the lost mark stands. The status lists only the routes in the config, and the store keeps the
+count of a route the config dropped. A count reaches a limit in whole micros of a dollar, so ten
 replies of 0.1 dollars reach a limit of 1 dollar. The status and the sandbox read answer in dollars,
 worked out from the micros.
 
@@ -513,20 +515,35 @@ own profile, so a sandbox cannot send its model credential to another profile's 
 
 Before a sandbox's first model request, the server registers it with `PUT /sandboxes/<name>`:
 
-| Sandbox                                | Limit                                                    |
-| -------------------------------------- | -------------------------------------------------------- |
-| a worker run's sandbox                 | the run's planned dollars and tokens                     |
-| the conversation, a task and the check | none: the gateway counts it and sets no limit of its own |
+| Sandbox                                  | Limit                                                    |
+| ---------------------------------------- | -------------------------------------------------------- |
+| a worker run's sandbox                   | the run's planned dollars and tokens                     |
+| the conversation and the consent checker | none: the gateway counts it and sets no limit of its own |
+| a task's sandbox                         | none at registration; each task run's start sets it      |
 
-A sandbox with no limit of its own still gets the limit 403 once the day or month count reaches its
-limit.
+A sandbox with no limit of its own still gets the limit 403 once its route's day or month count
+reaches that period's limit. At the start of a task run, the server uses `PATCH` to set the limit of
+the task's sandbox to the sandbox's count plus the task run's dollar limit, so the gateway ends a
+turn at the task's limit. While a worker run is under way, that limit is lower by the run's planned
+dollars. The server patches the limit after a raise of the task's limit commits;
+[the task meter](metering.md#the-task-meter) has the details. Once a sandbox reaches its own limit,
+the gateway refuses each of its requests, and the sandbox's last refusal names the counter
+`sandbox`.
+
+The gateway gives each `PUT` or `PATCH` of a sandbox's limit a `limitRevision` higher than any it
+has given before, to this name or to a sandbox it has removed. The server patches a task's sandbox
+with the revision it read just before. A patch whose call timed out and that reaches the gateway
+after a newer one then gets 409, and the newer limit stays in force. On a 409, the server reads the
+sandbox again and patches on the new revision. It holds the sandbox's lock from that read through
+every retry of a step's patch, so no newer limit of its own lands in between.
 
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
-left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.
-A sandbox that an earlier server process made registers the first time this process reads it, so a
-sandbox kept across a restart has its count. Once a sandbox's destroy succeeds, the server deletes
-its entry. A sandbox whose destroy fails keeps its entry, because it may still run. A delete that
-fails is logged.
+left. The gateway and nixie use that same number. When a registration fails, the sandbox fails to
+start. When the server first reads a sandbox that an earlier server process made, it registers that
+sandbox: with `PUT` only when the gateway lacks the name, and with `PATCH` of its limit otherwise,
+so a sandbox kept across a restart keeps its count. Once a sandbox's destroy succeeds, the server
+deletes its entry. When the destroy fails, the server keeps the entry, because the sandbox may still
+run. The server logs a delete that fails.
 
 ### Worker limits
 

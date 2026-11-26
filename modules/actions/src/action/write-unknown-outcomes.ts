@@ -1,4 +1,4 @@
-import type { ActionConnector } from '@heynixie/connectors';
+import type { ConnectorLookup } from '@heynixie/connectors';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { waitAtFaultPoint } from '@heynixie/tasks';
@@ -9,7 +9,7 @@ import { buildUnknownRecords } from './build-unknown-records';
 // unknown outcome, by what the action's connector declares.
 export async function writeUnknownOutcomes(
   context: TasksContext,
-  connectors: ReadonlyMap<string, ActionConnector> = new Map(),
+  connectors: ConnectorLookup = new Map(),
 ): Promise<void> {
   const settled = await withWriteTransaction(context.log.writer, async (tx) => {
     const open = await tx

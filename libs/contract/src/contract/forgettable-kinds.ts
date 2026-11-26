@@ -17,6 +17,7 @@ export const forgettableKinds = [
   'image.named',
   'mail.received',
   'mail.sent',
+  'mcp.tool_listed',
   'model.compaction_failed',
   'model.reply',
   'model.session_summarized',

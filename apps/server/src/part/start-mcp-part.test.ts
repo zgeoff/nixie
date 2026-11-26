@@ -1,0 +1,103 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
+import { startStandInMcp } from '@heynixie/mcp/test-utils';
+import type { TasksContext } from '@heynixie/tasks';
+import { tasksProjections } from '@heynixie/tasks';
+import {
+  buildTestDefinitionStore,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+  seedDefinitionTask,
+  seedOpenDefinitionRun,
+} from '@heynixie/tasks/test-utils';
+import { startMcpPart } from './start-mcp-part';
+
+async function setupTest() {
+  const standIn = await startStandInMcp({
+    tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
+    facts: { trusted: true },
+    extraProjections: tasksProjections,
+  });
+
+  await standIn.approveServer();
+  await standIn.signIn(standIn.mcp);
+
+  const definitionStore = buildTestDefinitionStore();
+
+  const context: TasksContext = {
+    log: standIn.test.log,
+    clock: standIn.test.clock,
+    definitions: standIn.test.context.definitions,
+    runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
+    readDefinitionVersion: definitionStore.readDefinitionVersion,
+    readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
+    readDefinitionNextFire: definitionStore.readDefinitionNextFire,
+  };
+
+  const part = await startMcpPart(
+    {
+      context,
+      credentials: { store: standIn.held.store },
+      heldSlot: { read: () => ({ backend: standIn.held.backend }) },
+      config: { time: { default_zone: 'UTC' } },
+      cleanup: {
+        defer: (stop) => {
+          onTestFinished(stop);
+
+          return Promise.resolve();
+        },
+      },
+      log: () => {},
+    },
+    {
+      listingTimeoutSeconds: 5,
+      servers: { tracker: standIn.facts },
+    },
+    { find: () => null },
+  );
+
+  return {
+    ...standIn,
+    part,
+    startRun: async (definitionID: string, tools: readonly string[]) => {
+      const definitionHash = `${definitionID}-hash`;
+
+      const taskID = await seedDefinitionTask(
+        { context, definitionStore, writer: standIn.test.log.writer },
+        { definitionID, definitionHash, version: { tools } },
+      );
+
+      await seedOpenDefinitionRun(context, { taskID, definitionID, definitionHash });
+
+      return taskID;
+    },
+    readNotes: async () => {
+      const records = await readRecords(standIn.test.log, {
+        afterSequence: 0,
+        kinds: ['tool_changed'],
+      });
+
+      return records.map((entry) => entry.record.thread);
+    },
+  };
+}
+
+test('it leaves a change note in the conversation and in each task whose run holds the tool, when a listing that the part started moves a trusted pin', async () => {
+  const ctx = await setupTest();
+  const chase = await ctx.startRun('chase-items', ['tracker.*']);
+
+  await ctx.startRun('water-plants', ['notes_read']);
+  await ctx.part.list('tracker');
+  await ctx.test.allow('tracker.item_get');
+
+  ctx.site.setTools([
+    { name: 'item_get', description: 'Read one item, newly.', inputSchema: { type: 'object' } },
+  ]);
+
+  await ctx.part.list('tracker');
+
+  const notes = await ctx.readNotes();
+
+  expect(notes).toStrictEqual(['conversation', chase]);
+});

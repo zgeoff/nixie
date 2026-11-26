@@ -1,12 +1,15 @@
 import type { IncomingHttpHeaders } from 'node:http';
+import type { Readable } from 'node:stream';
 import type { AddressCheck, ValueForm } from '@heynixie/egress';
 import {
   CredentialRefusalError,
   buildValueForms,
   findRefusedHeader,
+  makeRangeCheck,
   planHop,
   scrubBytes,
   scrubText,
+  toBareHost,
   toCaseInsensitiveForms,
 } from '@heynixie/egress';
 import { CredentialRemovedError } from '../held/credential-removed-error';
@@ -16,6 +19,7 @@ import { findCredentialHeader, placeCredential } from './place-credential';
 import type { PlacedCredential } from './place-credential';
 import { readCappedBody } from './read-capped-body';
 import { readCappedStream } from './read-capped-stream';
+import { scrubEventStream } from './scrub-event-stream';
 import { sendPinnedRequest } from './send-pinned-request';
 
 export interface FetcherChecks {
@@ -127,6 +131,7 @@ async function sendRequest(
     const placed = placeHop(target, hop, request.headers, value);
 
     const reply = await sendHop(checks, target, request.signal, {
+      isStream: target.options.stream === true,
       url: placed.url,
       method: hop.method,
       headers: placed.headers,
@@ -140,7 +145,7 @@ async function sendRequest(
       location === null ||
       target.options.redirects === 'none'
     ) {
-      return readResponse(reply, forms);
+      return readResponse(reply, forms, target.options.stream === true);
     }
 
     reply.discard();
@@ -223,10 +228,15 @@ interface HopReply {
   readonly statusText: string;
   readonly headers: Headers;
   readonly read: () => Promise<Uint8Array>;
+
+  // the body as it arrives, for a stream; the fetcher asks for no content encoding then
+  readonly readStream: () => ReadableStream<Uint8Array>;
   readonly discard: () => void;
 }
 
 interface HopRequest {
+  // a stream is read as it arrives, so the server is asked for no content encoding
+  readonly isStream: boolean;
   readonly url: URL;
   readonly method: string;
   readonly headers: Headers;
@@ -242,7 +252,7 @@ async function sendHop(
   const isDeploymentService = target.options.deploymentService === true;
 
   const planned = await planHop(hop.url.href, {
-    checkAddress: isDeploymentService ? () => true : checks.checkAddress,
+    checkAddress: pickAddressCheck(checks, target, hop.url),
     resolveHost: checks.resolveHost,
     signal,
     allowIPv6Only: isDeploymentService,
@@ -258,6 +268,22 @@ async function sendHop(
   const started = target.withSendCheck === undefined ? start() : await target.withSendCheck(start);
 
   return started.reply;
+}
+
+// A hop to the host that a pairing names passes on an address in the pairing's range. Every other hop
+// passes only a public address, unless the target is the deployment's own service.
+function pickAddressCheck(checks: FetcherChecks, target: FetcherTarget, url: URL): AddressCheck {
+  if (target.options.deploymentService === true) {
+    return () => true;
+  }
+
+  const pairing = target.options.pairing;
+
+  if (pairing !== undefined && toBareHost(url.hostname) === pairing.host) {
+    return makeRangeCheck(pairing.range);
+  }
+
+  return checks.checkAddress;
 }
 
 interface PlannedAddress {
@@ -282,7 +308,7 @@ function startHop(
     method: hop.method,
     headers: {
       ...Object.fromEntries(hop.headers),
-      'accept-encoding': 'gzip, deflate, br',
+      'accept-encoding': hop.isStream ? 'identity' : 'gzip, deflate, br',
     },
     body: hop.body,
     signal,
@@ -294,6 +320,7 @@ function startHop(
     statusText: answer.statusMessage ?? '',
     headers: toHeaders(answer.headers),
     read: () => readCappedBody(answer),
+    readStream: () => toWebStream(answer),
     discard: () => {
       answer.destroy();
     },
@@ -318,6 +345,7 @@ async function sendThroughTransport(
     statusText: response.statusText,
     headers: response.headers,
     read: () => readCappedStream(response.body),
+    readStream: () => response.body ?? new ReadableStream<Uint8Array>(),
     discard: () => {
       void response.body?.cancel();
     },
@@ -336,10 +364,31 @@ function toHeaders(raw: IncomingHttpHeaders): Headers {
   return headers;
 }
 
-async function readResponse(reply: HopReply, forms: readonly ValueForm[]): Promise<Response> {
-  const raw = await reply.read();
+// The body of a Node response as a web stream, which ends the request when the reader cancels.
+function toWebStream(source: Readable): ReadableStream<Uint8Array> {
+  const chunks = source[Symbol.asyncIterator]();
 
-  const body = scrubBytes(raw, forms);
+  return new ReadableStream<Uint8Array>({
+    pull: async (controller) => {
+      const next = await chunks.next();
+
+      if (next.done === true) {
+        controller.close();
+      } else {
+        controller.enqueue(Buffer.from(next.value));
+      }
+    },
+    cancel: () => {
+      source.destroy();
+    },
+  });
+}
+
+async function readResponse(
+  reply: HopReply,
+  forms: readonly ValueForm[],
+  isStreamAllowed: boolean,
+): Promise<Response> {
   const nameForms = toCaseInsensitiveForms(forms);
 
   const headers = new Headers();
@@ -355,13 +404,32 @@ async function readResponse(reply: HopReply, forms: readonly ValueForm[]): Promi
   }
 
   const isEmpty = reply.status === 204 || reply.status === 205 || reply.status === 304;
-  const payload = isEmpty ? null : Buffer.from(body);
+  const isStream = isStreamAllowed && !isEmpty && isEventStream(reply.headers);
+  const payload = isEmpty ? null : await readPayload(reply, forms, isStream);
 
   return new Response(payload, {
     status: reply.status,
     statusText: scrubText(reply.statusText, forms),
     headers,
   });
+}
+
+function isEventStream(headers: Headers): boolean {
+  return (headers.get('content-type') ?? '').toLowerCase().startsWith('text/event-stream');
+}
+
+async function readPayload(
+  reply: HopReply,
+  forms: readonly ValueForm[],
+  isStream: boolean,
+): Promise<ReadableStream<Uint8Array> | Blob> {
+  if (isStream) {
+    return scrubEventStream(reply.readStream(), forms);
+  }
+
+  const raw = await reply.read();
+
+  return new Blob([Buffer.from(scrubBytes(raw, forms))]);
 }
 
 // The cleaned error keeps the name and the cleaned message and drops the cause, which may hold the

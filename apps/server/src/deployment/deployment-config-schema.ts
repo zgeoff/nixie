@@ -12,8 +12,9 @@ import {
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { mailConfigSchema } from '@heynixie/mail';
+import { mcpConfigSchema } from '@heynixie/mcp';
 import { memoryConfigSchema } from '@heynixie/memory';
-import { collectMissingPriceIssues } from '@heynixie/models';
+import { collectGatewayPriceIssues, collectMissingPriceIssues } from '@heynixie/models';
 import { notebookConfigSchema } from '@heynixie/notebook';
 import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
@@ -52,6 +53,7 @@ export const deploymentConfigSchema = z
     notebook: notebookConfigSchema.default(notebookConfigSchema.parse({})),
     forget_notices: forgetNoticesConfigSchema.default(forgetNoticesConfigSchema.parse({})),
     erasure: erasureConfigSchema.default(erasureConfigSchema.parse({})),
+    mcp: mcpConfigSchema.default(mcpConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
     approvals: approvalsConfigSchema.default(approvalsConfigSchema.parse({})),
     quiet_hours: quietHoursSchema.optional(),
@@ -74,11 +76,16 @@ export const deploymentConfigSchema = z
       });
     }
 
-    // A task counts its model calls against its dollar limit by the profile's prices, with a
-    // gateway or without. A models section that failed its own checks is not yet in its final
-    // shape, so the price check waits for it.
+    // Without a gateway, a task counts its model calls against its dollar limit by the profile's
+    // prices. With one, the gateway prices each reply, and a profile sets none. A models section
+    // that failed its own checks is not yet in its final shape, so the price check waits for it.
     if (issues.issues.length === 0) {
-      for (const issue of collectMissingPriceIssues(config.models)) {
+      const priceIssues =
+        config.spendStop === undefined
+          ? collectMissingPriceIssues(config.models)
+          : collectGatewayPriceIssues(config.models.profiles);
+
+      for (const issue of priceIssues) {
         issues.addIssue({ code: 'custom', path: [...issue.path], message: issue.message });
       }
     }

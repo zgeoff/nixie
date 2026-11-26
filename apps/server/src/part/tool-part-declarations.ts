@@ -21,6 +21,7 @@ import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
 import { buildImageProviders } from './build-image-providers';
 import { collectHostHeldNames } from './collect-host-held-names';
+import { makeLazyToolSource } from './make-lazy-tool-source';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startComputerPart } from './start-computer-part';
@@ -163,6 +164,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'definitions_exports',
       'erasure',
       'connections',
+      'mcp',
     ],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -241,6 +243,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           makeDecide: parts.get('decisions'),
           readStore: () => parts.find('memory'),
           readNotebook: () => parts.find('notebook'),
+          toolSources: [makeLazyToolSource(() => parts.find('mcp')?.tools ?? null)],
+          readMcp: () => parts.find('mcp') ?? null,
           readHeldBackTools: () =>
             parts.find('connections')?.readHeldBackTools() ?? Promise.resolve([]),
           readInForce: () => inForce.read(),

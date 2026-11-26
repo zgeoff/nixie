@@ -21,10 +21,7 @@ export function renderWorkerEnd(
 
   return match(end)
     .with({ outcome: 'limit' }, (limited) => {
-      const stop =
-        limited.limit === 'dollars' && view.isTaskLimit
-          ? `stopped because this task has $${view.limits.dollars.toFixed(2)} left of its dollar limit`
-          : `stopped at its ${limited.limit} limit of ${renderLimitMax(limited.limit, view.limits)}`;
+      const stop = pickLimitStop(limited.limit, view);
 
       return `The worker ${id} ${stop} and gave no answer. ${used} Ask a narrower question, or do the work yourself.`;
     })
@@ -46,9 +43,16 @@ export function renderWorkerEnd(
     .exhaustive();
 }
 
-function renderLimitMax(
+// A dollar limit names no figure: the model reads no dollar amount, limit or rate.
+function pickLimitStop(
   limit: 'minutes' | 'turns' | 'tokens' | 'dollars',
-  limits: WorkerPlan['limits'],
+  view: WorkerEndView,
 ): string {
-  return limit === 'dollars' ? `$${limits.dollars.toFixed(2)}` : String(limits[limit]);
+  if (limit === 'dollars') {
+    return view.isTaskLimit
+      ? 'stopped because this task reached its dollar limit'
+      : 'stopped at its dollar limit';
+  }
+
+  return `stopped at its ${limit} limit of ${String(view.limits[limit])}`;
 }

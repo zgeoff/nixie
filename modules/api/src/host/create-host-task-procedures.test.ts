@@ -1,13 +1,16 @@
 import { expect, test } from 'bun:test';
 import { pauseNixieInTransaction, readRecords, withWriteTransaction } from '@heynixie/log';
-import { createConversationTask, createTask } from '@heynixie/tasks';
+import { createConversationTask, createTask, readEndedRuns, writeMeterRead } from '@heynixie/tasks';
+import { waitForCondition } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
+import { createFakeClock } from '@zgeoff/testing/clock';
+import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { createHostTaskProcedures } from './create-host-task-procedures';
 
-async function setupTest() {
-  const api = await startTestAPI();
+async function setupTest(options: Parameters<typeof startTestAPI>[1] = {}) {
+  const api = await startTestAPI(undefined, options);
 
   return {
     ...api,
@@ -218,4 +221,135 @@ test('#resume exempts a ready task while nixie is paused, by the host', async ()
 
   expect(resumed).toStrictEqual({ taskID, state: 'ready', isPauseRequested: false });
   expect(exempted.map((read) => read.record.payload)).toStrictEqual([{ taskID, by: 'host' }]);
+});
+
+test('#raise sets the limit of the sandbox the gateway counts for the task, after the raise commits', async () => {
+  const ctx = await setupTest({ isSpendOn: true, isGatewayMetered: true });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.pausedTask({
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const [run] = await readEndedRuns(ctx.context, { taskID, limit: 1 });
+
+  invariant(run);
+
+  await writeMeterRead(ctx.context, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_end',
+    countMicros: 250_000,
+  });
+
+  await ctx.client.raise({ taskID, dollars: 3 });
+
+  await waitForCondition(() => ctx.spendGateway.patchSandbox.mock.calls.length === 1);
+
+  expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
+    ['sandbox-1', { dollars: 3.25 }, 0],
+  ]);
+});
+
+test('#raise sets the limit again after the gateway did not answer the first call', async () => {
+  const clock = createFakeClock({ startMs: 1_000_000 });
+
+  const ctx = await setupTest({ isSpendOn: true, isGatewayMetered: true, writerClock: clock });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.pausedTask({
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const [run] = await readEndedRuns(ctx.context, { taskID, limit: 1 });
+
+  invariant(run);
+
+  await writeMeterRead(ctx.context, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_end',
+    countMicros: 250_000,
+  });
+
+  ctx.spendGateway.patchSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  const raised = await ctx.client.raise({ taskID, dollars: 3 });
+
+  await waitForCondition(() => clock.countPending() === 1);
+
+  clock.advance(5000);
+
+  await waitForCondition(() => ctx.spendGateway.patchSandbox.mock.calls.length === 2);
+
+  expect(raised).toMatchObject({ state: 'ready', dollars: 3 });
+
+  expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
+    ['sandbox-1', { dollars: 3.25 }, 0],
+    ['sandbox-1', { dollars: 3.25 }, 0],
+  ]);
+});
+
+test('#raise sets no limit on the retry once a step has read the sandbox again and set its own', async () => {
+  const clock = createFakeClock({ startMs: 1_000_000 });
+
+  const ctx = await setupTest({ isSpendOn: true, isGatewayMetered: true, writerClock: clock });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.pausedTask({
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const [run] = await readEndedRuns(ctx.context, { taskID, limit: 1 });
+
+  invariant(run);
+
+  await writeMeterRead(ctx.context, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_end',
+    countMicros: 250_000,
+  });
+
+  ctx.spendGateway.patchSandbox.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+
+  await ctx.client.raise({ taskID, dollars: 3 });
+
+  await waitForCondition(() => clock.countPending() === 1);
+
+  await writeMeterRead(ctx.context, {
+    taskID,
+    taskRunID: run.runID,
+    sandbox: 'sandbox-1',
+    reason: 'step_start',
+    countMicros: 300_000,
+  });
+
+  clock.advance(5000);
+
+  await waitForCondition(() => ctx.logged.some((line) => line.includes('sandbox_limit_stale')));
+
+  expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([
+    ['sandbox-1', { dollars: 3.25 }, 0],
+  ]);
+});
+
+test('#raise sets no sandbox limit for a task run that no gateway counts', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.pausedTask({
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  await ctx.client.raise({ taskID, dollars: 3 });
+
+  expect(ctx.spendGateway.patchSandbox.mock.calls).toStrictEqual([]);
 });

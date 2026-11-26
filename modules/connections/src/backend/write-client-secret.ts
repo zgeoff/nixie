@@ -54,6 +54,7 @@ export async function writeClientSecret(
           key_id: minted.keyID,
           secret_sealed: sealed,
           created_at: context.now(),
+          ...(client.connectorID === undefined ? {} : { connector_id: client.connectorID }),
           ...toRegistrationColumns(registration),
         })
         .execute();

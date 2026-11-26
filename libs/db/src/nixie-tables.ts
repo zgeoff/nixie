@@ -308,6 +308,35 @@ export interface NixieTables {
     readonly record_sequence: number;
     readonly updated_sequence: number;
   };
+  readonly mcp_servers: {
+    readonly server_id: string;
+    readonly state: string;
+    readonly url: string | null;
+    readonly client_id: string | null;
+    readonly scope: string | null;
+    readonly trusted: number | null;
+    readonly private_range: string | null;
+    readonly requested: string | null;
+    readonly proposal_id: string | null;
+    readonly client_credential_id: string | null;
+    readonly grant_credential_id: string | null;
+    readonly grant_binding: string | null;
+    readonly updated_sequence: number;
+  };
+  readonly mcp_tool_forms: {
+    readonly hash: string;
+    readonly listed_seq: number;
+  };
+  readonly mcp_tools: {
+    readonly tool: string;
+    readonly server_id: string;
+    readonly pinned_hash: string | null;
+    readonly latest_hash: string;
+    readonly state: string;
+    readonly hidden_reason: string | null;
+    readonly proposal_id: string | null;
+    readonly updated_sequence: number;
+  };
   readonly memory_change_notices: {
     readonly entry_key: string;
     readonly notice_key: string;

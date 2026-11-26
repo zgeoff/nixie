@@ -57,3 +57,16 @@ export function collectMissingPriceIssues(config: PricedModelsConfig): PriceIssu
 
   return issues;
 }
+
+// With a gateway, the gateway prices each reply on its route, so a profile sets no prices. A table
+// here would price the same reply a second time and drift from the route's.
+export function collectGatewayPriceIssues(
+  profiles: Readonly<Record<string, Pick<ProfileFields, 'prices'>>>,
+): PriceIssue[] {
+  return Object.entries(profiles)
+    .filter(([, profile]) => profile.prices !== null)
+    .map(([profileID]) => ({
+      path: ['models', 'profiles', profileID, 'prices'],
+      message: `the profile ${profileID} sets prices, and the spendStop section is set, so the model gateway prices each reply from the prices of its route: remove the profile's prices and set the route's prices in the gateway's config`,
+    }));
+}

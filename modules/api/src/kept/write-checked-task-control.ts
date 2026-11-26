@@ -3,6 +3,7 @@ import type { TaskControl, TaskControlRefusal, TaskState } from '@heynixie/tasks
 import {
   runControlEnded,
   taskStateSchema,
+  withRunEndSettled,
   writeTaskControlInTransaction,
   writeTaskResumeInTransaction,
 } from '@heynixie/tasks';
@@ -39,9 +40,8 @@ export async function writeCheckedTaskControl(
 ): Promise<CheckedTaskControlResult> {
   const procedure = `tasks.${input.control}`;
 
-  const result = await withWriteTransaction<CheckedTaskControlResult>(
-    context.log.writer,
-    async (tx) => {
+  const result = await withRunEndSettled(context, () =>
+    withWriteTransaction<CheckedTaskControlResult>(context.log.writer, async (tx) => {
       const [live, earlier] = await Promise.all([
         probeLiveIdentity(tx, context, caller.identityID),
         readClientAction(tx, input.clientActionID),
@@ -95,7 +95,7 @@ export async function writeCheckedTaskControl(
       });
 
       return { status: 'controlled', ...controlled };
-    },
+    }),
   );
 
   if (result.status === 'controlled') {

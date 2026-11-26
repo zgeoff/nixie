@@ -13,6 +13,7 @@ import { aboveCapSchema } from './above-cap-schema';
 import { chatgptLoginsSchema } from './chatgpt-logins-schema';
 import { gatewayStatusSchema } from './gateway-status-schema';
 import { periodEndedSchema } from './period-ended-schema';
+import { revisionChangedSchema } from './revision-changed-schema';
 import { sandboxCountSchema } from './sandbox-count-schema';
 
 export interface SpendGatewayOptions {
@@ -82,6 +83,22 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
     },
     putSandbox: async (name, limit) => {
       const answer = await send('PUT', `/sandboxes/${encodeURIComponent(name)}`, { limit });
+
+      return parseNoContent(answer);
+    },
+    patchSandbox: async (name, limit, revision) => {
+      const answer = await send('PATCH', `/sandboxes/${encodeURIComponent(name)}`, {
+        limit,
+        ...(revision === undefined ? {} : { revision }),
+      });
+
+      if (!isUnreachable(answer) && answer.status === 404) {
+        return { kind: 'not_found' };
+      }
+
+      if (isRevisionChanged(answer)) {
+        return { kind: 'revision_changed' };
+      }
 
       return parseNoContent(answer);
     },
@@ -187,6 +204,14 @@ function parseNoContent(answer: Answer | Unreachable): Done | Unreachable {
   }
 
   return answer.status === 204 ? { kind: 'ok' } : renderRefusal(answer);
+}
+
+function isRevisionChanged(answer: Answer | Unreachable): boolean {
+  return (
+    !isUnreachable(answer) &&
+    answer.status === 409 &&
+    revisionChangedSchema.safeParse(answer.body).success
+  );
 }
 
 function parseSandboxAnswer(

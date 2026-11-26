@@ -1,12 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
-import {
-  claimTask,
-  readOpenRun,
-  taskFailedTurnSpentCodec,
-  writeFailedTurnSpend,
-} from '@heynixie/tasks';
+import { claimTask, readOpenRun, taskFailedTurnSpentCodec, writeMeterRead } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
@@ -40,9 +35,14 @@ async function setupTest() {
 
   invariant(run, 'the claim opened a task run');
 
+  // a task run that began before its start record named a meter
+  const { meter: _, ...legacyOpened } = run.opened;
+  const legacyRun = { ...run, opened: legacyOpened };
+
   return {
     tasks,
-    run,
+    run: legacyRun,
+    meteredRun: run,
     writeTurn: (tokens: Partial<Record<string, number>>, dollars?: number) =>
       writeRecords(tasks.context.log, [
         {
@@ -103,6 +103,19 @@ async function setupTest() {
           }),
         },
       ]),
+    readMeteredDollars: () => buildDollarsMeter(() => null).read(tasks.context, run),
+    writeRead: (
+      sandbox: string,
+      reason: 'run_start' | 'step_end' | 'worker_end',
+      countMicros: number,
+    ) =>
+      writeMeterRead(tasks.context, {
+        taskID,
+        taskRunID: run.runID,
+        sandbox,
+        reason,
+        countMicros,
+      }),
     readDollars: (inputPrice = 3) =>
       buildDollarsMeter(() => ({
         input: inputPrice,
@@ -110,7 +123,7 @@ async function setupTest() {
         cacheWrite1h: 6,
         cachedInput: 0.3,
         output: 15,
-      })).read(tasks.context, run),
+      })).read(tasks.context, legacyRun),
   };
 }
 
@@ -202,11 +215,18 @@ test('it keeps the dollars that a summary recorded when the price of its tokens 
 test('it counts the dollars of a turn that left no turn record', async () => {
   const ctx = await setupTest();
 
-  await writeFailedTurnSpend(ctx.tasks.context, {
-    taskID: ctx.run.taskID,
-    taskRunID: ctx.run.runID,
-    dollars: 0.25,
-  });
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: ctx.run.taskID,
+      payload: taskFailedTurnSpentCodec.encode({
+        taskID: ctx.run.taskID,
+        taskRunID: ctx.run.runID,
+        dollars: 0.25,
+      }),
+    },
+  ]);
 
   const dollars = await ctx.readDollars();
 
@@ -216,11 +236,18 @@ test('it counts the dollars of a turn that left no turn record', async () => {
 test("it leaves out the spend that another task run's turn recorded", async () => {
   const ctx = await setupTest();
 
-  await writeFailedTurnSpend(ctx.tasks.context, {
-    taskID: ctx.run.taskID,
-    taskRunID: 'an-earlier-run',
-    dollars: 0.5,
-  });
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: ctx.run.taskID,
+      payload: taskFailedTurnSpentCodec.encode({
+        taskID: ctx.run.taskID,
+        taskRunID: 'an-earlier-run',
+        dollars: 0.5,
+      }),
+    },
+  ]);
 
   const dollars = await ctx.readDollars();
 
@@ -292,4 +319,23 @@ test("it leaves out the gateway dollars of another task run's worker", async () 
   const dollars = await ctx.readDollars();
 
   expect(dollars).toBe(0);
+});
+
+test("it counts a metered task run by its sandbox's count less the start count, and adds its worker runs", async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn({ input: 1_000_000 });
+  await ctx.writeRead('sandbox-1', 'run_start', 500_000);
+  await ctx.writeRead('sandbox-1', 'step_end', 750_000);
+  await ctx.writeWorkerTurn({ taskRunID: ctx.meteredRun.runID, dollars: 0.5 });
+
+  const dollars = await ctx.readMeteredDollars();
+
+  expect(dollars).toBeCloseTo(0.75, 10);
+});
+
+test('it renders its limit with no dollar figure, for the code-made summary of a limit end', () => {
+  const meter = buildDollarsMeter(() => null);
+
+  expect(meter.render(2)).toBe('dollar');
 });

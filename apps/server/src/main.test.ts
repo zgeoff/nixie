@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecordEvents } from '@heynixie/api/test-utils';
 import { buildShortIDFromUUID } from '@heynixie/db';
 import { waitForCondition } from '@heynixie/testing';
+import { parseFencedResult } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
@@ -513,24 +514,23 @@ test('it lists the proposal the model made when the model calls the pending tool
 
   invariant(pending);
 
-  const answer: unknown = JSON.parse(pending.result);
+  const textBlock = z.object({ type: z.literal('text'), text: z.string() });
+  const answer = z.object({ content: z.array(textBlock) }).parse(JSON.parse(pending.result));
 
   expect(pending.name).toBe('memory.pending');
 
-  expect(answer).toMatchObject({
-    structuredContent: {
-      proposals: [
-        {
-          proposalID: expect.toBeString(),
-          change: 'new',
-          text: 'Keeps two cats',
-          notedBy: ['you noted it'],
-          subject: 'owner',
-          reason: 'no_quote',
-          age: 'under a minute',
-        },
-      ],
-    },
+  expect(parseFencedResult(answer)).toMatchObject({
+    proposals: [
+      {
+        proposalID: expect.toBeString(),
+        change: 'new',
+        text: 'Keeps two cats',
+        notedBy: ['you noted it'],
+        subject: 'owner',
+        reason: 'no_quote',
+        age: 'under a minute',
+      },
+    ],
   });
 
   expect(records.findLast((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({

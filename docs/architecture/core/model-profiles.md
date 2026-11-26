@@ -38,17 +38,18 @@ point can ask before such a start
 The `worker.run` tool offers the same choices as its own `model` option, with the same names and
 descriptions. A worker that names a selectable model runs on that entry's profile, and one that
 names none runs on the `worker` role's profile ([workers](./tasks.md#workers)). A selectable model's
-profile can run a worker and can call one. While the `worker` role is set, the schema checks the
-tool call wait of each entry that has no `ask: true`: the harness must have one, and the worker run
-limit's minutes must fit inside it. The error names the selectable model.
+profile can run a worker and can call one. While the `worker` role is set, the schema checks each
+entry that has no `ask: true`: its harness must have a tool-call wait, and the worker run limit's
+minutes must fit inside that wait. The error names the selectable model.
 
-The schema refuses an entry whose profile the file does not define. The deployment config also
-refuses an entry whose profile has no price table, because a task counts the cost of its turns
-against its dollar limit ([started tasks](./started-tasks.md#limits)). For the same reason, it
-refuses a config whose task profile or worker profile has no price table. A config that leaves the
-`task` role unset runs its tasks on the conversation's profile, so that profile then needs a price
-table too. A gateway does not lift this: the runner stops a task at its limit by the profile's
-prices, as [metering](../policy/metering.md#prices) says.
+The schema refuses an entry whose profile the file does not define. With no `spendStop` section, the
+deployment config also refuses an entry whose profile has no price table, because the task runner
+counts the cost of a task's turns against its dollar limit
+([started tasks](./started-tasks.md#limits)). For the same reason, it refuses a config whose task
+profile or worker profile has no price table. When the `task` role is unset, tasks run on the
+conversation's profile, so that profile then needs a price table too. With a `spendStop` section,
+the gateway prices each reply from its route's prices, so the config refuses a profile that sets
+`prices`, as [metering](../policy/metering.md#prices) says.
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
 count of turns and an amount of dollars. The schema refuses a default above its max.
@@ -167,22 +168,22 @@ waits, the step's lease lapses and the step runs again.
 
 A guest reads one `turn` frame and writes guest frames. It connects to the frame's tool route over
 HTTP MCP with the step token, and sends the model's tool-use ID under the record's `_meta` key on
-each tool call. It sends one `assistant` frame as each model message completes, one `call` frame per
-model API call before the next frame, and a `read` frame that lists the input messages the model
-received, and the read cursor moves only over those. It stops at `limits.modelCalls` and ends with
-the outcome `limit`, stops the loop on an `interrupt` frame and sends `ended` for the turn so far,
-and on a `purge` frame removes every file the loop holds of a session and sends `purged`. When nixie
-forgets a memory item, the session cleanup sends a `purge` frame to the guest of each open task that
-reads memory, on every harness. A guest sends `failed` and never `ended` after it: with
-`tools_not_connected` when the tool server is not connected, `model_auth` or `model_api` when the
-model API refuses, and `error` when the loop errors or its stream closes. A call frame holds its
-usage in one schema, the host prices it with the profile's price table, and the turn's usage is
-their sum. Each step starts the guest, runs one turn and ends the guest. A guest resumes, takes live
-messages and compacts only when its harness declares the capability.
+each tool call. It sends one `assistant` frame as each model message completes, and one `call` frame
+per model API call before the next frame. It sends a `read` frame that lists the input messages the
+model received, and the read cursor moves only over those. It stops at `limits.modelCalls` and ends
+with the outcome `limit`. On an `interrupt` frame it stops the loop and sends `ended` for the turn
+so far. On a `purge` frame it removes every file the loop holds of a session and sends `purged`.
+When nixie forgets a memory item, the session cleanup sends a `purge` frame to the guest of each
+open task that reads memory, on every harness. A guest sends `failed` and never `ended` after it:
+with `tools_not_connected` when the tool server is not connected, `model_auth` or `model_api` when
+the model API refuses, and `error` when the loop errors or its stream closes. A call frame holds its
+usage in one schema, and the turn's usage is their sum. Without a gateway, the host prices each call
+frame with the profile's price table. Each step starts the guest, runs one turn and ends the guest.
+A guest resumes, takes live messages and compacts only when its harness declares the capability.
 
 ### Turn outcomes and the session position
 
-Every guest ends a turn with an `ended` frame that carries an `outcome`, which its guest maps from
+Every guest ends a turn with an `ended` frame that carries an `outcome`, which the guest maps from
 its runtime's own words:
 
 | Outcome       | Meaning                                           |

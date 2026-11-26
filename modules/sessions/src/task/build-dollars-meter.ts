@@ -1,3 +1,4 @@
+import { pickTaskRunMicros } from '@heynixie/budgets';
 import type { LogRecord } from '@heynixie/log';
 import type { ModelPrices, TokenCounts } from '@heynixie/models';
 import {
@@ -6,21 +7,35 @@ import {
   modelTurnEndedCodec,
 } from '@heynixie/models';
 import type { RunMeter } from '@heynixie/tasks';
-import { readRunRecords, readTaskSetup, taskFailedTurnSpentCodec } from '@heynixie/tasks';
+import {
+  readMeterReads,
+  readRunRecords,
+  readTaskSetup,
+  taskFailedTurnSpentCodec,
+} from '@heynixie/tasks';
 import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
+import { readWorkerDollars } from './read-worker-dollars';
 
 // The profile a task runs on gives the prices, and a task with no profile of its own runs on the
 // task role's.
 export type ReadRunPrices = (profile: string | null) => ModelPrices | null;
 
-// A turn and the summary of a session count by their tokens, and a turn with no turn record counts
-// through its failed turn's spend. A tally beside a turn record counts only what exceeds it. A worker
-// call counts by the dollars its record stores, and another task run's spend never counts.
+// A task run that has a meter or a read counts the reads of its sandboxes and the dollars of its
+// worker runs. An earlier task run with no read keeps pricing its records, a tally beside a turn
+// record counting only what exceeds it.
 export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
   return {
     name: 'dollars',
     read: async (context, run) => {
+      const reads = await readMeterReads(context, run);
+
+      if (run.opened.meter !== undefined || reads.length > 0) {
+        const workerDollars = await readWorkerDollars(context, run);
+
+        return pickTaskRunMicros(reads, workerDollars) / 1_000_000;
+      }
+
       const setup = await readTaskSetup(context, run.taskID);
 
       const options = setup?.kind === 'started' ? setup.options : null;
@@ -54,7 +69,7 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
 
       return total;
     },
-    render: (limit) => `$${limit.toFixed(2)}`,
+    render: () => 'dollar',
   };
 }
 

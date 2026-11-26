@@ -93,7 +93,7 @@ async function setupTest() {
   const host = await startTestSessionHost({
     clock,
     projections: [...triggersProjections, ...remindersProjections],
-    runSettings: buildRunSettings({ models, credentials, hopLimit: 20 }),
+    runSettings: buildRunSettings({ models, credentials, hopLimit: 20, logger: () => {} }),
   });
 
   const tools = buildStubToolEndpoint();

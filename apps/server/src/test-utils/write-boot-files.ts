@@ -47,6 +47,9 @@ export interface BootFileExtras {
 
   readonly modelCredential?: 'secrets-file' | 'sandbox-backend';
 
+  // leaves the profiles' prices out, for a config that holds a spending gateway
+  readonly isGatewayPriced?: boolean;
+
   readonly roleModelURLs?: Readonly<Partial<Record<'checker' | 'task' | 'worker', string>>>;
 
   readonly selectableModelURLs?: Readonly<Record<string, string>>;
@@ -185,6 +188,14 @@ function buildConfigLines(
   const roleModels = Object.entries(extras.roleModelURLs ?? {});
   const selectableModels = Object.entries(extras.selectableModelURLs ?? {});
 
+  // A gateway prices each reply, so a profile behind one sets no prices.
+  const priceLines =
+    extras.isGatewayPriced === true
+      ? []
+      : [
+          '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+        ];
+
   return [
     'server:',
     `  data_dir: ${join(directory, 'data')}`,
@@ -201,7 +212,7 @@ function buildConfigLines(
     '      auth_header: x-api-key',
     '      model: claude-test-1',
     '      effort: low',
-    '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+    ...priceLines,
     ...roleModels.flatMap(([role, url]) => [
       `    scripted-${role}:`,
       '      harness: agent-sdk',
@@ -210,7 +221,7 @@ function buildConfigLines(
       '      auth_header: x-api-key',
       '      model: claude-test-1',
       '      effort: low',
-      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+      ...priceLines,
     ]),
     ...selectableModels.flatMap(([name, url]) => [
       `    selectable-${name}:`,
@@ -220,7 +231,7 @@ function buildConfigLines(
       '      auth_header: bearer',
       `      model: claude-${name}-test-model`,
       '      effort: low',
-      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+      ...priceLines,
     ]),
     '  roles:',
     '    conversation: scripted',

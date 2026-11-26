@@ -1,6 +1,6 @@
 import type { Log, LogRecord, RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
-import type { EffectOverride } from '@heynixie/policy';
+import type { EffectOverride, McpOverrides } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { RuleStoreWrite, WrittenRules } from '../rule/write-rule-store';
@@ -20,6 +20,7 @@ import type {
 import type { BudgetSeedPlan } from '../utils/build-budget-seed-plan';
 import type { SkillOverlay } from '../utils/build-skill-overlay';
 import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
+import { toMcpOverridesForm } from '../utils/to-mcp-overrides-form';
 import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
 
 interface BudgetStoreWrite {
@@ -39,6 +40,7 @@ export interface SeedPlan {
   };
   readonly formatVersion: number;
   readonly effects: ReadonlyMap<string, EffectOverride>;
+  readonly mcp: McpOverrides;
   readonly unapplied: readonly string[];
   readonly skipped: readonly string[];
   readonly versions: readonly SkillVersion[];
@@ -231,6 +233,7 @@ async function writeSeedRecord(
             { add: [...override.add], remove: [...override.remove] },
           ]),
         ),
+        mcp: toMcpOverridesForm(plan.mcp),
         repoTasks: plan.repoTasks.map((task) => ({ id: task.id, hash: task.hash })),
         repoBudgets: plan.budgets.repo.map((budget) => ({ ...budget })),
         unapplied: [...plan.unapplied],

@@ -6,8 +6,9 @@ nixie reads them as a snapshot of files, parses what it applies, and seeds them 
 under a snapshot hash. Every record in the [event log](./event-log.md) carries the snapshot hash of
 the definitions in force when it was written, so a replay of any decision can read exactly the
 persona and policy it ran under. `modules/definitions` owns sources, the seed and the snapshot hash.
-The seed applies the persona, the skills, the prompt overrides, the rule files, the task definitions
-and the budgets, each from the [definitions format](#the-definitions-format) that adds it.
+The seed applies the persona, the skills, the prompt overrides, the rule files, the task
+definitions, the budgets and the MCP overrides, each from the
+[definitions format](#the-definitions-format) that adds it.
 
 ```mermaid
 flowchart LR
@@ -42,19 +43,19 @@ to the content hash, so a new commit or a new origin over the same files seeds a
 a branch, or a directory with no git file, keeps the content hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest, `nixie.yaml`, and the persona at the
-root, and the `budgets`, `effects`, `prompts`, `rules`, `skills`, `tasks` and `voice` folders. It
-skips every other entry at the root by name, without reading or entering it, so that entry never
-enters the content hash, never has to parse, and never counts towards the size limits. A definitions
-repo can then hold its own docs and scripts, and editing a readme never makes a new definitions
-version. The snapshot still lists every skipped root entry, so a misnamed folder such as `rule/`
-shows in the seed's record instead of its rules going unread without a trace.
+root, and the `budgets`, `effects`, `mcp`, `prompts`, `rules`, `skills`, `tasks` and `voice`
+folders. It skips every other entry at the root by name, without reading or entering it, so that
+entry never enters the content hash, never has to parse, and never counts towards the size limits. A
+definitions repo can then hold its own docs and scripts, and editing a readme never makes a new
+definitions version. The snapshot still lists every skipped root entry, so a misnamed folder such as
+`rule/` shows in the seed's record instead of its rules going unread without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
 skill brings its scripts. It keeps only `.yaml`, `.md` and `.ts` files under `tasks/`, and only
-markdown, YAML and JSON files under `effects/`, `prompts/` and `rules/`. Every kept file must decode
-as UTF-8 text, so a binary file under `skills/` fails the snapshot. A snapshot past the per-file or
-the total size limit fails too, and its error lists the files at fault.
+markdown, YAML and JSON files under each other known folder. Every kept file must decode as UTF-8
+text, so a binary file under `skills/` fails the snapshot. A snapshot past the per-file or the total
+size limit fails too, and its error lists the files at fault.
 
 The path source never follows a link out of the root: a symlink that stays inside the root is
 skipped, and one that leads outside it, or resolves nowhere, fails the snapshot. A file can change
@@ -70,25 +71,34 @@ commit a second hash.
 
 ## The definitions format
 
-The manifest holds the definitions format version. A release reads formats 2 to 5 and refuses any
+The manifest holds the definitions format version. A release reads formats 2 to 6 and refuses any
 other, because an image upgrade and a definitions change land in separate repos, in either order.
-The persona must be UTF-8 text and not blank. From format 2, the seed applies each skill under
-`skills/`. From format 3, it applies the prompt overrides in the manifest's `prompts:` map, as
-[prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves that map and its
-files unapplied. Format 3 also applies each `rules/*.yaml` file as a rules file, as
-[rules in force](../policy/rules.md#rules-in-force) describes, except a file that the `prompts:` map
-names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
-[rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
-seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
-lists the `tasks/` files of an older format as unapplied. From format 5, it applies each
-`budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and lists those files of
-an older format as unapplied. From format 5 too, the seed reads `voice/voice.yaml` and
-`voice/lines.yaml` as the [voice settings](../channels/calls.md#configuration), and a fault in
-either leaves it unapplied and never refuses the seed. The prompt and task exports raise the
-manifest's `format` line to the format they need, as [prompts](prompts.md) and
-[the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
-other file, and lists each one in its record as unapplied. Each unapplied YAML or JSON file must
-still parse.
+The persona must be UTF-8 text and not blank.
+
+The seed applies the files of the repo's format and of every format before it. Each format adds
+these files, and the seed lists as unapplied each file from a format later than the repo's own:
+
+- Format 2: each skill under `skills/`.
+- Format 3: the prompt overrides in the manifest's `prompts:` map, as
+  [prompts](prompts.md#overrides-from-the-definitions) describes, and each `rules/*.yaml` file as a
+  rules file, as [rules in force](../policy/rules.md#rules-in-force) describes, except a file that
+  the `prompts:` map lists as a prompt part. From format 3, the seed therefore refuses a repo whose
+  existing rule files fail the [rule format](../policy/rules.md#the-rule-format), and the error
+  lists each file with its fault.
+- Format 4: each folder under `tasks/` as a [task definition](#task-definitions), and each file in
+  `effects/` as a change to a tool's effects, as [the decision point](../policy/decision-point.md)
+  describes.
+- Format 5: each `budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and
+  `voice/voice.yaml` and `voice/lines.yaml` as the
+  [voice settings](../channels/calls.md#configuration). The seed leaves a voice file with a fault
+  unapplied, and never refuses the repo over it.
+- Format 6: each `mcp/<server>.yaml` file as the
+  [overrides](../connectors/mcp-proxy-declarations.md#override-files) of one MCP server's tools.
+
+The prompt and task exports raise the manifest's `format` line to the format they need, as
+[prompts](prompts.md) and [the export of task definitions](#the-export-of-task-definitions)
+describe. The seed applies no other file, and lists each one in its record as unapplied. Each
+unapplied YAML or JSON file must still parse.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
@@ -687,8 +697,9 @@ them end a markdown line with a break. Each skill enters by its name, its conten
 it is vendored, sorted by name, so a change to any skill gives a new snapshot hash. Each task
 definition enters as its ID, its definition hash and its origin, sorted by ID, whether or not it is
 enabled. The policy enters as the rules sorted by ID and the tool declarations sorted by name, each
-tool's effects sorted and without duplicates. Every object serialises as canonical JSON, with sorted
-keys and no whitespace, so the same definitions always give the same bytes.
+tool's effects sorted and without duplicates. The MCP overrides enter by server and tool name, so an
+edit to an override changes the snapshot hash. Every object serialises as canonical JSON, with
+sorted keys and no whitespace, so the same definitions always give the same bytes.
 
 The policy holds the rules in code, the rules in force and every tool declaration in the build's
 registry. A rule enters with its revision, as [rules in force](../policy/rules.md#rules-in-force)

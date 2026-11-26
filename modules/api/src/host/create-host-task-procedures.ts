@@ -1,6 +1,13 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import type { TaskControl } from '@heynixie/tasks';
-import { writeTaskControl, writeTaskLimitRaise, writeTaskResume } from '@heynixie/tasks';
+import { toErrorFields } from '@heynixie/logger';
+import { patchLimitUntilSet, pickSandboxLimit } from '@heynixie/spend';
+import type { RaisedSandboxLimit, TaskControl } from '@heynixie/tasks';
+import {
+  readRaisedSandboxLimit,
+  writeTaskControl,
+  writeTaskLimitRaise,
+  writeTaskResume,
+} from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { readResumeRefusal } from '../spend/read-resume-refusal';
 import type { APIContext } from '../types';
@@ -32,13 +39,17 @@ export function createHostTaskProcedures(context: APIContext) {
       const outcome = await writeTaskLimitRaise(context, { taskID, limits });
 
       return match(outcome)
-        .with({ status: 'raised' }, (raised) => ({
-          taskID,
-          state: raised.state,
-          isPauseRequested: raised.isPauseRequested,
-          turns: raised.limits.turns,
-          dollars: raised.limits.dollars,
-        }))
+        .with({ status: 'raised' }, (raised) => {
+          startRaisedLimitPatch(context, taskID, raised.sandboxLimit);
+
+          return {
+            taskID,
+            state: raised.state,
+            isPauseRequested: raised.isPauseRequested,
+            turns: raised.limits.turns,
+            dollars: raised.limits.dollars,
+          };
+        })
         .with({ reason: 'unknown_task' }, () => {
           throw options.errors.TASK_NOT_FOUND();
         })
@@ -123,4 +134,61 @@ function toHostControlled(
       },
     )
     .exhaustive();
+}
+
+// The raise has committed. The sandbox's limit follows it off the call that raised, and goes again
+// until the gateway takes it, because a raise the gateway cannot hear still resumes the task, and the
+// next task run's start sets the limit too.
+function startRaisedLimitPatch(
+  context: APIContext,
+  taskID: string,
+  sandboxLimit: RaisedSandboxLimit | null,
+): void {
+  if (sandboxLimit === null || context.spend === undefined) {
+    return;
+  }
+
+  void runRaisedLimitPatch(context, context.spend, sandboxLimit, taskID);
+}
+
+const raisedLimitRetryMs = 5000;
+
+async function runRaisedLimitPatch(
+  context: APIContext,
+  spend: NonNullable<APIContext['spend']>,
+  raised: RaisedSandboxLimit,
+  taskID: string,
+): Promise<void> {
+  const logger = context.logger ?? (() => {});
+
+  // A step that began after the raise reads a newer count, and sets the limit itself from the same
+  // log, so this patch goes only while no newer read exists.
+  const readLimit = async () => {
+    const current = await readRaisedSandboxLimit(context, taskID);
+
+    if (
+      current === null ||
+      current.sandbox !== raised.sandbox ||
+      current.readCount !== raised.readCount
+    ) {
+      return null;
+    }
+
+    return {
+      limit: pickSandboxLimit({
+        startMicros: current.countMicros,
+        leftDollars: current.leftDollars,
+      }),
+    };
+  };
+
+  try {
+    await patchLimitUntilSet(
+      spend,
+      { sandbox: raised.sandbox, readLimit },
+      { retryMs: raisedLimitRetryMs, logger },
+    );
+  } catch (error) {
+    logger('spend.sandbox_limit_patch_failed', toErrorFields(error), 'error');
+  }
 }
