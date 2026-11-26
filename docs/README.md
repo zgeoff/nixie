@@ -182,6 +182,8 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   facts in your messages as memories, from an example folder
 - [Connect a Google account](guides/google.md) — make a Google Cloud OAuth client, register it,
   connect an account, and forget it
+- [Connect an MCP server](guides/mcp-servers.md) — add a server to the config, register nixie on it,
+  sign in, and allow its tools
 - [Run nixie with Docker Compose](guides/compose.md) — the reference recipe, its placeholders and
   secrets, signing in, and how CI checks it
 - [Run nixie on Kubernetes](guides/kubernetes.md) — the reference manifests, their placeholders and
