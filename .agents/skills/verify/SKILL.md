@@ -18,12 +18,10 @@ Hand back the PR link and each feature you could not verify, as the **Reply** li
 Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
 description.
 
-The mistakes that cost the most time:
+These cost the most time:
 
-- **Using the app before `doctor` passes.** `bun verify doctor` checks that the app answers and that
-  the browser and terminal drivers work. Until it passes, each command that touches the app fails
-  with exit code 3.
-- **Editing the app's code while `up` runs it.** The next command that touches the app fails with
+- Until `bun verify doctor` passes, each command that touches the app fails with exit code 3.
+- After you edit the app's code while `up` runs it, the next command that touches the app fails with
   `doctor-required`. Run `bun verify up --restart` and `doctor` again.
 
 ## Key rules
@@ -41,7 +39,6 @@ The mistakes that cost the most time:
 
 - [Exit codes](references/exit-codes.md): when a command fails, what to do for its exit code and
   `error.code`.
-- [Read the envelope](references/read-the-envelope.md): when you read a command's output.
 - [Publish the report](references/publish.md): at step 10 of Check a change.
 - [Targets](references/targets.md): before you start or attach to a target.
 - [Edit the skill](references/edit-the-skill.md): before you edit this skill or a feature file.
@@ -88,30 +85,28 @@ The mistakes that cost the most time:
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
 2. Pick the target you were asked to use, or the first launch target in the
-   [targets table](references/targets.md). Run the commands in its row. `up` or `attach` points the
-   commands at the app until `down` or `detach`. Expect from `up` or `attach`: `ok: true`, and the
-   app's endpoints in `data.endpoints`.
+   [targets table](references/targets.md). Run `bun verify use --target <target>` and the commands
+   in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
+   `data.endpoints`.
 3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
    `doctor` again.
-4. Run the journey from the feature's file, which the `File` column of the features table in
-   [References](#references) links. Its first line, `use --feature`, records each later command
-   under that feature, and leaves the target as it is. Expect: each command exits 0. When one fails,
-   follow its row in [Exit codes](references/exit-codes.md).
+4. Run the journey from the feature's file, which the features table in [References](#references)
+   links. Its first line, `use --feature`, records each later command under that feature. Expect:
+   each command exits 0. When one fails, follow its row in [Exit codes](references/exit-codes.md).
 5. Compare the app with the feature's end state:
    - When it matches, and no command failed with `read-only`, go on to step 6.
-   - When your change broke the feature, fix the app's code. Then run `bun verify up --restart`,
-     `bun verify doctor` and the journey again.
-   - When you meant your change to alter the end state, edit the feature's file and run
-     `bun verify lint`. Then run the journey again.
-   - In any other case, such as a `read-only` failure or a bug your change did not cause, skip
-     `done`. List the feature in your reply with the end state you expected and the `data` you got.
+   - When your change broke the feature, fix the app's code, run `bun verify up --restart` and
+     `bun verify doctor`, and run the journey again.
+   - When you meant your change to alter the end state, edit the feature's file, run
+     `bun verify lint`, and run the journey again.
+   - Otherwise, such as a `read-only` failure or a bug your change did not cause, skip `done`. List
+     the feature in your reply with the end state you expected and the `data` you got.
 6. Record the verdict:
    - Finish each edit to a file that matches the feature's `paths` first. An edit after `done` makes
-     the verdict `stale`. A commit alone leaves the verdict as it was.
-   - Once the end state matches in step 5, run `bun verify done`. Expect: `ok: true`. `done` records
-     a verdict for the feature that `use --feature` set.
-   - `done` never reads the end state. It fails with `check-failed` until a journey command has
-     succeeded after `doctor`.
+     the verdict `stale`. A commit alone leaves it as it was.
+   - Once the end state matches, run `bun verify done`. Expect: `ok: true`. `done` records a verdict
+     for the feature that `use --feature` set. It never reads the end state, and fails with
+     `check-failed` until a journey command has succeeded after `doctor`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
    check, in the order of the features table in [References](#references). Run the part of a journey
    that its feature's file marks as last after every other journey.
@@ -124,20 +119,28 @@ The mistakes that cost the most time:
 
 ## Read the envelope
 
-Each command prints one JSON envelope as its last line. Read `ok`, then `data` or `error`, and
-branch on the exit code and `error.code`. [Read the envelope](references/read-the-envelope.md) holds
-the fields and `--brief`.
+Each command prints one JSON envelope as its last line, or text with `--human`. `doctor` and other
+streaming commands print JSON event lines first.
+
+Add `--brief` to print one short line and no event lines, when you only need to know whether the
+command passed. It holds `<command> ok=<true|false>`, then `error.code` and `error.message` or
+`data` (each cut at 200 characters), `truncatedPath` and `evidence=<count>`. It leaves out
+`error.hint`: run the command again without `--brief` to read it.
+
+Read `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure.
+`evidence` lists the files the command kept, under `.wringer/`. `truncatedPath` names the file that
+holds `data` when it was too large to print. When a command fails, do what its row in
+[Exit codes](references/exit-codes.md) says.
 
 ## Targets
 
-Start a launch target's app with `bun verify up`, and stop it with `bun verify down`. Connect to an
-attach target, whose app runs apart from `bun verify`, with `attach`; `detach` leaves it running. An
-attach target runs code that was pushed or released, so your local edits never reach it. Check a
-change you are still editing on a launch target.
+`up` starts a launch target's app and `down` stops it. `attach` connects to an attach target, whose
+app runs apart from `bun verify`, and `detach` leaves it running. An attach target runs pushed or
+released code, so check a change you are still editing on a launch target.
 
-Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
-choice in this worktree's `.wringer/`. `--target` on one command points that command alone. A
-command with neither runs on the registry's first target, so run `use` first.
+`bun verify use --target <target>` points every later command at a target, and saves the choice in
+this worktree's `.wringer/`. `--target` on one command points that command alone. A command with
+neither runs on the registry's first target.
 
 <!-- repo: targets -->
 
@@ -149,8 +152,8 @@ See the [targets table](references/targets.md) for each target's start commands 
 
 Run `bun verify --help` for the list, with each command marked `[read]` or `[write]`. A read-only
 target refuses each `[write]` command except `publish`, which writes no app data. Run
-`bun verify <command> --help` for a command's flags. The top-level list shows only the name of a
-group, such as `action`: run `bun verify <group> --help` for its commands.
+`bun verify <command> --help` for a command's flags, or `<group> --help` for a group such as
+`action`.
 
 - Write a negative number with `=`, as in `--offset=-5`.
 - Pass an object as JSON text, as in `--filter '{"shelf":"top"}'`.
@@ -173,13 +176,12 @@ in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 <!-- /repo -->
 
 Map each file your change adds in the registry: add a glob that matches it to a feature's `paths`,
-to `.shared()` or to `.ignore()`. The gate fails on a changed file that no glob matches. Add a file
-that the running app never reads, such as a test, to `.ignore()`. `bun verify features` lists the
-globs.
+to `.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
+gate fails on a changed file that no glob matches. `bun verify features` lists the globs.
 
-When a change to a feature breaks its journey, fix the journey in the same PR. Before you edit this
-skill or a feature file, read [Edit the skill](references/edit-the-skill.md). After you change this
-skill, a feature file or the registry, run `bun verify lint`, and fix each failure it reports.
+When a change breaks a feature's journey, fix the journey in the same PR. Read
+[Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run
+`bun verify lint` after you change this skill, a feature file or the registry.
 
 **Reply:** the PR link that `bun verify publish` returned in `data.pr.url`, and each feature you
 could not verify, with the command that failed and its `error.code`, or the end state you expected
