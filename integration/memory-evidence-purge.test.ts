@@ -39,9 +39,15 @@ async function setupTest(setup: PurgeSetup) {
     readKinds: (records: readonly { readonly kind: string }[]) =>
       records
         .map((record) => record.kind)
-        .slice(records.findIndex((record) => record.kind === 'proposals.settled'))
+        .slice(
+          records.findIndex(
+            (record) =>
+              record.kind === 'proposals.settled' || record.kind === 'memory.proposal_lapsed',
+          ),
+        )
         .filter((kind) =>
           [
+            'memory.proposal_lapsed',
             'proposals.settled',
             'memory.version_added',
             'memory.version_keyed',
