@@ -2,14 +2,18 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { formatSpendAmount } from '../spend/format-spend-amount';
 import type { SpendDisplay } from '../spend/format-spend-amount';
-import { formatRouteNotice, formatSpendNotice } from '../spend/format-spend-notice';
+import {
+  formatProviderNotice,
+  formatRouteNotice,
+  formatSpendNotice,
+} from '../spend/format-spend-notice';
 import { pickRaiseOffer } from '../spend/pick-raise-offer';
 import { pickRouteRaiseOffer } from '../spend/pick-route-raise-offer';
 import { useSpendCounts } from '../spend/use-spend-counts';
 import { useSpendRaise } from '../spend/use-spend-raise';
 import { useSpendStop } from '../spend/use-spend-stop';
 import { css } from '../styled-system/css';
-import type { SpendRouteTrip, SpendTrip } from '../types';
+import type { SpendProviderTrip, SpendRouteTrip, SpendTrip } from '../types';
 
 const notice = css({
   borderBlockEnd: '1px solid',
@@ -29,17 +33,40 @@ export function SpendStopNotice(): ReactNode {
   const display = useSpendCounts().data?.display ?? null;
   const stop = read.data;
 
-  if (stop === undefined || (stop.state === 'clear' && stop.routes.length === 0)) {
+  if (
+    stop === undefined ||
+    (stop.state === 'clear' && stop.routes.length === 0 && stop.providers.length === 0)
+  ) {
     return null;
   }
 
   return (
     <section aria-label="model spending is stopped" className={notice}>
       {stop.state === 'clear' ? null : <p role="status">{formatSpendNotice(stop)}</p>}
+      {stop.providers.map((trip) => (
+        <div key={`provider-${trip.provider}-${trip.period}`}>
+          <p role="status">{formatProviderNotice(trip, display)}</p>
+          {trip.canRaise ? (
+            <RaiseRouteLimit
+              display={display}
+              name={trip.provider}
+              target={{ provider: trip.provider }}
+              trip={trip}
+            />
+          ) : null}
+        </div>
+      ))}
       {stop.routes.map((trip) => (
         <div key={`${trip.route}-${trip.period}`}>
           <p role="status">{formatRouteNotice(trip, display)}</p>
-          {trip.canRaise ? <RaiseRouteLimit display={display} trip={trip} /> : null}
+          {trip.canRaise ? (
+            <RaiseRouteLimit
+              display={display}
+              name={trip.route}
+              target={{ route: trip.route }}
+              trip={trip}
+            />
+          ) : null}
         </div>
       ))}
       {stop.state === 'tripped' && stop.canRaise ? <RaiseLimit stop={stop} /> : null}
@@ -48,12 +75,18 @@ export function SpendStopNotice(): ReactNode {
 }
 
 interface RaiseRouteLimitProps {
-  readonly trip: SpendRouteTrip;
+  readonly trip: SpendRouteTrip | SpendProviderTrip;
+
+  // the route or the provider, as the buttons name it
+  readonly name: string;
+
+  // what the raise names, a route or a provider
+  readonly target: { readonly route: string } | { readonly provider: string };
   readonly display: SpendDisplay | null;
 }
 
-// The raise of a route's day limit in dollars. One confirm is the whole approval, and the amount
-// stays editable until it.
+// The raise of a route's or a provider's day limit in dollars. One confirm is the whole approval,
+// and the amount stays editable until it.
 function RaiseRouteLimit(props: RaiseRouteLimitProps): ReactNode {
   const trip = props.trip;
   const offer = pickRouteRaiseOffer(trip);
@@ -71,7 +104,7 @@ function RaiseRouteLimit(props: RaiseRouteLimitProps): ReactNode {
           }}
           type="button"
         >
-          Raise the day limit of {trip.route}
+          Raise the day limit of {props.name}
         </button>
       </div>
     );
@@ -83,11 +116,11 @@ function RaiseRouteLimit(props: RaiseRouteLimitProps): ReactNode {
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        raise.mutate({ start: trip.start, route: trip.route, dollars });
+        raise.mutate({ start: trip.start, ...props.target, dollars });
       }}
     >
       <fieldset disabled={raise.isPending}>
-        <legend>Raise the day limit of {trip.route} to</legend>
+        <legend>Raise the day limit of {props.name} to</legend>
         <AmountField
           cap={trip.cap ?? trip.limit}
           label="US dollars"
@@ -95,7 +128,7 @@ function RaiseRouteLimit(props: RaiseRouteLimitProps): ReactNode {
           value={dollars}
         />
         {Number.isNaN(dollars) ? null : <p>{formatSpendAmount(dollars, props.display)}</p>}
-        <button type="submit">Confirm raise of {trip.route}</button>
+        <button type="submit">Confirm raise of {props.name}</button>
       </fieldset>
       {raise.isError ? <p role="alert">The raise did not finish. Try again.</p> : null}
       {answer !== undefined && 'error' in answer ? (
@@ -151,6 +184,14 @@ function describeRefusal(refusal: Refusal, display: SpendDisplay | null): string
 
   if (refusal.error === 'unknown_route') {
     return 'The spending gateway holds no such route.';
+  }
+
+  if (refusal.error === 'unknown_provider') {
+    return 'The spending gateway holds no such provider.';
+  }
+
+  if (refusal.error === 'no_route_limit') {
+    return `${refusal.route} has no limit of its own, so only its provider's limit binds it.`;
   }
 
   if (refusal.error === 'unanswered') {

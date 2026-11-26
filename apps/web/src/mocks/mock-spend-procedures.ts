@@ -1,4 +1,4 @@
-import type { SpendRaiseInput, SpendRaiseOutput } from '../types';
+import type { SpendRaiseInput, SpendRaiseOutput, SpendSetCountOutput } from '../types';
 import { mockImplementer } from './mock-implementer';
 import { readMockSpendStop } from './read-mock-spend-stop';
 import { requireMockSession } from './require-mock-session';
@@ -18,7 +18,17 @@ export const mockSpendProcedures = {
 
     const held = spendStore.counts.all().findLast(() => true);
 
-    return held === undefined ? { routes: [], display: null } : held.counts;
+    return held === undefined ? { providers: [], routes: [], display: null } : held.counts;
+  }),
+
+  setCount: os.spend.setCount.handler(async (options): Promise<SpendSetCountOutput> => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    await spendStore.countSets.create(options.input);
+
+    spendStore.stops.clear();
+
+    return { state: 'clear' };
   }),
 
   raise: os.spend.raise.handler(async (options): Promise<SpendRaiseOutput> => {
@@ -26,6 +36,10 @@ export const mockSpendProcedures = {
 
     const stop = readMockSpendStop();
     const input = options.input;
+
+    if (input.provider !== undefined) {
+      return raiseMockProvider(stop, input, input.provider);
+    }
 
     if (input.route !== undefined) {
       return raiseMockRoute(stop, input, input.route);
@@ -44,7 +58,7 @@ export const mockSpendProcedures = {
     }
 
     if (input.turns !== undefined && input.turns > stop.cap) {
-      return { error: 'above_cap', measure: 'turns', route: null, cap: stop.cap };
+      return { error: 'above_cap', measure: 'turns', route: null, provider: null, cap: stop.cap };
     }
 
     await spendStore.raises.create(input);
@@ -54,6 +68,38 @@ export const mockSpendProcedures = {
     return { state: 'clear' };
   }),
 };
+
+async function raiseMockProvider(
+  stop: ReturnType<typeof readMockSpendStop>,
+  input: SpendRaiseInput,
+  provider: string,
+): Promise<SpendRaiseOutput> {
+  const trip = stop.providers.find((candidate) => candidate.provider === provider);
+
+  if (trip === undefined) {
+    return { error: 'unknown_provider' };
+  }
+
+  if (input.start !== trip.start) {
+    return { error: 'period_ended' };
+  }
+
+  if (input.dollars !== undefined && input.dollars > (trip.cap ?? trip.limit)) {
+    return {
+      error: 'above_cap',
+      measure: 'dollars',
+      route: null,
+      provider,
+      cap: trip.cap ?? trip.limit,
+    };
+  }
+
+  await spendStore.raises.create(input);
+
+  spendStore.stops.clear();
+
+  return { state: 'clear' };
+}
 
 async function raiseMockRoute(
   stop: ReturnType<typeof readMockSpendStop>,
@@ -75,6 +121,7 @@ async function raiseMockRoute(
       error: 'above_cap',
       measure: 'dollars',
       route,
+      provider: null,
       cap: trip.cap ?? trip.limit,
     };
   }

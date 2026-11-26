@@ -54,7 +54,9 @@ test('it tells the owner which route waits at its limit, and offers a raise that
 
   await createDeviceSession();
 
-  await spendStore.stops.create({ stop: { state: 'clear', routes: [ctx.buildRouteTrip()] } });
+  await spendStore.stops.create({
+    stop: { state: 'clear', routes: [ctx.buildRouteTrip()], providers: [] },
+  });
 
   const rendered = render(<SpendStopNotice />);
 
@@ -70,10 +72,12 @@ test('it shows the limit and the raise in US dollars with the approximate amount
   await createDeviceSession();
 
   await spendStore.counts.create({
-    counts: { routes: [], display: { currency: 'AUD', rate: 1.5 } },
+    counts: { providers: [], routes: [], display: { currency: 'AUD', rate: 1.5 } },
   });
 
-  await spendStore.stops.create({ stop: { state: 'clear', routes: [ctx.buildRouteTrip()] } });
+  await spendStore.stops.create({
+    stop: { state: 'clear', routes: [ctx.buildRouteTrip()], providers: [] },
+  });
 
   const rendered = render(<SpendStopNotice />);
 
@@ -97,6 +101,7 @@ test('it offers no raise for a route whose limit is at its cap or whose month is
   await spendStore.stops.create({
     stop: {
       state: 'clear',
+      providers: [],
       routes: [
         ctx.buildRouteTrip({ route: 'plan', canRaise: false }),
         ctx.buildRouteTrip({ route: 'metered', period: 'month', cap: null, canRaise: false }),
@@ -116,7 +121,9 @@ test('it raises the day limit of a route in dollars with one confirm and clears 
 
   await createDeviceSession();
 
-  await spendStore.stops.create({ stop: { state: 'clear', routes: [ctx.buildRouteTrip()] } });
+  await spendStore.stops.create({
+    stop: { state: 'clear', routes: [ctx.buildRouteTrip()], providers: [] },
+  });
 
   const rendered = render(<SpendStopNotice />);
 
@@ -142,7 +149,11 @@ test('it says a raise is saved when the gateway gave no answer to it', async () 
   await createDeviceSession();
 
   await spendStore.stops.create({
-    stop: { state: 'clear', routes: [ctx.buildRouteTrip({ route: 'unanswered' })] },
+    stop: {
+      state: 'clear',
+      routes: [ctx.buildRouteTrip({ route: 'unanswered' })],
+      providers: [],
+    },
   });
 
   const rendered = render(<SpendStopNotice />);
@@ -163,7 +174,11 @@ test('it says a raise is not saved when the gateway gave no status', async () =>
   await createDeviceSession();
 
   await spendStore.stops.create({
-    stop: { state: 'clear', routes: [ctx.buildRouteTrip({ route: 'no-status' })] },
+    stop: {
+      state: 'clear',
+      routes: [ctx.buildRouteTrip({ route: 'no-status' })],
+      providers: [],
+    },
   });
 
   const rendered = render(<SpendStopNotice />);
@@ -182,7 +197,7 @@ test('it says a raise is not saved when the gateway gave no status', async () =>
 test('it offers no raise to an operator-only stop', async () => {
   await createDeviceSession();
 
-  await spendStore.stops.create({ stop: { state: 'unreachable', routes: [] } });
+  await spendStore.stops.create({ stop: { state: 'unreachable', routes: [], providers: [] } });
 
   const rendered = render(<SpendStopNotice />);
 
@@ -233,4 +248,50 @@ test('it shows a stop that the watcher trips while the page is open, with no rel
   const notice = await rendered.findByRole('region', { name: 'model spending is stopped' });
 
   expect(notice).toHaveTextContent(/the daily limit of 1,000 turns was reached/u);
+});
+
+test('it tells the owner which provider waits at its limit and raises it with one confirm', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await spendStore.stops.create({
+    stop: {
+      state: 'clear',
+      routes: [],
+      providers: [
+        {
+          provider: 'main',
+          routes: ['plan', 'metered'],
+          period: 'day',
+          start: '2026-11-13',
+          limit: 100,
+          spent: 101.5,
+          at: new Date('2026-11-13T16:42:07Z'),
+          resetsAt: new Date('2026-11-14T00:00:00Z'),
+          canRaise: true,
+          cap: 200,
+        },
+      ],
+    },
+  });
+
+  const rendered = render(<SpendStopNotice />);
+
+  const notice = await rendered.findByRole('region', { name: 'model spending is stopped' });
+
+  expect(notice).toHaveTextContent(/Model spending paused on the provider main/u);
+  expect(notice).toHaveTextContent('plan, metered');
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Raise the day limit of main' }));
+
+  expect(rendered.getByLabelText('US dollars')).toHaveValue(150);
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Confirm raise of main' }));
+
+  await waitFor(() => {
+    expect(spendStore.raises.all()).toMatchObject([
+      { start: '2026-11-13', provider: 'main', dollars: 150 },
+    ]);
+  });
 });

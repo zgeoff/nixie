@@ -15,6 +15,7 @@ export function buildMockSpendTrip(overrides: Partial<SpendTrip> = {}): SpendTri
     canRaise: true,
     cap: 2000,
     routes: [],
+    providers: [],
     ...overrides,
   };
 }

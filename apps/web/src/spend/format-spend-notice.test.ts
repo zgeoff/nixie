@@ -36,7 +36,7 @@ test.each([
   ['unreachable', 'cannot reach the spending gateway'],
   ['lost', 'lost count'],
 ] as const)('it tells an operator what to do for a %s stop', (state, words) => {
-  expect(formatSpendNotice({ state, routes: [] })).toContain(words);
+  expect(formatSpendNotice({ state, routes: [], providers: [] })).toContain(words);
 });
 
 test.each([
