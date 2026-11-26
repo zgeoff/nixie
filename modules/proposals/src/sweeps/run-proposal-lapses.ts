@@ -1,4 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
+import type { Transaction } from 'kysely';
+import type { SharedProposal } from '../answer/proposal-kind-handler';
 import type { ProposalCoreDeps } from '../answer/types';
 import { buildApplyRun } from '../propose/build-apply-run';
 import { readDueProposals } from './read-due-proposals';
@@ -34,12 +36,16 @@ export async function runProposalLapses(deps: ProposalCoreDeps): Promise<number>
   return counted.lapsed;
 }
 
-async function lapseRow(deps: ProposalCoreDeps, proposalID: string): Promise<boolean> {
-  const loaded = await withWriteTransaction(deps.log.writer, async (tx) => {
-    const rows = await readDueProposals(tx, deps.clock.now());
+class NoLongerDueError extends Error {
+  override readonly name = 'NoLongerDueError';
+}
 
-    return rows.find((candidate) => candidate.id === proposalID) ?? null;
-  });
+// The row is read again inside the transaction that closes it, so an answer or a defer that
+// committed after the sweep's first read keeps the row from lapsing.
+async function lapseRow(deps: ProposalCoreDeps, proposalID: string): Promise<boolean> {
+  const loaded = await withWriteTransaction(deps.log.writer, (tx) =>
+    readDueRow(deps, tx, proposalID),
+  );
 
   const handler = loaded === null ? undefined : deps.handlers.get(loaded.family);
 
@@ -50,17 +56,41 @@ async function lapseRow(deps: ProposalCoreDeps, proposalID: string): Promise<boo
   const facts = { row: loaded, outcome: 'lapsed', answer: null, byProposer: false } as const;
 
   if (handler.ownsTransaction) {
-    const run = buildApplyRun(deps, facts, { tx: null, guard: () => Promise.resolve() });
+    const guard = async (tx: Transaction<unknown>): Promise<void> => {
+      if ((await readDueRow(deps, tx, proposalID)) === null) {
+        throw new NoLongerDueError();
+      }
+    };
 
-    const discarded = await handler.discard(run, loaded, 'lapsed', null);
+    const run = buildApplyRun(deps, facts, { tx: null, guard });
 
-    return discarded.status === 'done';
+    try {
+      const discarded = await handler.discard(run, loaded, 'lapsed', null);
+
+      return discarded.status === 'done';
+    } catch (error) {
+      if (error instanceof NoLongerDueError) {
+        return false;
+      }
+
+      throw error;
+    }
   }
 
   return withWriteTransaction(deps.log.writer, async (tx) => {
-    const run = buildApplyRun(deps, facts, { tx, guard: () => Promise.resolve() });
+    const fresh = await readDueRow(deps, tx, proposalID);
 
-    const discarded = await handler.discard(run, loaded, 'lapsed', null);
+    if (fresh === null) {
+      return false;
+    }
+
+    const run = buildApplyRun(
+      deps,
+      { ...facts, row: fresh },
+      { tx, guard: () => Promise.resolve() },
+    );
+
+    const discarded = await handler.discard(run, fresh, 'lapsed', null);
 
     if (discarded.status === 'refused') {
       return false;
@@ -70,4 +100,14 @@ async function lapseRow(deps: ProposalCoreDeps, proposalID: string): Promise<boo
 
     return true;
   });
+}
+
+async function readDueRow(
+  deps: ProposalCoreDeps,
+  tx: Transaction<unknown>,
+  proposalID: string,
+): Promise<SharedProposal | null> {
+  const rows = await readDueProposals(tx, deps.clock.now());
+
+  return rows.find((candidate) => candidate.id === proposalID) ?? null;
 }

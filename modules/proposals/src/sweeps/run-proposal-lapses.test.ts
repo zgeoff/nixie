@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import type { ProposeInput } from '../propose/propose-in-transaction';
 import { proposeInTransaction } from '../propose/propose-in-transaction';
+import { withdrawInTransaction } from '../propose/withdraw-in-transaction';
+import type { ProposalFamily } from '../rows/proposal-tables';
 import { readProposal } from '../rows/read-proposal';
 import { startTestProposals } from '../test-utils/start-test-proposals';
 import { runProposalLapses } from './run-proposal-lapses';
@@ -109,4 +111,44 @@ test('it takes the lapse of a family from the config', async () => {
   const row = await readProposal(ctx.log.writer.db, proposed.proposalID);
 
   expect(row?.lapsesAt).toBe(startMs + 2 * ctx.dayMs);
+});
+
+test('it leaves a proposal open that a withdrawal closed after the sweep read it as due', async () => {
+  const ctx = await setupTest();
+  const proposed = await ctx.propose();
+
+  ctx.clock.advance(14 * ctx.dayMs);
+
+  const answering: Promise<unknown>[] = [];
+  const lookups = { count: 0 };
+
+  const handlers = new Map(ctx.deps.handlers);
+
+  const originalGet = handlers.get.bind(handlers);
+
+  // the second lookup of a handler comes after the sweep's read of the due rows
+  handlers.get = (family: ProposalFamily) => {
+    lookups.count += 1;
+
+    if (lookups.count === 2) {
+      answering.push(
+        withWriteTransaction(ctx.log.writer, (tx) =>
+          withdrawInTransaction(ctx.deps, tx, proposed.proposalID, { byProposer: true }),
+        ),
+      );
+    }
+
+    return originalGet(family);
+  };
+
+  const deps = { ...ctx.deps, handlers };
+
+  const lapsed = await runProposalLapses(deps);
+
+  await Promise.all(answering);
+
+  const settled = await ctx.readSettled();
+
+  expect([lapsed, await ctx.readState(proposed.proposalID)]).toStrictEqual([0, 'withdrawn']);
+  expect(settled.map((entry) => entry.record.payload)).toMatchObject([{ outcome: 'withdrawn' }]);
 });
