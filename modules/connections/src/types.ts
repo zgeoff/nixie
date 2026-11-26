@@ -212,6 +212,9 @@ export type ForgetConnectionResult =
 
 export interface RegisteredClient {
   readonly client: string;
+
+  // the client ID that Google gave, which is public
+  readonly clientID: string;
   readonly origin: string;
   readonly redirectURI: string;
   readonly fingerprint: string;

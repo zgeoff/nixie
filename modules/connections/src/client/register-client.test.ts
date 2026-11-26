@@ -45,6 +45,7 @@ test('it seals the secret and keeps the public values in the row', async () => {
     'registered',
     {
       client: expect.any(String),
+      clientID: 'client-123.apps.test',
       origin: ctx.origin,
       redirectURI: 'https://nixie.example.org/connections/google/return',
       fingerprint: expect.stringMatching(/^[0-9a-f]{8}$/u),

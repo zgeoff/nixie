@@ -139,6 +139,9 @@ function toPrivateResponse(response: Response): Response {
   headers.set('content-security-policy', "frame-ancestors 'none'");
   headers.set('x-frame-options', 'DENY');
 
+  // Google's sign-in window, which the Drive picker opens, must reach back to its opener
+  headers.set('cross-origin-opener-policy', 'same-origin-allow-popups');
+
   return new Response(response.body, {
     headers,
     status: response.status,

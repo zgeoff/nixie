@@ -177,3 +177,5 @@ export { buildGmailArrivalSource } from './google/gmail/poll/build-gmail-arrival
 export { collectGmailConnections } from './google/gmail/poll/collect-gmail-connections';
 export { isGmailPolled } from './google/gmail/poll/is-gmail-polled';
 export { gmailConfigSchema } from './google/gmail/gmail-config-schema';
+export { readPickedFiles } from './google/drive/read-picked-files';
+export type { PickedFile } from './google/drive/read-picked-files';

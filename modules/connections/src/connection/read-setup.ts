@@ -23,6 +23,7 @@ export async function readSetup(context: ServiceContext, pageOrigin: string): Pr
     steps,
     client: {
       client: client.short_id,
+      clientID: client.provider_client_id,
       origin: client.origin ?? origin,
       redirectURI: client.redirect_uri ?? `${origin}${context.endpoints.returnPath}`,
       fingerprint: client.secret_fingerprint ?? '',
