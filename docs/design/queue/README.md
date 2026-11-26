@@ -15,6 +15,7 @@ describe code that has since changed, and a reader could not tell it from one st
 
 | Area            | Designs                                                                                           |
 | --------------- | ------------------------------------------------------------------------------------------------- |
+| Features        | [feature switches](feature-switches.md)                                                           |
 | Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)                                            |
 | Tasks           | [the coding session runner](coding-session-runner/README.md)                                      |
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                             |
