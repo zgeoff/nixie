@@ -8,9 +8,10 @@ import {
   withWriteTransaction,
 } from '@heynixie/log';
 import { buildLogSeeder } from '@heynixie/log/test-utils';
-import { defaultProposalConfig, readProposal } from '@heynixie/proposals';
+import { defaultProposalConfig, readOpenProposals, readProposal } from '@heynixie/proposals';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { buildTaskSeeder, readTestLeases } from '@heynixie/tasks/test-utils';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { claimAction, runActionAttempt } from '../index';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
@@ -919,6 +920,57 @@ test('it holds an action that a rule allowed and now asks about, and runs none o
   expect(claimed).toBeNull();
   expect(row?.lapsesAt).toBe(ctx.clock.now() + 7 * 24 * 60 * 60 * 1000);
   expect(row?.shortID).not.toBe(queued.actionID);
+});
+
+test('it leaves no proposal row when the hold write fails after the proposal is written', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    callSequence: 1,
+  });
+
+  await sql`create trigger refuse_hold before insert on records when new.kind = 'action.held'
+    begin select raise(abort, 'the hold write failed'); end`.execute(ctx.writer.db);
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const run = runActionAttempt(ctx.context, lease, {
+    connectors: new Map([
+      ['test.send', buildStubConnector(() => ({ kind: 'success', result: {} })).connector],
+    ]),
+    leaseMs: 60_000,
+    checkAttempt: () =>
+      Promise.resolve({
+        kind: 'ask',
+        cause: 'ask_rule',
+        destinations: ['team'],
+        proposalID: queued.actionID,
+        proposal: {
+          definitions: ctx.definitions,
+          thread: step.lease.workID,
+          callSequence: 1,
+          tool: 'test.send',
+          effects: ['send'],
+          cause: 'ask_rule',
+          input: { to: 'team' },
+          destinations: [{ value: 'team', replyTarget: false }],
+          reopen: { proposalID: queued.actionID, actionID: queued.actionID },
+        },
+      }),
+  });
+
+  await run.catch(() => {});
+
+  const row = await readProposal(ctx.writer.db, queued.actionID);
+  const open = await readOpenProposals(ctx.writer.db, ctx.clock.now());
+
+  expect([row, open]).toStrictEqual([null, []]);
 });
 
 test('it starts no attempt and calls nothing when a hold begins after the policy check', async () => {
