@@ -1,7 +1,5 @@
 import type { ScreenPixels } from './read-screen-pixels';
 
-// The size of an element in device pixels, with the ratio of those to CSS pixels and the zone its
-// clocks show, the way the server keeps it for the device.
 export function readElementPixels(element: Element): ScreenPixels {
   const rect = element.getBoundingClientRect();
 

@@ -154,6 +154,21 @@ test('#createDeviceStreams keeps the size of a resize when another stream opens'
   });
 });
 
+test('#createDeviceStreams drops the size of a resize once the stream it resized closes', () => {
+  const ctx = setupTest();
+  const view = ctx.streams.open('dk4m7q2w9x', { width: 700, height: 500, pixelRatio: 1 });
+
+  ctx.streams.resize('dk4m7q2w9x', { width: 700, height: 500, pixelRatio: 1 });
+  ctx.streams.open('dk4m7q2w9x', { width: 1200, height: 800, pixelRatio: 1 });
+  view.close();
+
+  expect(ctx.streams.readPixels('dk4m7q2w9x')).toStrictEqual({
+    width: 1200,
+    height: 800,
+    pixelRatio: 1,
+  });
+});
+
 test('#createDeviceStreams reports the size of a new stream once the streams before it closed', () => {
   const ctx = setupTest();
   const first = ctx.streams.open('dk4m7q2w9x', { width: 700, height: 500, pixelRatio: 1 });

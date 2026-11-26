@@ -130,8 +130,9 @@ The API holds one registry in memory, and a restart forgets it. It keeps two fac
   background tab holds a stream open. The push notifier reads `presence.isPresent(withinMs)`.
 - A device is online while one or more of its device-form streams are open, and for
   `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as offline. The
-  devices module reads the registry's `DeviceStreams`. A device-form stream keeps its session's last
-  seen time fresh, and a page stream never does.
+  devices module reads the registry's `DeviceStreams`. A device-form stream of a device session
+  keeps its session's last seen time fresh. A page stream never does, and neither does the
+  device-form stream of a full session, so an idle tab's session lapses on schedule.
 
 When a client goes away, the server ends its stream within 2 keepalive intervals and drops a
 device-form stream from the registry in the same step.

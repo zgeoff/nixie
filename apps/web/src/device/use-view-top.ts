@@ -3,9 +3,6 @@ import { useEffect } from 'react';
 
 const viewTopProperty = '--device-view-top';
 
-// Keeps the element's top, in pixels from the top of the page, in the custom property that its
-// height subtracts from the window's, so the element fills the window below everything above it: the
-// app bar, the call bar and the banners.
 export function useViewTop(area: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const element = area.current;

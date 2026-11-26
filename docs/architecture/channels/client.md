@@ -150,7 +150,9 @@ The web client holds one `live.follow` stream in each tab, above every page, so 
 keeps it open. A signed-in page keeps it open, and the `/device` page, which holds a device-form
 stream of its own, never opens a page stream. The stream is a page form: it carries the records of
 the thread on screen, from the sequence that page read at, and every topic's `changed` events. Each
-signed-in page also keeps the tab's [device stream](#the-device-view) open.
+signed-in page also keeps the tab's [device stream](#the-device-view) open, so a tab holds 2
+streams. A browser limits an HTTP/1.1 origin to 6 connections, so serve nixie over HTTP/2: on
+HTTP/1.1, 3 tabs fill the slots and queue each later request.
 
 - **A topic invalidates its reads.** A `changed` event invalidates the reads under each topic's
   query-key root, so no page sets a poll on a read that a topic covers. The topic roots and their
@@ -468,8 +470,10 @@ page.
   Opening the device view, the chat or the call screen keeps the call's audio, its microphone grant
   and its live stream.
 - **Device mode.** `/device` is a separate page, which [devices](./devices.md#device-mode)
-  describes. It shows the device full screen with no app shell, and keeps the device stream open
-  while the screen is off. Its sign-out ends a live call first.
+  describes. It shows the device full screen with no app shell, from the same feed as the device
+  view, and keeps the stream open whether the screen is on or off. A stream that the view or the
+  full-screen page opened keeps the size that page reported until it closes. Its sign-out ends a
+  live call first, and the server ends the call a session carries when that session signs out.
 
 ## The handover banner
 

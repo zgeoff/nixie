@@ -11,8 +11,6 @@ const openedThreads: (string | undefined)[] = [];
 
 // a stream that closes after a reset belongs to the generation before it, and counts for nothing
 const streams = { opened: 0, closed: 0, generation: 0, peak: 0 };
-
-// the streams of the device form, which count apart from the conversation's
 const deviceStreams = { opened: 0, closed: 0 };
 
 export const mockLive = {
@@ -25,7 +23,6 @@ export const mockLive = {
     return streams.peak;
   },
 
-  // the device streams open now and the device streams opened since the last reset
   get deviceOpenCount(): number {
     return deviceStreams.opened - deviceStreams.closed;
   },
@@ -33,7 +30,6 @@ export const mockLive = {
     return deviceStreams.opened;
   },
 
-  // starts the peak again from the streams open now, so a test counts only the overlap it causes
   restartPeak: (): void => {
     streams.peak = streams.opened - streams.closed;
   },
@@ -98,7 +94,6 @@ export function subscribeToMockChanged(
   });
 }
 
-// Ends every open device stream of the mock API with no error, as a server does when it restarts.
 export function endMockDeviceStreams(): void {
   bus.dispatchEvent(new Event(deviceEndType));
 }

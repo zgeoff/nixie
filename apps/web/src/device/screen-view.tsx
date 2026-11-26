@@ -14,7 +14,7 @@ const screen = css({
   display: 'flex',
   flexDirection: 'column',
   height: '100%',
-  overflow: 'hidden',
+  overflowY: 'auto',
   width: '100%',
 });
 

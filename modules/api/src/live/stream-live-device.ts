@@ -8,6 +8,9 @@ import type { APIContext } from '../types';
 export interface DeviceStream {
   readonly device: Device;
   readonly token: string | undefined;
+
+  // true for a session that only listens, which an open stream keeps from lapsing
+  readonly isKeptActive: boolean;
   readonly pixels: ScreenPixels;
   readonly signal: AbortSignal | undefined;
 }
@@ -17,18 +20,22 @@ type DeviceStreamEvent =
   | { readonly kind: 'device'; readonly event: DeviceEvent };
 
 // The events of a device screen's stream: opened once its device stream is open, then what the
-// screen shows and each change. An open stream keeps its session active, so a panel that only
-// listens never lapses. A device that a revoke removes ends the stream.
+// screen shows and each change. An open stream keeps a device session active, so a panel that only
+// listens never lapses, and leaves a full session's last seen time to its own calls. A device that a revoke removes ends the stream.
 export async function* streamLiveDevice(
   context: APIContext,
   stream: DeviceStream,
 ): AsyncGenerator<DeviceStreamEvent, void, undefined> {
-  const keepActive = setInterval(() => {
-    void writeKeepActive(context, stream);
-  }, context.settings.lastSeenIntervalMs);
+  const keepActive = stream.isKeptActive
+    ? setInterval(() => {
+        void writeKeepActive(context, stream);
+      }, context.settings.lastSeenIntervalMs)
+    : null;
 
   const stopKeepActive = (): void => {
-    clearInterval(keepActive);
+    if (keepActive !== null) {
+      clearInterval(keepActive);
+    }
   };
 
   // A consumer that stops reading after an abort never resumes the generator, so its finally may

@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
+import { useSyncExternalStore } from 'react';
 import { css } from '../styled-system/css';
 import { DeviceSurface } from './device-surface';
 import { FullscreenButton } from './fullscreen-button';
-import { readScreenPixels } from './read-screen-pixels';
-import { useDeviceEvents } from './use-device-events';
+import { useDeviceFeed } from './use-device-feed';
 import { useRevealOnTouch } from './use-reveal-on-touch';
-import { useScreenResize } from './use-screen-resize';
 import { useWakeLock } from './use-wake-lock';
+import { useWindowPixels } from './use-window-pixels';
 
 export interface DeviceScreenProps {
   readonly onClose: () => void;
@@ -38,11 +37,11 @@ const controls = css({
 // a stream is open. Its buttons show for a few seconds after a touch or a pointer move. A show
 // covers the layout, which gives way to the idle scene while every region is blank.
 export function DeviceScreen(props: DeviceScreenProps): ReactNode {
-  const serverPixels = useRef(readScreenPixels());
-  const events = useDeviceEvents(true, serverPixels);
+  const feed = useDeviceFeed();
+  const events = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
 
   useWakeLock(events.connection === 'open');
-  useScreenResize(true, serverPixels);
+  useWindowPixels();
 
   const touch = useRevealOnTouch();
 

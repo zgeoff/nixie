@@ -1,5 +1,5 @@
 import type { ScreenContent } from '@heynixie/contract';
-import type { DeviceLayout, ScreenEvent } from './use-device-events';
+import type { DeviceLayout, ScreenEvent } from './types';
 
 export type Surface =
   | { readonly kind: 'blocks'; readonly blocks: readonly ScreenContent[] }

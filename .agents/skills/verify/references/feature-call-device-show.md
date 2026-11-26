@@ -64,7 +64,7 @@ Expect line.
 
    Expect: the snapshot holds the region "Call in progress" with the text "On a call", the region
    "Device view", and in it the heading "This week" and the text "Monday: dentist at 9, then the
-   allotment".
+   allotment", then each later day of the week, ending with "Friday: tidy the shed".
 
 4. Go back to the call, hang up, and read how the call ended.
 

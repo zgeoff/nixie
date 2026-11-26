@@ -47,7 +47,6 @@ async function setupTest() {
         `document.querySelector('[aria-label="Device view"]').getBoundingClientRect().height`,
       ),
 
-    // a row above the page's content, as the call bar is while a call is live
     addRowAbove: (heightPx: number) =>
       view.evaluate(
         `(() => { const row = document.createElement('div'); row.style.height = '${String(heightPx)}px'; document.querySelector('[aria-label="Device view"]').before(row); return true; })()`,
@@ -82,4 +81,32 @@ test('it ends at the bottom of the window when a row sits above it, and reports 
   const windowHeight = await ctx.view.evaluate('innerHeight');
 
   expect(bottom).toBe(windowHeight);
+});
+
+test('it scrolls long material to its last line on a window shorter than the material', async () => {
+  const ctx = await setupTest();
+
+  const isLastLineReachable = await ctx.view.evaluate(
+    `(() => {
+      const screen = document.querySelector('[data-testid="screen"]');
+      const list = document.createElement('ul');
+
+      for (let line = 1; line <= 60; line += 1) {
+        const item = document.createElement('li');
+
+        item.textContent = 'Line ' + line;
+        list.append(item);
+      }
+
+      screen.append(list);
+      screen.scrollTop = screen.scrollHeight;
+
+      const last = list.lastElementChild.getBoundingClientRect();
+      const frame = screen.getBoundingClientRect();
+
+      return screen.scrollHeight > screen.clientHeight && last.bottom <= frame.bottom;
+    })()`,
+  );
+
+  expect(isLastLineReachable).toBeTrue();
 });

@@ -3,7 +3,7 @@ import { css } from '../styled-system/css';
 import { LayoutView } from './layout-view';
 import { pickSurface } from './pick-surface';
 import { ScreenView } from './screen-view';
-import type { DeviceEvents } from './use-device-events';
+import type { DeviceEvents } from './types';
 
 export interface DeviceSurfaceProps {
   readonly events: DeviceEvents;
@@ -22,8 +22,6 @@ const covered = css({
   visibility: 'hidden',
 });
 
-// What the stream says the screen shows, at the size of the box around it. A show covers the layout,
-// which gives way to the idle scene while every region is blank.
 export function DeviceSurface(props: DeviceSurfaceProps): ReactNode {
   const events = props.events;
   const surface = pickSurface(events.event, events.layout);

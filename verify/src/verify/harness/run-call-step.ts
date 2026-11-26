@@ -36,6 +36,8 @@ export interface CallStepDependencies {
       | { kind: 'hand_off'; handOffID: string; request: string },
   ) => Promise<unknown>;
   readonly readSpeechCalls: () => Promise<unknown>;
+
+  readonly readStartedCallID: () => Promise<unknown>;
 }
 
 export interface CallState {
@@ -183,8 +185,6 @@ async function propose(deps: CallStepDependencies): Promise<void> {
   await deps.emitSpeech({ kind: 'hand_off', handOffID: 'ask-2', request: 'Remember my bees' });
 }
 
-// The call's turn answers in one short line and puts the long answer on the device that the device
-// list marks as the call's.
 const planText = [
   '# This week',
   '',
@@ -218,9 +218,19 @@ async function showOnDevice(deps: CallStepDependencies): Promise<void> {
 }
 
 async function hangUp(deps: CallStepDependencies, state: CallState): Promise<void> {
-  invariant(state.callID !== null, 'the call starts first');
+  const callID = await readCallID(deps, state);
 
   deps.model.addReplies({ text: 'The call is over.', when: isCallTurn });
 
-  await deps.client.calls.hangUp({ callID: state.callID, clientActionID: crypto.randomUUID() });
+  await deps.client.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
+}
+
+async function readCallID(deps: CallStepDependencies, state: CallState): Promise<string> {
+  if (state.callID !== null) {
+    return state.callID;
+  }
+
+  const read = await deps.readStartedCallID();
+
+  return z.string().parse(read);
 }

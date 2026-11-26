@@ -24,9 +24,6 @@ const status = css({
   zIndex: '1',
 });
 
-// This client's own device, drawn at the size of the window below the bars above it. It reads the
-// device stream that the tab holds, so it shows what the assistant put on the screen while the page
-// was closed, and the page never tells the user when that content changes.
 export function DeviceView(): ReactNode {
   const feed = useDeviceFeed();
   const events = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);

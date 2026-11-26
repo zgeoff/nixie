@@ -6,10 +6,9 @@ import { pickPixelsToSend } from './pick-pixels-to-send';
 import type { ScreenPixels } from './read-screen-pixels';
 import { readScreenPixels } from './read-screen-pixels';
 import { subscribeToDeviceEvents } from './subscribe-to-device-events';
-import type { DeviceEvents } from './use-device-events';
+import type { DeviceEvents } from './types';
 
 export interface DeviceFeed {
-  // keeps the device stream open until the returned function runs
   readonly retain: () => () => void;
   readonly subscribe: (onChange: () => void) => () => void;
   readonly getSnapshot: () => DeviceEvents;
@@ -33,7 +32,6 @@ interface FeedState {
   controller: AbortController | null;
   viewPixels: ScreenPixels | null;
 
-  // the size the last resize call gave the server since the stream opened, or null before one did
   resizedPixels: ScreenPixels | null;
   stopResizeTimer: (() => void) | null;
   isResizing: boolean;
@@ -43,8 +41,6 @@ interface FeedState {
   openings: number;
 }
 
-// The tab's own device stream, held above every page so a route change keeps it open and the
-// device is online whenever nixie is open. The device view reads what it holds.
 export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
   const state: FeedState = {
     events: initialDeviceEvents,

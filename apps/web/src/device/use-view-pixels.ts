@@ -3,8 +3,6 @@ import { useEffect } from 'react';
 import { readElementPixels } from './read-element-pixels';
 import { useDeviceFeed } from './use-device-feed';
 
-// Reports the size of the element to the device while it shows, which the server keeps as the size
-// of the device.
 export function useViewPixels(area: RefObject<HTMLElement | null>): void {
   const feed = useDeviceFeed();
 

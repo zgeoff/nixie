@@ -48,6 +48,7 @@ async function setupTest() {
       streamLiveDevice(api.context, {
         device: panel.device,
         token: panel.token,
+        isKeptActive: true,
         pixels: { width: 800, height: 600, pixelRatio: 1 },
         signal,
       }),

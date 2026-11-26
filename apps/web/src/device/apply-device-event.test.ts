@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { applyDeviceEvent } from './apply-device-event';
-import type { DeviceEvents } from './use-device-events';
+import type { DeviceEvents } from './types';
 
 function setupTest() {
   const start: DeviceEvents = {

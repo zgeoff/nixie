@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { pickSurface } from './pick-surface';
-import type { DeviceLayout, ScreenEvent } from './use-device-events';
+import type { DeviceLayout, ScreenEvent } from './types';
 
 interface Row {
   readonly title: string;

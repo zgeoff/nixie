@@ -1,7 +1,6 @@
 import type { ScreenPixels } from './read-screen-pixels';
 
-// The size to send after a resize, or null while the server already has it. Nothing sent yet means
-// the server may hold another size.
+// Nothing sent yet means the server may hold another size.
 export function pickPixelsToSend(
   sent: ScreenPixels | null,
   current: ScreenPixels,

@@ -23,6 +23,7 @@ export function createLiveProcedures(context: APIContext) {
         return streamLiveDevice(context, {
           device: caller.device,
           token: options.context.sessionToken,
+          isKeptActive: caller.caller.scope === 'device',
           pixels: input.device.pixels,
           signal: options.signal,
         });

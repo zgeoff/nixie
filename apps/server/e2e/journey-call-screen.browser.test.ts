@@ -246,18 +246,24 @@ test('it keeps the call live on the device route, which has no app shell, and sh
     8000,
   );
 
-  await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/call' })");
-  await ctx.waitForConnected();
-
   const recordsBefore = await ctx.nixie.readRecords();
 
-  // another client ends the call, so only the page's own live stream can tell the page
+  // The device route holds no page stream, so only the call's own stream can tell this page that
+  // another client ended the call.
   const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
 
   await ctx.api.client.calls.hangUp({
     callID: z.string().parse(started.payload['callID']),
     clientActionID: crypto.randomUUID(),
   });
+
+  await waitForPage(
+    ctx.view,
+    "location.pathname === '/device' && document.querySelector('[aria-label=\"Call in progress\"]') === null",
+    8000,
+  );
+
+  await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/call' })");
 
   await waitForPage(ctx.view, "document.body.innerText.includes('You hung up.')", 8000);
 

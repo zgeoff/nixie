@@ -1151,7 +1151,7 @@ test('it turns a device offline within 60 s of its connection dropping, with the
   expect(ctx.context.clients.devices.isOnline(row?.deviceID ?? '')).toBeFalse();
 });
 
-test('it leaves the last seen time of a full session alone while its page stream is open', async () => {
+test('it leaves the last seen time of a full session alone while its page and device streams are open', async () => {
   const ctx = await setupTest();
   const laptop = await ctx.enrol('full', 'laptop');
   const panel = await ctx.enrol('device', 'desk panel');
@@ -1170,14 +1170,27 @@ test('it leaves the last seen time of a full session alone while its page stream
   const laptopBefore = await ctx.readLastSeen(laptop.sessionID);
   const pageStream = await laptop.client.live.follow({});
 
+  const laptopDeviceStream = await laptop.client.live.follow({
+    device: { pixels: { width: 800, height: 600 } },
+  });
+
   await pageStream.next();
+  await laptopDeviceStream.next();
 
   ctx.clock.advance(10 * 60_000);
 
   // the device stream's periodic update shows that the intervals ran
   await waitForCondition(async () => (await ctx.readLastSeen(panel.sessionID)) > panelBefore);
 
+  // a second round, so the laptop's own interval has run since the clock moved
+  const panelMiddle = await ctx.readLastSeen(panel.sessionID);
+
+  ctx.clock.advance(10 * 60_000);
+
+  await waitForCondition(async () => (await ctx.readLastSeen(panel.sessionID)) > panelMiddle);
+
   await pageStream.return(undefined);
+  await laptopDeviceStream.return(undefined);
   await panelStream.return(undefined);
 
   const laptopAfter = await ctx.readLastSeen(laptop.sessionID);

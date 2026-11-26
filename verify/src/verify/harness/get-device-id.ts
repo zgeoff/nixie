@@ -7,8 +7,6 @@ type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 // first device is never the one a journey enrolled.
 export type DeviceSelector = { readonly name: string } | { readonly kind: 'screen' };
 
-// The short ID of the device that the selector names in a devices.list result of the request, or
-// an empty string.
 export function getDeviceID(body: ScriptedBody, selector: DeviceSelector): string {
   const text = JSON.stringify(body.messages ?? []).replaceAll(String.raw`\"`, '"');
   const name = 'name' in selector ? escapeName(selector.name) : '[^"]*';

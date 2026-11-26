@@ -7,7 +7,7 @@ import { FitBox } from './fit-box';
 import { LiveValue } from './live-value';
 import { PageRegion } from './page-region';
 import { pickRegionTextColour } from './pick-region-text-colour';
-import type { DeviceLayout, PageDataNotice, PageDelivery } from './use-device-events';
+import type { DeviceLayout, PageDataNotice, PageDelivery } from './types';
 import { useReportRegionError } from './use-report-region-error';
 
 export interface LayoutViewProps {

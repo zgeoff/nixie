@@ -1,6 +1,5 @@
-import type { DeviceEvents } from './use-device-events';
+import type { DeviceEvents } from './types';
 
-// What a device holds before its stream sends anything.
 export const initialDeviceEvents: DeviceEvents = {
   event: null,
   layout: null,

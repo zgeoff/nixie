@@ -54,8 +54,8 @@ export interface DeviceStreams {
   readonly readOfflineSinceMs: (deviceID: string) => number | null;
 
   // The size the device's newest open stream sent, unless a resize came after the streams that are
-  // open opened, which keeps its size against a stream that another tab opens. Null while the device
-  // holds no open stream.
+  // open opened, which keeps its size against a stream that another tab opens, until each stream
+  // that was open at the resize has closed. Null while the device holds no open stream.
   readonly readPixels: (deviceID: string) => ScreenPixels | null;
 
   // gives every open stream of the device a new size, and does nothing while it is offline
@@ -101,8 +101,8 @@ interface HeldDevice {
   closedAtMs: number | null;
   grace: AbortController | null;
 
-  // the size of the last resize while a stream stayed open, or null
-  resized: ScreenPixels | null;
+  // the size of the last resize and the streams that were open for it, or null
+  resized: { readonly pixels: ScreenPixels; readonly streams: Set<HeldStream> } | null;
 }
 
 export interface DeviceStreamsOptions {
@@ -139,13 +139,17 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
     const held = hold(deviceID);
 
     held.streams = held.streams.filter((open) => open !== stream);
+    held.resized?.streams.delete(stream);
+
+    if (held.resized?.streams.size === 0) {
+      held.resized = null;
+    }
 
     if (held.streams.length > 0) {
       return;
     }
 
     held.closedAtMs = options.clock.now();
-    held.resized = null;
 
     const grace = new AbortController();
 
@@ -253,7 +257,7 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
     readPixels: (deviceID) => {
       const held = devices.get(deviceID);
 
-      return held?.resized ?? held?.streams.at(-1)?.pixels ?? null;
+      return held?.resized?.pixels ?? held?.streams.at(-1)?.pixels ?? null;
     },
     resize: (deviceID, pixels) => {
       const held = devices.get(deviceID);
@@ -262,7 +266,7 @@ export function createDeviceStreams(options: DeviceStreamsOptions): DeviceStream
         return;
       }
 
-      held.resized = pixels;
+      held.resized = { pixels, streams: new Set(held.streams) };
 
       for (const stream of held.streams) {
         stream.pixels = pixels;

@@ -116,17 +116,20 @@ export function DevicePage(): ReactNode {
 
   if (phase.isScreenOn) {
     return (
-      <DeviceScreen
-        onClose={() => {
-          void closeDeviceScreen(async () => {
-            await navigate({ to: '/' });
-          });
-        }}
-        onSwitchOff={() => {
-          setScreen(false);
-        }}
-        onSignOut={signOut}
-      />
+      <>
+        <DeviceConnection />
+        <DeviceScreen
+          onClose={() => {
+            void closeDeviceScreen(async () => {
+              await navigate({ to: '/' });
+            });
+          }}
+          onSwitchOff={() => {
+            setScreen(false);
+          }}
+          onSignOut={signOut}
+        />
+      </>
     );
   }
 
@@ -198,7 +201,6 @@ async function switchScreen(
   }
 }
 
-// A call ends before the sign-out, so its microphone and peer connection close with the session.
 async function signOutDevice(
   client: ContractClient,
   hangUp: () => Promise<void>,

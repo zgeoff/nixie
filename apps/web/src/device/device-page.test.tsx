@@ -278,6 +278,63 @@ test('it signs the device out when the hang-up request of a live call fails', as
   expect(ctx.stub.stoppedTracks()).toBe(1);
 });
 
+test('it ends the call that a pending start opens before it signs the device out', async () => {
+  const ctx = setupTest('/call');
+
+  const session = await createDeviceSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  const held = Promise.withResolvers<void>();
+  const requests: string[] = [];
+
+  server.use(
+    http.post('*/rpc/calls/start', async () => {
+      await held.promise;
+
+      return HttpResponse.json({
+        json: { callID: 'c1', state: 'connecting', thread: 't1' },
+        meta: [],
+      });
+    }),
+    http.post('*/rpc/calls/hangUp', () => {
+      requests.push('hangUp');
+
+      return HttpResponse.json({
+        json: { callID: 'c1', state: 'ended', endedBy: 'you' },
+        meta: [],
+      });
+    }),
+    http.post('*/rpc/sessions/signOut', () => {
+      requests.push('signOut');
+
+      return HttpResponse.json({ json: { signedOutAt: new Date(0) }, meta: [] });
+    }),
+  );
+
+  const rendered = ctx.mount();
+
+  const start = await rendered.findByRole('button', { name: 'Start a call' });
+
+  await ctx.user.click(start);
+
+  await waitFor(() => {
+    expect(ctx.stub.microphoneRequests()).toBe(1);
+  });
+
+  await ctx.openDevicePage();
+
+  const signOut = await rendered.findByRole('button', { name: 'Sign out' });
+
+  await ctx.user.click(signOut);
+
+  held.resolve();
+
+  await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect([requests, ctx.stub.stoppedTracks()]).toStrictEqual([['hangUp', 'signOut'], 1]);
+});
+
 test('it keeps the device signed in and says so when the sign out fails', async () => {
   const ctx = setupTest();
 

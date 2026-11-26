@@ -63,6 +63,9 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   // true once the current reconnect's new offer has its answer in place
   let isRestartAnswered = false;
 
+  // the start that is running, which a hang-up waits for once the server has the request
+  let pendingStart: Promise<void> | null = null;
+
   // true from the first hang-up of the user on, so a second one sends nothing
   let hasHungUp = false;
 
@@ -249,11 +252,19 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     }
   };
 
-  const start = async (): Promise<void> => {
+  const start = (): Promise<void> => {
     if (snapshot.phase !== 'idle') {
-      return;
+      return Promise.resolve();
     }
 
+    const running = runStart();
+
+    pendingStart = running;
+
+    return running;
+  };
+
+  const runStart = async (): Promise<void> => {
     change({ phase: 'asking' });
 
     const mine = epoch;
@@ -345,11 +356,19 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
       // a call that has no ID yet: its microphone closes now, and a start that is still pending
       // finds the call changed and ends the call it opens
       if (snapshot.phase === 'asking' || snapshot.phase === 'starting') {
+        const isRequestSent = snapshot.phase === 'starting';
+
         release();
 
         snapshot = idleSnapshot;
 
         change({});
+
+        // the server may open the call behind the request, so the hang-up settles once the start
+        // has ended it
+        if (isRequestSent) {
+          await pendingStart;
+        }
       }
 
       return;
