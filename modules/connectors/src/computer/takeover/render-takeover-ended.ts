@@ -1,21 +1,13 @@
-import { takeoverEndedCodec, takeoverEndedFieldsSchema } from '@heynixie/connectors';
 import type { LogRecord } from '@heynixie/log';
-import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
-import { formatMessageTime } from '../message/format-message-time';
-import type { MessageTimeOptions } from '../types';
-import { capitalizeFirst } from './capitalize-first';
-import { renderUntrustedText } from './render-untrusted-text';
+import type { InboxRenderContext } from '@heynixie/tasks';
+import { capitalizeFirst, renderSystemMessage, renderUntrustedText } from '@heynixie/wire';
+import { takeoverEndedCodec, takeoverEndedFieldsSchema } from './takeover-ended-codec';
 
 // What the assistant reads when the desktop comes back, in the owner's name, or "the user" when none
 // is set.
-export function renderTakeoverEnded(
-  record: LogRecord,
-  times: MessageTimeOptions,
-  ownerName: string | null,
-  mint: () => string = mintBlockID,
-): string {
+export function renderTakeoverEnded(record: LogRecord, context: InboxRenderContext): string {
   const ended = takeoverEndedCodec.decode(record.payload);
-  const name = ownerName ?? 'the user';
+  const name = context.ownerName ?? 'the user';
   const duration = formatDuration(ended.durationSeconds);
 
   const first = {
@@ -29,8 +21,10 @@ export function renderTakeoverEnded(
 
   return renderSystemMessage({
     type: 'computer',
-    at: formatMessageTime(record.recordedAt, null, times),
-    body: [`[#${String(record.sequence)}] ${first}`, ...renderSeen(fields, mint)].join('\n'),
+    at: context.at,
+    body: [`[#${String(record.sequence)}] ${first}`, ...renderSeen(fields, context.mint)].join(
+      '\n',
+    ),
   });
 }
 

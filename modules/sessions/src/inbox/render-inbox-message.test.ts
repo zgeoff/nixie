@@ -1,5 +1,6 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
+import { inboxKinds } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { renderInboxMessage } from './render-inbox-message';
@@ -389,4 +390,36 @@ test('it routes a recovery.notice record to the restore system message', () => {
   );
 
   expect(message).toStartWith('<system-message type="restore"');
+});
+
+test('it renders a record of a kind that a feature added with the feature renderer, in the time and owner name of the inbox', () => {
+  onTestFinished(() => inboxKinds.set([]));
+
+  inboxKinds.set([
+    {
+      kind: 'ops.started',
+      wakes: () => false,
+      render: (record, context) =>
+        `${context.at} | ${context.ownerName ?? 'nobody'} | #${String(record.sequence)}`,
+    },
+  ]);
+
+  const record = buildMockLogRecord({
+    sequence: 77,
+    // @ts-expect-error -- sessions depends on no feature, so it does not see the kind that a feature adds
+    kind: 'ops.started',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+  });
+
+  const view = buildMockTaskMessageView({
+    messaging: { ...buildMockTaskMessageView().messaging, ownerName: 'Robin' },
+  });
+
+  expect(
+    renderInboxMessage(
+      record,
+      { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+      view,
+    ),
+  ).toBe('Tue 13 Oct, 14:05, Sydney | Robin | #77');
 });

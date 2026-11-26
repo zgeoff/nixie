@@ -4,6 +4,7 @@ import { backupConfigSchema } from '@heynixie/backup';
 import { voiceConfigSchema } from '@heynixie/calls';
 import { codingConfigSchema } from '@heynixie/coding';
 import {
+  codeConfigSchema,
   computerConfigSchema,
   gmailConfigSchema,
   imagesConfigSchema,
@@ -43,7 +44,8 @@ export const deploymentConfigSchema = z
     ...sandboxSections,
     definitions: definitionsConfigSchema,
     web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
-    computer: computerConfigSchema.default(computerConfigSchema.parse({})),
+    computer: computerConfigSchema.optional(),
+    code: codeConfigSchema.optional(),
     search: searchConfigSchema.default(searchConfigSchema.parse({})),
     images: imagesConfigSchema.nullable().default(null),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),

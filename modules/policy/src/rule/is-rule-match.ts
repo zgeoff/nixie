@@ -1,6 +1,7 @@
 import { match } from 'ts-pattern';
 import { pickRuleAliasTool } from '../memory/pick-rule-alias-tool';
 import type { Rule, RuleCall, RuleCheck } from '../types';
+import { toolShapes } from '../utils/tool-shapes';
 import { findArgument } from './find-argument';
 import { isCommandMatch, isCommandMentioned } from './is-command-match';
 import { isPatternMatch } from './is-pattern-match';
@@ -60,8 +61,6 @@ function isDestinationMatch(
     : destinations.some((destination) => isFit(destination));
 }
 
-const commandTool = 'computer.run';
-
 function isCheckMet(check: RuleCheck, call: RuleCall, isAllow: boolean): boolean {
   const value = findArgument(call.args, check.arg);
   const values: readonly unknown[] = Array.isArray(value) ? value : [value];
@@ -70,7 +69,13 @@ function isCheckMet(check: RuleCheck, call: RuleCall, isAllow: boolean): boolean
     return false;
   }
 
-  const isCommand = call.tool === commandTool && check.arg === 'command';
+  const isCommand = toolShapes
+    .list()
+    .some(
+      (shape) =>
+        shape.kind === 'command' && shape.tool === call.tool && shape.argument === check.arg,
+    );
+
   const isPassing = (item: unknown): boolean => isCheckPassed(check, item, { isCommand, isAllow });
 
   return isAllow ? values.every((item) => isPassing(item)) : values.some((item) => isPassing(item));

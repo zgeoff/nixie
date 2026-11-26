@@ -1,7 +1,8 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import { conversationTaskID } from './conversation-task-id';
+import { inboxKinds } from './inbox-kinds';
 
-const inboxKinds: ReadonlySet<string> = new Set([
+const coreInboxKinds: ReadonlySet<string> = new Set([
   'owner_message',
   'timer.fired',
   'action.outcome',
@@ -16,10 +17,6 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'proposals.settled',
   'proposals.deferred',
   'proposals.returned',
-  'computer.takeover_started',
-  'computer.takeover_ended',
-  'computer.handover_asked',
-  'computer.handover_closed',
   'device.status_changed',
   'tool_changed',
   'call.started',
@@ -60,5 +57,8 @@ export function isInboxRecord(
     return record.thread !== null && record.payload?.['wake'] === true;
   }
 
-  return record.thread !== null && inboxKinds.has(record.kind);
+  return (
+    record.thread !== null &&
+    (coreInboxKinds.has(record.kind) || inboxKinds.byKind(record.kind) !== null)
+  );
 }

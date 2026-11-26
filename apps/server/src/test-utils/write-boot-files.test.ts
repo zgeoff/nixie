@@ -332,3 +332,59 @@ test('it leaves the prices of each profile out when a gateway prices the replies
 
   expect(text).not.toInclude('prices:');
 });
+
+test.each([
+  {
+    title: 'every feature on',
+    extras: {},
+    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
+    code: {},
+  },
+  { title: 'the computer off', extras: { isComputerOff: true }, computer: undefined, code: {} },
+  {
+    title: 'the code tool off',
+    extras: { isCodeOff: true },
+    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
+    code: undefined,
+  },
+])('it writes a configuration with $title', async (row) => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    ...row.extras,
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect({ computer: config.computer, code: config.code }).toStrictEqual({
+    computer: row.computer,
+    code: row.code,
+  });
+});
+
+test.each([
+  {
+    title: 'neither feature',
+    extras: { isComputerOff: true, isCodeOff: true },
+    has: { computer: false, code: false },
+  },
+  { title: 'the computer', extras: { isComputerOff: true }, has: { computer: false, code: true } },
+  { title: 'every feature', extras: {}, has: { computer: true, code: true } },
+])('it leaves out the sandbox image of a feature that is off: $title', async (row) => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    ...row.extras,
+  });
+
+  const images = await loadSandboxManifest(files.manifestPath);
+
+  expect({
+    computer: images.computer !== undefined,
+    code: images.code !== undefined,
+  }).toStrictEqual(row.has);
+});

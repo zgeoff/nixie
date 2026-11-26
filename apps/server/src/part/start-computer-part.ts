@@ -13,6 +13,7 @@ import { makeOwnerTypedCheck } from '@heynixie/memory';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { isTestSandbox } from '@heynixie/sandbox';
 import { makeSecretFinder } from '@heynixie/secret-scan';
+import invariant from 'tiny-invariant';
 import { getSandboxImage } from '../sandbox/get-sandbox-image';
 import type { ServerPartsOptions } from '../server/start-server';
 
@@ -43,6 +44,10 @@ const legacyImageHomeEnv = { HOME: '/home/bun' } as const;
 // The assistant's computer: one long-lived sandbox and the tools that drive it.
 export async function startComputerPart(inputs: ComputerPartInputs): Promise<ComputerTools> {
   const options = inputs.options;
+  const computerConfig = options.config.computer;
+
+  invariant(computerConfig !== undefined, 'the computer part starts only with a computer section');
+
   const webFetch = options.config.web_fetch;
   const publicEgress = options.sandbox.adapter === 'imp' ? options.sandbox.imp.publicEgress : null;
 
@@ -71,9 +76,9 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     scans: makeUnexemptScans({ findSecret, logger: options.log }),
     logger: options.log,
     ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
-    takeover: { idleMs: options.config.computer.idle_hand_back_minutes * 60_000, records },
+    takeover: { idleMs: computerConfig.idle_hand_back_minutes * 60_000, records },
     handover: {
-      expiryMs: options.config.computer.handover_expiry_minutes * 60_000,
+      expiryMs: computerConfig.handover_expiry_minutes * 60_000,
       records: makeHandoverRecords({ log: inputs.log, definitions: inputs.definitions }),
     },
   });

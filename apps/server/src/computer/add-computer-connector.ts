@@ -10,8 +10,12 @@ const noAdmission: Admission = { run: (work) => work(), release: () => {} };
 // tool name still waits in the queue, so the connector answers to those names too.
 export function addComputerConnector(
   actions: ActionsWithForget,
-  computer: ComputerTools,
+  computer: ComputerTools | null,
 ): ActionsWithForget {
+  if (computer === null) {
+    return actions;
+  }
+
   const queued = computerToolNames.filter((name) =>
     computer.tools.some((tool) => tool.name === name && tool.execution === 'queued'),
   );

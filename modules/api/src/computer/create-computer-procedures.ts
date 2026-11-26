@@ -6,6 +6,7 @@ import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readHeadSequence } from '../utils/read-head-sequence';
+import { requireFeature } from '../utils/require-feature';
 import { buildWatchStreamURL } from './build-watch-stream-url';
 import { runComputerAction } from './run-computer-action';
 import { writeCheckedComputerWatch } from './write-checked-computer-watch';
@@ -18,6 +19,8 @@ export function createComputerProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'computer', options.errors.FEATURE_OFF);
 
       // only a signed-in session of the full scope watches: the screen can show a signed-in account
       if (caller.scope !== 'full') {
@@ -57,6 +60,8 @@ export function createComputerProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
+      requireFeature(context, 'computer', options.errors.FEATURE_OFF);
+
       const readAtSequence = await readHeadSequence(context);
 
       // only a session of the full scope can take over, so only it is asked to
@@ -78,6 +83,8 @@ export function createComputerProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'computer', options.errors.FEATURE_OFF);
 
       // only a signed-in session of the full scope takes over: it can type into a signed-in account
       if (caller.scope !== 'full') {
@@ -130,6 +137,8 @@ export function createComputerProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'computer', options.errors.FEATURE_OFF);
 
       if (caller.scope !== 'full') {
         throw options.errors.UNAUTHORIZED();

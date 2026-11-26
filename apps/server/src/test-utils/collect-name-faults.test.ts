@@ -34,3 +34,22 @@ test.each([
 
   expect(faults).toHaveLength(1);
 });
+
+test.each([
+  { title: 'inside its own path', file: 'modules/api/src/computer/a.ts', faults: 0 },
+  { title: 'outside its own path', file: 'modules/api/src/a.ts', faults: 1 },
+])('it finds $faults faults for a feature name $title', (row) => {
+  const faults = collectNameFaults([{ file: row.file, name: 'computer' }], [], {
+    computer: ['modules/api/src/computer'],
+  });
+
+  expect(faults).toHaveLength(row.faults);
+});
+
+test('it does not let a path of one feature cover the name of another', () => {
+  const faults = collectNameFaults([{ file: 'modules/api/src/computer/a.ts', name: 'mcp' }], [], {
+    computer: ['modules/api/src/computer'],
+  });
+
+  expect(faults).toHaveLength(1);
+});

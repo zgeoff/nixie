@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import type { Rule, RuleCall } from '../types';
+import { toolShapes } from '../utils/tool-shapes';
 import { isRuleMatch } from './is-rule-match';
 import { parseRuleFiles } from './parse-rule-files';
 
@@ -341,4 +342,40 @@ test.each([
     isRuleMatch(rule, { ...call, task: 'inbox-triage' }),
     isRuleMatch(rule, { ...call, context: 'conversation' }),
   ]).toStrictEqual([true, true, false]);
+});
+
+test.each([
+  { title: 'reads the argument of a command tool as a command line', shapes: true, isMatch: false },
+  {
+    title: 'reads the same argument as plain text when no shape names its tool',
+    shapes: false,
+    isMatch: true,
+  },
+])('it $title', (row) => {
+  const shapes = row.shapes
+    ? [{ kind: 'command' as const, tool: 'ops.run', argument: 'line' }]
+    : [];
+
+  toolShapes.set(shapes);
+
+  const isMatch = isRuleMatch(
+    {
+      id: 'ops-git-status',
+      outcome: 'allow',
+      tools: ['ops.run'],
+      checks: [{ arg: 'line', op: 'matches', value: 'git status *' }],
+    },
+    {
+      tool: 'ops.run',
+      effects: ['send'],
+      context: 'conversation',
+      task: null,
+      args: { line: 'git status && rm notes.txt' },
+      destinations: [],
+      sources: [],
+      at: 0,
+    },
+  );
+
+  expect(isMatch).toBe(row.isMatch);
 });

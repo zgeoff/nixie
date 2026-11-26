@@ -3,6 +3,8 @@ import type { JSONObject } from '@heynixie/log';
 import { isActionHeldMemoryTool } from '../memory/is-action-held-memory-tool';
 import type { Rule, RuleCheck, RuleForm } from '../types';
 import { toCanonicalText } from '../utils/to-canonical-text';
+import type { ToolShape } from '../utils/tool-shapes';
+import { toolShapes } from '../utils/tool-shapes';
 import { buildCommandPattern } from './is-command-match';
 import { renderRule } from './render-rule';
 import { toRuleForm } from './to-rule-form';
@@ -24,16 +26,11 @@ export interface AlwaysAllowRule {
   readonly sentence: string;
 }
 
-const commandTool = 'computer.run';
-
-// The screen acts share one rule, so an answer on a site covers a click and a type there. It names
-// these 2 tools and no other, and pins nothing but the host.
-const screenTools = ['computer.screen_click', 'computer.screen_type'];
 const unpinnableDestination = /[\s*]/u;
 
 // The rule that Always allow creates: the tool, this action's destinations, and an eq check for
 // each argument that is not free text. An action with an argument that no eq check can pin gets
-// no rule. A screen act pins its host alone, and with no host it gets no rule.
+// no rule. A tool of a destination shape pins its destination alone, and with none it gets no rule.
 export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule | null {
   // a move's topics are free text that no check can pin, so a rule for one move would allow any
   if (isActionHeldMemoryTool(facts.tool)) {
@@ -41,24 +38,27 @@ export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule |
   }
 
   const checks: RuleCheck[] = [];
-  const isScreenAct = screenTools.includes(facts.tool);
+  const shapes = toolShapes.list();
+  const shared = findSharedShape(shapes, facts.tool);
+  const commandArgument = findCommandArgument(shapes, facts.tool);
 
-  if (isScreenAct && facts.destinations.length === 0) {
+  if (shared !== null && facts.destinations.length === 0) {
     return null;
   }
 
-  if (facts.tool === commandTool) {
-    const command = typeof facts.input['command'] === 'string' ? facts.input['command'] : '';
+  if (commandArgument !== null) {
+    const value = facts.input[commandArgument];
+    const command = typeof value === 'string' ? value : '';
     const pattern = buildCommandPattern(command);
 
     if (pattern === null) {
       return null;
     }
 
-    checks.push({ arg: 'command', op: 'matches', value: pattern });
+    checks.push({ arg: commandArgument, op: 'matches', value: pattern });
   }
 
-  const pinned = facts.tool === commandTool || isScreenAct ? {} : facts.input;
+  const pinned = commandArgument !== null || shared !== null ? {} : facts.input;
 
   for (const [name, value] of Object.entries(pinned)) {
     if (facts.content.includes(name)) {
@@ -76,13 +76,13 @@ export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule |
     return null;
   }
 
-  const ruleName = isScreenAct ? 'computer-screen-acts' : facts.tool;
+  const ruleName = shared === null ? facts.tool : shared.name;
   const ruleID = `${ruleName.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '-')}-${facts.shortID.toLowerCase()}`;
 
   const rule: Rule = {
     id: ruleID,
     outcome: 'allow',
-    tools: isScreenAct ? screenTools : [facts.tool],
+    tools: shared === null ? [facts.tool] : [...shared.tools],
     ...(checks.length === 0 ? {} : { checks }),
     ...(facts.destinations.length === 0 ? {} : { destinations: [...facts.destinations] }),
   };
@@ -95,4 +95,24 @@ export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule |
     hash: createHash('sha256').update(toCanonicalText(form)).digest('hex'),
     sentence: renderRule(form),
   };
+}
+
+function findSharedShape(shapes: readonly ToolShape[], tool: string) {
+  for (const shape of shapes) {
+    if (shape.kind === 'destination' && shape.tools.includes(tool)) {
+      return shape;
+    }
+  }
+
+  return null;
+}
+
+function findCommandArgument(shapes: readonly ToolShape[], tool: string): string | null {
+  for (const shape of shapes) {
+    if (shape.kind === 'command' && shape.tool === tool) {
+      return shape.argument;
+    }
+  }
+
+  return null;
 }

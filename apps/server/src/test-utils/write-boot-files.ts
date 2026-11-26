@@ -42,6 +42,11 @@ export interface BootFileExtras {
 
   readonly isBackupOn?: boolean;
 
+  // the test build turns every feature on; a suite of a nixie with neither the computer nor the code
+  // tool leaves their sections out
+  readonly isComputerOff?: boolean;
+  readonly isCodeOff?: boolean;
+
   // the text of voice/voice.yaml, which puts the definitions at format 5
   readonly voiceYaml?: string;
 
@@ -73,7 +78,7 @@ export async function writeBootFiles(
   );
 
   await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
-  await writeManifest(join(directory, 'sandbox-manifest.json'));
+  await writeManifest(join(directory, 'sandbox-manifest.json'), extras);
   await writeStubSops(join(directory, 'sops'));
 
   await writeConfig(directory, [
@@ -158,13 +163,19 @@ async function writeSecrets(
   await writeFile(path, `${lines.join('\n')}\n`);
 }
 
-async function writeManifest(path: string): Promise<void> {
+// A manifest of a feature that is off leaves that feature's image out, so a start that still needs
+// the image refuses.
+async function writeManifest(path: string, extras: BootFileExtras): Promise<void> {
   const manifest = {
     conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
     fetch: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
-    code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
+    ...(extras.isCodeOff === true
+      ? {}
+      : { code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}` }),
     codex: `ghcr.io/example/nixie-codex@sha256:${'e'.repeat(64)}`,
-    computer: `ghcr.io/example/nixie-computer@sha256:${'a'.repeat(64)}`,
+    ...(extras.isComputerOff === true
+      ? {}
+      : { computer: `ghcr.io/example/nixie-computer@sha256:${'a'.repeat(64)}` }),
     render: `ghcr.io/example/nixie-render@sha256:${'b'.repeat(64)}`,
   };
 
@@ -243,6 +254,8 @@ function buildConfigLines(
     ),
     'imp:',
     '  url: http://127.0.0.1:7070',
+    ...(extras.isComputerOff === true ? [] : ['computer: {}']),
+    ...(extras.isCodeOff === true ? [] : ['code: {}']),
     'definitions:',
     `  source: { kind: path, path: ${join(directory, 'definitions')} }`,
   ];

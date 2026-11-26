@@ -119,8 +119,8 @@ export interface ConversationEndpointTools {
 
   // the tools of the Google connector, which each run leaves out while its scopes are missing
   readonly google: readonly ToolDefinition[];
-  readonly codeRun: ToolDefinition;
-  readonly fileSend: ToolDefinition;
+  readonly codeRun: ToolDefinition | null;
+  readonly fileSend: ToolDefinition | null;
   readonly forget: ToolDefinition;
   readonly readErasure: () => ErasureStuckPort | null;
   readonly search: ConversationSearch | null;
@@ -380,8 +380,8 @@ export async function startConversationEndpoint(
     ...buildConversationTools(
       {
         webFetch: tools.webFetch,
-        codeRun: tools.codeRun,
-        fileSend: tools.fileSend,
+        ...(tools.codeRun === null ? {} : { codeRun: tools.codeRun }),
+        ...(tools.fileSend === null ? {} : { fileSend: tools.fileSend }),
         forget: tools.forget,
         time,
         logReaders,

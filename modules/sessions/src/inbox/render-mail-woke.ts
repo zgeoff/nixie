@@ -1,9 +1,8 @@
 import type { LogRecord } from '@heynixie/log';
 import { mailWokeFieldsSchema, triggerMailWokeCodec } from '@heynixie/tasks';
-import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
+import { mintBlockID, renderSystemMessage, renderUntrustedText } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
-import { renderUntrustedText } from './render-untrusted-text';
 
 // What a target reads when mail that its wake rules matched arrives. The sender and the subject of
 // each mail are outside content, so they sit inside the markers that a page read shows. A wake whose

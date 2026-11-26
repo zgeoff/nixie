@@ -28,6 +28,7 @@ export { buildSearchTool } from './search/build-search-tool';
 export { buildTimeTool } from './time/build-time-tool';
 export type { FetchBackoff, FetchBackoffOptions } from './fetch/make-fetch-backoff';
 export { makeFetchBackoff } from './fetch/make-fetch-backoff';
+export { codeConfigSchema } from './code/code-config-schema';
 export type { CodeRunToolOptions } from './code/build-code-run-tool';
 export { buildCodeRunTool } from './code/build-code-run-tool';
 export type { FileSendToolOptions } from './code/build-file-send-tool';
@@ -126,6 +127,7 @@ export type { ComputerToolOptions } from './computer/computer-tool-options';
 export type { Computer, ComputerOptions } from './computer/start-computer';
 export { startComputer } from './computer/start-computer';
 export type { WatchConnection, WatchSocket } from './computer/watch/types';
+export { computerInboxKinds } from './computer/computer-inbox-kinds';
 export { computerConfigSchema } from './computer/computer-config-schema';
 export type { ComputerTakeover } from './computer/takeover/types';
 

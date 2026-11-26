@@ -238,6 +238,22 @@ export interface TaskStartBounds {
   readonly reportDefaults: RunSettings['reportDefaults'];
 }
 
+// What a record's renderer is given beside the record: the time as the inbox shows it, the owner's
+// name, and the source of the IDs that fence untrusted text.
+export interface InboxRenderContext {
+  readonly at: string;
+  readonly ownerName: string | null;
+  readonly mint: () => string;
+}
+
+// A kind of inbox record that a feature adds: whether it wakes the task, and how the inbox shows it.
+// The feature fills the list; the inbox names none.
+export interface InboxKind {
+  readonly kind: string;
+  readonly wakes: (payload: LogRecord['payload']) => boolean;
+  readonly render: (record: LogRecord, context: InboxRenderContext) => string;
+}
+
 export interface TaskMessaging {
   readonly directory: readonly TaskProfile[];
 

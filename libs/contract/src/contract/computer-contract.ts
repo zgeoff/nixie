@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import { featureOffErrors } from './feature-off-errors';
 import { reusedIDErrors } from './reused-id-errors';
 import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
 
-const checkedAction = signedIn.errors(reusedIDErrors);
+const computerProcedure = signedIn.errors(featureOffErrors);
+const checkedAction = computerProcedure.errors(reusedIDErrors);
 
 // null when the reason was forgotten
 const openAskSchema = z.object({ sequence: sequenceSchema, reason: z.string().nullable() });
@@ -39,7 +41,7 @@ export const computerContract = {
   // The assistant's ask for a take-over, if one stands, with the log sequence the read saw. A client
   // follows the live stream from that sequence: an ask opens with a computer.handover_asked record
   // and ends with a computer.takeover_started or computer.handover_closed record.
-  readHandover: signedIn.output(
+  readHandover: computerProcedure.output(
     z.object({ ask: openAskSchema.nullable(), readAtSequence: sequenceSchema }),
   ),
 

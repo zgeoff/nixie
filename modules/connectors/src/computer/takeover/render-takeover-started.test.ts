@@ -3,7 +3,13 @@ import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { renderTakeoverStarted } from './render-takeover-started';
 
 function setupTest() {
-  return { times: { defaultZone: 'Europe/London', now: new Date('2026-03-03T09:13:00Z') } };
+  return {
+    buildContext: (ownerName: string | null) => ({
+      at: 'Tue 3 Mar, 09:12, London',
+      ownerName,
+      mint: () => 'fence-1',
+    }),
+  };
 }
 
 test('it tells the assistant that the owner took over and that its calls wait', () => {
@@ -17,7 +23,7 @@ test('it tells the assistant that the owner took over and that its calls wait', 
     payload: { shortID: '88', device: 'session-1' },
   });
 
-  expect(renderTakeoverStarted(record, ctx.times, 'Sam')).toMatch(
+  expect(renderTakeoverStarted(record, ctx.buildContext('Sam'))).toMatch(
     /^<system-message type="computer" id="[\da-f]{12}" at="Tue 3 Mar, 09:12, London">\n\[#88\] Sam took over the computer\. You can read the screen and your tabs; your clicks, typing and commands wait until it comes back\.\n<\/system-message id="[\da-f]{12}">$/u,
   );
 });
@@ -32,7 +38,7 @@ test('it names the user when the owner has no name', () => {
     payload: { shortID: '88', device: 'session-1' },
   });
 
-  expect(renderTakeoverStarted(record, ctx.times, null)).toInclude(
+  expect(renderTakeoverStarted(record, ctx.buildContext(null))).toInclude(
     'The user took over the computer.',
   );
 });
