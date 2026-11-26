@@ -22,7 +22,6 @@ is deleted.
 | Mail            | [mail and wake rules](mail/README.md)                                                             |
 | Connections     | [Google connections](google-connections.md)                                                       |
 | Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)      |
-| MCP servers     | [the MCP proxy build](mcp-proxy-build.md)                                                         |
 | Channels        | [the push notice](push-notice.md)                                                                 |
 | Devices         | [the camera, the speaker and the microphone](devices.md), [client devices](client-devices.md)     |
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md) |
