@@ -4,12 +4,13 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
 import { answerPageRequest } from '../device/answer-page-request';
+import type { ProposalParts } from '../proposal/build-proposal-core-deps';
 import { findSessionToken } from '../session/find-session-token';
 import { isDeviceProcedure } from '../session/is-device-procedure';
 import { isReadOnlyProcedure } from '../session/is-read-only-procedure';
 import { isReadOnlyToken } from '../session/is-read-only-token';
 import { readSessionScope } from '../session/read-session-scope';
-import type { APIContext, ReadViewMemory } from '../types';
+import type { APIContext } from '../types';
 import { createAPIRouter } from './create-api-router';
 
 interface RouteContext {
@@ -18,17 +19,13 @@ interface RouteContext {
 
 export function createAPIApp(
   context: APIContext,
-  readMemory: ReadViewMemory,
-  runInForceSeed: () => Promise<void>,
+  parts: ProposalParts,
   readDefinitions: () => DefinitionsContext | null,
 ) {
-  const handler = new RPCHandler(
-    createAPIRouter(context, readMemory, runInForceSeed, readDefinitions),
-    {
-      eventIteratorKeepAliveInterval: liveStreamTiming.keepAliveMs,
-      plugins: [new ResponseHeadersPlugin()],
-    },
-  );
+  const handler = new RPCHandler(createAPIRouter(context, parts, readDefinitions), {
+    eventIteratorKeepAliveInterval: liveStreamTiming.keepAliveMs,
+    plugins: [new ResponseHeadersPlugin()],
+  });
 
   return new Elysia().all(
     '/rpc*',

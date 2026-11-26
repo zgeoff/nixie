@@ -5,7 +5,12 @@ import { join } from 'node:path';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
 import type { PromptsInForce } from '@heynixie/prompts';
-import { promptsOverrideProposedCodec, readPromptApproval } from '@heynixie/prompts';
+import {
+  mapPromptProposalRecord,
+  promptsOverrideProposedCodec,
+  readPromptApproval,
+} from '@heynixie/prompts';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { createRouterClient } from '@orpc/server';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
@@ -28,7 +33,12 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  const log = { writer, deploymentKey, projections: [] };
+  const log = {
+    writer,
+    deploymentKey,
+    projections: [buildProposalsProjection([mapPromptProposalRecord])],
+  };
+
   const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
   const wakeExports = mock(() => {});
 
@@ -286,13 +296,19 @@ test('#reject records the rejection with your reason', async () => {
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
-    kinds: ['prompts.override_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(result).toStrictEqual({ proposalID: 'p8w2n4c6ld' });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
-    { status: 'readable', fields: { reason: 'The compaction needs its safety part.' } },
+    {
+      status: 'readable',
+      fields: {
+        reason: 'The compaction needs its safety part.',
+        sentence: 'Override the prompt compaction.',
+      },
+    },
   ]);
 });
 
@@ -343,7 +359,7 @@ test('#reject refuses an answer under another proposal hash with its code', asyn
       reason: {
         code: 'PROPOSAL_HASH',
         status: 409,
-        message: 'the answer to prompt proposal p8w2n4c6ld names another proposal hash',
+        message: 'the prompt proposal p8w2n4c6ld cannot take this answer',
       },
     },
   ]);
@@ -386,7 +402,7 @@ test('#approve refuses a proposal that a rejection closed with its code', async 
       reason: {
         code: 'PROPOSAL_CLOSED',
         status: 409,
-        message: 'prompt proposal p8w2n4c6ld is rejected, so it takes no answer',
+        message: 'the prompt proposal p8w2n4c6ld cannot take this answer',
       },
     },
   ]);

@@ -13,6 +13,7 @@ import {
   resumeOpenHandover,
 } from '@heynixie/connectors';
 import {
+  checkPromptProposal,
   makeRetireOneShot,
   runGapChecks,
   runMandateExpiry,
@@ -21,7 +22,6 @@ import {
 import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
 import { toErrorFields } from '@heynixie/logger';
 import { buildMailSource } from '@heynixie/mail';
-import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSpendWatcher } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
 import {
@@ -321,23 +321,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
-    name: 'prompt_lapse_sweep',
-    needs: ['server_parts', 'start_record'],
-    start: async (reader) => {
-      const parts = reader.get('server_parts');
-
-      const sweep = startPromptLapseSweep({
-        context: parts.context,
-        clock: parts.context.clock,
-        onError: (error) => {
-          parts.log('prompts.lapse_failed', toErrorFields(error));
-        },
-      });
-
-      await parts.cleanup.defer(() => sweep.stop());
-    },
-  },
-  {
     // A device that goes online or offline wakes the model when the list that devices.watch set
     // names the change.
     name: 'device_wakes',
@@ -429,6 +412,10 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const sweeps = startProposalSweeps({
         deps: buildProposalCoreDeps(apiContext, {
           readMemory: () => reader.find('memory'),
+          findPrompts: () => ({
+            readInForce: () => parts.inForce.read(),
+            checkProposal: checkPromptProposal,
+          }),
           runInForceSeed,
         }),
         clock: parts.context.clock,

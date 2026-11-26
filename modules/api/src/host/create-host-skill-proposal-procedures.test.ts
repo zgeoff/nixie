@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
-import { skillsWriteProposedCodec } from '@heynixie/skills';
+import { buildProposalsProjection } from '@heynixie/proposals';
+import { mapSkillProposalRecord, skillsWriteProposedCodec } from '@heynixie/skills';
 import { createRouterClient } from '@orpc/server';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
@@ -28,7 +29,12 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  const log = { writer, deploymentKey, projections: [] };
+  const log = {
+    writer,
+    deploymentKey,
+    projections: [buildProposalsProjection([mapSkillProposalRecord])],
+  };
+
   const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
   const runInForceSeed = mock(() => Promise.resolve());
 
@@ -275,11 +281,14 @@ test('#reject records the rejection with your reason', async () => {
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
-    kinds: ['skills.write_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
-    { status: 'readable', fields: { reason: 'the star maps come from a feed' } },
+    {
+      status: 'readable',
+      fields: { reason: 'the star maps come from a feed', sentence: 'Write the skill star-chart.' },
+    },
   ]);
 });
 

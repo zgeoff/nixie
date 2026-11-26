@@ -47,7 +47,7 @@ import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
 
-type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]>>;
+type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]['readMemory']>>;
 
 interface TestAPI {
   readonly dataDir: string;
@@ -328,8 +328,7 @@ function startTestApp(
   // The device API's tests check the answer, and the definitions' own tests check the seed after it.
   const app = createAPIApp(
     context,
-    () => memory.store,
-    () => Promise.resolve(),
+    { readMemory: () => memory.store, runInForceSeed: () => Promise.resolve() },
     () => null,
   );
 

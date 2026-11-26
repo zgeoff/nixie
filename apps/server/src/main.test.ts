@@ -840,7 +840,7 @@ test('it shows the conversation your reason for a proposal you rejected in the w
   expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
     {
       text: expect.toInclude(
-        `rejected your memory proposal ${buildShortIDFromUUID(proposal.proposalID)}. Reason: "only on weekends, not every day".`,
+        `Your memory proposal ${buildShortIDFromUUID(proposal.proposalID)} was declined: only on weekends, not every day`,
       ),
     },
   ]);

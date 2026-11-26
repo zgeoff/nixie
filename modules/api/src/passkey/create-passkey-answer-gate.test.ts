@@ -99,7 +99,13 @@ async function setupTest() {
       withWriteTransaction(api.context.log.writer, async (tx) => {
         await run.guard(tx);
 
-        return { status: 'done', result: { proposalID: row.id, state: 'approved' } };
+        return {
+          status: 'done',
+          result: { proposalID: row.id, state: 'approved' },
+          usedBy: null,
+          detail: null,
+          otherThreads: [],
+        };
       }),
   };
 

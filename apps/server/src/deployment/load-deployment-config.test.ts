@@ -112,6 +112,7 @@ test('it reads every section, with the default of each setting the file leaves o
     },
     approvals: {
       defer: { default_minutes: 60, evening_at: '18:00', morning_at: '08:00' },
+      lapse_days: { action: 3, memory: 14, skill: 14, rule_change: 14, prompt: 14, mcp: 14 },
       passkey_window_minutes: 10,
     },
     skills: { catalogShare: 0.02 },

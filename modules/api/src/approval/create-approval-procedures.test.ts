@@ -466,7 +466,7 @@ test('#approvals.answerProposal puts the note of a declined memory proposal in t
 
   const read = await readRecords(ctx.api.context.log, {
     afterSequence: 0,
-    kinds: ['memory.proposal_rejected'],
+    kinds: ['proposals.settled'],
     limit: 10,
   });
 

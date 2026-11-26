@@ -1,8 +1,8 @@
-import type { AnswerSettlement, ProposalFamily } from '@heynixie/proposals';
+import type { AnswerSettlement, ProposalAnswerInput, ProposalFamily } from '@heynixie/proposals';
 import { answerProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import type { ProposalAPIContext } from './build-proposal-core-deps';
+import type { ProposalAPIContext, ProposalParts } from './build-proposal-core-deps';
 import { buildProposalCoreDeps } from './build-proposal-core-deps';
 
 // A device route checks its caller's session again inside the answer's transaction. A host route
@@ -14,6 +14,7 @@ export interface LegacyCaller {
 
 export interface LegacyParts {
   readonly runInForceSeed: () => Promise<unknown>;
+  readonly findPrompts?: ProposalParts['findPrompts'];
   readonly caller?: LegacyCaller;
 }
 
@@ -25,6 +26,7 @@ export interface LegacyAnswer {
   readonly choice: 'approve' | 'decline';
   readonly note?: string;
   readonly files?: readonly { readonly path: string; readonly text: string }[];
+  readonly prompt?: NonNullable<ProposalAnswerInput['prompt']>;
 }
 
 // The routes that predate the approvals namespace answer through the same checks, for one kind,
@@ -38,6 +40,7 @@ export async function answerLegacyProposal(
   const deps = buildProposalCoreDeps(context, {
     readMemory: () => null,
     runInForceSeed: parts.runInForceSeed,
+    ...(parts.findPrompts === undefined ? {} : { findPrompts: parts.findPrompts }),
   });
 
   // A host route has no session and needs no passkey. A device route names a caller and, with no
@@ -55,6 +58,7 @@ export async function answerLegacyProposal(
       choice: answer.choice,
       ...(answer.note === undefined ? {} : { note: answer.note }),
       ...(answer.files === undefined ? {} : { files: answer.files }),
+      ...(answer.prompt === undefined ? {} : { prompt: answer.prompt }),
       identityID: 'owner',
     },
     hooks,

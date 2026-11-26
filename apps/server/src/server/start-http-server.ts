@@ -1,4 +1,4 @@
-import type { APIContext, ReadViewMemory, WatchSocketData } from '@heynixie/api';
+import type { APIContext, ProposalParts, ReadViewMemory, WatchSocketData } from '@heynixie/api';
 import { createAPIApp, createWatchRoute } from '@heynixie/api';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
@@ -27,6 +27,9 @@ export interface HTTPServerOptions {
   // null before the server parts start
   readonly readDefinitions: () => DefinitionsContext | null;
 
+  // the prompts in force and their check, which a prompt override's approval needs
+  readonly findPrompts: ProposalParts['findPrompts'];
+
   readonly gate: APIGate;
 }
 
@@ -41,16 +44,17 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
     log: options.log,
   });
 
-  const app = new Elysia()
-    .use(health)
-    .use(
-      createAPIApp(
-        options.apiContext,
-        options.readMemory,
-        options.runInForceSeed,
-        options.readDefinitions,
-      ),
-    );
+  const app = new Elysia().use(health).use(
+    createAPIApp(
+      options.apiContext,
+      {
+        readMemory: options.readMemory,
+        runInForceSeed: options.runInForceSeed,
+        findPrompts: options.findPrompts,
+      },
+      options.readDefinitions,
+    ),
+  );
 
   const watchRoute = createWatchRoute(options.apiContext);
 

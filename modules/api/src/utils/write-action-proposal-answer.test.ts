@@ -1,14 +1,26 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
-import { buildActionProposalInput, readActionProposals } from '@heynixie/policy';
+import {
+  buildActionProposalInput,
+  mapActionProposalRecord,
+  readActionProposals,
+} from '@heynixie/policy';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { createConversationTask, readInbox, tasksProjections } from '@heynixie/tasks';
 import { writeActionProposalAnswer } from './write-action-proposal-answer';
 
 async function setupTest() {
   const started = await startTestLog();
 
-  const log = { ...started.log, projections: [...started.log.projections, ...tasksProjections] };
+  const log = {
+    ...started.log,
+    projections: [
+      ...started.log.projections,
+      ...tasksProjections,
+      buildProposalsProjection([mapActionProposalRecord]),
+    ],
+  };
 
   const context = {
     log,

@@ -1,8 +1,12 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import type { RuleContext, RuleProposalAnswer } from '@heynixie/definitions';
+import type { RuleContext } from '@heynixie/definitions';
 import { readProposal } from '@heynixie/proposals';
 import type { LegacyCaller } from './answer-legacy-proposal';
 import { answerLegacyProposal } from './answer-legacy-proposal';
+
+export type RuleProposalAnswer =
+  | { readonly answer: 'approve'; readonly proposalID: string }
+  | { readonly answer: 'reject'; readonly proposalID: string; readonly reason: string };
 
 interface RuleAnswerErrorOptions {
   readonly message: string;

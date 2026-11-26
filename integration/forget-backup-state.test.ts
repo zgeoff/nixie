@@ -105,8 +105,7 @@ async function setupTest() {
 
   const app = createAPIApp(
     context,
-    () => memory,
-    () => Promise.resolve(),
+    { readMemory: () => memory, runInForceSeed: () => Promise.resolve() },
     () => null,
   ).listen({ hostname: '127.0.0.1', port: 0 });
 
@@ -121,8 +120,7 @@ async function setupTest() {
 
   const offApp = createAPIApp(
     offContext,
-    () => memory,
-    () => Promise.resolve(),
+    { readMemory: () => memory, runInForceSeed: () => Promise.resolve() },
     () => null,
   ).listen({ hostname: '127.0.0.1', port: 0 });
 

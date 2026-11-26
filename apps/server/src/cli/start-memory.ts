@@ -6,6 +6,8 @@ import { buildItemLinkCounts } from '@heynixie/notebook';
 import type { RunCheck } from '@heynixie/sessions';
 import type { ServerParts } from '../types';
 
+const dayMs = 24 * 60 * 60 * 1000;
+
 export async function startMemory(
   parts: ServerParts,
   cleanupSessions: CleanupSessions,
@@ -35,7 +37,10 @@ export async function startMemory(
       check,
       clock: parts.context.clock,
       defaultZone: parts.config.time.default_zone,
-      limits: parts.config.memory.limits,
+      limits: {
+        ...parts.config.memory.limits,
+        proposalLapseMs: parts.config.approvals.lapse_days.memory * dayMs,
+      },
       ownerName: parts.config.owner.name,
       ownerPronouns: parts.config.owner.pronouns,
       getPromptsInForce: () => {

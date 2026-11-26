@@ -305,8 +305,8 @@ test('it rejects a prompt proposal with its reason, which the model reads, and t
 
   expect(nixie.guest.turns.at(-1)?.input).toMatchObject([
     {
-      text: expect.toInclude(
-        `rejected your prompt proposal ${proposalID} (compaction). Reason: "Keep the built-in safety part.".`,
+      text: expect.stringMatching(
+        /Your prompt override [a-z0-9]{10} \(Override the prompt compaction\.\) was declined: Keep the built-in safety part\./u,
       ),
     },
   ]);

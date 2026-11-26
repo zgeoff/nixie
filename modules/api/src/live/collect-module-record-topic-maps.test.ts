@@ -112,6 +112,7 @@ async function setupTest() {
     },
     promptWriteTool: buildPromptWriteTool({
       log: api.context.log,
+      clock: api.context.clock,
       readInForce: () => ({
         snapshotHash: 'sha256:test',
         personaVersion: 'persona-a',
@@ -371,7 +372,7 @@ test('it sends a changed event with the approvals topic when a prompt override i
 
   const changed = await changes.readChanged();
 
-  expect(changed).toStrictEqual({ kind: 'changed', topics: ['approvals'] });
+  expect(changed).toStrictEqual({ kind: 'changed', topics: ['approvals', 'tasks'] });
 });
 
 test('it sends a changed event with the triggers and definitions topics when a definition is armed', async () => {

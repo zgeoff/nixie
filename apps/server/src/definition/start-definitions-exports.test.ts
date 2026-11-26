@@ -24,7 +24,11 @@ import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { network } from '@heynixie/mock-server';
-import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
+import {
+  promptsOverrideProposedCodec,
+  readPromptProposals,
+  writePromptApproval,
+} from '@heynixie/prompts';
 import { waitForCondition } from '@heynixie/testing';
 import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
@@ -350,16 +354,23 @@ test("it exports an approved prompt override beside the skills, with the part fi
     },
   ]);
 
-  await writePromptProposalAnswer(
-    {
-      log: ctx.log,
-      clock: systemClock,
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      readInForce: () => null,
-      checkProposal: checkPromptProposal,
-    },
-    { answer: 'approve', proposalID: 'k3x9m2p7qa', proposalHash: 'hash-a' },
-  );
+  await withWriteTransaction(ctx.log.writer, async (tx) => {
+    const [state] = await readPromptProposals(tx, ['k3x9m2p7qa']);
+
+    invariant(state, 'the proposal was written');
+
+    return writePromptApproval(
+      tx,
+      {
+        log: ctx.log,
+        clock: systemClock,
+        definitions: () => ({ snapshotHash: 'snapshot-a' }),
+        readInForce: () => null,
+        checkProposal: checkPromptProposal,
+      },
+      { state, entry: state.proposal.entry, files: state.proposal.files, identityID: 'owner' },
+    );
+  });
 
   const inputs = await loadServerInputs({
     configPath: files.configPath,

@@ -55,7 +55,13 @@ async function setupTest() {
               const applied = await action.approve(...args);
 
               return applied.status === 'done'
-                ? { status: 'done' as const, result: applied.result }
+                ? {
+                    status: 'done' as const,
+                    result: applied.result,
+                    usedBy: applied.usedBy,
+                    detail: applied.detail,
+                    otherThreads: applied.otherThreads,
+                  }
                 : applied;
             },
           },

@@ -72,6 +72,7 @@ import type {
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { readActionCallSource } from '../action/read-action-call-source';
 import { buildContactTool } from '../cli/build-contact-tool';
+import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
@@ -202,6 +203,7 @@ export async function startConversationEndpoint(
       relatedMemory,
       log: options.context.log,
       clock: options.context.clock,
+      proposalConfig: buildProposalConfig(options.config),
       readInForce: tools.readInForce,
       refreshDefinitions: tools.refreshDefinitions,
       runInForceSeed: tools.runInForceSeed,
@@ -211,6 +213,8 @@ export async function startConversationEndpoint(
 
   const promptContext = {
     log: options.context.log,
+    clock: options.context.clock,
+    proposalConfig: buildProposalConfig(options.config),
     readInForce: tools.readInForce,
     checkProposal: checkPromptProposal,
   };

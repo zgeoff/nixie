@@ -6,7 +6,6 @@ import { createPathSource, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
-import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { sql } from 'kysely';
 import { z } from 'zod';
@@ -146,20 +145,9 @@ test('it folds the same rows from the log as the migration backfills from it', a
     asks.map((ask) => ask.record),
   );
 
-  await ctx.memory.writes.remember({
-    text: 'Keeps a rowing boat at the lake',
-    caller: buildMockWriteCaller(),
-  });
-
-  await ctx.memory.writes.remember({
-    text: 'Moors the boat at the north jetty',
-    caller: buildMockWriteCaller(),
-  });
-
   const listed = await ctx.client.approvals.listItems();
 
   const declined = listed.items.find((item) => item.proposal.kind === 'action');
-  const approved = listed.items.find((item) => item.group === 'memory');
 
   await ctx.client.approvals.answerProposal({
     proposalID: declined?.proposal.proposalID ?? 'missing',
@@ -169,33 +157,35 @@ test('it folds the same rows from the log as the migration backfills from it', a
     clientActionID: crypto.randomUUID(),
   });
 
-  await ctx.client.approvals.answerProposal({
-    proposalID: approved?.proposal.proposalID ?? 'missing',
-    actionHash: approved?.proposal.actionHash ?? 'missing',
-    choice: 'approve',
-    clientActionID: crypto.randomUUID(),
-  });
-
   const folded = await ctx.readRows();
 
   await ctx.runBackfill();
 
   const backfilled = await ctx.readRows();
 
-  expect({ rows: backfilled, count: backfilled.length }).toStrictEqual({ rows: folded, count: 5 });
+  expect({ rows: backfilled, count: backfilled.length }).toStrictEqual({ rows: folded, count: 3 });
 });
 
 test('it folds the answering identity of each answered row as the migration backfills it', async () => {
   const ctx = await setupTest();
 
-  await ctx.memory.writes.remember({
-    text: 'Keeps a rowing boat at the lake',
-    caller: buildMockWriteCaller(),
+  const ask = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'mail.send',
+    effects: ['send'],
+    cause: 'no_rule',
+    input: { to: 'harbour@example.org' },
+    destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+    content: [],
   });
+
+  await writeRecords(ctx.api.context.log, [ask.record]);
 
   const listed = await ctx.client.approvals.listItems();
 
-  const item = listed.items.find((entry) => entry.group === 'memory');
+  const item = listed.items.find((entry) => entry.proposal.kind === 'action');
 
   await ctx.client.approvals.answerProposal({
     proposalID: item?.proposal.proposalID ?? 'missing',

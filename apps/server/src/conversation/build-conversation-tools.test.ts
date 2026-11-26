@@ -97,7 +97,6 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'skill_reload',
     'skill_reload_all',
     'skill_write',
-    'skill_pending',
     'prompt_read',
     'memory.recall',
     'memory.usage',
