@@ -21,8 +21,21 @@ export interface WebJourney {
   readonly startServer: () => Promise<SpawnedNixieProcess>;
 }
 
-export async function startWebJourney(): Promise<WebJourney> {
-  const nixie = await startSpawnedNixie();
+export interface WebJourneyOptions {
+  // gives nixie calls, priced at this many dollars a minute, on the test build's fake speech layer
+  readonly voicePricePerMinute?: number;
+
+  // a script that every page runs first, such as a microphone stand-in
+  readonly headScript?: string;
+}
+
+export async function startWebJourney(options: WebJourneyOptions = {}): Promise<WebJourney> {
+  const nixieOptions =
+    options.voicePricePerMinute === undefined
+      ? {}
+      : { voicePricePerMinute: options.voicePricePerMinute };
+
+  const nixie = await startSpawnedNixie(nixieOptions);
 
   const relay = startAPIRelay();
   const target = { nixieURL: relay.url };
@@ -44,7 +57,11 @@ export async function startWebJourney(): Promise<WebJourney> {
   const web = await startBuiltWeb(relay.url);
 
   // the relay forwards requests only, so the front proxy bridges a WebSocket to nixie itself
-  const app = startFrontProxy({ apiURL: () => target.nixieURL, webURL: web.url });
+  const app = startFrontProxy({
+    apiURL: () => target.nixieURL,
+    webURL: web.url,
+    ...(options.headScript === undefined ? {} : { headScript: options.headScript }),
+  });
 
   const view = new Bun.WebView({ backend: 'chrome' });
 
