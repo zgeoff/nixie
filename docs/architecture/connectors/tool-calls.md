@@ -109,9 +109,11 @@ the model that the tool exists and what it takes. The action queue is an interfa
 module declares and its caller passes in, so tools never imports actions.
 
 A typed result reaches the model as structured content with no content blocks, and every other
-outcome as one text block. Claude Code serializes structured content as JSON for the model and drops
-any content blocks beside it, so a tool cannot send the model a typed object and a different text
-rendering of it:
+outcome as one text block. A typed result whose fields are all `untrusted` reaches the model as one
+text block inside `tool-result` markers instead, with its images after it, as
+[calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc describes. Claude Code
+serializes structured content as JSON for the model and drops any content blocks beside it, so a
+tool cannot send the model a typed object and a different text rendering of it:
 
 | Outcome           | What the model receives                                             | Error |
 | ----------------- | ------------------------------------------------------------------- | ----- |
