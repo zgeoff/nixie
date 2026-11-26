@@ -67,6 +67,16 @@ export { proposalsProposedCodec } from './records/proposals-proposed-codec';
 export { proposalsSettledCodec } from './records/proposals-settled-codec';
 export type { ProposeInput, Proposed } from './propose/propose-in-transaction';
 export { createUnusedShortID, proposeInTransaction } from './propose/propose-in-transaction';
+
+export type {
+  StakeWithdrawal,
+  StakeWithdrawalResult,
+} from './propose/withdraw-stake-in-transaction';
+
+export { withdrawStakeInTransaction } from './propose/withdraw-stake-in-transaction';
+export { proposalsProposerLeftCodec } from './records/proposals-proposer-left-codec';
+export { readLeftThreads } from './rows/read-left-threads';
+export { readLeftProposalIDs } from './rows/read-left-proposal-ids';
 export type { Withdrawal, WithdrawOptions } from './propose/withdraw-in-transaction';
 export { withdrawInTransaction } from './propose/withdraw-in-transaction';
 export { pickLapsesAt } from './propose/pick-lapses-at';

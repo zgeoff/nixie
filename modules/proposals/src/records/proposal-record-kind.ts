@@ -3,6 +3,7 @@ export type ProposalRecordKind =
   | 'proposals.settled'
   | 'proposals.deferred'
   | 'proposals.returned'
+  | 'proposals.proposer_left'
   | 'proposals.withdrawn';
 
 type ProposalErasableRecordKind = 'proposals.deferred' | 'proposals.settled';

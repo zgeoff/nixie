@@ -5,6 +5,7 @@ import type { SharedProposal } from '../answer/proposal-kind-handler';
 import type { ProposeDeps } from '../answer/types';
 import { proposalsSettledCodec } from '../records/proposals-settled-codec';
 import type { ProposalTables } from '../rows/proposal-tables';
+import { readLeftThreads } from '../rows/read-left-threads';
 import type { ProposalOutcome } from '../types';
 
 export interface SettlementFacts {
@@ -29,7 +30,14 @@ export async function writeSettlement(
   facts: SettlementFacts,
 ): Promise<void> {
   const row = facts.row;
-  const proposers = [...new Set([...pickOwnThreads(deps, facts), ...facts.otherThreads])];
+
+  const leftThreads = await readLeftThreads(tx, row.id);
+
+  const left = new Set(leftThreads);
+
+  const proposers = [...new Set([...pickOwnThreads(deps, facts), ...facts.otherThreads])].filter(
+    (thread) => !left.has(thread),
+  );
 
   const replaced = await readReplacedShortID(tx, row);
   const sentence = await readSentence(deps, tx, row);

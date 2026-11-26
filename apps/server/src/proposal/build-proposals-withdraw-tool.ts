@@ -1,5 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
-import { readProposal, withdrawInTransaction } from '@heynixie/proposals';
+import { readMergedThreads } from '@heynixie/memory';
+import { readProposal, withdrawStakeInTransaction } from '@heynixie/proposals';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { readProposers } from './read-proposers';
@@ -47,7 +48,15 @@ export function buildProposalsWithdrawTool(deps: ProposalsToolDeps): ToolDefinit
           return { status: 'error' as const, message: 'you have no proposal with that ID' };
         }
 
-        const withdrawn = await withdrawInTransaction(core, tx, row.id, { byProposer: true });
+        const withdrawn = await withdrawStakeInTransaction(core, tx, {
+          row,
+          caller,
+          mergedThreads: await readMergedThreads(tx, row.id),
+        });
+
+        if (withdrawn.status === 'not_proposer') {
+          return { status: 'error' as const, message: 'you have no proposal with that ID' };
+        }
 
         if (withdrawn.status === 'refused') {
           return { status: 'error' as const, message: 'that proposal cannot be withdrawn' };

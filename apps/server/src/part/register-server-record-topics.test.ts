@@ -87,6 +87,7 @@ test('it marks the approvals topic for each proposal kind and each action kind t
   const approvals = [
     'proposals.deferred',
     'proposals.returned',
+    'proposals.proposer_left',
     'proposals.withdrawn',
     'policy.action_proposed',
     'policy.action_answered',

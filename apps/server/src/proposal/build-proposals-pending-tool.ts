@@ -84,10 +84,13 @@ export function buildProposalsPendingTool(deps: ProposalsToolDeps): ToolDefiniti
       const proposers = await readProposers(db, caller);
 
       const own = (row: SharedProposal) =>
-        row.thread === caller || proposers.mergedProposalIDs.has(row.id);
+        !proposers.leftProposalIDs.has(row.id) &&
+        (row.thread === caller || proposers.mergedProposalIDs.has(row.id));
 
       const ofTasks = (row: SharedProposal) =>
-        row.thread !== null && row.thread !== caller && proposers.startedTaskIDs.has(row.thread);
+        !own(row) &&
+        ((row.thread !== null && proposers.startedTaskIDs.has(row.thread)) ||
+          proposers.taskMergedProposalIDs.has(row.id));
 
       const listed = open.filter(
         (row) =>
