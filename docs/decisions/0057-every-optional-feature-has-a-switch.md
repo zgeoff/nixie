@@ -12,7 +12,10 @@ no tools, no pollers or sweeps, no required images, no readiness keys and no pag
 client.
 
 The parts nixie can't run without stay core and have no switch: the sandbox host, the conversation,
-tasks, memory, web fetch, policy and the event log.
+tasks, memory and the notebook, web fetch, policy, the model gateway and the event log.
+
+The rule replaces the [ports doc](../architecture/ports.md)'s rule that a port exists only when a
+second real provider is in sight. The ports doc lists each place the code still breaks the rule.
 
 ## Why
 

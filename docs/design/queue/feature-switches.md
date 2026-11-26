@@ -5,16 +5,17 @@
 - **Work items:** [feature switches](https://linear.app/zgeoff/issue/GEO-2877)
 
 Each optional feature, such as the computer, calls or Google, is on only when its section is in the
-deployment config, and a feature that is off leaves no trace in the server or the web client. A
-feature plugs into the core by filling lists that core modules own, so no core module names it. The
-web client asks the server which features are on before it shows a feature's pages.
+deployment config. A feature that is off does nothing: nixie offers none of its tools, runs none of
+its background work, needs none of its images and shows none of its pages. A feature plugs into the
+core by filling lists that core modules own, so no core module names it. The builder of the shared
+parts reads this whole doc; the builder of one feature's retrofit reads Contracts and Constraints.
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  config[deployment config] -->|"section present"| part[feature's part starts]
-  config -->|"section absent"| none[part never starts]
+  config[deployment config] -->|"section present"| part[feature's parts start]
+  config -->|"section absent"| none[parts never start]
   part -->|"fills"| lists[core lists: tools, sources, sweeps, runners, rules, renderers]
   part --> features[nixie.read features]
   features --> client[web client shows its pages]
@@ -22,15 +23,29 @@ flowchart LR
 
 ## Contracts
 
+| Feature    | Config key  | Today                                   | With its switch                         |
+| ---------- | ----------- | --------------------------------------- | --------------------------------------- |
+| `computer` | `computer`  | defaulted, always on                    | on when present                         |
+| `code`     | `code`      | no key; the code tool always runs       | on when present; a new key              |
+| `voice`    | `voice`     | on when present                         | unchanged                               |
+| `devices`  | `devices`   | no key; always on                       | on when present; a new key              |
+| `google`   | `google`    | `gmail`, defaulted, always on           | on when present; `gmail` moves under it |
+| `mcp`      | `mcp`       | defaulted, always on                    | on when present                         |
+| `coding`   | `coding`    | on when `coding.atc` is set             | on when present; `atc` is required      |
+| `search`   | `search`    | defaulted; no tool without a credential | on when present; `credential` required  |
+| `images`   | `images`    | on when present                         | unchanged                               |
+| `mail`     | `mail`      | on when present                         | unchanged                               |
+| `spend`    | `spendStop` | on when present                         | unchanged                               |
+
 ```yaml
-# deployment config. A feature is on when its key is present, even as an empty map; absent is off.
-computer: {} # the desktop, browser and shell; needs the computer image
-code: {} # the code tool; needs the code image
-voice: { speech: gpt-live } # calls, as today
-devices: {} # devices and client devices
-google: {} # the Gmail, Calendar and Drive tools and their polls
-mcp: { servers: [] } # the MCP proxy, as today
-coding: { atc: {} } # coding sessions, as today
+# deployment config. No feature section has a default: absent is off.
+computer: {}
+code: {}
+devices: {}
+google:
+  gmail: { poll_interval: 2m }
+mcp:
+  servers: {} # keyed by server ID, as today
 ```
 
 ```ts
@@ -51,15 +66,15 @@ export const featureIDs = [
 export type FeatureID = (typeof featureIDs)[number];
 
 // nixie.read gains the features that are on.
-const nixieReadOutput = z.object({
-  paused: pauseStateSchema,
-  features: z.array(z.enum(featureIDs)),
-});
+const features = await client.nixie.read();
+// → { paused: null, features: ['computer', 'voice', 'google', 'search', 'spend'] }
+
+// Every procedure of a feature that is off answers this typed error.
+const featureOff = { FEATURE_OFF: { data: z.object({ feature: z.enum(featureIDs) }) } };
 ```
 
 ```ts
-// apps/server. A part declaration names the feature it belongs to. When the feature is off, the
-// part never starts, its images are not needed, and parts.find returns null for it.
+// apps/server. A part declaration names the feature it belongs to, and the features it needs.
 {
   name: 'computer',
   feature: 'computer',
@@ -67,6 +82,8 @@ const nixieReadOutput = z.object({
   images: () => ['computer'],
   start: (parts) => startComputerPart(/* …existing inputs */),
 }
+// A part of a feature that is off is left out of the plan. Its images are not needed, and
+// parts.find('computer') returns null. A core part reads a feature part only through parts.find.
 ```
 
 ```ts
@@ -76,14 +93,7 @@ type AlwaysAllowRule = { tool: string; reason: string }; // policy
 type InboxRenderer = { kind: string; render: RenderInboxItem }; // sessions
 type TaskRunnerEntry = { key: string; runStep: RunStep }; // tasks
 type BodyFieldReader = (log: LogReader, request: ActionRequest) => Promise<BodyFields>; // api
-type Mailbox = { source: string; key: string }; // triggers; replaces { kind: 'gmail' }
-```
-
-```ts
-// apps/web. The nav and the providers above the router read the features once per session.
-const { features } = useNixie();
-const showComputer = features.includes('computer');
-// a feature that is off has no nav entry, no route, and no provider mounted (CallProvider among them)
+type WakeMailSource = { source: string; key: string }; // triggers; replaces { kind: 'gmail' }
 ```
 
 ## Constraints
@@ -94,35 +104,43 @@ const showComputer = features.includes('computer');
   - its parts never start, and nixie needs none of its images;
   - the model is offered none of its tools;
   - none of its pollers, sweeps or task runners run, and its readiness keys are absent;
-  - its procedures answer `FEATURE_OFF` with the feature's ID;
-  - the web client shows none of its nav entries, routes or banners.
-- Outside the composition root and the feature's own packages, no code names a feature or an outside
-  service. A test in `apps/server` lists the feature IDs and the outside service names and fails
-  when a core module or the contract holds one outside its allowed files.
+  - its procedures stay registered and answer `FEATURE_OFF`, through one guard in the api module;
+  - the web client shows none of its nav entries, routes or banners. A direct visit to one of its
+    routes shows a page that says the feature is off in this nixie.
+- A feature's tables still exist while it is off, because migrations run for every feature. A
+  migration never assumes a provider, such as a column default of `'google'`. Turning a feature off
+  keeps its records, and turning it on again finds them as it left them.
+- A core part never lists a feature part in `needs`. A feature part may need another feature's part,
+  and declares that feature in `requires`; the config load fails when a required feature is off.
+- Only these places name a feature or an outside service: the composition root, the feature's own
+  packages, `featureIDs` in the contract, and the web client's feature checks. A test in
+  `apps/server` fails when any other module or the contract names one.
 - Each outside service is an adapter named `<interface>-<system>`. Google's code moves out of the
   connectors module into a `connector-google` adapter behind a `Connector` interface that the
   connections module owns.
 - The contract names no provider: a connection's connector is `z.string()`, not
-  `z.literal('google')`.
-- Migrations still run for every feature, so a feature's tables exist while it is off. A migration
-  never assumes a provider, such as a column default of `'google'`.
-- A feature that needs another feature names it, and the config load fails when the needed one is
-  off (the wallet and accounts need the computer, for example).
-- Turning a feature off keeps its records. Turning it on again finds them as it left them.
+  `z.literal('google')`. That change is breaking, so its PR title carries `!`.
+- Until a feature's retrofit lands, `nixie.read` reports it on whenever today's config turns it on.
+- The web client reads `nixie.read` after sign-in, and mounts a feature's providers, such as
+  `CallProvider`, only when that feature is on.
+- Every config in this repo names the features it uses: the Compose recipe, the Kubernetes
+  manifests, the Pulumi component's defaults, the preview build, the test build and the e2e
+  fixtures. The test build turns every feature on.
+- A release that adds a switch to a feature that was always on says so in its notes, and the cloud
+  change that deploys it adds the feature's section to that deployment's config.
 - [The ports doc](../../architecture/ports.md) replaces its rule that a port exists only when a
   second real provider is in sight with this design's rule, and lists each place the code still
   breaks it until the retrofit lands.
-- Each release that adds a switch to a feature that was on by default adds that feature's section to
-  the deployment configs it ships to, so no running deployment loses a feature.
 - The planned designs follow the rule before they are built: the push notice names no `'telegram'`
   literal outside its adapter, the mail and calendar polls take their source from a list that the
   connector fills, and mail and phone keep each provider in its own adapter.
 
 ## Builder decides
 
-- The test that enforces the naming rule, and how it lists the allowed files.
-- The error wording of `FEATURE_OFF` and of a config load that fails for a needed feature.
+- How the naming test lists the allowed files.
+- The error wording of `FEATURE_OFF` and of a config load that fails for a required feature.
 - The names of the core list types and where each is filled.
+- The wording of the page that says a feature is off.
 - The order of the retrofit, one work item per feature.
 
 ## Out of scope
