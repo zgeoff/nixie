@@ -205,3 +205,112 @@ test('it drops what the device showed once the session is refused', async () => 
     connection: 'refused',
   });
 });
+
+test('it shows what another tab mirrors while it holds no stream of its own', () => {
+  const ctx = setupTest();
+
+  ctx.feed.mirror({
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'open',
+  });
+
+  expect(ctx.feed.getSnapshot()).toStrictEqual({
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'open',
+  });
+});
+
+test('it drops what the screen showed when another tab mirrors a refusal', () => {
+  const ctx = setupTest();
+
+  ctx.feed.mirror({
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'open',
+  });
+
+  ctx.feed.mirror({
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'refused',
+  });
+
+  expect(ctx.feed.getSnapshot()).toStrictEqual({
+    event: null,
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'refused',
+  });
+});
+
+test('it ignores a mirror while it holds a stream of its own', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  ctx.retainUntilTestEnds();
+
+  await waitFor(() => {
+    expect(ctx.feed.getSnapshot().connection).toBe('open');
+  });
+
+  ctx.feed.mirror({
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'open',
+  });
+
+  expect(ctx.feed.getSnapshot().event).toStrictEqual({
+    kind: 'idle',
+    scene: [{ kind: 'markdown', text: '# Saturday' }],
+  });
+});
+
+test('it sends the size of its view once another tab mirrors an open stream', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  ctx.feed.setViewPixels({ width: 900, height: 500, pixelRatio: 1 });
+
+  ctx.feed.mirror({
+    event: null,
+    layout: null,
+    messages: [],
+    notices: [],
+    lastMessageID: 0,
+    lastNoticeID: 0,
+    connection: 'open',
+  });
+
+  ctx.timer.advance(250);
+
+  await waitFor(() => {
+    expect(ctx.readResizes()).toStrictEqual([{ width: 900, height: 500, pixelRatio: 1 }]);
+  });
+});

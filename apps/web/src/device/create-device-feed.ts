@@ -17,6 +17,10 @@ export interface DeviceFeed {
   // server learns it from a resize each time a stream opens and when the size changes, because a
   // stream that another tab opens must not replace it.
   readonly setViewPixels: (pixels: ScreenPixels | null) => void;
+
+  // Shows what another tab's device stream shows, while this tab holds none of its own. A refusal
+  // drops what the screen showed, as a refusal of this tab's own stream does.
+  readonly mirror: (events: DeviceEvents) => void;
 }
 
 export interface DeviceFeedOptions {
@@ -103,7 +107,7 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
       state.viewPixels !== null &&
       pickPixelsToSend(state.resizedPixels, state.viewPixels) !== null;
 
-    if (isStale && state.stopResizeTimer === null && state.controller !== null) {
+    if (isStale && state.stopResizeTimer === null) {
       state.stopResizeTimer = options.startTimer(() => {
         void sendSize();
       }, resizeDelayMs);
@@ -114,6 +118,9 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
     const controller = new AbortController();
 
     state.controller = controller;
+
+    // a stream that another tab held may have been open, and this one sends its size again
+    state.isOpen = false;
 
     void subscribeToDeviceEvents({
       client: options.client,
@@ -208,6 +215,28 @@ export function createDeviceFeed(options: DeviceFeedOptions): DeviceFeed {
     setViewPixels: (pixels) => {
       state.viewPixels = pixels;
 
+      scheduleSize();
+    },
+    mirror: (events) => {
+      if (state.controller !== null) {
+        return;
+      }
+
+      const isOpen = events.connection === 'open';
+
+      if (isOpen && !state.isOpen) {
+        state.openings += 1;
+        state.resizedPixels = null;
+      }
+
+      state.isOpen = isOpen;
+
+      const shown: DeviceEvents =
+        events.connection === 'refused'
+          ? { ...initialDeviceEvents, connection: 'refused' }
+          : events;
+
+      setEvents(shown);
       scheduleSize();
     },
   };

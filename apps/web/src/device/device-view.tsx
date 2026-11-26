@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { useRef, useSyncExternalStore } from 'react';
 import { css } from '../styled-system/css';
-import { DeviceConnection } from './device-connection';
 import { DeviceSurface } from './device-surface';
 import { useDeviceFeed } from './use-device-feed';
 import { useViewPixels } from './use-view-pixels';
@@ -35,7 +34,6 @@ export function DeviceView(): ReactNode {
 
   return (
     <section aria-label="Device view" className={page} ref={area}>
-      <DeviceConnection />
       {events.connection === 'open' ? null : (
         <p className={status} role="status">
           {events.connection === 'refused'
