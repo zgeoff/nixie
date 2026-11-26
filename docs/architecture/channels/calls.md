@@ -191,12 +191,12 @@ with these differences:
 After a call connects, the module reads the speech session's events and writes each one to the
 call's thread:
 
-| Event      | What the module writes                                                                                                       |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `heard`    | An `owner_message` whose one span has the source `dictated`. It never wakes the call, because only a hand-off starts a turn. |
-| `spoke`    | Nothing yet. The module holds the line until the next hand-off.                                                              |
-| `hand_off` | The held `call.spoke` lines, then `call.handed_off`, in one transaction. The hand-off wakes the call's task.                 |
-| `cut`      | See below.                                                                                                                   |
+| Event      | What the module writes                                                                                                                              |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `heard`    | An `owner_message` whose one span has the source `dictated`. It never wakes the call, because only a hand-off starts a turn while the call is live. |
+| `spoke`    | Nothing yet. The module holds the line until the next hand-off.                                                                                     |
+| `hand_off` | The held `call.spoke` lines, then `call.handed_off`, in one transaction. The hand-off wakes the call's task.                                        |
+| `cut`      | See below.                                                                                                                                          |
 
 A `call.spoke` record wakes nothing and shows no message of its own: the turn reads each line of
 small talk beside the hand-off that follows it. The call's task runs one turn over what it has not
@@ -220,7 +220,8 @@ message, and the turn answers it with the same text as the first.
 What a `cut` event does depends on when it arrives:
 
 - Before the module sent an answer, it interrupts the call's turn and stops the hand-off's holding
-  line.
+  line. The GPT-Live adapter raises a `cut` only while an answer plays, so on GPT-Live this case
+  never arises, and talking over the holding line leaves the turn running.
 - After the module sent a reply, it writes `call.heard_cut` with the reply's record and the count of
   characters heard. The next turn reads the reply split where the user stopped hearing it, both in a
   session that continues and in one that rebuilds.

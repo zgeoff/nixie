@@ -16,9 +16,9 @@ posts a summary to the conversation when it ends.
 
 The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records and the
 per-minute charge are built: [Voice calls](../../../architecture/channels/calls.md) describes them.
-This design holds what is left to build: the device's side of a call, and ringing you. Each work
-item above builds one part of it from the contracts and constraints below. Tuning the speech layer
-on real calls is a work item of its own.
+This design holds what is left to build: the device's side of a call, and ringing you. The call
+screen and nixie rings you are the work items that build it, from the contracts and constraints
+below. Tuning the speech layer on real calls is a work item of its own.
 
 Terms:
 
