@@ -128,12 +128,12 @@ type WakeMailSource = { source: string; key: string }; // triggers; replaces { k
   fixtures. The test build turns every feature on.
 - A release that adds a switch to a feature that was always on says so in its notes, and the cloud
   change that deploys it adds the feature's section to that deployment's config.
-- [The ports doc](../../architecture/ports.md) replaces its rule that a port exists only when a
-  second real provider is in sight with this design's rule, and lists each place the code still
+- In [the ports doc](../../architecture/ports.md), replace the rule that a port exists only when a
+  second real provider is in sight with this design's rule, and list each place the code still
   breaks it until the retrofit lands.
-- The planned designs follow the rule before they are built: the push notice names no `'telegram'`
-  literal outside its adapter, the mail and calendar polls take their source from a list that the
-  connector fills, and mail and phone keep each provider in its own adapter.
+- Build the planned designs to follow the rule: the push notice names no `'telegram'` literal
+  outside its adapter, the mail and calendar polls take their source from a list that the connector
+  fills, and mail and phone keep each provider in its own adapter.
 
 ## Builder decides
 

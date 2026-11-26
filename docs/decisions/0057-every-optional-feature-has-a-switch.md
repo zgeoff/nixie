@@ -14,8 +14,9 @@ client.
 The parts nixie can't run without stay core and have no switch: the sandbox host, the conversation,
 tasks, memory and the notebook, web fetch, policy, the model gateway and the event log.
 
-The rule replaces the [ports doc](../architecture/ports.md)'s rule that a port exists only when a
-second real provider is in sight. The ports doc lists each place the code still breaks the rule.
+This rule replaces the rule in the [ports doc](../architecture/ports.md) that a port exists only
+when a second real provider is in sight. The ports doc lists each place the code still breaks the
+new rule.
 
 ## Why
 
