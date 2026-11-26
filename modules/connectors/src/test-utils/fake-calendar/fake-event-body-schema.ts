@@ -15,6 +15,7 @@ export const fakeEventBodySchema = z
     start: timeSchema.optional(),
     end: timeSchema.optional(),
     attendees: z.array(attendeeSchema).optional(),
+    attendeesOmitted: z.boolean().optional(),
     extendedProperties: z.object({ private: privateSchema.optional() }).optional(),
   })
   .loose();

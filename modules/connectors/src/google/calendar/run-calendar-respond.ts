@@ -11,7 +11,7 @@ import { readAttemptEvent } from './read-attempt-event';
 
 // The attempt of calendar.respond: sets the account's own response on an event and asks Google to
 // email the organizer. It reads the event again, and when the organizer is not the address the
-// decision checked, it fails and emails no one.
+// decision checked, it fails and emails no one. The etag of that read goes in `If-Match`.
 export async function runCalendarRespond(
   deps: GoogleDeps,
   attempt: ActionAttempt,
@@ -56,8 +56,16 @@ export async function runCalendarRespond(
     path: buildEventPath(ref.calendar, ref.event),
     method: 'PATCH',
     query: { sendUpdates: 'all' },
+    headers: { 'if-match': event.etag },
     json: buildRespondPatch(event, { account: context.account, response: parsed.data.response }),
   });
+
+  if (patched.kind === 'error' && patched.status === 412) {
+    return {
+      kind: 'refused_retryable',
+      reason: 'CHANGED: the event changed after it was read, and nothing was sent',
+    };
+  }
 
   return patched.kind === 'error'
     ? pickGoogleErrorResponse(patched)

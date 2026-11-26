@@ -101,6 +101,22 @@ test('it refuses a later part when the file changed version but kept its time of
   ]);
 });
 
+test('it refuses a later part that names no version, so it cannot mix versions', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({
+    name: 'Log',
+    text: 'line one\nline two\nline three\nline four\n',
+  });
+
+  const outcome = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 2 });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('VERSION_NEEDED'),
+  });
+});
+
 test('it reads a Google Doc as Markdown with the name sealed and the time of change plain', async () => {
   const ctx = await setupTest();
 
@@ -163,7 +179,11 @@ test('it reads a text file from its stored bytes in parts, each with the time of
     text: 'line one\nline two\nline three\nline four\n',
   });
 
-  const second = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 2 });
+  const first = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 1 });
+
+  const version = first.status === 'ok' ? String(first.result['version']) : '';
+
+  const second = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 2, version });
 
   expect(second).toMatchObject({
     status: 'ok',
@@ -176,7 +196,11 @@ test('it fails a part that the file does not have', async () => {
 
   const seeded = ctx.site.drive.seed({ name: 'Log', text: 'short' });
 
-  const outcome = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 5 });
+  const first = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}` });
+
+  const version = first.status === 'ok' ? String(first.result['version']) : '';
+
+  const outcome = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 5, version });
 
   expect(outcome).toMatchObject({ status: 'error', message: expect.stringContaining('BAD_PART') });
 });

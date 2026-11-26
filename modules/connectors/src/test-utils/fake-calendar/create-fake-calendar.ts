@@ -17,6 +17,7 @@ export function createFakeCalendar(account = 'me@example.test'): FakeCalendar {
     events: new Map(),
     calendars: [{ id: account, summary: 'Personal', primary: true, accessRole: 'owner' }],
     listPageSize: 250,
+    emptyFirstPage: false,
     requests: [],
     writes: [],
     failures: [],

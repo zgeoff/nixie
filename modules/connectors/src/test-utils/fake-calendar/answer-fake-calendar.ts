@@ -2,6 +2,7 @@ import { fakeCalendarPrefix } from './constants';
 import { insertFakeEvent } from './insert-fake-event';
 import { listFakeEvents } from './list-fake-events';
 import { patchFakeEvent } from './patch-fake-event';
+import { presentFakeEvent } from './present-fake-event';
 import { removeFakeEvent } from './remove-fake-event';
 import type { FakeCalendar, FakeCalendarCall, FakeCalendarState } from './types';
 
@@ -55,7 +56,7 @@ export function answerFakeCalendar(
   }
 
   if (method === 'GET') {
-    return Response.json(stored);
+    return Response.json(presentFakeEvent(stored));
   }
 
   return method === 'DELETE'

@@ -18,6 +18,8 @@ function setupTest() {
       link: null,
       organizer: 'me@example.test',
       isOrganizedByAccount: true,
+      isOrganizerSelf: false,
+      attendeesOmitted: false,
       guests: [],
       attendees: [],
       yourResponse: null,

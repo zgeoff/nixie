@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildToolRegistry } from '@heynixie/tools';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 
 test.each([
@@ -43,4 +44,12 @@ test('it keeps every file name and the text of a file untrusted', async () => {
   const read = ctx.findAction('drive.read').tool.declaration.results;
 
   expect([read['name'], read['text']]).toStrictEqual(['untrusted', 'untrusted']);
+});
+
+test('it registers every Drive tool, each result field with a source', async () => {
+  const ctx = await startGmailTools();
+
+  const registry = buildToolRegistry(ctx.driveActions.map((action) => action.tool));
+
+  expect(registry.toolNames).toHaveLength(4);
 });

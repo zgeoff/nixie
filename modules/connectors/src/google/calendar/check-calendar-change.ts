@@ -1,17 +1,15 @@
 import type { ActionAttempt, CheckResponse } from '../../types';
 import { isMarkerLossProvable } from '../build-action-marker';
 import { buildAttemptMarker } from '../build-attempt-marker';
-import { callGoogle } from '../call-google';
 import { readCallContext } from '../gmail/read-call-context';
 import type { GoogleDeps } from '../types';
-import { buildEventPath } from './build-event-path';
 import { buildEventRef } from './build-event-ref';
 import { calendarArgumentsSchema } from './calendar-arguments-schema';
 import { calendarToolNames } from './calendar-tool-names';
 import { primaryCalendar } from './constants';
-import { eventListSchema, parseCalendarEvent } from './parse-calendar-event';
 import { parseEventRef } from './parse-event-ref';
 import { readCalendarEvent } from './read-calendar-event';
+import { readMarkedEvent } from './read-marked-event';
 
 const createTools: ReadonlySet<string> = new Set([
   calendarToolNames.createEvent,
@@ -115,31 +113,22 @@ async function checkCreate(deps: GoogleDeps, check: CreateCheck): Promise<CheckR
 
   const marker = buildAttemptMarker(attempt, deps.clock.now());
 
-  const listed = await callGoogle(deps.hosts, context, {
-    path: buildEventPath(calendar),
-    query: {
-      privateExtendedProperty: `${marker.key}=${marker.value}`,
-      showDeleted: 'true',
-      maxResults: '5',
-    },
+  const found = await readMarkedEvent(deps.hosts, context, {
+    calendar,
+    marker: `${marker.key}=${marker.value}`,
   });
 
-  const items = listed.kind === 'ok' ? eventListSchema.safeParse(listed.body) : null;
-
-  if (items === null || !items.success) {
+  if (found.kind === 'failed') {
     return { kind: 'inconclusive' };
   }
 
-  const [first] = (items.data.items ?? []).flatMap((item) => {
-    const event = parseCalendarEvent(item, { calendar, account: context.account });
-
-    return event === null ? [] : [event];
-  });
-
-  if (first !== undefined) {
+  if (found.kind === 'event') {
     return {
       kind: 'found',
-      result: { event: buildEventRef(context.connection, first.id, calendar), link: first.link },
+      result: {
+        event: buildEventRef(context.connection, found.event.id, calendar),
+        link: found.event.link,
+      },
     };
   }
 

@@ -52,14 +52,20 @@ another resource counts, because Google emails its owner.
 
 - A tool without guests calls Google with `sendUpdates=none` and has no guest argument. A
   with-guests tool calls with `sendUpdates=all`. `calendar.respond` is a `send` with
-  `sendUpdates=all`, and its destination and reply target are the event's organizer.
+  `sendUpdates=all`, and its destination and reply target are the event's organizer. It sends the
+  etag of its read in `If-Match`, and a 412 answers `refused_retryable`, so an event whose organizer
+  changed after the check emails no one. When Google marks the event `attendeesOmitted`, the patch
+  holds only the account's own entry and carries `attendeesOmitted: true`, so no attendee is
+  dropped.
 - A change or cancel without guests reads the event in `prepare` and again in its attempt, and
   refuses with `has_guests` when the event has a guest. A with-guests tool refuses with `no_guests`
   when the event has no guest before the change and none after it.
 - A change or cancel refuses with `not_organizer` when the organizer's address is not the
-  connection's account, and with `cancelled` for an event that is cancelled. Google's `self` flag on
-  the organizer says only that the event sits on a calendar that the organizer owns, which a
-  calendar the account can write also shows, so the check never reads it.
+  connection's account, and with `cancelled` for an event that is cancelled. An event on a secondary
+  calendar that the account owns has that calendar's address as its organizer, so the check also
+  accepts an event whose organizer is `self` and whose organizer address is the calendar it was read
+  from, when Google's answer to an event list names the account's role on that calendar as owner.
+  The `self` flag alone proves nothing, because a calendar the account can only write also shows it.
 - A change that sends the guest list back keeps every attendee field that Google holds, such as the
   comment and the extra guests, because a patch replaces the whole array.
 - A change or cancel with guests sends the `etag` of the attempt's read in `If-Match`. On a 412 the
@@ -90,7 +96,8 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
   connector reads the queue's tables.
 - A calendar create's event ID is the action ID without hyphens. A 409 on that insert means the
   event exists, and the attempt answers done.
-- A check of a create finds the event by its ID or by a search for the marker. A check of a change
+- A check of a create finds the event by its ID or by a search for the marker, which follows every
+  page, because Google can answer a page with no event and a token for the next. A check of a change
   finds the marker on the item. It answers not found only when the item holds fewer than 10 markers,
   because a full set may have pushed the marker out. A full set without it answers inconclusive.
 - A cancel's check reads the status: `cancelled`, or a 404 or 410, is found. A 410 on a cancel's
@@ -109,14 +116,15 @@ the same request as its change. Calendar keeps it in `extendedProperties.private
 - `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
   plain text. It reads other text files and images as `gmail.read_attachment` does, and answers
   `unsupported` for every other type. A file over the reader's size limit answers `too_large`
-  without a download. Each part returns the file's `modifiedAt` and `version`. A later part that
-  passes an earlier part's `version` answers `FILE_CHANGED` when the file's version differs, even
-  when its `modifiedAt` is the same. A read downloads the content between 2 reads of the file's
-  metadata, and answers `FILE_CHANGED` when its `version` moved, so no part carries a time that
-  belongs to other content.
-- `drive.search` runs a full-text query, and escapes each quote in it, so the query's text cannot
-  widen the search. A search that finds nothing tells the model that it searched only the files you
-  chose and the files nixie made.
+  without a download. Each part returns the file's `modifiedAt` and `version`. A later part must
+  pass an earlier part's `version`, and answers `VERSION_NEEDED` when it passes none and
+  `FILE_CHANGED` when the file's version differs, even when its `modifiedAt` is the same. A read
+  downloads the content between 2 reads of the file's metadata, and answers `FILE_CHANGED` when its
+  `version` moved, so no part carries a time that belongs to other content.
+- `drive.search` matches the start of a word in a file's name and a whole word of its content, as
+  Drive's `name contains` and `fullText contains` do, and escapes each quote in it, so the query's
+  text cannot widen the search. A search that finds nothing tells the model that it searched only
+  the files you chose and the files nixie made.
 
 ## Drive writes
 

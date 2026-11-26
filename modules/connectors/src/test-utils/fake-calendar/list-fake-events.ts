@@ -13,6 +13,10 @@ export function listFakeEvents(calendar: FakeCalendar, calendarID: string, url: 
   const limit = Number(url.searchParams.get('maxResults') ?? 250);
   const offset = Number(url.searchParams.get('pageToken') ?? 0);
 
+  if (calendar.emptyFirstPage && !url.searchParams.has('pageToken')) {
+    return Response.json({ items: [], nextPageToken: '0' });
+  }
+
   const matching = [...(calendar.events.get(calendarID)?.values() ?? [])]
     .filter((event) => showDeleted || event['status'] !== 'cancelled')
     .filter((event) => isInRange(event, from, to))
@@ -22,8 +26,13 @@ export function listFakeEvents(calendar: FakeCalendar, calendarID: string, url: 
 
   const page = matching.slice(offset, offset + limit);
   const next = offset + limit < matching.length ? String(offset + limit) : undefined;
+  const accessRole = calendar.calendars.find((entry) => entry.id === calendarID)?.accessRole;
 
-  return Response.json({ items: page, ...(next === undefined ? {} : { nextPageToken: next }) });
+  return Response.json({
+    ...(accessRole === undefined ? {} : { accessRole }),
+    items: page,
+    ...(next === undefined ? {} : { nextPageToken: next }),
+  });
 }
 
 function isInRange(event: StoredEvent, fromMs: number, toMs: number): boolean {

@@ -23,6 +23,7 @@ export const driveDeclarations = {
       type: 'untrusted',
       bytes: 'untrusted',
       modifiedAt: 'untrusted',
+      version: 'untrusted',
       text: 'untrusted',
       part: 'owner_data',
       parts: 'owner_data',

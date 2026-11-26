@@ -44,6 +44,8 @@ async function setupTest() {
     link: null,
     organizer: 'me@example.test',
     isOrganizedByAccount: true,
+    isOrganizerSelf: false,
+    attendeesOmitted: false,
     guests: [
       { address: 'sam@example.org', response: null },
       { address: 'lee@example.org', response: null },

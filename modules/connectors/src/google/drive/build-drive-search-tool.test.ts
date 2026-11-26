@@ -61,6 +61,26 @@ test('it finds a file by its content as well as its name', async () => {
   expect(outcome).toMatchObject({ status: 'ok', record: { files: [{ name: 'Notes' }] } });
 });
 
+test('it finds a file by the start of a word in its name', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.drive.seed({ name: 'Itinerary', text: 'Flights and hotels' });
+
+  const outcome = await ctx.runSearch({ query: 'itin' });
+
+  expect(outcome).toMatchObject({ status: 'ok', record: { files: [{ name: 'Itinerary' }] } });
+});
+
+test('it finds no file whose name holds the query only inside a word', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.drive.seed({ name: 'Subplanning', text: 'Flights and hotels' });
+
+  const outcome = await ctx.runSearch({ query: 'plan' });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { files: [] } });
+});
+
 test('it tells the model what it searched when it finds nothing', async () => {
   const ctx = await setupTest();
   const outcome = await ctx.runSearch({ query: 'budget' });

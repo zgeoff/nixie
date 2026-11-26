@@ -40,6 +40,7 @@ const eventSchema = z.object({
   end: timeSchema.exactOptional(),
   organizer: organizerSchema.exactOptional(),
   attendees: z.array(attendeeSchema).exactOptional(),
+  attendeesOmitted: z.boolean().exactOptional(),
   extendedProperties: extendedSchema.exactOptional(),
 });
 
@@ -98,6 +99,8 @@ export function parseCalendarEvent(body: unknown, source: EventSource): Calendar
     link: event.htmlLink ?? null,
     organizer,
     isOrganizedByAccount: organizer !== null && organizer === account,
+    isOrganizerSelf: event.organizer?.self === true,
+    attendeesOmitted: event.attendeesOmitted === true,
     guests,
     attendees: attendees.flatMap((attendee) =>
       attendee.email === undefined ? [] : [{ ...attendee, email: attendee.email }],

@@ -91,6 +91,53 @@ test('it refuses a change of an event that another account organizes although Go
   ]);
 });
 
+test('it changes an event on a secondary calendar that the account owns, where the organizer is the calendar', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.calendar.calendars.push({
+    id: 'team@group.calendar.google.com',
+    summary: 'Team',
+    accessRole: 'owner',
+  });
+
+  const seeded = ctx.createEvent({
+    calendar: 'team@group.calendar.google.com',
+    organizer: 'team@group.calendar.google.com',
+  });
+
+  const event = `k3x9m2p7qa.${seeded.id}@team@group.calendar.google.com`;
+
+  const prepared = await ctx.prepare('calendar.change_event', { event, title: 'Renamed' });
+  const response = await ctx.attempt('calendar.change_event', { event, title: 'Renamed' });
+
+  expect([prepared, response.kind]).toMatchObject([{ destinations: [] }, 'success']);
+});
+
+test('it refuses to change an event on a secondary calendar that the account can only write', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.calendar.calendars.push({
+    id: 'team@group.calendar.google.com',
+    summary: 'Team',
+    accessRole: 'writer',
+  });
+
+  const seeded = ctx.createEvent({
+    calendar: 'team@group.calendar.google.com',
+    organizer: 'team@group.calendar.google.com',
+  });
+
+  const prepared = await ctx.prepare('calendar.change_event', {
+    event: `k3x9m2p7qa.${seeded.id}@team@group.calendar.google.com`,
+    title: 'Renamed',
+  });
+
+  expect(prepared).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('NOT_ORGANIZER'),
+  });
+});
+
 test('it keeps the comment and the extra guests of each attendee that stays when it sends the guest list back', async () => {
   const ctx = await setupTest();
 

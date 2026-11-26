@@ -2,7 +2,8 @@ import { buildFakeFileJSON } from './build-fake-file-json';
 import type { FakeDrive, StoredFile } from './types';
 
 // The files.list of the fake: the files that match the `q`, the newest first, in pages. It reads
-// `trashed = false`, `name contains`, `fullText contains` and `appProperties has`.
+// `trashed = false`, `name contains` (the start of a word of the name), `fullText contains` (a whole
+// word of the content) and `appProperties has`.
 export function listFakeFiles(drive: FakeDrive, url: URL): Response {
   const query = url.searchParams.get('q') ?? '';
   const limit = Number(url.searchParams.get('pageSize') ?? 100);
@@ -40,14 +41,16 @@ function isMatchingQuery(file: StoredFile, query: string): boolean {
     return false;
   }
 
-  const term = /name contains '(?<term>(?:\\.|[^'])*)'/u.exec(query)?.groups?.['term'];
+  const name = findTerm(query, 'name');
+  const text = findTerm(query, 'fullText');
 
-  if (term !== undefined) {
-    const wanted = term.replaceAll(/\\(?<char>.)/gu, '$<char>').toLowerCase();
+  if (name !== undefined || text !== undefined) {
+    const isNameMatch = name !== undefined && isPrefixMatch(file.name, name);
 
-    const text = new TextDecoder().decode(file.bytes).toLowerCase();
+    const isTextMatch =
+      text !== undefined && isTokenMatch(new TextDecoder().decode(file.bytes), text);
 
-    if (!file.name.toLowerCase().includes(wanted) && !text.includes(wanted)) {
+    if (!isNameMatch && !isTextMatch) {
       return false;
     }
   }
@@ -60,4 +63,26 @@ function isMatchingQuery(file: StoredFile, query: string): boolean {
   const value = property?.groups?.['value'];
 
   return key === undefined || file.appProperties[key] === value;
+}
+
+function findTerm(query: string, field: string): string | undefined {
+  const term = new RegExp(`${field} contains '(?<term>(?:\\\\.|[^'])*)'`, 'u').exec(query)
+    ?.groups?.['term'];
+
+  return term?.replaceAll(/\\(?<char>.)/gu, '$<char>').toLowerCase();
+}
+
+function isPrefixMatch(text: string, term: string): boolean {
+  return toWords(text).some((word) => word.startsWith(term));
+}
+
+function toWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word !== '');
+}
+
+function isTokenMatch(text: string, term: string): boolean {
+  return toWords(text).includes(term);
 }

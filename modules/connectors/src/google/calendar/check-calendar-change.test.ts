@@ -96,6 +96,23 @@ test('it finds a created event that holds the marker when its ID is another', as
   expect(outcome).toMatchObject({ kind: 'found', result: { event: `k3x9m2p7qa.${seeded.id}` } });
 });
 
+test('it finds a created event that holds the marker on a later page after an empty first page', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({
+    privateProperties: { nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03: '1795165200' },
+  });
+
+  ctx.site.calendar.emptyFirstPage = true;
+
+  const outcome = await ctx.check('calendar.create_event_with_guests', {
+    ...ctx.createArgs,
+    guests: ['sam@example.org'],
+  });
+
+  expect(outcome).toMatchObject({ kind: 'found', result: { event: `k3x9m2p7qa.${seeded.id}` } });
+});
+
 test('it finds a created event that was cancelled since', async () => {
   const ctx = await setupTest();
 

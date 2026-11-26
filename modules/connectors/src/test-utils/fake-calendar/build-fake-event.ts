@@ -7,15 +7,16 @@ interface FakeEventFacts {
 }
 
 // An event as the fake stores a seeded one. An event of another organizer lists the account as an
-// invited attendee, and an event of the account with guests lists the account as its organizer.
+// invited attendee, and an event of the account, or of the calendar it sits on, with guests lists
+// that organizer.
 export function buildFakeEvent(seed: FakeEventSeed, facts: FakeEventFacts): StoredEvent {
   const account = facts.account;
   const organizer = seed.organizer ?? account;
-  const isOrganizer = organizer === account;
+  const isOrganizer = organizer === account || organizer === seed.calendar;
   const guests = seed.guests ?? [];
 
   const own = isOrganizer
-    ? [{ email: account, self: true, organizer: true, responseStatus: 'accepted' }]
+    ? [{ email: organizer, self: true, organizer: true, responseStatus: 'accepted' }]
     : [
         { email: organizer, organizer: true, responseStatus: 'accepted' },
         { email: account, self: true, responseStatus: seed.yourResponse ?? 'needsAction' },
@@ -28,7 +29,13 @@ export function buildFakeEvent(seed: FakeEventSeed, facts: FakeEventFacts): Stor
     ...(guest.additionalGuests === undefined ? {} : { additionalGuests: guest.additionalGuests }),
   }));
 
-  const hasAttendees = guests.length > 0 || !isOrganizer;
+  const hidden = (seed.hiddenGuests ?? []).map((email) => ({
+    email,
+    responseStatus: 'needsAction',
+    hiddenFromReads: true,
+  }));
+
+  const hasAttendees = guests.length > 0 || hidden.length > 0 || !isOrganizer;
   const properties = seed.privateProperties;
 
   return {
@@ -45,7 +52,7 @@ export function buildFakeEvent(seed: FakeEventSeed, facts: FakeEventFacts): Stor
       isOrganizer || seed.isOrganizerSelf === true
         ? { email: organizer, self: true }
         : { email: organizer },
-    ...(hasAttendees ? { attendees: [...own, ...others] } : {}),
+    ...(hasAttendees ? { attendees: [...own, ...others, ...hidden] } : {}),
     ...(properties === undefined ? {} : { extendedProperties: { private: { ...properties } } }),
   };
 }

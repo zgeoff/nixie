@@ -136,3 +136,44 @@ test('it declares the effect send for a response', async () => {
 
   expect(ctx.findAction('calendar.respond').tool.declaration.effects).toStrictEqual(['send']);
 });
+
+test('it refuses with a retryable answer and emails no one when the event changed after the attempt read it', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent();
+  const hold = ctx.site.calendar.hold('PATCH /calendar/v3/calendars/primary/events/');
+
+  const pending = ctx.attempt({ event: `k3x9m2p7qa.${seeded.id}`, response: 'accepted' }, [
+    'boss@example.org',
+  ]);
+
+  await hold.reached;
+
+  ctx.createEvent({ id: seeded.id, organizer: 'other@example.org' });
+  hold.release();
+
+  const response = await pending;
+
+  expect([response.kind, ctx.site.calendar.writes]).toStrictEqual(['refused_retryable', []]);
+});
+
+test('it keeps the guests that Google left out of the event when it sets the response', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({
+    guests: [{ email: 'sam@example.org' }],
+    hiddenGuests: ['hidden@example.org'],
+  });
+
+  await ctx.attempt({ event: `k3x9m2p7qa.${seeded.id}`, response: 'declined' }, [
+    'boss@example.org',
+  ]);
+
+  const stored = ctx.site.calendar.events.get('primary')?.get(seeded.id);
+
+  expect(stored?.['attendees']).toIncludeAllMembers([
+    expect.objectContaining({ email: 'hidden@example.org' }),
+    expect.objectContaining({ email: 'sam@example.org' }),
+    expect.objectContaining({ email: 'me@example.test', responseStatus: 'declined' }),
+  ]);
+});

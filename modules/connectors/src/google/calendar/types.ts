@@ -49,6 +49,14 @@ export interface CalendarEvent {
   readonly organizer: string | null;
   readonly isOrganizedByAccount: boolean;
 
+  // Google marks the organizer `self` when the event sits on the calendar that organizes it. A
+  // calendar the account owns and a calendar it can only write both show that, so it proves nothing
+  // alone.
+  readonly isOrganizerSelf: boolean;
+
+  // Google left some attendees out of the answer, so `attendees` is not the whole list
+  readonly attendeesOmitted: boolean;
+
   // every attendee except the connection's own account
   readonly guests: readonly EventGuest[];
 

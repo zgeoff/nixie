@@ -28,6 +28,9 @@ export interface FakeEventSeed {
     readonly additionalGuests?: number;
   }[];
 
+  // guests that a read leaves out, which then says that attendees were omitted
+  readonly hiddenGuests?: readonly string[];
+
   // the account's own response when it is invited
   readonly yourResponse?: string;
   readonly privateProperties?: Readonly<Record<string, string>>;
@@ -53,6 +56,10 @@ export interface FakeCalendar {
 
   // the most calendars one page of the calendar list holds
   listPageSize: number;
+
+  // makes an event list that names no page answer an empty first page that has a next one, as
+  // Google may when a filter drops every event of a page
+  emptyFirstPage: boolean;
 
   // each request as `GET /calendar/v3/calendars/primary/events?...`, in order
   readonly requests: string[];

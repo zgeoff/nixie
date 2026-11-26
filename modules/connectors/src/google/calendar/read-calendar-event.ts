@@ -2,7 +2,10 @@ import type { ConnectorContext } from '../../types';
 import { callGoogle } from '../call-google';
 import type { GoogleHosts } from '../google-hosts';
 import { buildEventPath } from './build-event-path';
+import { primaryCalendar } from './constants';
+import { normalizeAddress } from './normalize-address';
 import { parseCalendarEvent } from './parse-calendar-event';
+import { readCalendarOwnership } from './read-calendar-ownership';
 import type { CalendarEvent } from './types';
 
 export type CalendarEventRead =
@@ -16,7 +19,8 @@ interface EventRequest {
 }
 
 // Reads one event live. A 404 or 410 is a value, and any other failure carries Google's reason. An
-// event that was cancelled reads with the status `cancelled`.
+// event that was cancelled reads with the status `cancelled`. The organizer of an event on a calendar
+// that the account owns is the calendar, so the read asks Google for the account's role there.
 export async function readCalendarEvent(
   hosts: GoogleHosts,
   context: ConnectorContext,
@@ -37,7 +41,21 @@ export async function readCalendarEvent(
     account: context.account,
   });
 
-  return event === null
-    ? { kind: 'failed', reason: 'Google answered with no event', retryAfterMs: null }
-    : { kind: 'event', event };
+  if (event === null) {
+    return { kind: 'failed', reason: 'Google answered with no event', retryAfterMs: null };
+  }
+
+  const isCalendarOrganizer =
+    !event.isOrganizedByAccount &&
+    event.isOrganizerSelf &&
+    request.calendar !== primaryCalendar &&
+    event.organizer === normalizeAddress(request.calendar);
+
+  if (isCalendarOrganizer) {
+    const isOwner = await readCalendarOwnership(hosts, context, request.calendar);
+
+    return { kind: 'event', event: { ...event, isOrganizedByAccount: isOwner } };
+  }
+
+  return { kind: 'event', event };
 }
