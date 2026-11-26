@@ -120,6 +120,7 @@ model a typed object and a different text rendering of it:
 | Allowed, queued   | The action's typed result once it is done                           | No    |
 | Queued, not done  | The action ID, once the wait runs out                               | No    |
 | Queued, failed    | The action ID and its reason                                        | No    |
+| Proxied, refused  | The server's reason inside `tool-result` markers                    | Yes   |
 | Denied            | The decision point's sentence                                       | Yes   |
 | Asked             | "Waiting for approval as `<shortID>`", with the proposal's short ID | No    |
 | Invalid input     | The schema errors                                                   | Yes   |
