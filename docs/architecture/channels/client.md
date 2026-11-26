@@ -105,11 +105,11 @@ speech layer and its state. A change of route never ends the call, and a page lo
   cancellation, noise suppression and gain control on, then the client calls `calls.start`, makes an
   offer once the peer connection has gathered its addresses, sends it with `calls.connect` and
   applies the answer. The screen shows the connection state, the length of the call, a mute button
-  that turns the microphone track off, and a hang up button that calls `calls.hangUp`, so the call
-  ends with `endedBy: 'you'`, unless the reply says the server ended it first, and then the call
-  keeps the server's reason. Hang up releases the microphone and the peer at once, and nothing that
-  was pending then changes the call. A refused microphone, or a refused start, shows what the user
-  can do about it, and no call starts.
+  that turns the microphone track off, and a hang up button that calls `calls.hangUp`. The call ends
+  with `endedBy: 'you'`. When the server had already ended the call, the reply says so, and the call
+  keeps the server's own `endedBy` and reason, such as the budget. Hang up releases the microphone
+  and the peer at once, and nothing that was pending then changes the call. A refused microphone, or
+  a refused start, shows what the user can do about it, and no call starts.
 - **The call bar.** On every route but the call screen, a bar shows while a call connects, is live
   or reconnects. It holds the state, the time, mute, hang up and a link back to the call screen.
 - **Following the call.** While a call runs, the provider keeps the live stream open and reads

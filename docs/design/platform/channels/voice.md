@@ -62,8 +62,14 @@ flowchart LR
 await nixie.calls.answer({ callID, clientActionID }); // → { callID, state: 'connecting' }
 ```
 
-The call screen's captions come from nixie's live stream, because the provider's data channel stays
-bound to the first session after a reconnect.
+The call screen shows each caption as its record arrives on nixie's live stream for the call's
+thread. It never reads a caption from the provider's data channel, which stays bound to the first
+session after a reconnect. A reconnect therefore cannot cut the captions off. Two records make the
+captions, and they need no new record kind and no new method:
+
+- what you said is the dictated `owner_message` that each `heard` event becomes, as
+  [Voice calls](../../../architecture/channels/calls.md) describes;
+- what the speech layer said in its own words is a `call.spoke` record.
 
 ```text
 call record kinds not written yet (log module; plain payload fields only, unless marked erasable, which
@@ -74,6 +80,8 @@ call.turn_timed  callID, handOffID, firstAudioMs, handOffWaitMs, cutOffByLayer, 
 
 - `call.rang` sits on the thread that rang, so that thread's history shows it. `call.turn_timed`
   sits on the call's thread, beside the turns it times.
+- `reason` is the text the model passed to `tools.call.ring`. When you ask nixie to forget it, the
+  record keeps its call ID and device count, and the reason shows as forgotten.
 - `call.turn_timed` holds timings and flags only, never audio or text, so the tuning pass can read
   it without reading what you said.
 
@@ -88,8 +96,9 @@ await tools.call.ring({ reason: 'Your 3pm moved to 4pm and the venue changed' })
 ```
 
 - A ring sends a web push, "nixie is calling", to every device session with a push subscription.
-  Opening it opens the answer screen. The web client registers a service worker, and each device
-  session saves its subscription with `nixie.push.subscribe({ subscription, clientActionID })`.
+  Opening it opens the answer screen for the ringing call, which answers it with `calls.answer`. The
+  web client registers a service worker, and each device session saves its subscription with
+  `nixie.push.subscribe({ subscription, clientActionID })`.
 - A refused ring tells the model why, so it sends a message instead.
 - An unanswered ring ends after `ring_seconds` as `missed`. The outcome reaches the ringing thread
   as a wake.

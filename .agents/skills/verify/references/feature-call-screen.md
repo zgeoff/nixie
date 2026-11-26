@@ -29,9 +29,9 @@ Before you start:
 When a step exits with a code other than 0, follow the row for that code in
 [Exit codes](exit-codes.md). When a step exits 0 and its `data` differs from the Expect line,
 compare the app with the end state below, following step 5 of Check a change in the
-[verify skill](../SKILL.md#check-a-change). When a step says to take another snapshot, take up to 5,
-about a second apart. When the last one still lacks the Expect line, treat the step as differing
-from it, and do the same comparison.
+[verify skill](../SKILL.md#check-a-change). When a snapshot lacks a step's Expect line, take up to 5
+more, about a second apart. When the last one still lacks it, treat the step as differing from the
+Expect line, and do the same comparison.
 
 ## Journey
 
@@ -55,7 +55,7 @@ from it, and do the same comparison.
    ```
 
    Expect: the snapshot holds the text "Connected" and the buttons "Mute" and "Hang up". When it
-   still holds "Connecting", take another snapshot.
+   still holds "Connecting", take another, as the retry rule above says.
 
 3. Check that the speech layer holds the call's one session.
 
@@ -74,8 +74,8 @@ from it, and do the same comparison.
    bun verify browser snapshot
    ```
 
-   Expect: within a few seconds, a snapshot holds the region "Proposals from this call" with the
-   card of "The user keeps bees on the allotment.". Take another snapshot until it does.
+   Expect: a snapshot holds the region "Proposals from this call" with the card of "The user keeps
+   bees on the allotment.". When the snapshot lacks it, take another, as the retry rule above says.
 
 5. Leave the call screen by a link of the app.
 

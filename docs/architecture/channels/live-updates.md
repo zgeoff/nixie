@@ -8,9 +8,10 @@ carries only its screen.
 
 A change that writes no record, or that no write makes, still reaches the tab. A backup notice marks
 its topic in the transaction that writes it, and the spend watcher publishes `spend` when the
-gateway's stop differs from its last read. The tab reads a covered read again only on its topic's
-`changed` event, with one exception: the task list also reads again at the time its own answer
-gives, because a task that wakes on a schedule changes with no write. [Topics](#topics) explains it.
+gateway's stop differs from its last read. The tab reads a covered read again on its topic's
+`changed` event, and reads every topic again when a stream opens, because `changed` has no event ID
+and a closed stream misses it. The task list also reads again at the time its own answer gives,
+because a task that wakes on a schedule changes with no write. [Topics](#topics) explains it.
 
 ```mermaid
 flowchart LR

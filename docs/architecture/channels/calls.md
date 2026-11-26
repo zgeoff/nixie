@@ -173,8 +173,9 @@ rest on this module:
 
 - The device ends a call it hangs up, and reads `endedBy` from the `calls.hangUp` answer, so a call
   that the server ended first shows its own reason.
-- A device that cannot bring a call back within the reconnect limit shows it as `dropped` and hangs
-  it up on the server, which records the end as `you` unless the sweep ended it first.
+- A device that cannot bring a call back within 30 seconds of the first loss, its own limit, shows
+  it as `dropped` and hangs it up on the server, which records the end as `you` unless the sweep
+  ended it first.
 - A proposal that the call's turn makes shows as a card on the call screen of the carrying device
   only, because only that device holds the call's thread. The card stays on the approval digest, and
   nixie sends no push for it, as

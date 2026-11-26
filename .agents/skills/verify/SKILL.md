@@ -89,10 +89,10 @@ The mistakes that cost the most time:
    app's endpoints in `data.endpoints`.
 3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
    `doctor` again.
-4. Run the journey from the feature's file in [References](#references). Its first line,
-   `use --feature`, records each later command under that feature, and leaves the target as it is.
-   Expect: each command exits 0. When one fails, do what its row in
-   [Exit codes](references/exit-codes.md) says.
+4. Run the journey from the feature's file, which the `File` column of the features table in
+   [References](#references) links. Its first line, `use --feature`, records each later command
+   under that feature, and leaves the target as it is. Expect: each command exits 0. When one fails,
+   do what its row in [Exit codes](references/exit-codes.md) says.
 5. Compare the app with the feature's end state:
    - When it matches, and no command failed with `read-only`, go on to step 6.
    - When your change broke the feature, fix the app's code. Then run `bun verify up --restart`,
@@ -109,8 +109,8 @@ The mistakes that cost the most time:
    - `done` never reads the end state. It fails with `check-failed` until a journey command has
      succeeded after `doctor`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature your task names,
-   in the order of the table in [References](#references). When a feature's file says to run part of
-   its journey last, run that part after every other journey.
+   in the order of the features table in [References](#references). When a feature's file says to
+   run part of its journey last, run that part after every other journey.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Repeat steps 4 to 6 for each `stale` feature.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
