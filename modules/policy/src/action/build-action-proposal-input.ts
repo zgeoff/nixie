@@ -4,7 +4,7 @@ import { buildAlwaysAllowRule } from '../rule/build-always-allow-rule';
 import type { AskCause, CallDestination, Effect, PolicyCall } from '../types';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
-import { buildGapGroupHash } from './build-gap-group-hash';
+import { buildSuggestedRuleGroupHash } from './build-suggested-rule-group-hash';
 
 export interface ActionProposalFacts {
   readonly definitions: Definitions;
@@ -77,7 +77,7 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
   const gap =
     facts.cause === 'no_rule' && facts.frame !== undefined
       ? {
-          groupHash: buildGapGroupHash({
+          groupHash: buildSuggestedRuleGroupHash({
             tool: facts.tool,
             context: facts.frame.context,
             destinations: facts.destinations.map((destination) => destination.value),

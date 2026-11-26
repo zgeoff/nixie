@@ -1,5 +1,6 @@
 import { removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
 import type { MemoryTables, StoreParts } from '../../types';
+import { buildProposalStateFilter } from '../build-proposal-state-filter';
 import { readHeldRecordKeys } from '../record/read-held-record-keys';
 
 export async function removeClosedProposalKeys(parts: StoreParts): Promise<number> {
@@ -9,7 +10,7 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select('item_id')
-    .where('status', 'in', ['rejected', 'lapsed', 'consumed', 'withdrawn'])
+    .where(buildProposalStateFilter({ state: 'closed' }))
     .where('is_new_item', '=', 1)
     .where((eb) =>
       eb.not(

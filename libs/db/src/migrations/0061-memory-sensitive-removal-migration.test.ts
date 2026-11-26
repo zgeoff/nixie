@@ -8,8 +8,10 @@ import { runMigrations } from '../migration/run-migrations';
 import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
+import { buildSchemaBefore } from '../test-utils/build-schema-before';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { memorySensitiveRemovalMigration } from './0061-memory-sensitive-removal-migration';
+import { proposalsPromptFamilyMigration } from './0095-proposals-prompt-family-migration';
 
 interface TaskSequences {
   readonly created: number;
@@ -62,7 +64,11 @@ async function setupTest() {
 
   return {
     db,
-    runMigration: () => runMigrations(db, { schema: nixieSchema, copyDir: directory }),
+    runMigration: () =>
+      runMigrations(db, {
+        schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+        copyDir: directory,
+      }),
     writeRecord,
     writeChange: async (
       sequence: number,

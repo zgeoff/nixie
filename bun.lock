@@ -265,6 +265,7 @@
         "@zgeoff/std": "catalog:",
         "elysia": "catalog:",
         "gunshi": "catalog:",
+        "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
         "xstate": "catalog:",

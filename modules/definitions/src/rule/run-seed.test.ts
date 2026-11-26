@@ -1848,6 +1848,7 @@ test('it withdraws a rule change proposal that an earlier release left pending, 
     outcomes: ['withdrawn'],
     rules: [['deny-mail', 'ask']],
     records: [
+      ['proposals.settled', proposal.proposalID],
       ['definitions_seeded', null],
       ['rules.change_withdrawn', proposal.proposalID],
     ],

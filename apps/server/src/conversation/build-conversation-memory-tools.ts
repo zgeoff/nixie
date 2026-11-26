@@ -2,12 +2,18 @@ import type { Clock } from '@heynixie/clock';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildMemoryTools } from '@heynixie/memory';
 import type { ToolDefinition } from '@heynixie/tools';
+import { buildProposalsPendingTool } from '../proposal/build-proposals-pending-tool';
+import { buildProposalsWithdrawTool } from '../proposal/build-proposals-withdraw-tool';
+import type { ProposalsToolDeps } from '../proposal/types';
 
 export interface ConversationMemory {
   readonly readStore: () => MemoryToolStore | null;
   readonly clock: Pick<Clock, 'now'>;
   readonly ownerName: string | null;
   readonly defaultZone: string;
+
+  // the tools that list and withdraw the proposals of every family, memory's among them
+  readonly proposals: ProposalsToolDeps;
 }
 
 export function buildConversationMemoryTools(
@@ -23,7 +29,7 @@ export function buildConversationMemoryTools(
     return store;
   };
 
-  return buildMemoryTools(
+  const memoryTools = buildMemoryTools(
     {
       recall: (request) => requireStore().recall(request),
       readTopicLines: (request) => requireStore().readTopicLines(request),
@@ -70,4 +76,10 @@ export function buildConversationMemoryTools(
       defaultZone: memory.defaultZone,
     },
   );
+
+  return [
+    ...memoryTools,
+    buildProposalsPendingTool(memory.proposals),
+    buildProposalsWithdrawTool(memory.proposals),
+  ];
 }

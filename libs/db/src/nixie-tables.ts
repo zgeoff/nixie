@@ -233,20 +233,6 @@ export interface NixieTables {
     readonly identity_id: string | null;
     readonly scope: string;
   };
-  readonly gap_answers: {
-    readonly proposal_id: string;
-    readonly group_hash: string;
-    readonly answer: string;
-    readonly answered_at: number;
-    readonly answered_sequence: number;
-  };
-  readonly gap_groups: {
-    readonly group_hash: string;
-    readonly quiet_until: number | null;
-    readonly proposal_id: string | null;
-    readonly checked_sequence: number | null;
-    readonly lapsed_at: number | null;
-  };
   readonly identities: {
     readonly identity_id: string;
     readonly channel: string;
@@ -428,7 +414,6 @@ export interface NixieTables {
     readonly target_version: number | null;
     readonly is_pinned: number;
     readonly review_reason: string;
-    readonly status: string;
     readonly action_hash: string;
     readonly sealed: string;
     readonly evidence: string | null;
@@ -442,7 +427,6 @@ export interface NixieTables {
     readonly notice_key: string | null;
     readonly created_sequence: number;
     readonly created_at: number;
-    readonly lapse_at: number;
     readonly resolved_sequence: number | null;
     readonly kind: string;
     readonly subject: string | null;
@@ -867,6 +851,20 @@ export interface NixieTables {
   readonly spend_turns_folded: {
     readonly id: number;
     readonly through_sequence: number;
+  };
+  readonly suggested_rule_answers: {
+    readonly proposal_id: string;
+    readonly group_hash: string;
+    readonly answer: string;
+    readonly answered_at: number;
+    readonly answered_sequence: number;
+  };
+  readonly suggested_rule_groups: {
+    readonly group_hash: string;
+    readonly quiet_until: number | null;
+    readonly proposal_id: string | null;
+    readonly checked_sequence: number | null;
+    readonly lapsed_at: number | null;
   };
   readonly task_definition_exports: {
     readonly export_id: string;

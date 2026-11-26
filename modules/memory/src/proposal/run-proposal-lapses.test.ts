@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys } from '@heynixie/log';
+import { readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { createProposal } from '../test-utils/create-proposal';
 import { lapseTestProposal } from '../test-utils/lapse-test-proposal';
@@ -27,14 +28,15 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
   const row = await memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
-    .select(['status', 'item_id'])
+    .select(['item_id'])
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
 
+  const shared = await readProposal(memory.writer.db, proposed.proposalID);
   const keys = await readRecordKeys(memory.log, [row.item_id]);
 
   expect(lapsed).toBe(true);
-  expect(row.status).toBe('lapsed');
+  expect(shared?.state).toBe('lapsed');
   expect(keys.get(row.item_id)).toBeUndefined();
 });
 

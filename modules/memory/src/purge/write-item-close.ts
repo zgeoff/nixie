@@ -15,6 +15,7 @@ import type { PurgePlan } from './pick-purge-plan';
 import type { CurrentLabels } from './read-current-labels';
 import { readCurrentLabels } from './read-current-labels';
 import type { PurgeFacts } from './read-purge-facts';
+import { writeProposalLapses } from './write-proposal-lapses';
 
 type CloseOfItem = Extract<PurgePlan, { kind: 'close' }>;
 
@@ -61,7 +62,7 @@ export async function writeItemClose(
   };
 
   const written = await withWriteTransaction(log.writer, async (tx) => {
-    await writeRecordsInTransaction(tx, log, buildLapseRecords(parts, facts));
+    await writeProposalLapses(tx, parts, facts);
 
     const bridged =
       bridge === null ? null : await writeVersionInTransaction(parts, tx, bridge.plan);
@@ -89,18 +90,6 @@ export async function writeItemClose(
   }
 
   return [...close.closedKeyIDs, ...facts.rejectionKeyIDs];
-}
-
-export function buildLapseRecords(
-  parts: Pick<StoreParts, 'context'>,
-  facts: Pick<PurgeFacts, 'pendingProposals'>,
-): readonly RecordInput[] {
-  return facts.pendingProposals.map((proposal) => ({
-    kind: 'memory.proposal_lapsed',
-    definitions: parts.context.definitions(),
-    ...(proposal.thread === null ? {} : { thread: proposal.thread }),
-    payload: { proposalID: proposal.proposalID },
-  }));
 }
 
 interface Bridge {

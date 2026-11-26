@@ -23,11 +23,11 @@ export async function seedMemoryProposalRow(
   // The db lib sits below every module, so it cannot call the module that writes memory proposals:
   // its storage tests seed the row as the schema shapes it.
   await sql`insert into memory_proposals (proposal_id, item_id, is_new_item, operation, is_pinned,
-    review_reason, status, action_hash, sealed, origin, source, cap_group, created_sequence,
-    created_at, lapse_at, subject)
-    values (${row.proposalID}, ${row.itemID}, 0, 'remember', 0, ${row.reviewReason}, 'pending',
+    review_reason, action_hash, sealed, origin, source, cap_group, created_sequence,
+    created_at, subject)
+    values (${row.proposalID}, ${row.itemID}, 0, 'remember', 0, ${row.reviewReason},
       ${`sha256:${row.proposalID}`}, 'sealed', 'conversation', 'untrusted', 'group-a', 1,
-      1767225600000, 1767312000000, ${row.subject})`.execute(db);
+      1767225600000, ${row.subject})`.execute(db);
 
   return row;
 }

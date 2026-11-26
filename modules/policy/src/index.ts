@@ -140,8 +140,8 @@ export { makeActionProposalHandler } from './action/make-action-proposal-handler
 export { mapActionProposalRecord } from './action/map-action-proposal-record';
 export { buildActionHash } from './action/build-action-hash';
 export { alwaysAskEffects } from './effect/always-ask-effects';
-export type { GapGroupKey } from './action/build-gap-group-hash';
-export { buildGapGroupHash } from './action/build-gap-group-hash';
+export type { SuggestedRuleGroupKey } from './action/build-suggested-rule-group-hash';
+export { buildSuggestedRuleGroupHash } from './action/build-suggested-rule-group-hash';
 export { destinationPatternSchema } from './rule/destination-pattern-schema';
 export { ruleBodySchema } from './rule/rule-body-schema';
 export { ruleObjectSchema } from './rule/rule-body-schema';

@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys, readRecords } from '@heynixie/log';
+import { readProposal } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createProposal } from '../test-utils/create-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import type { MemoryTables } from '../types';
 
 test('it leaves the pinned core and the item as they were when you reject a pin', async () => {
   const memory = await startTestMemory();
@@ -59,16 +59,10 @@ test('it rejects a proposal and drops the key of the item it would have created'
     identityID: 'identity-1',
   });
 
-  const row = await memory.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_proposals')
-    .select('status')
-    .where('proposal_id', '=', pending.proposalID)
-    .executeTakeFirstOrThrow();
-
+  const row = await readProposal(memory.writer.db, pending.proposalID);
   const keys = await readRecordKeys(memory.log, [pending.itemID]);
 
-  expect(row.status).toBe('rejected');
+  expect(row?.state).toBe('declined');
   expect(keys.get(pending.itemID)).toBeUndefined();
 });
 

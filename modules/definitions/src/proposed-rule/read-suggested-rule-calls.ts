@@ -6,17 +6,17 @@ import type { Transaction } from 'kysely';
 import { z } from 'zod';
 import type { ProposedRuleCall } from './build-proposed-rule';
 
-export interface GapCall extends ProposedRuleCall {
+export interface SuggestedRuleCall extends ProposedRuleCall {
   readonly proposalID: string;
 }
 
 // The approved calls of a group, from their action proposals. A proposal that a record forget
 // emptied, or that came before the group facts, is left out.
-export async function readGapCalls(
+export async function readSuggestedRuleCalls(
   tx: Transaction<unknown>,
   log: Log,
   proposalIDs: readonly string[],
-): Promise<readonly GapCall[]> {
+): Promise<readonly SuggestedRuleCall[]> {
   const rows = await readProposalsByID(tx, proposalIDs);
 
   if (rows.length === 0) {
@@ -28,10 +28,10 @@ export async function readGapCalls(
     { afterSequence: 0, sequences: rows.map((row) => row.createdSequence), limit: rows.length },
   );
 
-  const calls: GapCall[] = [];
+  const calls: SuggestedRuleCall[] = [];
 
   for (const entry of records) {
-    const call = toGapCall(entry.record);
+    const call = toSuggestedRuleCall(entry.record);
 
     if (call !== null) {
       calls.push(call);
@@ -46,7 +46,7 @@ const erasableSchema = z.object({
   destinations: z.object({ value: z.string() }).array().default([]),
 });
 
-function toGapCall(record: LogRecord): GapCall | null {
+function toSuggestedRuleCall(record: LogRecord): SuggestedRuleCall | null {
   if (record.erasable.status !== 'readable') {
     return null;
   }

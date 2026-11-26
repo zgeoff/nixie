@@ -1,3 +1,4 @@
+import type { ProposalTables } from '@heynixie/proposals';
 import type {
   MemoryProposal,
   MemoryProposalRow,
@@ -10,6 +11,7 @@ import { findImageSource } from '../image/find-image-source';
 import { readItemKeys } from '../item-key/read-item-keys';
 import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import type { MemoryTables, StoreParts } from '../types';
+import { buildProposalStateFilter } from '../utils/build-proposal-state-filter';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 import { getRowSubject } from '../utils/get-row-subject';
 import { parseEvidence } from '../utils/parse-evidence';
@@ -26,8 +28,7 @@ export async function readPendingProposals(
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .selectAll()
-    .where('status', '=', 'pending')
-    .where('lapse_at', '>', parts.context.gate.clock.now())
+    .where(buildProposalStateFilter({ state: 'open', nowMs: parts.context.gate.clock.now() }))
     .$if(subjects !== undefined, (query) => query.where(subjectColumn, 'in', subjects ?? []))
     .orderBy('created_sequence')
     .execute();
@@ -41,6 +42,7 @@ export async function readPendingProposals(
     })),
   );
 
+  const lapses = await readLapses(parts, rows);
   const merges = await readMergeSources(parts, rows);
   const labelEdits = await readLabelEdits(parts, rows);
 
@@ -74,7 +76,7 @@ export async function readPendingProposals(
         origin: row.origin,
         source: row.source,
         createdAt: row.created_at,
-        lapseAt: row.lapse_at,
+        lapseAt: lapses.get(row.proposal_id) ?? row.created_at,
         sources: [buildFirstSource(row), ...(merges.get(row.proposal_id) ?? [])],
         text: text.text,
         quote: text.quote,
@@ -87,6 +89,29 @@ export async function readPendingProposals(
   );
 
   return proposals.filter((proposal) => proposal !== null);
+}
+
+// The lapse of each proposal, which the shared row holds.
+async function readLapses(
+  parts: StoreParts,
+  rows: readonly MemoryProposalRow[],
+): Promise<ReadonlyMap<string, number>> {
+  if (rows.length === 0) {
+    return new Map();
+  }
+
+  const lapses = await parts.context.log.writer.db
+    .$extendTables<ProposalTables>()
+    .selectFrom('proposals')
+    .select(['proposal_id', 'lapses_at'])
+    .where(
+      'proposal_id',
+      'in',
+      rows.map((row) => row.proposal_id),
+    )
+    .execute();
+
+  return new Map(lapses.map((row) => [row.proposal_id, row.lapses_at]));
 }
 
 async function readMergeSources(

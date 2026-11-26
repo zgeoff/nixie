@@ -22,6 +22,7 @@ test('it proposes a pin of an active fact for review, and leaves the pinned core
   expect(outcome).toStrictEqual({
     status: 'proposed',
     proposalID: expect.toBeString(),
+    shortID: expect.toBeString(),
     reason: 'pinned',
     merged: false,
   });
@@ -153,6 +154,7 @@ test('it merges a second pin of the same version into the pending proposal', asy
   expect(second).toStrictEqual({
     status: 'proposed',
     proposalID: first.proposalID,
+    shortID: first.shortID,
     reason: 'pinned',
     merged: true,
   });

@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
+import { buildProposalCoreDeps } from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import type {
   ActionConnector,
@@ -232,6 +233,21 @@ export async function startConversationEndpoint(
     clock: options.context.clock,
     ownerName: options.config.owner.name,
     defaultZone: options.config.time.default_zone,
+    proposals: {
+      log: options.context.log,
+      clock: options.context.clock,
+      readMemory: tools.readStore,
+      readTaskNames: () => readTaskNames(options.context),
+      readCore: () =>
+        buildProposalCoreDeps(options.context, {
+          readMemory: () => null,
+          findPrompts: () => ({
+            readInForce: tools.readInForce,
+            checkProposal: checkPromptProposal,
+          }),
+          runInForceSeed: () => Promise.resolve(),
+        }),
+    },
   };
 
   const notebook = buildNotebookTools(() => {

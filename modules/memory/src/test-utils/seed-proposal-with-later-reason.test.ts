@@ -20,12 +20,11 @@ test('it leaves a pending proposal whose review reason a later release wrote', a
 
   const row = await ctx.db
     .selectFrom('memory_proposals')
-    .select(['proposal_id', 'status', 'review_reason'])
+    .select(['proposal_id', 'review_reason'])
     .executeTakeFirstOrThrow();
 
   expect(row).toStrictEqual({
     proposal_id: proposal.proposalID,
-    status: 'pending',
     review_reason: 'quote_too_old',
   });
 });

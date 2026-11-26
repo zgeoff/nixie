@@ -8,6 +8,7 @@ import type {
   SharedProposal,
 } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { MemoryProposals } from '../gate/gate-context';
 import { pickProposalRefusal } from '../proposal/pick-proposal-refusal';
 import { readMergedThreads } from '../proposal/read-merged-threads';
@@ -89,9 +90,17 @@ export function makeMemoryProposalHandler(
         return applyAnswer(options, run, row, answer);
       }
 
+      if (outcome === 'withdrawn') {
+        invariant(run.tx, 'a withdrawal runs in the transaction of the caller that withdraws');
+
+        const merged = await readMergedThreads(run.tx, row.id);
+
+        return doneWith(row, 'withdrawn', merged);
+      }
+
       const store = options.readStore();
 
-      if (store === null || outcome === 'withdrawn') {
+      if (store === null) {
         return {
           status: 'refused',
           refusal: { error: 'NOT_ALLOWED', reason: 'memory_not_started' },
@@ -226,7 +235,7 @@ async function settleInTransaction(
 
 function doneWith(
   row: SharedProposal,
-  outcome: 'approved' | 'declined' | 'lapsed',
+  outcome: 'approved' | 'declined' | 'lapsed' | 'withdrawn',
   otherThreads: readonly string[],
 ): DoneOutcome {
   return {

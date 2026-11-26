@@ -3,6 +3,7 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectOverride, McpOverrides } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import { withdrawRuleProposal } from '../proposed-rule/withdraw-rule-proposal';
 import type { RuleStoreWrite, WrittenRules } from '../rule/write-rule-store';
 import { writeRuleStore } from '../rule/write-rule-store';
 import { buildSkillChanges } from '../skill/build-skill-changes';
@@ -84,6 +85,19 @@ export async function writeSeed(
   const rules = await writeRuleStore(tx, plan.rules);
 
   await writeSnapshotRules(tx, plan.built.snapshotHash, rules);
+
+  const definitions = {
+    snapshotHash: plan.built.snapshotHash,
+    personaVersion: plan.built.personaVersion,
+  };
+
+  for (const proposalID of plan.withdrawnProposalIDs) {
+    await withdrawRuleProposal(
+      tx,
+      { log, clock: log.writer.clock, definitions: () => definitions },
+      proposalID,
+    );
+  }
 
   const record = await writeSeedRecord(tx, log, plan, rules);
 

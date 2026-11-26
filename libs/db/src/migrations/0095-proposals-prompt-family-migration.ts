@@ -63,6 +63,8 @@ export const proposalsPromptFamilyMigration: Migration = {
 
     await backfillSkillRows(tx);
     await backfillPromptProposals(tx);
+    await dropMemoryProposalState(tx);
+    await renameSuggestedRuleTables(tx);
   },
 };
 
@@ -162,4 +164,78 @@ async function backfillPromptProposals(tx: Transaction<unknown>): Promise<void> 
     await sql`update proposals set state = ${state}, defer_until = null, return_at = null
       where proposal_id = ${proposalID} and state in ('pending', 'deferred')`.execute(tx);
   }
+}
+
+const memoryProposalColumns = `proposal_id, item_id, is_new_item, operation, target_version,
+  is_pinned, review_reason, action_hash, sealed, evidence, origin, source, task_id, thread,
+  cap_group, checks, model, notice_key, created_sequence, created_at, resolved_sequence, kind,
+  subject, new_subject, sealed_labels, target_revision, is_label_only`;
+
+// The shared row holds a memory proposal's state and its lapse, so the memory table keeps neither.
+// SQLite cannot drop a column that a check names, so the table is built again.
+async function dropMemoryProposalState(tx: Transaction<unknown>): Promise<void> {
+  await sql`create table memory_proposals_next (
+    proposal_id text primary key,
+    item_id text not null,
+    is_new_item integer not null check (is_new_item in (0, 1)),
+    operation text not null check (operation in ('remember', 'retire', 'pin')),
+    target_version integer check (target_version is null or target_version >= 1),
+    is_pinned integer not null check (is_pinned in (0, 1)),
+    review_reason text not null,
+    action_hash text not null,
+    sealed text not null,
+    evidence text check (evidence is null or json_valid(evidence)),
+    origin text not null check (origin in ('owner', 'conversation', 'task', 'memory_writer')),
+    source text not null check (source in ('owner', 'owner_data', 'untrusted')),
+    task_id text,
+    thread text,
+    cap_group text not null,
+    checks text check (checks is null or json_valid(checks)),
+    model text,
+    notice_key text,
+    created_sequence integer not null references records (sequence),
+    created_at integer not null,
+    resolved_sequence integer references records (sequence),
+    kind text not null default 'fact',
+    subject text,
+    new_subject text,
+    sealed_labels text,
+    target_revision integer,
+    is_label_only integer not null default 0
+  ) strict`.execute(tx);
+
+  await sql`insert into memory_proposals_next (${sql.raw(memoryProposalColumns)})
+    select ${sql.raw(memoryProposalColumns)} from memory_proposals`.execute(tx);
+
+  await sql`drop table memory_proposals`.execute(tx);
+  await sql`alter table memory_proposals_next rename to memory_proposals`.execute(tx);
+  await sql`create index memory_proposals_by_cap_group on memory_proposals (cap_group)`.execute(tx);
+}
+
+// The tables of the rules that nixie suggests held the name of the check that fed them. Their
+// projection rows move with them, so a rebuild and an upgrade agree.
+async function renameSuggestedRuleTables(tx: Transaction<unknown>): Promise<void> {
+  const old =
+    await sql`select 1 from sqlite_master where type = 'table' and name = 'gap_groups'`.execute(tx);
+
+  if (old.rows.length === 0) {
+    return;
+  }
+
+  await sql`alter table gap_answers rename to suggested_rule_answers`.execute(tx);
+  await sql`alter table gap_groups rename to suggested_rule_groups`.execute(tx);
+  await sql`drop index if exists gap_answers_by_group`.execute(tx);
+  await sql`drop index if exists gap_groups_by_proposal`.execute(tx);
+
+  await sql`create index if not exists suggested_rule_answers_by_group
+    on suggested_rule_answers (group_hash, answered_at)`.execute(tx);
+
+  await sql`create index if not exists suggested_rule_groups_by_proposal
+    on suggested_rule_groups (proposal_id)`.execute(tx);
+
+  await sql`update projection_changes set projection = 'suggested_rule_answers'
+    where projection = 'gap_answers'`.execute(tx);
+
+  await sql`update projection_changes set projection = 'suggested_rule_groups'
+    where projection = 'gap_groups'`.execute(tx);
 }

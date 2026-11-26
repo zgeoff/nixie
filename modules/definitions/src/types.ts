@@ -518,7 +518,7 @@ interface RuleFireRow {
   readonly last_fired_at: number;
 }
 
-interface GapAnswerRow {
+interface SuggestedRuleAnswerRow {
   readonly proposal_id: string;
   readonly group_hash: string;
   readonly answer: 'approved' | 'declined';
@@ -526,7 +526,7 @@ interface GapAnswerRow {
   readonly answered_sequence: number;
 }
 
-interface GapGroupRow {
+interface SuggestedRuleGroupRow {
   readonly group_hash: string;
   readonly quiet_until: number | null;
   readonly proposal_id: string | null;
@@ -561,8 +561,8 @@ export type DefinitionsTables = CheckedTables<
     closed_rule_proposals: { readonly proposal_hash: string };
     budgets_in_force: BudgetInForceRow;
     rule_exports: RuleExportRow;
-    gap_answers: GapAnswerRow;
-    gap_groups: GapGroupRow;
+    suggested_rule_answers: SuggestedRuleAnswerRow;
+    suggested_rule_groups: SuggestedRuleGroupRow;
     task_definition_versions: TaskVersionRow;
     runtime_task_definitions: RuntimeTaskDefinitionRow;
     task_definition_exports: TaskDefinitionExportRow;

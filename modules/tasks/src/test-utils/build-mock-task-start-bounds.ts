@@ -7,7 +7,7 @@ export function buildMockTaskStartBounds(
     models: [],
     limits: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
     memoryTools: {
-      read: ['memory.recall', 'memory.pending', 'moment.read'],
+      read: ['memory.recall', 'proposals.pending', 'moment.read'],
       write: ['memory.remember', 'memory.edit', 'moment.keep', 'moment.edit'],
     },
     conversationTools: ['skill_read'],

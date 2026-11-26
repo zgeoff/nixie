@@ -5,9 +5,9 @@ import {
   makeProposedRuleHandler,
   makeRuleChangeHandler,
   makeRuleProposalHandler,
-  runGapCheck,
-  writeGapWithdrawal,
+  runSuggestedRuleCheck,
   writeRuntimeRuleInTransaction,
+  writeSuggestedRuleWithdrawal,
 } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { makeMcpProposalHandler } from '@heynixie/mcp';
@@ -55,7 +55,7 @@ export function buildProposalCoreDeps(
   context: ProposalAPIContext,
   parts: ProposalParts,
 ): ProposalCoreDeps {
-  const gapSettings =
+  const suggestedRuleSettings =
     context.settings?.policy?.proposedRules ?? defaultPolicySettings.proposedRules;
 
   const writeThreadRecord = (tx: Transaction<unknown>, input: RecordInput) =>
@@ -79,8 +79,10 @@ export function buildProposalCoreDeps(
         });
       },
       runAfterRule: parts.runInForceSeed,
-      writeGapDecline: (tx, groupHash) => writeGapWithdrawal(tx, context, groupHash),
-      runGapCheck: (groupHash) => runGapCheck(context, gapSettings, groupHash),
+      writeSuggestedRuleDecline: (tx, groupHash) =>
+        writeSuggestedRuleWithdrawal(tx, context, groupHash),
+      runSuggestedRuleCheck: (groupHash) =>
+        runSuggestedRuleCheck(context, suggestedRuleSettings, groupHash),
     }),
     makeMemoryProposalHandler({
       log: context.log,
@@ -133,7 +135,7 @@ export function buildProposalCoreDeps(
         clock: context.clock,
         definitions: context.definitions,
         runInForceSeed: parts.runInForceSeed,
-        settings: gapSettings,
+        settings: suggestedRuleSettings,
       }),
       mandate: makeMandateHandler({
         log: context.log,

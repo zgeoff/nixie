@@ -37,13 +37,12 @@ test('it inserts a pending proposal of the subject it is given', async () => {
     reviewReason: 'self_note',
   });
 
-  const rows = await sql`select proposal_id, status, review_reason, subject
+  const rows = await sql`select proposal_id, review_reason, subject
     from memory_proposals`.execute(ctx.db);
 
   expect(rows.rows).toStrictEqual([
     {
       proposal_id: proposal.proposalID,
-      status: 'pending',
       review_reason: 'self_note',
       subject: 'self',
     },

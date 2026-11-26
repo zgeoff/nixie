@@ -4,10 +4,10 @@ import { budgetProjections } from '@heynixie/budgets';
 import { callsProjection } from '@heynixie/calls';
 import { codingProjections } from '@heynixie/coding';
 import {
-  gapAnswersProjection,
-  gapGroupsProjection,
   ruleFiresProjection,
   runtimeTaskDefinitionsProjection,
+  suggestedRuleAnswersProjection,
+  suggestedRuleGroupsProjection,
   taskDefinitionExportsProjection,
 } from '@heynixie/definitions';
 import type { Log, Writer } from '@heynixie/log';
@@ -40,8 +40,8 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       ...memoryProjections,
       ...notebookProjections,
       ruleFiresProjection,
-      gapAnswersProjection,
-      gapGroupsProjection,
+      suggestedRuleAnswersProjection,
+      suggestedRuleGroupsProjection,
       runtimeTaskDefinitionsProjection,
       taskDefinitionExportsProjection,
       knownContactsProjection,

@@ -125,3 +125,25 @@ test('it keeps the three indexes and the same-thing index of the table when it r
     { name: 'proposals_by_state_and_return' },
   ]);
 });
+
+test('it takes the state and the lapse out of the memory proposals, which the shared row holds', async () => {
+  const ctx = await setupTest();
+
+  const columns = await sql`select name from pragma_table_info('memory_proposals')
+    where name in ('status', 'lapse_at')`.execute(ctx.db);
+
+  expect(columns.rows).toStrictEqual([]);
+});
+
+test('it names the tables of the suggested rules for what they hold', async () => {
+  const ctx = await setupTest();
+
+  const tables = await sql`select name from sqlite_master
+    where type = 'table' and name like '%rule_groups' or name like '%rule_answers' or name like 'gap_%'
+    order by name`.execute(ctx.db);
+
+  expect(tables.rows).toStrictEqual([
+    { name: 'suggested_rule_answers' },
+    { name: 'suggested_rule_groups' },
+  ]);
+});

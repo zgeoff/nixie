@@ -11,8 +11,8 @@ import { ruleProposedCodec } from './rule-proposed-codec';
 // A group exists once an answer joins it. Its open proposed rule is set by the proposal and cleared
 // by every way the proposal closes, in the record that closes it. Not now and a lapse set the quiet
 // time that the record carries.
-export const gapGroupsProjection: Projection = {
-  table: 'gap_groups',
+export const suggestedRuleGroupsProjection: Projection = {
+  table: 'suggested_rule_groups',
   keyColumn: 'group_hash',
   fold: async (tx, record) => {
     const tables = tx.$extendTables<DefinitionsTables>();
@@ -25,7 +25,7 @@ export const gapGroupsProjection: Projection = {
       }
 
       await tables
-        .insertInto('gap_groups')
+        .insertInto('suggested_rule_groups')
         .values({ group_hash: answered.groupHash })
         .onConflict((conflict) => conflict.doNothing())
         .execute();
@@ -37,7 +37,7 @@ export const gapGroupsProjection: Projection = {
       const proposed = ruleProposedCodec.decode(record.payload);
 
       await tables
-        .insertInto('gap_groups')
+        .insertInto('suggested_rule_groups')
         .values({ group_hash: proposed.groupHash, proposal_id: proposed.proposalID })
         .onConflict((conflict) =>
           conflict.column('group_hash').doUpdateSet({ proposal_id: proposed.proposalID }),
@@ -99,7 +99,7 @@ async function closeProposal(
   const tables = tx.$extendTables<DefinitionsTables>();
 
   const group = await tables
-    .selectFrom('gap_groups')
+    .selectFrom('suggested_rule_groups')
     .select('group_hash')
     .where('proposal_id', '=', proposalID)
     .executeTakeFirst();
@@ -109,7 +109,7 @@ async function closeProposal(
   }
 
   await tables
-    .updateTable('gap_groups')
+    .updateTable('suggested_rule_groups')
     .set({ proposal_id: null, ...change })
     .where('group_hash', '=', group.group_hash)
     .execute();

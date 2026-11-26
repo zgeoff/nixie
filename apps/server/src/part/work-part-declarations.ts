@@ -15,8 +15,8 @@ import {
 import {
   checkPromptProposal,
   makeRetireOneShot,
-  runGapChecks,
   runMandateExpiry,
+  runSuggestedRuleChecks,
   startMandateTimer,
 } from '@heynixie/definitions';
 import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
@@ -404,7 +404,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       };
 
       // A crash between an answer and its check, or while the release before ran, loses nothing.
-      await runGapChecks(rules, policy.proposedRules);
+      await runSuggestedRuleChecks(rules, policy.proposedRules);
       await runMandateExpiry(rules);
 
       const timer = startMandateTimer({ context: rules, clock: parts.context.clock, onError });

@@ -13,6 +13,7 @@ import type {
   StoreParts,
   VersionRef,
 } from '../types';
+import { buildProposalStateFilter } from '../utils/build-proposal-state-filter';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 import { subjectColumn } from '../utils/subject-column';
 import { normalizeFactText } from './normalize-fact-text';
@@ -57,8 +58,7 @@ export async function readMatchingProposal(
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .selectAll()
-    .where('status', '=', 'pending')
-    .where('lapse_at', '>', parts.context.gate.clock.now())
+    .where(buildProposalStateFilter({ state: 'open', nowMs: parts.context.gate.clock.now() }))
     .where('operation', '=', change.operation)
     .where('is_pinned', '=', isPinned);
 

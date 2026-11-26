@@ -1,8 +1,8 @@
 import type { PendingActionProposal } from '@heynixie/policy';
 import { buildActionProposalSentence, readPendingActionProposals } from '@heynixie/policy';
 import { runActionProposalAnswer } from '../proposal/run-action-proposal-answer';
+import type { ActionProposalAnswer } from '../proposal/types';
 import type { APIContext } from '../types';
-import type { ActionProposalAnswer } from '../utils/write-action-proposal-answer';
 import { hostImplementer } from './host-implementer';
 
 export function createHostActionProcedures(context: APIContext) {

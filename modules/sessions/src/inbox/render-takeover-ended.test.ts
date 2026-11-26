@@ -19,7 +19,7 @@ function setupTest() {
         kind: 'computer.takeover_ended',
         thread: 'conversation',
         recordedAt: new Date('2026-03-03T09:12:30Z'),
-        payload: { shortID: 'k3vq8m2xpa', ...payload },
+        payload: { shortID: '88', ...payload },
         erasable: fields === null ? { status: 'shredded' } : { status: 'readable', fields },
       }),
     mint: () => 'fence-1',
@@ -38,7 +38,7 @@ test('it reports a hand-back with the sites, the window in focus and its text in
   );
 
   expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toMatch(
-    /\[#k3vq8m2xpa\] Sam handed the computer back after 3 min\.\nSites: itch\.io → accounts\.itch\.io → itch\.io\nNow: browser tab t4\n<tool-result source="untrusted" fence="fence-1">\n"Welcome back"\n<\/tool-result fence="fence-1">\n/u,
+    /\[#90\] Sam handed the computer back after 3 min\.\nSites: itch\.io → accounts\.itch\.io → itch\.io\nNow: browser tab t4\n<tool-result source="untrusted" fence="fence-1">\n"Welcome back"\n<\/tool-result fence="fence-1">\n/u,
   );
 });
 
@@ -93,9 +93,7 @@ test.each([
     { origins: [], now: null },
   );
 
-  expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toInclude(
-    `[#k3vq8m2xpa] ${row.line}\n`,
-  );
+  expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toInclude(`[#90] ${row.line}\n`);
 });
 
 test('it counts a hand-back under a minute in seconds', () => {
@@ -110,7 +108,7 @@ test('it reports a hand-back whose sites and window were forgotten with the firs
   const record = ctx.buildEnded({ by: 'user', durationSeconds: 120 }, null);
 
   expect(renderTakeoverEnded(record, ctx.times, 'Sam', ctx.mint)).toMatch(
-    /\[#k3vq8m2xpa\] Sam handed the computer back after 2 min\.\n<\/system-message/u,
+    /\[#90\] Sam handed the computer back after 2 min\.\n<\/system-message/u,
   );
 });
 

@@ -80,7 +80,7 @@ test('it keeps the reason a rejection gives with its record, and closes the prop
   });
 
   const [records, pending] = await Promise.all([
-    readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.proposal_rejected'] }),
+    readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['proposals.settled'] }),
     ctx.memory.store.proposals.listPending(),
   ]);
 

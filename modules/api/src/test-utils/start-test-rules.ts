@@ -6,12 +6,12 @@ import { actionsProjection } from '@heynixie/actions';
 import type { MandateInput } from '@heynixie/definitions';
 import {
   createPathSource,
-  gapAnswersProjection,
-  gapGroupsProjection,
   readDefinitionsInForce,
   readSnapshotPolicy,
   runInForceSeed,
   runSeed,
+  suggestedRuleAnswersProjection,
+  suggestedRuleGroupsProjection,
   writeMandateProposal,
   writeProposedRuleEdit,
 } from '@heynixie/definitions';
@@ -94,8 +94,8 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
       actionsProjection,
       ...apiProjections,
       ...memoryProjections,
-      gapAnswersProjection,
-      gapGroupsProjection,
+      suggestedRuleAnswersProjection,
+      suggestedRuleGroupsProjection,
       proposalsProjection,
     ],
   };

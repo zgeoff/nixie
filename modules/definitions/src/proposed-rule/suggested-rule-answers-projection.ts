@@ -4,8 +4,8 @@ import type { DefinitionsTables } from '../types';
 
 // One row per approved or declined answer to a no_rule ask. Always allow, a lapse and a
 // withdrawal leave no row.
-export const gapAnswersProjection: Projection = {
-  table: 'gap_answers',
+export const suggestedRuleAnswersProjection: Projection = {
+  table: 'suggested_rule_answers',
   keyColumn: 'proposal_id',
   fold: async (tx, record) => {
     if (record.kind !== actionAnsweredCodec.kind) {
@@ -20,7 +20,7 @@ export const gapAnswersProjection: Projection = {
 
     await tx
       .$extendTables<DefinitionsTables>()
-      .insertInto('gap_answers')
+      .insertInto('suggested_rule_answers')
       .values({
         proposal_id: answered.proposalID,
         group_hash: answered.groupHash,

@@ -18,16 +18,16 @@ import { z } from 'zod';
 import { writeRuntimeRuleInTransaction } from '../runtime/write-runtime-rule';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import type { DefinitionsTables } from '../types';
-import { buildMemoryGapFields } from '../utils/build-memory-gap-fields';
+import { buildMemorySuggestedRuleFields } from '../utils/build-memory-suggested-rule-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
 import { describeProposedRule } from './describe-proposed-rule';
-import type { GapSettings } from './gap-settings';
-import { dayMs } from './gap-settings';
 import { ruleAnsweredCodec } from './rule-answered-codec';
 import { ruleProposedCodec } from './rule-proposed-codec';
+import type { SuggestedRuleSettings } from './suggested-rule-settings';
+import { dayMs } from './suggested-rule-settings';
 
 export interface ProposedRuleHandlerDeps extends RuleContext {
-  readonly settings: GapSettings;
+  readonly settings: SuggestedRuleSettings;
 }
 
 export function makeProposedRuleHandler(deps: ProposedRuleHandlerDeps): ProposalKindHandler {
@@ -65,7 +65,7 @@ async function readAnsweredAt(
 
   const rows = await db
     .$extendTables<DefinitionsTables>()
-    .selectFrom('gap_answers')
+    .selectFrom('suggested_rule_answers')
     .select(['proposal_id', 'answered_at'])
     .where('proposal_id', 'in', approvals)
     .execute();
@@ -99,7 +99,7 @@ function toBody(
     fields: {
       covers: `${proposed.approvals.length} approvals${days.length === 0 ? '' : `: ${days.join(', ')}`}`,
       group: formatGroup(rule),
-      ...buildMemoryGapFields([rule]),
+      ...buildMemorySuggestedRuleFields([rule]),
     },
     ruleSentence: null,
     approveLabel: 'Allow this rule',
@@ -184,7 +184,7 @@ async function writeApproval(
 async function readGroupHash(tx: Transaction<unknown>, proposalID: string): Promise<string> {
   const group = await tx
     .$extendTables<DefinitionsTables>()
-    .selectFrom('gap_groups')
+    .selectFrom('suggested_rule_groups')
     .select('group_hash')
     .where('proposal_id', '=', proposalID)
     .executeTakeFirst();

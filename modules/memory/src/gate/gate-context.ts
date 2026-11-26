@@ -160,6 +160,7 @@ export type WriteOutcome =
   | {
       readonly status: 'proposed';
       readonly proposalID: string;
+      readonly shortID: string;
       readonly reason: ReviewReason;
       readonly merged: boolean;
     };
@@ -253,6 +254,8 @@ export interface MemoryProposal {
   readonly origin: ProposalOrigin;
   readonly source: ContentSource;
   readonly createdAt: number;
+
+  // the lapse that the shared proposal row holds
   readonly lapseAt: number;
 
   readonly sources: readonly ProposalSource[];
@@ -371,7 +374,6 @@ export interface MemoryProposalTable {
   readonly is_pinned: number;
 
   readonly review_reason: string;
-  readonly status: 'pending' | 'consumed' | 'rejected' | 'lapsed' | 'withdrawn';
   readonly action_hash: string;
   readonly sealed: string;
   readonly evidence: string | null;
@@ -385,7 +387,6 @@ export interface MemoryProposalTable {
   readonly notice_key: string | null;
   readonly created_sequence: number;
   readonly created_at: number;
-  readonly lapse_at: number;
   readonly resolved_sequence: number | null;
 
   readonly kind: 'fact' | 'self';

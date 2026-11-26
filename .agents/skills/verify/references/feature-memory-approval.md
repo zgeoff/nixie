@@ -95,15 +95,18 @@ item's fact would make nixie keep the item at once, with no proposal.
 
    Expect: both clicks exit 0.
 
-6. Check the memory. On `preview`, skip the `db query` line.
+6. Check the memory. On `preview`, skip the `db query` lines.
 
    ```bash
    bun verify db query "select state from memory_items"
+   bun verify db query "select state, used_by is not null as has_approval from proposals where family = 'memory'"
    bun verify browser goto /memory
    bun verify browser snapshot
    ```
 
-   Expect: one row in `data.rows`, with `state` `active`, and the item's text on the memory page.
+   Expect: one row in `data.rows` of the first query, with `state` `active`, and the item's text on
+   the memory page. The second query returns one row, with `state` `approved` and `has_approval` 1:
+   the shared proposal row holds the memory proposal's state and names its approval.
 
 7. On `preview`, skip this step and step 8: the real model decides which tools it calls. Set a
    reminder whose words match the approved item. The scripted model sets it, then writes a note
@@ -134,7 +137,8 @@ item's fact would make nixie keep the item at once, with no proposal.
 ## End state
 
 - The approvals page of step 4 listed the item.
-- On `local`, the `db query` of step 6 returns one row, whose `state` is `active`.
+- On `local`, the first `db query` of step 6 returns one row, whose `state` is `active`, and the
+  second returns one `proposals` row that is `approved` and names its approval.
 - The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
   allotment.".
 - On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the

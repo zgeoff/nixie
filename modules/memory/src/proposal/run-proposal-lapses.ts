@@ -1,6 +1,7 @@
 import { withWriteTransaction } from '@heynixie/log';
+import type { ProposalTables } from '@heynixie/proposals';
 import type { ProposalLapse } from '../gate/gate-context';
-import type { MemoryTables, StoreParts } from '../types';
+import type { StoreParts } from '../types';
 import { removeClosedProposalKeys } from '../utils/key/remove-closed-proposal-keys';
 
 // The shared sweep lapses a proposal. This one closes the keys of the proposals that closed.
@@ -18,12 +19,12 @@ export async function writeProposalLapse(
 
   const isLapsed = await withWriteTransaction(log.writer, async (tx) => {
     const row = await tx
-      .$extendTables<MemoryTables>()
-      .selectFrom('memory_proposals')
+      .$extendTables<ProposalTables>()
+      .selectFrom('proposals')
       .select(['proposal_id'])
       .where('proposal_id', '=', lapse.proposalID)
-      .where('status', '=', 'pending')
-      .where('lapse_at', '<=', parts.context.gate.clock.now())
+      .where('state', 'in', ['pending', 'deferred'])
+      .where('lapses_at', '<=', parts.context.gate.clock.now())
       .executeTakeFirst();
 
     if (row === undefined) {

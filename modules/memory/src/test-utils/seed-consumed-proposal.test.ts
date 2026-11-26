@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import type { MemoryTables } from '../types';
 import { seedConsumedProposal } from './seed-consumed-proposal';
@@ -17,13 +18,9 @@ async function setupTest() {
 test('it leaves the proposal in the consumed status', async () => {
   const ctx = await setupTest();
   const proposal = await seedConsumedProposal(ctx);
+  const row = await readProposal(ctx.log.writer.db, proposal.proposalID);
 
-  const row = await ctx.db
-    .selectFrom('memory_proposals')
-    .select(['proposal_id', 'status'])
-    .executeTakeFirstOrThrow();
-
-  expect(row).toStrictEqual({ proposal_id: proposal.proposalID, status: 'consumed' });
+  expect(row?.state).toBe('approved');
 });
 
 test('it applies the text override to a consumed proposal', async () => {

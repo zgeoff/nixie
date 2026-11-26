@@ -1,8 +1,8 @@
-import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { buildProposeDeps, proposeInTransaction } from '@heynixie/proposals';
+import { buildProposeDeps, proposeInTransaction, readProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import type { ReviewReason, WriteCaller } from '../gate/gate-context';
 import { createSealedProposal } from '../proposal/create-sealed-proposal';
@@ -57,6 +57,9 @@ export interface ProposalPlan {
 
 export interface WrittenProposal {
   readonly proposalID: string;
+
+  // the short ID of the shared row, which is the open proposal's when this one merged into it
+  readonly shortID: string;
   readonly merged: boolean;
 }
 
@@ -131,7 +134,11 @@ async function writePendingMerge(
     buildMergeRecord(parts, { proposal: match, plan }),
   ]);
 
-  return { proposalID: match.proposal_id, merged: true };
+  const open = await readProposal(tx, match.proposal_id);
+
+  invariant(open, 'a pending memory proposal has its shared row');
+
+  return { proposalID: match.proposal_id, shortID: open.shortID, merged: true };
 }
 
 interface KeyedPendingProposal {
@@ -163,7 +170,6 @@ async function writeProposalOrMerge(
 
   const gate = parts.context.gate;
 
-  // memory names a proposal by the short ID of its UUID, so every reader of it keeps one
   const proposed = await proposeInTransaction(
     buildProposeDeps({
       log: parts.context.log,
@@ -173,7 +179,6 @@ async function writeProposalOrMerge(
     tx,
     {
       proposalID: pending.sealed.proposalID,
-      shortID: buildShortIDFromUUID(pending.sealed.proposalID),
       family: 'memory',
       kind: 'memory_write',
       cause: pending.plan.reason,
@@ -190,5 +195,5 @@ async function writeProposalOrMerge(
 
   await writeProposalRecord(tx, parts, pending, proposed.lapsesAt);
 
-  return { proposalID: pending.sealed.proposalID, merged: false };
+  return { proposalID: pending.sealed.proposalID, shortID: proposed.shortID, merged: false };
 }

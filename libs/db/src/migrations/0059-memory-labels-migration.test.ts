@@ -6,8 +6,10 @@ import { Kysely, sql } from 'kysely';
 import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
+import { buildSchemaBefore } from '../test-utils/build-schema-before';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { memoryLabelsMigration } from './0059-memory-labels-migration';
+import { proposalsPromptFamilyMigration } from './0095-proposals-prompt-family-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -49,7 +51,10 @@ test('it keeps an item row in the shape of version 58 and gives it no label edit
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: ctx.directory,
+  });
 
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence) values ('c2hd81mmqa', 1, 'active', 0, 1, 1)`.execute(ctx.db);
@@ -62,7 +67,10 @@ test('it keeps an item row in the shape of version 58 and gives it no label edit
 test('it adds the label columns of a proposal with their defaults', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: ctx.directory,
+  });
 
   const columns = await sql`select name, "notnull" as is_required, dflt_value
     from pragma_table_info('memory_proposals')
@@ -80,7 +88,10 @@ test('it adds the label columns of a proposal with their defaults', async () => 
 test('it runs a second time without error and keeps the label table', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: ctx.directory,
+  });
 
   await ctx.db.transaction().execute((tx) => memoryLabelsMigration.up(tx));
 

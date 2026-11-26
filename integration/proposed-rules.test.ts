@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { startTestRules } from '@heynixie/api/test-utils';
-import { runGapChecks, writeProposedRule } from '@heynixie/definitions';
+import { runSuggestedRuleChecks, writeProposedRule } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import {
   answerProposal,
@@ -89,7 +89,7 @@ async function setupTest() {
     readProposedRules,
     approveSend,
     approveWithoutCheck,
-    runStartChecks: () => runGapChecks(rules.context, settings),
+    runStartChecks: () => runSuggestedRuleChecks(rules.context, settings),
 
     // the lapse that the release before writes for every row of the rule change family
     writeOlderLapse: (proposalID: string) =>

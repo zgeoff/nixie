@@ -1,5 +1,4 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject, LogTables } from '@heynixie/log';
 import { readRecordKeys, readRecords } from '@heynixie/log';
 import type { EffectDeclaration, Rule, RuleEntry } from '@heynixie/policy';
@@ -8,9 +7,9 @@ import {
   readStarterDecisionPoint,
   readStarterRules,
 } from '@heynixie/policy/test-utils';
+import { readProposal } from '@heynixie/proposals';
 import type { ToolCallOptions, ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
-import { parseFencedResult } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { defaultGateLimits } from '../gate/default-gate-limits';
@@ -162,7 +161,6 @@ test('it declares read for the reads, export for export, memory_write for rememb
 
   const effects = [
     'memory.recall',
-    'memory.pending',
     'memory.remember',
     'memory.edit',
     'memory.retire',
@@ -179,7 +177,6 @@ test('it declares read for the reads, export for export, memory_write for rememb
 
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
-    ['memory.pending', ['read']],
     ['memory.remember', ['memory_write']],
     ['memory.edit', ['memory_write']],
     ['memory.retire', ['memory_write']],
@@ -372,14 +369,18 @@ test('it returns a proposal with the photo sentence for a fact from an image of 
 
   invariant(proposal);
 
+  const row = await readProposal(ctx.memory.log.writer.db, proposal.proposalID);
+
+  invariant(row);
+
   expect(outcome).toStrictEqual({
     status: 'ok',
     hidden: {
-      uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+      uuids: { [row.shortID]: proposal.proposalID },
     },
     result: {
       status: 'proposed',
-      proposalID: buildShortIDFromUUID(proposal.proposalID),
+      proposalID: row.shortID,
       reason:
         'from_photo: Saved as a proposal for the owner to review. It comes from a photo, and a memory from a photo waits for their review unless an allow rule covers it.',
       merged: false,
@@ -1541,11 +1542,7 @@ test('it leaves no readable label of a forgotten item in a record, a column or t
     ctx.toolCallOptions,
   );
 
-  const waiting = await runToolCall(
-    { tool: 'memory.pending', input: {}, toolUseID: null },
-    { ...run, tools: ['memory.pending'] },
-    ctx.toolCallOptions,
-  );
+  const waiting = await ctx.memory.store.proposals.listPending();
 
   await ctx.memory.store.forget({
     target: { itemID: item.item_id, version: 2 },
@@ -1653,29 +1650,15 @@ test('it lists a text edit proposed after a label edit at the revision it read, 
     },
   });
 
-  const result = await runToolCall(
-    { tool: 'memory.pending', input: {}, toolUseID: null },
-    {
-      runID: 'run-1',
-      thread: 'conversation',
-      logThread: 'conversation',
-      tools: ['memory.pending'],
-      model: { model: 'test-model', profile: 'standard' },
-    },
-    ctx.toolCallOptions,
-  );
+  const [listed] = await ctx.memory.store.proposals.listPending();
 
   const row = await ctx.memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select('target_version')
-    .where('status', '=', 'pending')
     .executeTakeFirstOrThrow();
 
-  expect(parseFencedResult(result)).toMatchObject({
-    proposals: [{ itemID: item.shortID, version: 2 }],
-  });
-
+  expect(listed?.targetVersion).toBe(2);
   expect(row.target_version).toBe(1);
 });
 
@@ -1894,7 +1877,7 @@ test.each([
   ['memory.retire', { version: 1 }],
   ['memory.pin', { version: 1 }],
 ])(
-  'it shows the short ID of the proposal that %s makes, as memory.pending shows it, and hides its UUID',
+  'it shows the short ID of the proposal that %s makes, as its shared row holds it, and hides its UUID',
   async (name, input) => {
     const ctx = await setupTest();
 
@@ -1931,13 +1914,15 @@ test.each([
 
     invariant(proposal);
 
-    const shortID = buildShortIDFromUUID(proposal.proposalID);
+    const shared = await readProposal(ctx.memory.log.writer.db, proposal.proposalID);
 
-    const listed = await call('memory.pending', {});
+    invariant(shared);
+
+    const shortID = shared.shortID;
+
     const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
     expect(written.structuredContent).toMatchObject({ status: 'proposed', proposalID: shortID });
-    expect(parseFencedResult(listed)).toMatchObject({ proposals: [{ proposalID: shortID }] });
 
     expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
       erasable: {

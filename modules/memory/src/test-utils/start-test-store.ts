@@ -1,11 +1,13 @@
 import type { Log } from '@heynixie/log';
 import { logProjections, makeErasureRunner, startWriter } from '@heynixie/log';
 import { buildTestErasureEffects } from '@heynixie/log/test-utils';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import { defaultIndexSettings } from '../index-block/default-index-settings';
 import { startMemoryStore } from '../memory/start-memory-store';
 import { memoryProjections } from '../moment/projection/memory-projections';
 import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
+import { mapMemoryProposalRecord } from '../proposal/map-memory-proposal-record';
 import type { MomentTarget } from '../utils/moment-context';
 import type { TestMemory, TestMemoryOptions } from './start-test-memory';
 
@@ -29,7 +31,11 @@ export async function startTestStore(
         ? writer
         : { ...writer, db: writer.db.withPlugin(options.dbPlugin) },
     deploymentKey: wiring.deploymentKey,
-    projections: [...logProjections, ...memoryProjections],
+    projections: [
+      ...logProjections,
+      ...memoryProjections,
+      buildProposalsProjection([mapMemoryProposalRecord]),
+    ],
   };
 
   const definitions = options.definitions ?? (() => ({ snapshotHash: 'sha256:test' }));

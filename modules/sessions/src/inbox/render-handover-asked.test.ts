@@ -13,7 +13,7 @@ function setupTest() {
         kind: 'computer.handover_asked',
         thread: 'conversation',
         recordedAt: new Date('2026-03-03T09:12:30Z'),
-        payload: { shortID: 'p4wd7n1qzb' },
+        payload: { shortID: '88' },
         erasable: fields === null ? { status: 'shredded' } : { status: 'readable', fields },
       }),
   };
@@ -24,7 +24,7 @@ test('it shows the assistant its ask with the ID and the reason inside the page 
   const record = ctx.buildAsked({ reason: 'itch.io asks for a CAPTCHA' });
 
   expect(renderHandoverAsked(record, ctx.times, 'Sam', ctx.mint)).toMatch(
-    /\[#p4wd7n1qzb\] You asked Sam to take over the computer\.\nReason:\n<tool-result source="untrusted" fence="fence-1">\n"itch\.io asks for a CAPTCHA"\n<\/tool-result fence="fence-1">\n/u,
+    /\[#91\] You asked Sam to take over the computer\.\nReason:\n<tool-result source="untrusted" fence="fence-1">\n"itch\.io asks for a CAPTCHA"\n<\/tool-result fence="fence-1">\n/u,
   );
 });
 
@@ -33,7 +33,7 @@ test('it names the user when the owner has no name', () => {
   const record = ctx.buildAsked({ reason: 'a CAPTCHA' });
 
   expect(renderHandoverAsked(record, ctx.times, null, ctx.mint)).toInclude(
-    '[#p4wd7n1qzb] You asked the user to take over the computer.',
+    '[#91] You asked the user to take over the computer.',
   );
 });
 

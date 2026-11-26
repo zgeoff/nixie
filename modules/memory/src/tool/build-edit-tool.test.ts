@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildShortIDFromUUID } from '@heynixie/db';
+import { readProposal } from '@heynixie/proposals';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
@@ -80,14 +80,18 @@ test.each(['conversation', 'task-1'])(
 
     invariant(proposal);
 
+    const shared = await readProposal(memory.writer.db, proposal.proposalID);
+
+    invariant(shared);
+
     expect(outcome).toStrictEqual({
       status: 'ok',
       hidden: {
-        uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+        uuids: { [shared.shortID]: proposal.proposalID },
       },
       result: {
         status: 'proposed',
-        proposalID: buildShortIDFromUUID(proposal.proposalID),
+        proposalID: shared.shortID,
         reason:
           "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
         merged: false,
@@ -187,14 +191,18 @@ test('it proposes an edit with no quote when no rule decided it', async () => {
 
   invariant(proposal);
 
+  const shared = await readProposal(memory.writer.db, proposal.proposalID);
+
+  invariant(shared);
+
   expect(outcome).toStrictEqual({
     status: 'ok',
     hidden: {
-      uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+      uuids: { [shared.shortID]: proposal.proposalID },
     },
     result: {
       status: 'proposed',
-      proposalID: buildShortIDFromUUID(proposal.proposalID),
+      proposalID: shared.shortID,
       reason:
         "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
       merged: false,

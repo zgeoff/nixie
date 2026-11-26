@@ -28,7 +28,7 @@ export async function withdrawInTransaction(
 
   const handler = deps.handlers.get(row.family);
 
-  if (handler === undefined || handler.ownsTransaction) {
+  if (handler === undefined) {
     return { status: 'refused' };
   }
 

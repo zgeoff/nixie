@@ -1,3 +1,4 @@
+import type { ProposalTables } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import type { MemoryProposalRow } from '../gate/gate-context';
 import type { MemoryTables } from '../types';
@@ -26,11 +27,18 @@ export async function requirePendingProposal(
     throw new MemoryProposalNotFoundError(requirement.proposalID);
   }
 
-  if (row.status !== 'pending') {
-    throw new ProposalClosedError(row.proposal_id, row.status);
+  const shared = await db
+    .$extendTables<ProposalTables>()
+    .selectFrom('proposals')
+    .select(['state', 'lapses_at'])
+    .where('proposal_id', '=', requirement.proposalID)
+    .executeTakeFirst();
+
+  if (shared !== undefined && shared.state !== 'pending' && shared.state !== 'deferred') {
+    throw new ProposalClosedError(row.proposal_id, shared.state);
   }
 
-  if (row.lapse_at <= requirement.now) {
+  if (shared !== undefined && shared.lapses_at <= requirement.now) {
     throw new ProposalClosedError(row.proposal_id, 'lapsed');
   }
 

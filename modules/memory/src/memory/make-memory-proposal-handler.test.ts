@@ -52,13 +52,7 @@ async function setupTest() {
   return {
     memory,
     readRebuiltRow: async (proposalID: string) => {
-      await runProjectionRebuild({
-        ...memory.log,
-        projections: [
-          ...memory.log.projections,
-          buildProposalsProjection([mapMemoryProposalRecord]),
-        ],
-      });
+      await runProjectionRebuild(memory.log);
 
       return readProposal(memory.log.writer.db, proposalID);
     },

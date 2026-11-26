@@ -6,7 +6,9 @@ import { Kysely, sql } from 'kysely';
 import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
+import { buildSchemaBefore } from '../test-utils/build-schema-before';
 import { memoryPinProposalsMigration } from './0025-memory-pin-proposals-migration';
+import { proposalsPromptFamilyMigration } from './0095-proposals-prompt-family-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -64,7 +66,10 @@ test('it keeps each proposal of a database it upgrades, and the merges that name
     ctx.db,
   );
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: ctx.directory,
+  });
 
   const proposals = await sql`select * from memory_proposals`.execute(ctx.db);
   const broken = await sql`select * from pragma_foreign_key_check`.execute(ctx.db);
@@ -109,7 +114,10 @@ test('it keeps each proposal of a database it upgrades, and the merges that name
 test('it stores a pin proposal, and keeps the indexes by status and by cap group', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: ctx.directory,
+  });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.proposed', 'snapshot-a', '{}')`.execute(ctx.db);
@@ -139,7 +147,10 @@ test('it stores a pin proposal, and keeps the indexes by status and by cap group
 test('it keeps each proposal when it runs again', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: buildSchemaBefore(nixieSchema, proposalsPromptFamilyMigration),
+    copyDir: ctx.directory,
+  });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.proposed', 'snapshot-a', '{}')`.execute(ctx.db);

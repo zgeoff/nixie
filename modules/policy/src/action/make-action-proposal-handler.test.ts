@@ -34,8 +34,8 @@ async function setupTest() {
     },
     failHeld: () => Promise.resolve(),
     runAfterRule: () => Promise.resolve(),
-    writeGapDecline: () => Promise.resolve(),
-    runGapCheck: () => Promise.resolve(),
+    writeSuggestedRuleDecline: () => Promise.resolve(),
+    runSuggestedRuleCheck: () => Promise.resolve(),
   });
 
   return {
@@ -62,6 +62,7 @@ async function setupTest() {
       const [written] = await writeRecords(started.log, [proposed.record]);
 
       const row = buildMockSharedProposal({
+        id: proposed.proposalID,
         thread: 'conversation',
         createdSequence: written?.sequence ?? 0,
         actionHash,
@@ -107,6 +108,7 @@ async function setupTest() {
       const [written] = await writeRecords(started.log, [proposed.record]);
 
       const row = buildMockSharedProposal({
+        id: proposed.proposalID,
         thread: 'conversation',
         createdSequence: written?.sequence ?? 0,
         actionHash,
@@ -140,6 +142,7 @@ async function setupTest() {
       const [written] = await writeRecords(started.log, [proposed.record]);
 
       const row = buildMockSharedProposal({
+        id: proposed.proposalID,
         thread: 'conversation',
         createdSequence: written?.sequence ?? 0,
       });
@@ -164,6 +167,7 @@ async function setupTest() {
       const [written] = await writeRecords(started.log, [proposed.record]);
 
       const row = buildMockSharedProposal({
+        id: proposed.proposalID,
         thread: 'conversation',
         createdSequence: written?.sequence ?? 0,
       });

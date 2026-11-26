@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { readItemKeys } from '../item-key/read-item-keys';
 import type { MemoryTables } from '../types';
+import { buildProposalStateFilter } from '../utils/build-proposal-state-filter';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 import type { MomentTables } from '../utils/moment-context';
 import { readViewItems } from '../view/read-view-items';
@@ -78,7 +79,7 @@ async function readPurgeTexts(
     .select(['item_id', 'proposal_id', 'sealed', 'created_sequence'])
     .where('item_id', 'in', pendingIDs)
     .where('is_new_item', '=', 1)
-    .where('status', '=', 'pending')
+    .where(buildProposalStateFilter({ state: 'open' }))
     .orderBy('created_sequence')
     .execute();
 

@@ -2,7 +2,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { memoryEvidencePurgeClosedCodec } from '../record/memory-evidence-purge-closed-codec';
 import type { StoreParts } from '../types';
 import type { PurgeFacts } from './read-purge-facts';
-import { buildLapseRecords } from './write-item-close';
+import { writeProposalLapses } from './write-proposal-lapses';
 
 // Closes the purge of a pending proposal for a new item. The proposal lapses, and the closing record
 // names the item's key, so a retry that finds the record deletes the key and checks the key store
@@ -11,8 +11,9 @@ export async function writeLapseClose(parts: StoreParts, facts: PurgeFacts): Pro
   const log = parts.context.log;
 
   await withWriteTransaction(log.writer, async (tx) => {
+    await writeProposalLapses(tx, parts, facts);
+
     await writeRecordsInTransaction(tx, log, [
-      ...buildLapseRecords(parts, facts),
       {
         kind: memoryEvidencePurgeClosedCodec.kind,
         definitions: parts.context.definitions(),

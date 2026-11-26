@@ -4,34 +4,34 @@ import type { Transaction } from 'kysely';
 import type { DefinitionsTables } from '../types';
 import { buildProposedRule } from './build-proposed-rule';
 import { canProposeRule } from './can-propose-rule';
-import type { GapSettings } from './gap-settings';
-import { dayMs } from './gap-settings';
 import { pickQuietUntil } from './pick-quiet-until';
-import { readGapCalls } from './read-gap-calls';
+import { readSuggestedRuleCalls } from './read-suggested-rule-calls';
+import type { SuggestedRuleSettings } from './suggested-rule-settings';
+import { dayMs } from './suggested-rule-settings';
 import { writeProposedRule } from './write-proposed-rule';
 
 // Checks one group in a transaction of its own, and proposes its rule when the group qualifies.
-export function runGapCheck(
+export function runSuggestedRuleCheck(
   context: ProposalContext,
-  settings: GapSettings,
+  settings: SuggestedRuleSettings,
   groupHash: string,
 ): Promise<void> {
   return withWriteTransaction(context.log.writer, (tx) =>
-    writeGapCheck(tx, context, settings, groupHash),
+    writeSuggestedRuleCheck(tx, context, settings, groupHash),
   );
 }
 
-async function writeGapCheck(
+async function writeSuggestedRuleCheck(
   tx: Transaction<unknown>,
   context: ProposalContext,
-  settings: GapSettings,
+  settings: SuggestedRuleSettings,
   groupHash: string,
 ): Promise<void> {
   const tables = tx.$extendTables<DefinitionsTables>();
   const now = context.clock.now();
 
   const group = await tables
-    .selectFrom('gap_groups')
+    .selectFrom('suggested_rule_groups')
     .select(['quiet_until', 'proposal_id', 'lapsed_at'])
     .where('group_hash', '=', groupHash)
     .executeTakeFirst();
@@ -41,7 +41,7 @@ async function writeGapCheck(
   }
 
   const answers = await tables
-    .selectFrom('gap_answers')
+    .selectFrom('suggested_rule_answers')
     .select(['proposal_id', 'answer', 'answered_sequence'])
     .where('group_hash', '=', groupHash)
     .where('answered_at', '>=', now - settings.windowDays * dayMs)
@@ -60,7 +60,7 @@ async function writeGapCheck(
   });
 
   if (isProposable) {
-    const calls = await readGapCalls(
+    const calls = await readSuggestedRuleCalls(
       tx,
       context.log,
       approved.map((answer) => answer.proposal_id),
@@ -80,13 +80,13 @@ async function writeGapCheck(
   }
 
   const latest = await tables
-    .selectFrom('gap_answers')
+    .selectFrom('suggested_rule_answers')
     .select((eb) => eb.fn.max<number>('answered_sequence').as('latest'))
     .where('group_hash', '=', groupHash)
     .executeTakeFirst();
 
   await tables
-    .updateTable('gap_groups')
+    .updateTable('suggested_rule_groups')
     .set({ checked_sequence: latest?.latest ?? null })
     .where('group_hash', '=', groupHash)
     .execute();

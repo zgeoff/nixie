@@ -14,7 +14,7 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import { writeRuntimeRuleInTransaction } from '../runtime/write-runtime-rule';
-import { buildMemoryGapFields } from '../utils/build-memory-gap-fields';
+import { buildMemorySuggestedRuleFields } from '../utils/build-memory-suggested-rule-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
 import { mandateProposedCodec } from './mandate-proposed-codec';
 import { mandateStartedCodec } from './mandate-started-codec';
@@ -54,7 +54,7 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
       title: erasable.title,
       ends: new Date(proposed.expires).toISOString(),
       ...Object.fromEntries(sentences.map((sentence, index) => [`rule ${index + 1}`, sentence])),
-      ...buildMemoryGapFields(rules),
+      ...buildMemorySuggestedRuleFields(rules),
     },
     ruleSentence: null,
     approveLabel: 'Start the mandate',

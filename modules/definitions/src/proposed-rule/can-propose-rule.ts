@@ -1,4 +1,4 @@
-export interface GapFacts {
+export interface SuggestedRuleFacts {
   readonly now: number;
   readonly approvals: number;
   readonly approvedCount: number;
@@ -7,7 +7,7 @@ export interface GapFacts {
   readonly quietUntil: number | null;
 }
 
-export function canProposeRule(facts: GapFacts): boolean {
+export function canProposeRule(facts: SuggestedRuleFacts): boolean {
   return (
     facts.approvedCount >= facts.approvals &&
     facts.declinedCount === 0 &&

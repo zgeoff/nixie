@@ -1,4 +1,4 @@
-export interface GapSettings {
+export interface SuggestedRuleSettings {
   // approved answers in one group before nixie proposes a rule
   readonly approvals: number;
   readonly windowDays: number;
