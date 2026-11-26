@@ -99,6 +99,6 @@ test('it loads the released migrations from their files in released order, each 
   ).toStrictEqual(released.map(([fileName, name]) => [fileName, name, true]));
 });
 
-test('it holds the devices migration as the oldest reader', () => {
-  expect(nixieSchema.oldestReader).toBe(77);
+test('it holds the spend ledger migration as the oldest reader', () => {
+  expect(nixieSchema.oldestReader).toBe(89);
 });

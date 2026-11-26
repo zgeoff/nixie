@@ -2,6 +2,11 @@ import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
 import {
+  createTestModelGateway,
+  testGatewayControlToken,
+} from '@heynixie/model-gateway/test-utils';
+import type { TestModelGateway } from '@heynixie/model-gateway/test-utils';
+import {
   createSpawnedNixie,
   createTestClient,
   readTestBundle,
@@ -20,7 +25,9 @@ import { runCallStep } from './run-call-step';
 import { runComputerSession } from './run-computer-session';
 import { runDeviceLayout } from './run-device-layout';
 import { runDeviceShow } from './run-device-show';
+import { sendSpendProbe } from './send-spend-probe';
 import { serveControl } from './serve-control';
+import { startFakeRateSite } from './start-fake-rate-site';
 
 interface RunningState {
   isRunning: boolean;
@@ -47,6 +54,17 @@ export async function runVerifyHarness(): Promise<void> {
     stack.defer(() => gateway.stop());
   }
 
+  // A start with NIXIE_VERIFY_SPEND=1 sends every model request through a spending gateway with 2
+  // routes: the profile's route `scripted`, and the route `second`, whose day limit one reply
+  // passes. A rate site answers for the display currency.
+  const isSpendOn = process.env['NIXIE_VERIFY_SPEND'] === '1';
+  const spend: { gateway: TestModelGateway | null } = { gateway: null };
+  const rates = isSpendOn ? startFakeRateSite() : null;
+
+  if (rates !== null) {
+    stack.defer(() => rates.stop(true));
+  }
+
   // A start with NIXIE_VERIFY_MAIL=1 gives nixie its own mailbox, on a host in memory.
   const hasMail = process.env['NIXIE_VERIFY_MAIL'] === '1';
 
@@ -71,6 +89,27 @@ export async function runVerifyHarness(): Promise<void> {
     fetchSiteURL: deviceSite.url,
     ...(gateway === null ? {} : { atcURL: gateway.url }),
     memoryConfig: localMemoryConfig,
+    ...(rates === null
+      ? {}
+      : {
+          modelCredential: 'sandbox-backend' as const,
+          routeModel: async (upstreamURL: string) => {
+            const started = await createTestModelGateway({
+              upstreamURL,
+              periods: {
+                zone: 'Australia/Sydney',
+                countBySandbox: true,
+                secondRoute: { id: 'second', limits: { day: 1.5, month: 50 } },
+              },
+            });
+
+            spend.gateway = started;
+
+            stack.defer(() => started.stop());
+
+            return { baseURL: started.url, config: buildSpendConfigLines(started, rates.url.href) };
+          },
+        }),
     extraConfig: [
       'images:',
       '  default: openai',
@@ -88,6 +127,7 @@ export async function runVerifyHarness(): Promise<void> {
     extraSecrets: [
       'connector_credentials:',
       '  images: stub-image-key',
+      ...(isSpendOn ? ['settings:', `  gateway-control: ${testGatewayControlToken}`] : []),
       ...(gateway === null ? [] : [`atc_token: ${gateway.token}`]),
     ],
   });
@@ -192,6 +232,7 @@ export async function runVerifyHarness(): Promise<void> {
       return minutes;
     },
     countModelRequests: (text) => countModelRequests(nixie.model, text),
+    probeRoute: (route) => sendSpendProbe(spend.gateway, nixie.model, route),
     readTasks: async () => {
       const listed = await api.client.tasks.list();
       const records = await nixie.readRecords();
@@ -245,6 +286,18 @@ export async function runVerifyHarness(): Promise<void> {
       throw error;
     }
   }
+}
+
+function buildSpendConfigLines(gateway: TestModelGateway, ratesURL: string): string[] {
+  return [
+    'spendStop:',
+    `  control: ${gateway.control.url}`,
+    '  token: deployment:gateway-control',
+    `  modelURL: ${gateway.url}`,
+    'display:',
+    '  currency: AUD',
+    `  rates_url: ${ratesURL}`,
+  ];
 }
 
 function buildCodingConfigLines(): string[] {

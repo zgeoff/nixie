@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import type { RouteLimitsByID } from '../periods/collect-trips';
 import { collectTrips } from '../periods/collect-trips';
 import { pickPeriodsRefusal } from '../periods/pick-periods-refusal';
 import type { PeriodStoreHandle } from '../types';
@@ -11,16 +12,19 @@ import { writeReplyChargeLog } from './write-reply-charge-log';
 
 export interface PeriodsAccountingDeps {
   readonly store: PeriodStoreHandle;
+  readonly limits: RouteLimitsByID;
   readonly countBySandbox: boolean;
+  readonly now: () => number;
   readonly log: Logger;
 }
 
-// the count of a config with periods: a day, a month and each sandbox, read before each admission
+// the count of a config with periods: each route's day and month, and each sandbox, read before each
+// admission
 export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
   let tripLogged = '';
   const latch = makeLostLatch(deps.store.markLost, deps.log);
 
-  const admit = async (sandbox: string | null): Promise<Response | null> => {
+  const admit = async (route: string, sandbox: string | null): Promise<Response | null> => {
     const held = await deps.store.readInForce().catch((error: unknown) => {
       deps.log('counter.read_failed', toErrorFields(error), 'error');
 
@@ -36,9 +40,37 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     }
 
     const store = latch.isHeld() ? { ...held.store, lost: true } : held.store;
-    const refusal = pickPeriodsRefusal(store, held.override, sandbox, deps.countBySandbox);
 
-    return refusal === null ? null : renderAPIError(refusal.status, refusal.type, refusal.message);
+    const refusal = pickPeriodsRefusal({
+      store,
+      limits: deps.limits,
+      overrides: held.overrides,
+      route,
+      sandbox,
+      countBySandbox: deps.countBySandbox,
+    });
+
+    if (refusal === null) {
+      return null;
+    }
+
+    if (refusal.kind !== 'limit_reached') {
+      return renderAPIError(refusal.status, refusal.type, refusal.message);
+    }
+
+    // the refusal is the reason a step that began before it stopped, so the sandbox's count keeps it
+    if (sandbox !== null) {
+      await deps.store
+        .writeRefusal(sandbox, { counter: refusal.counter, route, atMs: deps.now() })
+        .catch((error: unknown) => {
+          deps.log('counter.write_failed', toErrorFields(error), 'error');
+        });
+    }
+
+    return renderAPIError(refusal.status, refusal.type, refusal.message, {
+      counter: refusal.counter,
+      route: refusal.route,
+    });
   };
 
   const count: Accounting['count'] = async (reply) => {
@@ -57,10 +89,10 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     }
 
     try {
-      const counted = await deps.store.addSpend(reply.sandbox, charge.spend);
+      const counted = await deps.store.addSpend(reply.routeID, reply.sandbox, charge.spend);
 
-      const trips = collectTrips(counted.store, counted.override);
-      const key = trips.map((trip) => `${trip.period}:${trip.measure}`).join(',');
+      const trips = collectTrips(counted.store, deps.limits, counted.overrides);
+      const key = trips.map((trip) => `${trip.route}:${trip.period}`).join(',');
 
       if (key !== '' && key !== tripLogged) {
         deps.log('limit.reached', { trips: key }, 'warn');

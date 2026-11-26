@@ -1,29 +1,40 @@
-import type { Override, PeriodCount, PeriodName, PeriodStore } from '../types';
+import type { Overrides, PeriodName, PeriodStore, RouteCount } from '../types';
+import type { RouteLimitsByID } from './collect-trips';
 import { collectTrips } from './collect-trips';
 
-// Stamps each period that has reached its limit in force with the instant it was first seen there,
-// and clears the stamp of each period under it. Returns the same store when no stamp changes, so a
-// caller writes only a change.
+// Stamps each route period that has reached its limit in force with the instant it was first seen
+// there, and clears the stamp of each one under it. Returns the same store when no stamp changes,
+// so a caller writes only a change.
 export function buildTrippedStore(
   store: PeriodStore,
-  override: Override | null,
+  limits: RouteLimitsByID,
+  overrides: Overrides,
   at: string,
 ): PeriodStore {
-  const tripped = new Set(collectTrips(store, override).map((trip) => trip.period));
+  const tripped = new Set(
+    collectTrips(store, limits, overrides).map((trip) => `${trip.route}|${trip.period}`),
+  );
 
-  const stamp = (name: PeriodName): PeriodCount => {
-    const count = store.periods[name];
-    const trippedAt = tripped.has(name) ? (count.trippedAt ?? at) : null;
+  let isChanged = false;
 
-    return trippedAt === count.trippedAt ? count : { ...count, trippedAt };
-  };
+  const routes = Object.fromEntries(
+    Object.entries(store.routes).map(([route, periods]) => {
+      const stamp = (name: PeriodName): RouteCount => {
+        const count = periods[name];
+        const trippedAt = tripped.has(`${route}|${name}`) ? (count.trippedAt ?? at) : null;
 
-  const day = stamp('day');
-  const month = stamp('month');
+        if (trippedAt === count.trippedAt) {
+          return count;
+        }
 
-  if (day === store.periods.day && month === store.periods.month) {
-    return store;
-  }
+        isChanged = true;
 
-  return { ...store, periods: { day, month } };
+        return { ...count, trippedAt };
+      };
+
+      return [route, { day: stamp('day'), month: stamp('month') }];
+    }),
+  );
+
+  return isChanged ? { ...store, routes } : store;
 }

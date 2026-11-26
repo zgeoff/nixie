@@ -4,19 +4,16 @@ import { pickRaiseResend } from '../raise/pick-raise-resend';
 import type { SpendFacts } from '../stop/pick-spend-stop';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { settleSpendStop } from '../stop/settle-spend-stop';
-import type { GatewayLimits, GatewayStatus, SpendContext } from '../types';
+import type { GatewayStatus, SpendContext } from '../types';
 import { publishSpendChange } from './publish-spend-change';
 
 export interface SpendWatcherOptions {
   readonly context: SpendContext;
-
-  // the day and month limits that the gateway has to hold
-  readonly limits: GatewayLimits;
   readonly log: Logger;
   readonly signal: AbortSignal;
 
-  // the start checks found no answer from the gateway, so the limits are unsent and the first poll
-  // that finds no answer trips the stop at once
+  // the start checks found no answer from the gateway, so the first poll that finds no answer trips
+  // the stop at once
   readonly isStartUnreachable: boolean;
 
   readonly intervalMs?: number;
@@ -32,17 +29,16 @@ const defaultNoAnswerMs = 30_000;
 interface WatchState {
   // when the gateway last stopped answering, or 0 for a gateway that never has
   noAnswerSince: number | null;
-  isLimitsPending: boolean;
 
   // the stop the last poll read, as text, or null before the first poll
   lastStopKey: string | null;
 }
 
-// Reads the gateway's status and the turn count every 10 seconds, and trips or clears the stop.
+// Reads the gateway's status and the turn count every 10 seconds, and trips or clears the stop and
+// each route's stop.
 export function startSpendWatcher(options: SpendWatcherOptions): SpendWatcher {
   const state: WatchState = {
     noAnswerSince: options.isStartUnreachable ? 0 : null,
-    isLimitsPending: options.isStartUnreachable,
     lastStopKey: null,
   };
 
@@ -73,7 +69,7 @@ export async function runSpendPoll(options: SpendWatcherOptions, state: WatchSta
   const facts =
     read.status === null
       ? read
-      : await sendWhatIsMissing(options, state, { ...read, status: read.status });
+      : await sendWhatIsMissing(options, { ...read, status: read.status });
 
   publishSpendChange(context, state, facts);
 
@@ -110,51 +106,26 @@ async function readAnsweredFacts(options: SpendWatcherOptions): Promise<SpendFac
   return { ...facts, status: null };
 }
 
-// The limits go out once the gateway answers, and a raise that it has not applied goes out again.
-// The status that it answers with replaces the one read, so the stop clears in the same poll. A
-// gateway that holds no limits after a failed send counts as no answer, so the stop stands.
+// A raise that the gateway has not applied goes out again, and the status that it answers with
+// replaces the one read, so the stop clears in the same poll. That status keeps the poll's place in
+// line, which it took before the raise went out, and counts from the instant before the raise.
 async function sendWhatIsMissing(
   options: SpendWatcherOptions,
-  state: WatchState,
   facts: SpendFacts & { readonly status: GatewayStatus },
 ): Promise<SpendFacts> {
-  const gateway = options.context.gateway;
-  const periods = facts.status.periods;
+  const context = options.context;
+  const resends = pickRaiseResend({ ...facts, status: facts.status }, context.zone);
+  let answer: Pick<SpendFacts, 'status' | 'statusAtMs'> | null = null;
 
-  const status = {
-    current: facts.status,
-  };
+  for (const resend of resends) {
+    const postedAtMs = context.clock.now();
 
-  if (state.isLimitsPending || periods.day.limit === null || periods.month.limit === null) {
-    const put = await gateway.putLimits(options.limits);
-
-    if (put.kind === 'ok') {
-      state.isLimitsPending = false;
-      status.current = put.value;
-
-      options.log('spend.limits_sent', {}, 'info');
-    } else if (put.kind === 'above_cap') {
-      options.log(
-        'spend.limits_refused',
-        { capDollars: put.cap.dollars, capTokens: put.cap.tokens },
-        'error',
-      );
-    }
-
-    if (put.kind !== 'ok') {
-      return { ...facts, status: null };
-    }
-  }
-
-  const resend = pickRaiseResend({ ...facts, status: status.current }, options.context.zone);
-
-  if (resend !== null) {
-    const raised = await gateway.postRaise(resend);
+    const raised = await context.gateway.postRaise(resend);
 
     if (raised.kind === 'ok') {
-      status.current = raised.value;
+      answer = { status: raised.value, statusAtMs: postedAtMs };
     }
   }
 
-  return { ...facts, status: status.current };
+  return answer === null ? facts : { ...facts, ...answer };
 }

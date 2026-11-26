@@ -1,12 +1,11 @@
 import { join } from 'node:path';
 import { browser } from '@wringer/browser';
-import { WringerError, createHostUploader, createWringer, local } from '@wringer/core';
+import { createHostUploader, createWringer, local } from '@wringer/core';
 import type { Wringer } from '@wringer/core';
 import { db } from '@wringer/db';
 import { http } from '@wringer/http';
 import { stream } from '@wringer/stream';
 import { terminal } from '@wringer/terminal';
-import { $ } from 'bun';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildHostCLIArgv } from './build-host-cli-argv';
@@ -19,22 +18,19 @@ import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
-import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
-import type { ServedContainer } from './preview/build-served-blobs-argv';
+import { checkPreviewCommit } from './preview/check-preview-commit';
 import { createPreviewHost } from './preview/create-preview-host';
 import { makeCachedRead } from './preview/make-cached-read';
-import { pickCommitRefusal } from './preview/pick-commit-refusal';
-import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
-import { readIgnoredPaths } from './preview/read-ignored-paths';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import { readPullRequest } from './preview/read-pull-request';
-import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
+import { readServedCommit } from './preview/read-served-commit';
 import { buildProdEndpoints } from './prod/build-prod-endpoints';
 import { readProdCall } from './prod/read-prod-call';
 import { readProdErrors } from './prod/read-prod-errors';
 import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
+import { readHarnessReady } from './read-harness-ready';
 import { readLiveOpens } from './read-live-opens';
 import { readModelReceived } from './read-model-received';
 import { readSessionCheck } from './read-session-check';
@@ -52,7 +48,6 @@ const conversationTurnSchema = z.strictObject({ records: z.array(conversationRec
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
 
 // The prod reads leave out each record's and each task's content, which is the owner's data.
-const conversationPageSchema = z.object({ records: z.array(z.unknown()) });
 const taskListSchema = z.object({ tasks: z.array(z.unknown()) });
 const prodReadPaths = ['/rpc/conversation/read', '/rpc/tasks/list'] as const;
 
@@ -80,16 +75,7 @@ export function createVerifyRegistry(): Wringer {
       host: local(),
       launch: () => ({
         command: [process.execPath, '--define', 'NIXIE_TEST_BUILD=true', harnessPath],
-        ready: (line) =>
-          line['event'] === 'ready'
-            ? {
-                web: String(line['web']),
-                control: String(line['control']),
-                config: String(line['config']),
-                cli: String(line['cli']),
-                db: String(line['db']),
-              }
-            : null,
+        ready: readHarnessReady,
       }),
       drivers: {
         browser: () => ({}),
@@ -166,7 +152,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -202,6 +188,16 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.layoutOnDevice.input,
       data: controlRoutes.layoutOnDevice.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.layoutOnDevice, input),
+    })
+    .action({
+      name: 'probe-route',
+      summary:
+        "Send one model request to the spending gateway's route --route, and read its answer: a route at its limit answers 403 with the error limit_reached, which names the route. Needs a start with NIXIE_VERIFY_SPEND=1",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.probeRoute.input,
+      data: controlRoutes.probeRoute.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.probeRoute, input),
     })
     .action({
       name: 'advance-clock',
@@ -354,7 +350,7 @@ export function createVerifyRegistry(): Wringer {
           limit: 5,
         });
 
-        const page = conversationPageSchema.parse(answer);
+        const page = z.object({ records: z.array(z.unknown()) }).parse(answer);
 
         return { recordCount: page.records.length };
       },
@@ -483,52 +479,4 @@ export function createVerifyRegistry(): Wringer {
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-const previewRefusalHint =
-  'Push this commit, open the preview link on the pull request to rebuild the preview, then run `bun verify attach` and `bun verify doctor` again.';
-
-type PreviewHost = ReturnType<typeof createPreviewHost>;
-
-// The checkout can move on while a container from an older build still serves, so the doctor also
-// compares the container's files with this tree. A doctor check's exec refuses every raw command,
-// so the check runs its reads on the preview's host itself.
-async function checkPreviewCommit(host: PreviewHost): Promise<{ commit: string }> {
-  const served = await host.run({ argv: servedCommitArgv, access: 'read-only' });
-  const head = await $`git rev-parse HEAD`.quiet().text();
-
-  const commitRefusal = pickCommitRefusal(served.stdout, head);
-
-  if (commitRefusal !== null) {
-    throw new WringerError('check-failed', { message: commitRefusal, hint: previewRefusalHint });
-  }
-
-  for (const container of ['nixie', 'web'] as const) {
-    await checkServedSources(host, container);
-  }
-
-  return { commit: served.stdout.trim() };
-}
-
-async function checkServedSources(host: PreviewHost, container: ServedContainer): Promise<void> {
-  const listed = await host.run({ argv: buildServedBlobsArgv(container), access: 'read-only' });
-
-  if (listed.exitCode !== 0) {
-    throw new WringerError('environment', {
-      message: `the preview's ${container} container could not list its sources: ${listed.stderr.trim()}`,
-      hint: 'Open the preview link on the pull request, wait for the preview to serve, then run `bun verify doctor` again.',
-    });
-  }
-
-  const committed = await $`git ls-tree -r HEAD -- ${servedSourceFolders}`.quiet().text();
-
-  const extras = collectExtraPaths(committed, listed.stdout);
-
-  const ignored = await readIgnoredPaths(extras);
-
-  const refusal = pickSourceRefusal({ container, committed, served: listed.stdout, ignored });
-
-  if (refusal !== null) {
-    throw new WringerError('check-failed', { message: refusal, hint: previewRefusalHint });
-  }
 }

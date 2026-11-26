@@ -48,9 +48,9 @@ test('it trips a stop that none stands for', () => {
       reason: 'limit',
       at: Date.parse('2026-11-13T16:42:07Z'),
       period: 'day',
-      measure: 'dollars',
-      limit: 60,
-      spent: 61.2,
+      measure: 'turns',
+      limit: 1000,
+      spent: 1000,
       resetsAt: Date.parse('2026-11-14T00:00:00Z'),
     },
   });
@@ -72,9 +72,8 @@ test('it moves nothing when the same stop stands', () => {
 });
 
 test.each([
-  { name: 'another measure', stop: buildTrippedStop({ measure: 'turns' }) },
   { name: 'another period', stop: buildTrippedStop({ period: 'month' }) },
-  { name: 'a raised limit', stop: buildTrippedStop({ limit: 90 }) },
+  { name: 'a raised limit', stop: buildTrippedStop({ limit: 1500 }) },
   {
     name: 'a later reset',
     stop: buildTrippedStop({ resetsAt: Date.parse('2026-11-15T00:00:00Z') }),

@@ -13,7 +13,19 @@ async function setupTest() {
 
   onTestFinished(() => model.stop());
 
-  return { directory, model, entry: join(import.meta.dir, 'main.ts') };
+  await writeFile(join(directory, 'token'), 'control-secret\n');
+
+  return {
+    directory,
+    model,
+    entry: join(import.meta.dir, 'main.ts'),
+
+    // the keys that every config sets before its routes
+    periodsLines: [
+      'periods: { zone: Europe/London }',
+      `control: { listen: { port: 0 }, tokenFile: ${join(directory, 'token')} }`,
+    ],
+  };
 }
 
 test('it serves the routes of its config until SIGINT, then exits 0', async () => {
@@ -26,12 +38,13 @@ test('it serves the routes of its config until SIGINT, then exits 0', async () =
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsLines,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 60, month: 600 }',
     ].join('\n'),
   );
 
@@ -62,14 +75,17 @@ test('it serves the routes of its config until SIGINT, then exits 0', async () =
   child.kill('SIGINT');
 
   const code = await child.exited;
-  const stored = await Bun.file(join(ctx.directory, 'counter.json')).text();
+  const stored: unknown = await Bun.file(join(ctx.directory, 'counter.json')).json();
 
   expect(response.status).toBe(200);
   expect(code).toBe(0);
-  expect(stored).toBe('{"dollars":0.0026,"tokens":1000}');
+
+  expect(stored).toMatchObject({
+    routes: { preview: { day: { micros: 2600 }, month: { micros: 2600 } } },
+  });
 });
 
-test('it exits 1 for a config with no limit', async () => {
+test('it exits 1 for a config with a limit that spans routes', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -77,7 +93,8 @@ test('it exits 1 for a config with no limit', async () => {
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: {}',
+      'limits: { dollars: 1 }',
+      ...ctx.periodsLines,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
@@ -96,7 +113,7 @@ test('it exits 1 for a config with no limit', async () => {
   expect(code).toBe(1);
 });
 
-test('it writes the override for the period in force from the raise command and exits 0', async () => {
+test('it writes the override for the route and the day in force from the raise command and exits 0', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -112,6 +129,7 @@ test('it writes the override for the period in force from the raise command and 
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 40, month: 600 }',
     ].join('\n'),
   );
 
@@ -122,12 +140,10 @@ test('it writes the override for the period in force from the raise command and 
       'raise',
       '--config',
       join(ctx.directory, 'proxy.yaml'),
-      '--period',
-      'day',
+      '--route',
+      'preview',
       '--dollars',
       '200',
-      '--tokens',
-      '250000000',
     ],
     { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
   );
@@ -138,9 +154,7 @@ test('it writes the override for the period in force from the raise command and 
   expect(code).toBe(0);
 
   expect(written).toStrictEqual({
-    period: 'day',
-    start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u),
-    limit: { dollars: 200, tokens: 250_000_000 },
+    preview: { start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u), dollars: 200 },
   });
 });
 
@@ -152,12 +166,13 @@ test('it exits 1 from the raise command for a config with no override file', asy
     [
       'listen: { port: 0 }',
       `store: ${join(ctx.directory, 'counter.json')}`,
-      'limits: { dollars: 1 }',
+      ...ctx.periodsLines,
       'routes:',
       '  preview:',
       `    upstream: ${ctx.model.url}`,
       '    model: model-small',
       '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    limits: { day: 40, month: 600 }',
     ].join('\n'),
   );
 
@@ -168,11 +183,9 @@ test('it exits 1 from the raise command for a config with no override file', asy
       'raise',
       '--config',
       join(ctx.directory, 'proxy.yaml'),
-      '--period',
-      'day',
+      '--route',
+      'preview',
       '--dollars',
-      '1',
-      '--tokens',
       '1',
     ],
     { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
@@ -193,7 +206,7 @@ test.each(['chatgpt-login', 'chatgpt-logout'])(
       [
         'listen: { port: 0 }',
         `store: ${join(ctx.directory, 'counter.json')}`,
-        'limits: { dollars: 1 }',
+        ...ctx.periodsLines,
         'routes:',
         '  preview:',
         `    upstream: ${ctx.model.url}`,

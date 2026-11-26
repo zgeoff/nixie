@@ -10,6 +10,8 @@ import type { CountedReply } from './accounting';
 import { makePeriodsAccounting } from './make-periods-accounting';
 
 async function setupTest() {
+  const limits = { preview: { day: 0.002, month: 10, dayCap: 1 } };
+
   const directory = await mkdtemp(join(tmpdir(), 'model-gateway-accounting-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
@@ -19,19 +21,16 @@ async function setupTest() {
   const store = await createPeriodStore({
     path: storePath,
     zone: 'Europe/London',
+    limits,
     now: () => Date.parse('2026-11-13T10:00:00Z'),
-    readOverride: () => Promise.resolve(null),
+    readOverrides: () => Promise.resolve({}),
     log: mock<Logger>(() => {}),
   });
 
   await store.change((held) => ({
     store: {
       ...held,
-      periods: {
-        day: { ...held.periods.day, limit: { dollars: 60, tokens: 1000 } },
-        month: { ...held.periods.month, limit: { dollars: 600, tokens: 10_000 } },
-      },
-      sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null } },
+      sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
     },
     result: undefined,
   }));
@@ -46,6 +45,7 @@ async function setupTest() {
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: null,
     login: null,
+    limits: limits.preview,
   } as const;
 
   return {
@@ -82,7 +82,9 @@ async function setupTest() {
     }),
     accounting: makePeriodsAccounting({
       store,
+      limits,
       countBySandbox: true,
+      now: () => Date.parse('2026-11-13T10:00:00Z'),
       log,
     }),
   };
@@ -96,10 +98,10 @@ test('it counts the estimate and marks nothing lost when a reply that spent has 
   const stored = await ctx.store.read();
 
   // 5,096 input tokens at the highest input rate, $2, and 1,000 output tokens at $5, per million
-  expect([stored.lost, stored.periods.day, stored.sandboxes['alpha']]).toMatchObject([
+  expect([stored.lost, stored.routes['preview']?.day, stored.sandboxes['alpha']]).toMatchObject([
     false,
-    { dollars: 0.015192, tokens: 6096 },
-    { dollars: 0.015192, tokens: 6096 },
+    { micros: 15_192 },
+    { micros: 15_192, tokens: 6096 },
   ]);
 });
 
@@ -148,7 +150,7 @@ test('it marks the count lost and refuses every later request when a reply that 
     ctx.reply({ estimate: { kind: 'unbounded', field: 'messages.content.source' } }),
   );
 
-  const refusal = await ctx.accounting.admit('alpha');
+  const refusal = await ctx.accounting.admit('preview', 'alpha');
   const stored = await ctx.store.read();
 
   expect([refusal?.status, stored.lost]).toStrictEqual([503, true]);
@@ -170,7 +172,9 @@ test('it charges a cut stream the larger of its byte bound and the input it repo
   const stored = await ctx.store.read();
 
   // 9,000 input tokens at $2 and 1,000 output tokens at $5, per million
-  expect(stored.periods.day).toMatchObject({ dollars: 0.023, tokens: 10_000 });
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    23_000, 10_000,
+  ]);
 });
 
 test('it charges a cut stream from Anthropic its reported input at the class rates, with the output bound', async () => {
@@ -190,7 +194,9 @@ test('it charges a cut stream from Anthropic its reported input at the class rat
   const stored = await ctx.store.read();
 
   // 9,000 cache read tokens at $0.10 and 1,000 output tokens at $5, per million
-  expect(stored.periods.day).toMatchObject({ dollars: 0.0059, tokens: 10_000 });
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    5900, 10_000,
+  ]);
 });
 
 test('it charges the byte bound for a cut Anthropic stream that never reported its input classes', async () => {
@@ -211,7 +217,9 @@ test('it charges the byte bound for a cut Anthropic stream that never reported i
 
   // 5,096 byte-bound input tokens (1,000 bytes and the 4,096 allowance) at $2, and 1,000 output
   // tokens at $5, per million
-  expect(stored.periods.day).toMatchObject({ dollars: 0.015192, tokens: 6096 });
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    15_192, 6096,
+  ]);
 });
 
 test('it charges the output bound for a reply whose usage holds only its input', async () => {
@@ -225,7 +233,9 @@ test('it charges the output bound for a reply whose usage holds only its input',
 
   // 5,096 byte-bound input tokens beat the 900 reported, so they are priced at $2, with 1,000
   // output tokens at $5, per million
-  expect(stored.periods.day).toMatchObject({ dollars: 0.015192, tokens: 6096 });
+  expect([stored.routes['preview']?.day.micros, stored.sandboxes['alpha']?.tokens]).toStrictEqual([
+    15_192, 6096,
+  ]);
 });
 
 test('it admits a request again once an operator removes the lost mark, with no restart', async () => {
@@ -240,7 +250,7 @@ test('it admits a request again once an operator removes the lost mark, with no 
 
   await writeFile(ctx.storePath, JSON.stringify(cleared));
 
-  const refusal = await ctx.accounting.admit('alpha');
+  const refusal = await ctx.accounting.admit('preview', 'alpha');
 
   expect(refusal).toBeNull();
 });
@@ -252,7 +262,7 @@ test('it adds nothing for a reply with no usage that spent nothing', async () =>
 
   const stored = await ctx.store.read();
 
-  expect([stored.lost, stored.periods.day.tokens]).toStrictEqual([false, 0]);
+  expect([stored.lost, stored.routes['preview']?.day.micros]).toStrictEqual([false, 0]);
 });
 
 test('it logs once that a limit was reached', async () => {
@@ -269,7 +279,30 @@ test('it refuses a request with the limit 403 once the day reaches its limit', a
 
   await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 400) }));
 
-  const refusal = await ctx.accounting.admit('alpha');
+  const refusal = await ctx.accounting.admit('preview', 'alpha');
 
   expect(refusal?.status).toBe(403);
+});
+
+test('it names the counter and the route in the limit 403 and keeps the refusal on the sandbox', async () => {
+  const ctx = await setupTest();
+
+  await ctx.accounting.count(ctx.reply({ usage: ctx.usage(600, 400) }));
+
+  const refusal = await ctx.accounting.admit('preview', 'alpha');
+  const body: unknown = await refusal?.json();
+  const stored = await ctx.store.read();
+
+  expect([body, stored.sandboxes['alpha']?.lastRefusal]).toStrictEqual([
+    {
+      type: 'error',
+      error: {
+        type: 'limit_reached',
+        counter: 'route_day',
+        route: 'preview',
+        message: expect.stringContaining('preview'),
+      },
+    },
+    { counter: 'route_day', route: 'preview', atMs: Date.parse('2026-11-13T10:00:00Z') },
+  ]);
 });

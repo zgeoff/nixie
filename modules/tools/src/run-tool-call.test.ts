@@ -3008,7 +3008,7 @@ test('it returns budget reached at the limit, without running the tool or chargi
     content: [
       {
         type: 'text',
-        text: 'budget reached: web_search-day ($3.00 of $5.00). Resets at midnight.',
+        text: 'budget reached: web_search-day. Resets at midnight.',
       },
     ],
     isError: true,
@@ -3511,6 +3511,88 @@ test('it returns the result a prepare step gives, and never asks the decision po
   expect(result).toStrictEqual({ content: [], structuredContent: { text: 'no such image' } });
   expect(decide).not.toHaveBeenCalled();
   expect(run).not.toHaveBeenCalled();
+});
+
+test('it commits the charge with the call record, so a fault between them leaves neither', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: {
+          priceMicros: 25_000,
+          callCap: {
+            openCall: () => ({
+              checkInTransaction: () => Promise.resolve({ status: 'room' }),
+              countInTransaction: () => Promise.reject(new Error('the disk fell over')),
+            }),
+          },
+        },
+        run,
+      }),
+    ],
+  });
+
+  const call = runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_f1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  await Promise.allSettled([call]);
+
+  const records = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(call).rejects.toThrow('the disk fell over');
+  expect([records.length, day?.spentMicros, run.mock.calls.length]).toStrictEqual([0, 0, 0]);
+});
+
+test('it commits the credit with the result record, so a fault between them leaves the charge', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000 },
+        run: () =>
+          Promise.resolve({
+            status: 'ok' as const,
+            result: { text: 'no' },
+            refusalCode: 'no_such_thing',
+            writeBeside: () => Promise.reject(new Error('the disk fell over')),
+          }),
+      }),
+    ],
+  });
+
+  const call = runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_f2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  await Promise.allSettled([call]);
+
+  const results = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_result'] });
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(call).rejects.toThrow('the disk fell over');
+  expect([results.length, day?.spentMicros]).toStrictEqual([0, 25_000]);
 });
 
 test('it releases what a paid check held when the budget stops the call before the tool runs', async () => {

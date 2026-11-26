@@ -209,6 +209,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                     apiURL: options.search.apiURL,
                   }),
                   dailyCallCap: options.search.dailyCallCap,
+                  priceMicros: options.search.priceMicros,
                 },
           images:
             options.imageSettings === null

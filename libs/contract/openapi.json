@@ -25399,10 +25399,72 @@
                       "properties": {
                         "state": {
                           "const": "clear"
+                        },
+                        "routes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "route": {
+                                "type": "string"
+                              },
+                              "period": {
+                                "enum": [
+                                  "day",
+                                  "month"
+                                ],
+                                "type": "string"
+                              },
+                              "start": {
+                                "type": "string"
+                              },
+                              "limit": {
+                                "type": "number"
+                              },
+                              "spent": {
+                                "type": "number"
+                              },
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "resetsAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "canRaise": {
+                                "type": "boolean"
+                              },
+                              "cap": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "route",
+                              "period",
+                              "start",
+                              "limit",
+                              "spent",
+                              "at",
+                              "resetsAt",
+                              "canRaise",
+                              "cap"
+                            ]
+                          }
                         }
                       },
                       "required": [
-                        "state"
+                        "state",
+                        "routes"
                       ]
                     },
                     {
@@ -25410,10 +25472,72 @@
                       "properties": {
                         "state": {
                           "const": "unreachable"
+                        },
+                        "routes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "route": {
+                                "type": "string"
+                              },
+                              "period": {
+                                "enum": [
+                                  "day",
+                                  "month"
+                                ],
+                                "type": "string"
+                              },
+                              "start": {
+                                "type": "string"
+                              },
+                              "limit": {
+                                "type": "number"
+                              },
+                              "spent": {
+                                "type": "number"
+                              },
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "resetsAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "canRaise": {
+                                "type": "boolean"
+                              },
+                              "cap": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "route",
+                              "period",
+                              "start",
+                              "limit",
+                              "spent",
+                              "at",
+                              "resetsAt",
+                              "canRaise",
+                              "cap"
+                            ]
+                          }
                         }
                       },
                       "required": [
-                        "state"
+                        "state",
+                        "routes"
                       ]
                     },
                     {
@@ -25421,10 +25545,72 @@
                       "properties": {
                         "state": {
                           "const": "lost"
+                        },
+                        "routes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "route": {
+                                "type": "string"
+                              },
+                              "period": {
+                                "enum": [
+                                  "day",
+                                  "month"
+                                ],
+                                "type": "string"
+                              },
+                              "start": {
+                                "type": "string"
+                              },
+                              "limit": {
+                                "type": "number"
+                              },
+                              "spent": {
+                                "type": "number"
+                              },
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "resetsAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "canRaise": {
+                                "type": "boolean"
+                              },
+                              "cap": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "route",
+                              "period",
+                              "start",
+                              "limit",
+                              "spent",
+                              "at",
+                              "resetsAt",
+                              "canRaise",
+                              "cap"
+                            ]
+                          }
                         }
                       },
                       "required": [
-                        "state"
+                        "state",
+                        "routes"
                       ]
                     },
                     {
@@ -25444,12 +25630,7 @@
                           "type": "string"
                         },
                         "measure": {
-                          "enum": [
-                            "dollars",
-                            "tokens",
-                            "turns"
-                          ],
-                          "type": "string"
+                          "const": "turns"
                         },
                         "limit": {
                           "type": "number"
@@ -25470,62 +25651,69 @@
                         "canRaise": {
                           "type": "boolean"
                         },
-                        "limits": {
-                          "type": "object",
-                          "properties": {
-                            "dollars": {
-                              "type": "number"
-                            },
-                            "tokens": {
-                              "type": "number"
-                            },
-                            "turns": {
-                              "type": "number"
-                            }
-                          },
-                          "required": [
-                            "dollars",
-                            "tokens",
-                            "turns"
-                          ]
-                        },
-                        "used": {
-                          "type": "object",
-                          "properties": {
-                            "dollars": {
-                              "type": "number"
-                            },
-                            "tokens": {
-                              "type": "number"
-                            },
-                            "turns": {
-                              "type": "number"
-                            }
-                          },
-                          "required": [
-                            "dollars",
-                            "tokens",
-                            "turns"
-                          ]
-                        },
                         "cap": {
-                          "type": "object",
-                          "properties": {
-                            "dollars": {
-                              "type": "number"
+                          "type": "number"
+                        },
+                        "routes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "route": {
+                                "type": "string"
+                              },
+                              "period": {
+                                "enum": [
+                                  "day",
+                                  "month"
+                                ],
+                                "type": "string"
+                              },
+                              "start": {
+                                "type": "string"
+                              },
+                              "limit": {
+                                "type": "number"
+                              },
+                              "spent": {
+                                "type": "number"
+                              },
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "resetsAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "canRaise": {
+                                "type": "boolean"
+                              },
+                              "cap": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
                             },
-                            "tokens": {
-                              "type": "number"
-                            },
-                            "turns": {
-                              "type": "number"
-                            }
-                          },
-                          "required": [
-                            "dollars",
-                            "tokens",
-                            "turns"
-                          ]
+                            "required": [
+                              "route",
+                              "period",
+                              "start",
+                              "limit",
+                              "spent",
+                              "at",
+                              "resetsAt",
+                              "canRaise",
+                              "cap"
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -25538,11 +25726,184 @@
                         "at",
                         "resetsAt",
                         "canRaise",
-                        "limits",
-                        "used",
-                        "cap"
+                        "cap",
+                        "routes"
                       ]
                     }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spend/counts": {
+      "post": {
+        "operationId": "spend.counts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "route": {
+                            "type": "string"
+                          },
+                          "day": {
+                            "type": "object",
+                            "properties": {
+                              "dollars": {
+                                "type": "number"
+                              },
+                              "limit": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "tripped": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "dollars",
+                              "limit",
+                              "tripped"
+                            ]
+                          },
+                          "month": {
+                            "type": "object",
+                            "properties": {
+                              "dollars": {
+                                "type": "number"
+                              },
+                              "limit": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "tripped": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "dollars",
+                              "limit",
+                              "tripped"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "route",
+                          "day",
+                          "month"
+                        ]
+                      }
+                    },
+                    "display": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "currency": {
+                              "type": "string"
+                            },
+                            "rate": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "currency",
+                            "rate"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "routes",
+                    "display"
                   ]
                 }
               }
@@ -25625,14 +25986,12 @@
                     "type": "string",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                   },
+                  "route": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "dollars": {
                     "type": "number",
-                    "exclusiveMinimum": 0
-                  },
-                  "tokens": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991,
                     "exclusiveMinimum": 0
                   },
                   "turns": {
@@ -25643,10 +26002,7 @@
                   }
                 },
                 "required": [
-                  "start",
-                  "dollars",
-                  "tokens",
-                  "turns"
+                  "start"
                 ]
               }
             }
@@ -25687,28 +26043,31 @@
                         "error": {
                           "const": "above_cap"
                         },
-                        "cap": {
-                          "type": "object",
-                          "properties": {
-                            "dollars": {
-                              "type": "number"
-                            },
-                            "tokens": {
-                              "type": "number"
-                            },
-                            "turns": {
-                              "type": "number"
-                            }
-                          },
-                          "required": [
+                        "measure": {
+                          "enum": [
                             "dollars",
-                            "tokens",
                             "turns"
+                          ],
+                          "type": "string"
+                        },
+                        "route": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
                           ]
+                        },
+                        "cap": {
+                          "type": "number"
                         }
                       },
                       "required": [
                         "error",
+                        "measure",
+                        "route",
                         "cap"
                       ]
                     },
@@ -25727,7 +26086,29 @@
                       "type": "object",
                       "properties": {
                         "error": {
+                          "const": "unknown_route"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
                           "const": "unreachable"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "const": "unanswered"
                         }
                       },
                       "required": [

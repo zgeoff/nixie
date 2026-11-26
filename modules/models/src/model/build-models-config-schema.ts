@@ -77,8 +77,6 @@ const workerRunSchema = z.strictObject({
 
 const daySchema = z
   .strictObject({
-    dollars: dollarsSchema.default(60),
-    tokens: z.int().positive().default(80_000_000),
     turns: turnsSchema.default(1000),
     turnCap: turnsSchema.optional(),
   })
@@ -94,8 +92,6 @@ const daySchema = z
   });
 
 const monthSchema = z.strictObject({
-  dollars: dollarsSchema.default(600),
-  tokens: z.int().positive().default(600_000_000),
   turns: turnsSchema.default(20_000),
 });
 
@@ -149,8 +145,6 @@ export function buildModelsConfigSchema(
         }
       }
 
-      // A task on a selectable model counts its cost against its dollar limit, so its profile needs
-      // a price table.
       for (const [name, entry] of Object.entries(config.selectable)) {
         const profile = config.profiles[entry.profile];
 
@@ -159,12 +153,6 @@ export function buildModelsConfigSchema(
             code: 'custom',
             path: ['selectable', name, 'profile'],
             message: `the selectable model ${name} names the profile ${entry.profile}, which is not defined`,
-          });
-        } else if (profile.prices === null) {
-          issues.addIssue({
-            code: 'custom',
-            path: ['selectable', name, 'profile'],
-            message: `the selectable model ${name} names the profile ${entry.profile}, which sets no prices`,
           });
         } else {
           addMisfitIssue(issues, {
@@ -176,22 +164,6 @@ export function buildModelsConfigSchema(
             capabilities,
           });
         }
-      }
-
-      // A task counts its cost against its dollar limit, and an unset task role runs on the
-      // conversation's profile, so the profile a task runs on needs a price table.
-      const taskProfileID = config.roles.task ?? config.roles.conversation;
-      const taskProfile = taskProfileID === undefined ? undefined : config.profiles[taskProfileID];
-
-      if (taskProfile?.prices === null) {
-        issues.addIssue({
-          code: 'custom',
-          path: ['roles', 'task'],
-          message:
-            config.roles.task === undefined
-              ? `the task role is unset, so tasks run on the conversation's profile ${taskProfileID ?? ''}, which sets no prices`
-              : `the task role names the profile ${config.roles.task}, which sets no prices`,
-        });
       }
 
       addWorkerIssues(issues, config, readToolCallWaitMs);
@@ -314,14 +286,6 @@ function addWorkerIssues(
 
   if (workerProfileID === undefined) {
     return;
-  }
-
-  if (config.profiles[workerProfileID]?.prices === null) {
-    issues.addIssue({
-      code: 'custom',
-      path: ['roles', 'worker'],
-      message: `the worker role names the profile ${workerProfileID}, which sets no prices, and a worker run counts its cost against its dollar limit`,
-    });
   }
 
   const callerIDs = new Set(

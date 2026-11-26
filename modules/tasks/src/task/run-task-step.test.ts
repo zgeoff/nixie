@@ -5,6 +5,7 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createConversationTask } from '../conversation/create-conversation-task';
 import { markBeforeTurnFailure } from '../step/mark-before-turn-failure';
+import { markSpendRefusal } from '../step/mark-spend-refusal';
 import { readTestLeases } from '../test-utils/read-test-leases';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { StepInput, StepResult, TasksTables } from '../types';
@@ -643,4 +644,41 @@ test('it counts the step error of a step that failed before its model turn, thou
   const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(task).toMatchObject({ state: 'ready', step_errors: 1 });
+});
+
+test('it counts no step error when the gateway refused the step, though the route has cleared since', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const refusal = new Error('the route reached its day limit');
+
+  markSpendRefusal(refusal);
+
+  const errored = await runTaskStep(ctx.context, claim, {
+    runStep: () => Promise.reject(refusal),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+
+  expect(errored).toBeNull();
+  expect(task).toMatchObject({ state: 'ready', step_errors: 0 });
 });

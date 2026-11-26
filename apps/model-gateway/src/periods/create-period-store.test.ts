@@ -3,10 +3,31 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
-import type { PeriodStore } from '../types';
+import type { RouteLimits } from '../types';
 import { createPeriodStore } from './create-period-store';
 
 async function setupTest(startAt: string) {
+  const limits: Record<string, RouteLimits> = {
+    plan: { day: 40, month: 600, dayCap: 80 },
+    metered: { day: 5, month: 50, dayCap: 10 },
+  };
+
+  const emptyDay = {
+    start: '2026-11-13',
+    resetsAt: '2026-11-14T00:00:00.000Z',
+    micros: 0,
+    raise: null,
+    trippedAt: null,
+  };
+
+  const emptyMonth = {
+    start: '2026-11-01',
+    resetsAt: '2026-12-01T00:00:00.000Z',
+    micros: 0,
+    raise: null,
+    trippedAt: null,
+  };
+
   const directory = await mkdtemp(join(tmpdir(), 'model-gateway-periods-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
@@ -15,311 +36,295 @@ async function setupTest(startAt: string) {
   let current = Date.parse(startAt);
   const log = mock<Logger>(() => {});
 
-  const store = await createPeriodStore({
-    path,
-    zone: 'Europe/London',
-    now: () => current,
-    readOverride: () => Promise.resolve(null),
-    log,
-  });
+  const start = (held: Record<string, RouteLimits>) =>
+    createPeriodStore({
+      path,
+      zone: 'Europe/London',
+      limits: held,
+      now: () => current,
+      readOverrides: () => Promise.resolve({}),
+      log,
+    });
 
   return {
-    store,
     path,
-    directory,
     log,
-    startAgain: () =>
-      createPeriodStore({
-        path,
-        zone: 'Europe/London',
-        now: () => current,
-        readOverride: () => Promise.resolve(null),
-        log,
-      }),
+    start,
+    store: await start(limits),
+    limits,
+    emptyDay,
+    emptyMonth,
     moveTo: (instant: string) => {
       current = Date.parse(instant);
     },
     readFile: (): Promise<unknown> => Bun.file(path).json(),
-    setLimits: () =>
-      store.change((held) => ({
-        store: {
-          ...held,
-          periods: {
-            day: {
-              ...held.periods.day,
-              limit: { dollars: 60, tokens: 80_000_000 },
-              raise: { dollars: 90, tokens: 120_000_000 },
-            },
-            month: { ...held.periods.month, limit: { dollars: 600, tokens: 600_000_000 } },
-          },
-          sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null } },
-        },
-        result: undefined,
-      })),
   };
 }
 
-test('it starts a store with no limit, a zero count and the day and month in force', async () => {
+test('it starts a store with every route at zero in the day and month in force', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
-
-  const expected: PeriodStore = {
-    version: 2,
-    lost: false,
-    periods: {
-      day: {
-        start: '2026-11-13',
-        dollars: 0,
-        tokens: 0,
-        limit: null,
-        raise: null,
-        trippedAt: null,
-      },
-      month: {
-        start: '2026-11-01',
-        dollars: 0,
-        tokens: 0,
-        limit: null,
-        raise: null,
-        trippedAt: null,
-      },
-    },
-    sandboxes: {},
-  };
-
   const stored = await ctx.store.read();
 
-  expect(stored).toStrictEqual(expected);
-});
-
-test('it rewrites a limits count file as a fresh periods store at start', async () => {
-  const ctx = await setupTest('2026-11-13T10:00:00Z');
-
-  await writeFile(ctx.path, '{"dollars":1,"tokens":2}');
-
-  await ctx.startAgain();
-
-  const stored = await ctx.readFile();
-
   expect(stored).toStrictEqual({
-    version: 2,
-    periods: {
-      day: {
-        start: '2026-11-13',
-        dollars: 0,
-        tokens: 0,
-        limit: null,
-        raise: null,
-        trippedAt: null,
-      },
-      month: {
-        start: '2026-11-01',
-        dollars: 0,
-        tokens: 0,
-        limit: null,
-        raise: null,
-        trippedAt: null,
-      },
+    version: 3,
+    lost: false,
+    routes: {
+      plan: { day: ctx.emptyDay, month: ctx.emptyMonth },
+      metered: { day: ctx.emptyDay, month: ctx.emptyMonth },
     },
     sandboxes: {},
   });
 });
 
-test('it keeps the lost mark of a limits count file that it rewrites at start', async () => {
+test('it rewrites a limits count file with every route at zero and logs the old totals', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
   await writeFile(ctx.path, '{"dollars":1,"tokens":2,"lost":true}');
 
-  const store = await ctx.startAgain();
-  const stored = await store.read();
+  await ctx.start(ctx.limits);
 
-  expect(stored.lost).toBeTrue();
+  expect([await ctx.readFile(), ctx.log.mock.calls.at(-1)]).toStrictEqual([
+    {
+      version: 3,
+      lost: true,
+      routes: {
+        plan: { day: ctx.emptyDay, month: ctx.emptyMonth },
+        metered: { day: ctx.emptyDay, month: ctx.emptyMonth },
+      },
+      sandboxes: {},
+    },
+    ['store.moved', { dollars: 1, tokens: 2, lost: true }, 'warn'],
+  ]);
 });
 
-test('it logs the old totals when it rewrites a limits count file', async () => {
+test('it gives every route the whole count of a version 2 store, keeps its sandboxes and logs the old totals', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
-  await writeFile(ctx.path, '{"dollars":1,"tokens":2}');
+  const count = { dollars: 7, tokens: 70 };
 
-  await ctx.startAgain();
-
-  expect(ctx.log).toHaveBeenCalledWith(
-    'store.moved',
-    { dollars: 1, tokens: 2, lost: false },
-    'warn',
+  await writeFile(
+    ctx.path,
+    JSON.stringify({
+      version: 2,
+      periods: {
+        day: { start: '2026-11-13', ...count, limit: null, raise: null, trippedAt: null },
+        month: {
+          start: '2026-11-01',
+          dollars: 9,
+          tokens: 90,
+          limit: null,
+          raise: null,
+          trippedAt: null,
+        },
+      },
+      sandboxes: { alpha: { dollars: 1, tokens: 2, limit: null } },
+    }),
   );
+
+  await ctx.start(ctx.limits);
+
+  expect([await ctx.readFile(), ctx.log.mock.calls.at(-1)]).toStrictEqual([
+    {
+      version: 3,
+      routes: {
+        plan: {
+          day: { ...ctx.emptyDay, micros: 7_000_000 },
+          month: { ...ctx.emptyMonth, micros: 9_000_000 },
+        },
+        metered: {
+          day: { ...ctx.emptyDay, micros: 7_000_000 },
+          month: { ...ctx.emptyMonth, micros: 9_000_000 },
+        },
+      },
+      sandboxes: { alpha: { micros: 1_000_000, tokens: 2, limit: null, lastRefusal: null } },
+    },
+    [
+      'store.moved',
+      { dayDollars: 7, dayTokens: 70, monthDollars: 9, monthTokens: 90, lost: false },
+      'warn',
+    ],
+  ]);
 });
 
-test('it refuses to start on a file in neither shape', async () => {
+test('it carries a version 2 store into the one route of a single-route gateway, so a restart keeps its counts', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
-  await writeFile(ctx.path, '{"version":1}');
+  await writeFile(
+    ctx.path,
+    JSON.stringify({
+      version: 2,
+      periods: {
+        day: {
+          start: '2026-11-13',
+          dollars: 40,
+          tokens: 70,
+          limit: null,
+          raise: { dollars: 45, tokens: 80 },
+          trippedAt: '2026-11-13T09:00:00.000Z',
+        },
+        month: {
+          start: '2026-10-01',
+          dollars: 500,
+          tokens: 90,
+          limit: null,
+          raise: null,
+          trippedAt: null,
+        },
+      },
+      sandboxes: {},
+    }),
+  );
 
-  expect(ctx.startAgain()).rejects.toThrow();
-});
-
-test('it adds a reply to the day, the month and the sandbox in one write', async () => {
-  const ctx = await setupTest('2026-11-13T10:00:00Z');
-
-  await ctx.setLimits();
-  await ctx.store.addSpend('alpha', { dollars: 0.5, tokens: 100 });
+  await ctx.start({ plan: { day: 40, month: 600, dayCap: 80 } });
 
   const stored = await ctx.readFile();
 
-  expect(stored).toMatchObject({
-    periods: { day: { dollars: 0.5, tokens: 100 }, month: { dollars: 0.5, tokens: 100 } },
-    sandboxes: { alpha: { dollars: 0.5, tokens: 100 } },
-  });
-});
-
-test('it counts a reply from a sandbox the store lacks on the day and the month only', async () => {
-  const ctx = await setupTest('2026-11-13T10:00:00Z');
-  const after = await ctx.store.addSpend('ghost', { dollars: 1, tokens: 10 });
-
-  expect(after.store).toMatchObject({
-    periods: { day: { dollars: 1 }, month: { dollars: 1 } },
+  expect(stored).toStrictEqual({
+    version: 3,
+    routes: {
+      plan: {
+        day: {
+          ...ctx.emptyDay,
+          micros: 40_000_000,
+          raise: 45,
+          trippedAt: '2026-11-13T09:00:00.000Z',
+        },
+        month: ctx.emptyMonth,
+      },
+    },
     sandboxes: {},
   });
 });
 
-test('it counts each of 20 replies that end together exactly once', async () => {
+test('it adds up replies that each cost less than half a micro', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
-  await ctx.setLimits();
+  await ctx.store.addSpend('plan', null, { dollars: 1e-7, tokens: 1 });
+  await ctx.store.addSpend('plan', null, { dollars: 1e-7, tokens: 1 });
 
-  await Promise.all(
-    Array.from({ length: 20 }, () => ctx.store.addSpend('alpha', { dollars: 1, tokens: 5 })),
-  );
+  const stored = await ctx.store.read();
+
+  expect(stored.routes['plan']?.day.micros).toBe(2);
+});
+
+test('it adds a spend to the route it names and to no other', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await ctx.store.addSpend('plan', null, { dollars: 3, tokens: 30 });
 
   const stored = await ctx.store.read();
 
   expect([
-    stored.periods.day.dollars,
-    stored.periods.month.tokens,
-    stored.sandboxes['alpha']?.dollars,
-  ]).toStrictEqual([20, 100, 20]);
+    stored.routes['plan']?.day.micros,
+    stored.routes['plan']?.month.micros,
+    stored.routes['metered']?.day.micros,
+  ]).toStrictEqual([3_000_000, 3_000_000, 0]);
 });
 
-test('it resets the day at local midnight in the zone and keeps its limit, drops its raise, and leaves the month', async () => {
-  const ctx = await setupTest('2026-06-13T10:00:00Z');
-
-  await ctx.setLimits();
-  await ctx.store.addSpend('alpha', { dollars: 7, tokens: 70 });
-
-  // 23:00Z is midnight in London in summer
-  ctx.moveTo('2026-06-13T22:59:59Z');
-
-  const before = await ctx.store.read();
-
-  ctx.moveTo('2026-06-13T23:00:00Z');
-
-  const after = await ctx.store.read();
-
-  expect(before.periods.day).toMatchObject({ start: '2026-06-13', dollars: 7 });
-
-  expect(after).toMatchObject({
-    periods: {
-      day: {
-        start: '2026-06-14',
-        dollars: 0,
-        tokens: 0,
-        limit: { dollars: 60, tokens: 80_000_000 },
-        raise: null,
-        trippedAt: null,
-      },
-      month: { start: '2026-06-01', dollars: 7 },
-    },
-    sandboxes: { alpha: { dollars: 7 } },
-  });
-});
-
-test('it resets a day that is an hour longer at the next local midnight when the clocks go back', async () => {
-  const ctx = await setupTest('2026-10-25T00:30:00Z');
-
-  await ctx.store.addSpend(null, { dollars: 1, tokens: 1 });
-
-  // 00:00Z on 26 October is midnight in London once the clocks are back; 23:00Z on the 25th is not
-  ctx.moveTo('2026-10-25T23:30:00Z');
-
-  const beforeMidnight = await ctx.store.read();
-
-  ctx.moveTo('2026-10-26T00:00:00Z');
-
-  const afterMidnight = await ctx.store.read();
-
-  expect(beforeMidnight.periods.day).toMatchObject({ start: '2026-10-25', dollars: 1 });
-  expect(afterMidnight.periods.day).toMatchObject({ start: '2026-10-26', dollars: 0 });
-});
-
-test('it resets the month at the first local midnight of the next month', async () => {
-  const ctx = await setupTest('2026-11-30T12:00:00Z');
-
-  await ctx.store.addSpend(null, { dollars: 3, tokens: 30 });
-
-  ctx.moveTo('2026-11-30T23:59:59Z');
-
-  const before = await ctx.store.read();
-
-  ctx.moveTo('2026-12-01T00:00:00Z');
-
-  const after = await ctx.store.read();
-
-  expect(before.periods.month).toMatchObject({ start: '2026-11-01', dollars: 3 });
-  expect(after.periods.month).toMatchObject({ start: '2026-12-01', dollars: 0, tokens: 0 });
-});
-
-test('it resets a period on a read that no model request caused, and writes the reset', async () => {
+test('it adds one micro to a count of 8.6 billion dollars as exactly one micro', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
-  await ctx.store.addSpend(null, { dollars: 4, tokens: 40 });
+  await ctx.store.change((held) => {
+    const plan = held.routes['plan'];
 
-  ctx.moveTo('2026-11-14T10:00:00Z');
-
-  await ctx.store.read();
-
-  const stored = await ctx.readFile();
-
-  expect(stored).toMatchObject({
-    periods: { day: { start: '2026-11-14', dollars: 0 }, month: { dollars: 4 } },
+    return {
+      store:
+        plan === undefined
+          ? null
+          : {
+              ...held,
+              routes: {
+                ...held.routes,
+                plan: { ...plan, day: { ...plan.day, micros: 8_600_000_000_000_000 } },
+              },
+            },
+      result: undefined,
+    };
   });
+
+  await ctx.store.addSpend('plan', null, { dollars: 1e-6, tokens: 1 });
+
+  const stored = await ctx.store.read();
+
+  expect(stored.routes['plan']?.day.micros).toBe(8_600_000_000_000_001);
 });
 
-test('it counts a reply after midnight in the new day and in the month once', async () => {
+test('it stamps the instant a route first reaches its day limit, and only that route', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
-  await ctx.store.addSpend(null, { dollars: 1, tokens: 10 });
+  await ctx.store.addSpend('metered', null, { dollars: 5, tokens: 1 });
+
+  ctx.moveTo('2026-11-13T11:00:00Z');
+
+  const stored = await ctx.store.read();
+
+  expect([
+    stored.routes['metered']?.day.trippedAt,
+    stored.routes['plan']?.day.trippedAt,
+  ]).toStrictEqual(['2026-11-13T10:00:00.000Z', null]);
+});
+
+test('it resets every route at midnight in the zone and clears the stamp', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await ctx.store.addSpend('metered', null, { dollars: 5, tokens: 1 });
 
   ctx.moveTo('2026-11-14T00:00:01Z');
 
-  const after = await ctx.store.addSpend(null, { dollars: 2, tokens: 20 });
+  const stored = await ctx.store.read();
 
-  expect([after.store.periods.day.dollars, after.store.periods.month.dollars]).toStrictEqual([
-    2, 3,
+  expect(stored.routes['metered']?.day).toStrictEqual({
+    ...ctx.emptyDay,
+    start: '2026-11-14',
+    resetsAt: '2026-11-15T00:00:00.000Z',
+  });
+});
+
+test('it starts a route that the config gained at zero', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await ctx.store.addSpend('plan', null, { dollars: 3, tokens: 30 });
+
+  const wider = await ctx.start({ ...ctx.limits, extra: { day: 1, month: 2, dayCap: 2 } });
+  const stored = await wider.read();
+
+  expect([stored.routes['plan']?.day.micros, stored.routes['extra']?.day]).toStrictEqual([
+    3_000_000,
+    ctx.emptyDay,
   ]);
 });
 
-test('it keeps the lost mark through a reset and writes the field only while it stands', async () => {
+test('it keeps the last refusal on a sandbox the store holds, and on no other', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await ctx.store.change((held) => ({
+    store: {
+      ...held,
+      sandboxes: { alpha: { micros: 0, tokens: 0, limit: null, lastRefusal: null } },
+    },
+    result: undefined,
+  }));
+
+  await ctx.store.writeRefusal('alpha', { counter: 'route_day', route: 'plan', atMs: 5 });
+  await ctx.store.writeRefusal('ghost', { counter: 'route_day', route: 'plan', atMs: 6 });
+
+  const stored = await ctx.store.read();
+
+  expect(Object.keys(stored.sandboxes)).toStrictEqual(['alpha']);
+
+  expect(stored.sandboxes['alpha']?.lastRefusal).toStrictEqual({
+    counter: 'route_day',
+    route: 'plan',
+    atMs: 5,
+  });
+});
+
+test('it marks the count as lost', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
   await ctx.store.markLost();
 
-  const marked = await ctx.readFile();
+  const stored = await ctx.store.read();
 
-  ctx.moveTo('2026-11-14T10:00:00Z');
-
-  const after = await ctx.store.read();
-
-  expect(after.lost).toBe(true);
-  expect(marked).toMatchObject({ lost: true });
-});
-
-test('it does not reset a period when the clock moves back', async () => {
-  const ctx = await setupTest('2026-11-13T10:00:00Z');
-
-  await ctx.store.addSpend(null, { dollars: 1, tokens: 10 });
-
-  ctx.moveTo('2026-11-12T10:00:00Z');
-
-  const after = await ctx.store.read();
-
-  expect(after.periods.day).toMatchObject({ start: '2026-11-13', dollars: 1 });
+  expect(stored.lost).toBe(true);
 });

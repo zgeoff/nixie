@@ -561,6 +561,48 @@ test("it serves search to the conversation with the key from the secrets file, s
   });
 });
 
+test('it charges and records the one search price that the config sets, and the ledger row holds it', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  credential: deployment:search',
+      '  price_micros: 15000',
+      `  api_url: ${kagiAPIURL}`,
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  await kagiStore.results.create({
+    query: 'low tide today',
+    url: 'https://tides.test/bondi',
+    title: 'Bondi tide times',
+    snippet: 'Low tide at 13:40.',
+    time: '2026-11-06T21:00:00Z',
+  });
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'low tide today' } } },
+    { text: 'Low tide is at 13:40.' },
+  );
+
+  const records = await sendClientMessage(
+    api.client,
+    { text: 'When is low tide at Bondi?' },
+    'Low tide is at 13:40.',
+  );
+
+  const result = records.find((record) => record.kind === 'tool_result');
+
+  const day = await readHostLedger(nixie.configPath, 'search-day');
+
+  expect(result?.toolCall).toMatchObject({ content: { hidden: { costUSD: 0.015 } } });
+  expect(day.spentMicros).toBe(15_000);
+});
+
 test('it serves the image tools to the conversation when the config sets an images block', async () => {
   const nixie = await startInProcessNixie({
     extraConfig: [
@@ -783,13 +825,13 @@ test('it refuses a search whose day budget is full, with the budget notice, and 
     content: [
       {
         type: 'text',
-        text: 'budget reached: search-day ($5.00 of $5.00). Resets at midnight.',
+        text: 'budget reached: search-day. Resets at midnight.',
       },
     ],
     isError: true,
   });
 
-  expect(noticeMessage).toBe('budget reached: search-day ($5.00 of $5.00). Resets at midnight.');
+  expect(noticeMessage).toBe('budget reached: search-day. Resets at midnight.');
   expect(kagiStore.requests.findMany()).toHaveLength(0);
 });
 

@@ -33,6 +33,9 @@ export interface ChargeRequest {
   readonly budgetIDs: readonly string[];
   readonly amountMicros: number;
   readonly for: ChargeFor;
+
+  // charges though a budget lacks room, for a call that has run and billed already
+  readonly overdraw?: true;
 }
 
 export interface BudgetReached {
@@ -67,12 +70,23 @@ interface BudgetChargeRow {
   readonly for_kind: string;
   readonly for_id: string;
   readonly credited: number;
+
+  // null for a charge from before the ledger whose period the old rows could not show
+  readonly ledger_key: string | null;
 }
 
-interface BudgetLedgerRow {
-  readonly budget_id: string;
+interface SpendLedgerRow {
+  readonly ledger_key: string;
+  readonly counter: string;
+  readonly unit: string;
+  readonly period_kind: string;
   readonly period_start: string;
-  readonly spent_micros: number;
+  readonly amount: number;
+}
+
+interface LegacyChargeKindRow {
+  readonly charge_id: string;
+  readonly period_kind: string | null;
 }
 
 interface BudgetInForceRow {
@@ -87,7 +101,8 @@ interface BudgetInForceRow {
 export type BudgetsTables = CheckedTables<
   Readonly<{
     budget_charges: BudgetChargeRow;
-    budget_ledger: BudgetLedgerRow;
+    spend_ledger: SpendLedgerRow;
     budgets_in_force: BudgetInForceRow;
+    legacy_charge_kinds: LegacyChargeKindRow;
   }>
 >;

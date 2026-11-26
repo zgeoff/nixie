@@ -1,7 +1,8 @@
 import type { BudgetCounts, BudgetPeriod } from '@heynixie/policy';
 import type { Kysely } from 'kysely';
+import { buildBudgetLedgerKey } from '../ledger/build-budget-ledger-key';
 import { readBudgetsInForce } from '../limit/read-budgets-in-force';
-import { buildBudgetPeriod } from '../period/build-budget-period';
+import { buildBudgetBounds } from '../period/build-budget-bounds';
 import type { BudgetLimit, BudgetsContext, BudgetsTables } from '../types';
 
 export interface BudgetStatus {
@@ -50,14 +51,13 @@ async function readStatus(
   budget: BudgetLimit,
   source: BudgetStatus['source'],
 ): Promise<BudgetStatus> {
-  const bounds = buildBudgetPeriod(context.clock.now(), context.zone, budget.period);
+  const bounds = buildBudgetBounds(context.clock.now(), context.zone, budget.period);
 
   const row = await db
     .$extendTables<BudgetsTables>()
-    .selectFrom('budget_ledger')
-    .select('spent_micros')
-    .where('budget_id', '=', budget.id)
-    .where('period_start', '=', bounds.start)
+    .selectFrom('spend_ledger')
+    .select('amount')
+    .where('ledger_key', '=', buildBudgetLedgerKey(budget.id, bounds.period))
     .executeTakeFirst();
 
   return {
@@ -65,8 +65,8 @@ async function readStatus(
     counts: budget.counts,
     limitMicros: budget.limitMicros,
     period: budget.period,
-    spentMicros: row?.spent_micros ?? 0,
-    periodStart: bounds.start,
+    spentMicros: row?.amount ?? 0,
+    periodStart: bounds.period.start,
     resetsAt: bounds.resetsAtMs,
     source,
   };

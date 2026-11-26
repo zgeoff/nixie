@@ -20,37 +20,30 @@ test('it reads no override when the config names no file', async () => {
 
   const override = await readOverride();
 
-  expect(override).toBeNull();
+  expect(override).toStrictEqual({});
 });
 
 test('it reads the override that the file holds', async () => {
   const ctx = await setupTest();
 
-  await writeFile(
-    ctx.path,
-    '{"period":"day","start":"2026-11-13","limit":{"dollars":200,"tokens":250000000}}',
-  );
+  await writeFile(ctx.path, '{"preview":{"start":"2026-11-13","dollars":200}}');
 
   const readOverride = makeOverrideReader(ctx.path, ctx.log);
 
   const override = await readOverride();
 
-  expect(override).toStrictEqual({
-    period: 'day',
-    start: '2026-11-13',
-    limit: { dollars: 200, tokens: 250_000_000 },
-  });
+  expect(override).toStrictEqual({ preview: { start: '2026-11-13', dollars: 200 } });
 });
 
 test('it binds nothing for a file with no valid override, and logs it once', async () => {
   const ctx = await setupTest();
 
-  await writeFile(ctx.path, '{"period":"week"}');
+  await writeFile(ctx.path, '{"preview":{"start":"x"}}');
 
   const readOverride = makeOverrideReader(ctx.path, ctx.log);
   const reads = [await readOverride(), await readOverride()];
 
-  expect(reads).toStrictEqual([null, null]);
+  expect(reads).toStrictEqual([{}, {}]);
 
   expect(ctx.log.mock.calls).toStrictEqual([
     ['override.unreadable', { reason: 'the file holds no valid override' }, 'error'],

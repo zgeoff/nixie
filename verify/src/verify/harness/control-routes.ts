@@ -57,6 +57,10 @@ export const controlRoutes = {
     input: z.strictObject({
       text: z.string().min(1),
 
+      // the output tokens that the closing reply reports, which a spending gateway prices at 4
+      // dollars per million
+      outputTokens: z.int().positive().optional(),
+
       // a memory the model proposes with the memory tool before its reply
       memory: z.string().min(1).optional(),
 
@@ -150,6 +154,23 @@ export const controlRoutes = {
       text: z.string().min(1),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
+  },
+  probeRoute: {
+    method: 'POST',
+    path: '/control/probe-route',
+    input: z.strictObject({ route: z.string().min(1) }),
+
+    // the gateway's answer to one model request on the route, with the error it names, or null
+    output: z.strictObject({
+      status: z.int(),
+      error: z
+        .strictObject({
+          type: z.string(),
+          counter: z.string().optional(),
+          route: z.string().optional(),
+        })
+        .nullable(),
+    }),
   },
   callStep: {
     method: 'POST',

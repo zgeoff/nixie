@@ -1,14 +1,13 @@
-import {
-  chargeBudgetsInTransaction,
-  creditBudgetChargesInTransaction,
-  formatBudgetReached,
-} from '@heynixie/budgets';
 import type { BudgetsContext } from '@heynixie/budgets';
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import invariant from 'tiny-invariant';
-import { isPriceMicros } from '../build-tool-registry';
-import type { RegisteredTool, ToolCall, ToolOutcome, ToolRun } from '../types';
+import type { RegisteredTool, ToolOutcome } from '../types';
+import { checkPaidPlanInTransaction } from './check-paid-plan-in-transaction';
+import { makePaidPlanCharge } from './make-paid-plan-charge';
+import type { PaidCallFacts } from './prepare-paid-call';
+import { preparePaidCall } from './prepare-paid-call';
+import { isUnbilledFailure } from './run-charged-call';
+import type { ChargeBeside } from './types';
 
 export interface PaidCallOptions {
   readonly log: Log;
@@ -17,128 +16,62 @@ export interface PaidCallOptions {
   readonly budgets?: BudgetsContext;
 }
 
-export interface PaidCallFacts {
-  readonly call: ToolCall;
-  readonly run: ToolRun;
+type PaidOutcome = ToolOutcome | { readonly status: 'budget_reached'; readonly message: string };
+
+export interface PaidRun {
+  readonly outcome: PaidOutcome;
+
+  // charges the call in the transaction of the result record, or null when the call stands free
+  readonly charge: ChargeBeside | null;
 }
 
-export type PaidOutcome =
-  | ToolOutcome
-  | { readonly status: 'budget_reached'; readonly message: string };
-
-// A check that refuses charges nothing. The charge lands before the provider sees the call, in the
-// transaction that checks and counts the tool's call cap. An error or a refusalCode credits it,
-// unless the provider billed, and a throw leaves an unknown outcome, so it stands.
+// Runs the call of an approved action. Its call record is from earlier, so the budgets are checked
+// before the run and the charge commits with the result record. An unbilled error or refusal
+// charges nothing, and a throw leaves an unknown outcome, so the charge stands.
 export async function runPaidCall(
   registered: RegisteredTool,
   facts: PaidCallFacts,
   options: PaidCallOptions,
   run: () => Promise<ToolOutcome>,
-): Promise<PaidOutcome> {
-  const paid = registered.definition.paid;
-  const call = facts.call;
+): Promise<PaidRun> {
+  const prepared = await preparePaidCall(registered, facts, options.budgets);
 
-  if (paid === undefined) {
-    return run();
+  if (prepared.status === 'free') {
+    return { outcome: await run(), charge: null };
   }
 
-  const budgets = options.budgets;
-
-  invariant(budgets, `the paid tool ${registered.definition.name} needs the budgets of the server`);
-
-  const context = { run: facts.run, callID: call.callID };
-
-  const refusal = await paid.check?.(call.input, context);
-
-  if (refusal !== undefined && refusal !== null) {
-    return { status: 'ok', ...refusal };
+  if (prepared.status === 'ended') {
+    return { outcome: prepared.outcome, charge: null };
   }
 
-  const started = { isRun: false };
+  const plan = prepared.plan;
 
   try {
-    return await chargeAndRun(registered, facts, options, () => {
-      started.isRun = true;
-
-      return run();
-    });
-  } finally {
-    if (!started.isRun) {
-      paid.release?.(context);
-    }
-  }
-}
-
-async function chargeAndRun(
-  registered: RegisteredTool,
-  facts: PaidCallFacts,
-  options: PaidCallOptions,
-  run: () => Promise<ToolOutcome>,
-): Promise<PaidOutcome> {
-  const paid = registered.definition.paid;
-  const budgets = options.budgets;
-
-  invariant(paid, 'a charged call belongs to a paid tool');
-  invariant(budgets, 'a charged call has the budgets of the server');
-
-  const call = facts.call;
-  const name = registered.definition.name;
-
-  const priceMicros =
-    typeof paid.priceMicros === 'number' ? paid.priceMicros : await paid.priceMicros(call.input);
-
-  invariant(isPriceMicros(priceMicros), `the paid tool ${name} priced a call at ${priceMicros}`);
-
-  const target = { for: { kind: 'tool_call' as const, id: call.callID } };
-  const capCall = paid.callCap?.openCall();
-
-  const gate = await withWriteTransaction(options.log.writer, async (tx) => {
-    const capCheck = await capCall?.checkInTransaction(tx);
-
-    if (capCheck?.status === 'capped') {
-      return { status: 'capped' as const, message: capCheck.message };
-    }
-
-    const charged = await chargeBudgetsInTransaction(tx, budgets, {
-      budgetIDs: [`${name}-day`, `${name}-month`],
-      amountMicros: priceMicros,
-      for: target.for,
-    });
-
-    if ('error' in charged) {
-      return { status: 'refused' as const, charged };
-    }
-
-    await capCall?.countInTransaction(tx);
-
-    return { status: 'passed' as const };
-  });
-
-  if (gate.status === 'capped') {
-    return { status: 'error', message: gate.message };
-  }
-
-  if (gate.status === 'refused') {
-    invariant(gate.charged.error === 'budget_reached', `the built-in budgets of ${name} exist`);
-
-    return { status: 'budget_reached', message: formatBudgetReached(gate.charged) };
-  }
-
-  const outcome = await run();
-
-  if (isUnbilledFailure(outcome)) {
-    await withWriteTransaction(options.log.writer, (tx) =>
-      creditBudgetChargesInTransaction(tx, budgets, target),
+    const gate = await withWriteTransaction(options.log.writer, (tx) =>
+      checkPaidPlanInTransaction(tx, plan),
     );
+
+    if (gate.status === 'capped') {
+      plan.release();
+
+      return { outcome: { status: 'error', message: gate.message }, charge: null };
+    }
+
+    if (gate.status === 'refused') {
+      plan.release();
+
+      return { outcome: { status: 'budget_reached', message: gate.message }, charge: null };
+    }
+  } catch (error) {
+    plan.release();
+    throw error;
   }
 
-  return outcome;
-}
+  const outcome = await run().catch((error: unknown): ToolOutcome => ({
+    status: 'error',
+    message: `the tool ${registered.definition.name} failed: ${String(error)}`,
+    billed: true,
+  }));
 
-function isUnbilledFailure(outcome: ToolOutcome): boolean {
-  if (outcome.status === 'error') {
-    return outcome.billed !== true;
-  }
-
-  return outcome.refusalCode !== undefined && outcome.billed !== true;
+  return { outcome, charge: isUnbilledFailure(outcome) ? null : makePaidPlanCharge(plan) };
 }

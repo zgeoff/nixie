@@ -58,7 +58,7 @@ export interface ServerParts {
   readonly spend: SpendInputs | null;
 
   // whether the start checks left the gateway without its limits
-  readonly isSpendUnsent: boolean;
+  readonly isSpendUnanswered: boolean;
   readonly turnInputs: TurnInputs;
 
   readonly encoder: Encoder | null;

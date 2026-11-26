@@ -1,4 +1,6 @@
-import { buildDayStart, buildZoneOffsetMs } from '@heynixie/triggers';
+import type { Period } from '@heynixie/periods';
+import { periodOf } from '@heynixie/periods';
+import invariant from 'tiny-invariant';
 import type { PeriodName } from '../types';
 
 export interface SpendPeriodStart {
@@ -15,32 +17,14 @@ export function buildSpendPeriods(
   nowMs: number,
   zone: string,
 ): Readonly<Record<PeriodName, SpendPeriodStart>> {
-  const local = new Date(nowMs + buildZoneOffsetMs(nowMs, zone));
-
-  const year = local.getUTCFullYear();
-  const month = local.getUTCMonth();
-  const day = local.getUTCDate();
-
   return {
-    day: buildPeriodStart(
-      new Date(Date.UTC(year, month, day)),
-      new Date(Date.UTC(year, month, day + 1)),
-      zone,
-    ),
-    month: buildPeriodStart(
-      new Date(Date.UTC(year, month, 1)),
-      new Date(Date.UTC(year, month + 1, 1)),
-      zone,
-    ),
+    day: toSpendPeriodStart(periodOf('day', nowMs, zone)),
+    month: toSpendPeriodStart(periodOf('month', nowMs, zone)),
   };
 }
 
-function buildPeriodStart(first: Date, next: Date, zone: string): SpendPeriodStart {
-  const start = first.toISOString().slice(0, 10);
+function toSpendPeriodStart(period: Period): SpendPeriodStart {
+  invariant(period.endsAtMs !== null, 'a day and a month end');
 
-  return {
-    start,
-    startMs: buildDayStart(start, zone),
-    resetsAtMs: buildDayStart(next.toISOString().slice(0, 10), zone),
-  };
+  return { start: period.start, startMs: period.startsAtMs, resetsAtMs: period.endsAtMs };
 }

@@ -1,43 +1,32 @@
 import { expect, test } from 'bun:test';
-import { buildMockGatewayStatus, buildMockPeriodStatus } from '../test-utils';
+import { buildMockGatewayStatus } from '../test-utils';
+import type { GatewayRaise } from '../types';
 import { pickRaiseResend } from './pick-raise-resend';
 
-test.each([
-  { name: 'no raise', raise: null, limit: { dollars: 60, tokens: 80_000_000 }, expected: null },
+test.each<{ name: string; routeRaises: Record<string, number>; expected: GatewayRaise[] }>([
+  { name: 'no raise', routeRaises: {}, expected: [] },
   {
-    name: 'a raise above the gateway limit in dollars',
-    raise: { dollars: 90, tokens: 80_000_000, turns: 1, by: 'a' },
-    limit: { dollars: 60, tokens: 80_000_000 },
-    expected: { start: '2026-11-13', limit: { dollars: 90, tokens: 80_000_000 } },
+    name: 'a raise above the route limit',
+    routeRaises: { plan: 60 },
+    expected: [{ route: 'plan', start: '2026-11-13', dollars: 60 }],
   },
+  { name: 'a raise that the gateway holds', routeRaises: { plan: 40 }, expected: [] },
   {
-    name: 'a raise above the gateway limit in tokens',
-    raise: { dollars: 60, tokens: 90_000_000, turns: 1, by: 'a' },
-    limit: { dollars: 60, tokens: 80_000_000 },
-    expected: { start: '2026-11-13', limit: { dollars: 60, tokens: 90_000_000 } },
+    name: 'a raise of each route that the gateway lacks',
+    routeRaises: { plan: 60, metered: 8 },
+    expected: [
+      { route: 'plan', start: '2026-11-13', dollars: 60 },
+      { route: 'metered', start: '2026-11-13', dollars: 8 },
+    ],
   },
-  {
-    name: 'a raise that the gateway holds',
-    raise: { dollars: 90, tokens: 120_000_000, turns: 1, by: 'a' },
-    limit: { dollars: 90, tokens: 120_000_000 },
-    expected: null,
-  },
-  {
-    name: 'a gateway with no limit',
-    raise: { dollars: 90, tokens: 120_000_000, turns: 1, by: 'a' },
-    limit: null,
-    expected: null,
-  },
+  { name: 'a raise of a route the gateway lacks', routeRaises: { ghost: 60 }, expected: [] },
 ])('it picks $name', (row) => {
-  const status = buildMockGatewayStatus({
-    periods: {
-      day: buildMockPeriodStatus({ limit: row.limit }),
-      month: buildMockPeriodStatus({ start: '2026-11-01' }),
-    },
-  });
-
   const resend = pickRaiseResend(
-    { status, raise: row.raise, now: Date.parse('2026-11-13T16:42:07Z') },
+    {
+      status: buildMockGatewayStatus(),
+      routeRaises: row.routeRaises,
+      now: Date.parse('2026-11-13T16:42:07Z'),
+    },
     'UTC',
   );
 
@@ -48,11 +37,11 @@ test('it sends no raise of a day that the gateway has left', () => {
   const resend = pickRaiseResend(
     {
       status: buildMockGatewayStatus(),
-      raise: { dollars: 90, tokens: 120_000_000, turns: 1, by: 'a' },
+      routeRaises: { plan: 60 },
       now: Date.parse('2026-11-14T00:00:01Z'),
     },
     'UTC',
   );
 
-  expect(resend).toBeNull();
+  expect(resend).toStrictEqual([]);
 });

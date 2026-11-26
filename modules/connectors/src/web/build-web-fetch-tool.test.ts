@@ -443,7 +443,6 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
 
   const search = buildSearchTool(
     {
-      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -455,13 +454,13 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
               date: null,
             },
           ],
-          costUSD: 0.012,
         }),
     },
     {
       log: ctx.log,
       clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
+      priceMicros: 12_000,
       timeZone: 'UTC',
     },
   );

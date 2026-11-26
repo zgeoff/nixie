@@ -67,16 +67,11 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
 
       return parseLoginsAnswer(answer);
     },
-    putLimits: async (limits) => {
-      const answer = await send('PUT', '/limits', limits);
-
-      return parseAboveCap(answer) ?? parseStatusAnswer(answer);
-    },
     postRaise: async (raise) => {
       const answer = await send('POST', '/raise', {
-        period: 'day',
+        route: raise.route,
         start: raise.start,
-        limit: raise.limit,
+        dollars: raise.dollars,
       });
 
       if (isPeriodEnded(answer)) {
@@ -164,6 +159,14 @@ function parseLoginsAnswer(
   return { kind: 'ok', value: routes };
 }
 
+function isPeriodEnded(answer: Answer | Unreachable): boolean {
+  return (
+    !isUnreachable(answer) &&
+    answer.status === 409 &&
+    periodEndedSchema.safeParse(answer.body).success
+  );
+}
+
 function parseAboveCap(answer: Answer | Unreachable): AboveCap | null {
   if (isUnreachable(answer) || answer.status !== 409) {
     return null;
@@ -175,21 +178,7 @@ function parseAboveCap(answer: Answer | Unreachable): AboveCap | null {
     return null;
   }
 
-  const cap = parsed.data.cap;
-
-  return {
-    kind: 'above_cap',
-    period: parsed.data.period ?? null,
-    cap: { dollars: cap.dollars, tokens: cap.tokens },
-  };
-}
-
-function isPeriodEnded(answer: Answer | Unreachable): boolean {
-  return (
-    !isUnreachable(answer) &&
-    answer.status === 409 &&
-    periodEndedSchema.safeParse(answer.body).success
-  );
+  return { kind: 'above_cap', route: parsed.data.route, cap: parsed.data.cap };
 }
 
 function parseNoContent(answer: Answer | Unreachable): Done | Unreachable {

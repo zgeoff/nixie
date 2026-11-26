@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { JSONObject, Log } from '@heynixie/log';
+import { periodOf } from '@heynixie/periods';
 import type { ToolDefinition } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -70,6 +71,9 @@ export interface SearchToolOptions {
 
   readonly dailyCallCap: number;
 
+  // what one search costs, in millionths of a dollar: the charge and the call's recorded cost
+  readonly priceMicros: number;
+
   // the IANA zone whose midnight starts a new day of the cap
   readonly timeZone: string;
 }
@@ -99,13 +103,15 @@ export function buildSearchTool(
     },
     execution: 'direct',
     paid: {
-      priceMicros: provider.priceMicros,
+      priceMicros: options.priceMicros,
       callCap: {
         openCall: () => {
-          const call = {
-            day: formatLocalDay(options.clock.now(), options.timeZone),
-            cap: options.dailyCallCap,
-          };
+          const today = periodOf('day', options.clock.now(), options.timeZone);
+
+          invariant(today.endsAtMs !== null, 'a day ends');
+
+          const call = { day: today.start, cap: options.dailyCallCap };
+          const nextDay = periodOf('day', today.endsAtMs, options.timeZone).start;
 
           return {
             checkInTransaction: async (tx) => {
@@ -118,7 +124,7 @@ export function buildSearchTool(
                     message:
                       `the search cap of ${String(options.dailyCallCap)} calls a day is reached, ` +
                       `and it resets at midnight ${options.timeZone} time, when ` +
-                      `${formatNextDay(call.day)} starts`,
+                      `${nextDay} starts`,
                   };
             },
             countInTransaction: (tx) => writeSearchCall(tx, call),
@@ -148,7 +154,7 @@ export function buildSearchTool(
           billed: true,
 
           // the provider answered, so the search was paid for
-          hidden: { costUSD: reply.costUSD },
+          hidden: { costUSD: options.priceMicros / 1_000_000 },
         };
       }
 
@@ -156,27 +162,13 @@ export function buildSearchTool(
 
       // the cost goes under hidden, which the model never reads, because it could steer what the
       // model searches for
-      return { status: 'ok', result: { hits }, hidden: { costUSD: reply.costUSD } };
+      return {
+        status: 'ok',
+        result: { hits },
+        hidden: { costUSD: options.priceMicros / 1_000_000 },
+      };
     },
   };
-}
-
-function formatLocalDay(atMs: number, timeZone: string): string {
-  // en-CA writes a date as YYYY-MM-DD
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(atMs);
-}
-
-function formatNextDay(day: string): string {
-  const next = new Date(`${day}T00:00:00.000Z`);
-
-  next.setUTCDate(next.getUTCDate() + 1);
-
-  return next.toISOString().slice(0, 10);
 }
 
 const dateSchema = z.iso.date();

@@ -1,3 +1,4 @@
+import type { LogRecord } from '@heynixie/log';
 import type { RuleSource } from '@heynixie/policy';
 import type { StepInput } from '@heynixie/tasks';
 import { LeaseLostError, buildStepRunID, conversationTaskID } from '@heynixie/tasks';
@@ -7,8 +8,9 @@ import invariant from 'tiny-invariant';
 import { renderHeldMessages } from '../held/render-held-messages';
 import { makeGapReader } from '../inbox/make-gap-reader';
 import { readLiveInbox } from '../inbox/read-live-inbox';
+import { renderToldWaitNotices } from '../inbox/render-told-wait-notices';
 import { buildStepPolicyFrame } from '../step/build-step-policy-frame';
-import type { CompletedTurn } from '../step/build-step-result';
+import type { CompletedTurn, WaitTelling } from '../step/build-step-result';
 import { collectRecordSources } from '../step/collect-record-sources';
 import { takeSources } from '../step/take-sources';
 import { makeImageReserver } from '../task/make-image-reserver';
@@ -26,6 +28,7 @@ import type { TurnSilence } from '../utils/build-turn-silence';
 import { buildTurnSilence } from '../utils/build-turn-silence';
 import type { AssistantFrame } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
+import { pickWaitTelling } from './pick-wait-telling';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
 import { readTurnRecalledThrough } from './read-turn-recalled-through';
@@ -48,6 +51,9 @@ export interface LiveTurnPlan {
 
   // the session the turn runs on, which the turn's step token hands each tool call
   readonly session: ToolSession;
+
+  // the wait notices in the inbox that an earlier turn's opening told
+  readonly toldWaitNotices: ReadonlySet<number>;
 
   // where the content of the events that a new session's opening replays came from
   readonly openingSources: readonly RuleSource[];
@@ -177,6 +183,14 @@ async function runTokenTurn(
   const silent = new Set(opening.batch.silent.map((record) => record.sequence));
 
   const held = renderHeldMessages(opening.batch.records, plan.times, plan.view);
+  const waits = pickWaitTelling(input.inbox, sent, plan.toldWaitNotices);
+
+  const turnInput = buildTurnInput(opening.batch.messages, [
+    ...plan.preamble,
+    note?.text ?? null,
+    renderToldWaitNotices(waits, plan.times),
+    held,
+  ]);
 
   const live = new AbortController();
 
@@ -199,7 +213,7 @@ async function runTokenTurn(
           modelCalls: capabilities.has('turn-limit') ? (run.modelCallLimit ?? null) : null,
           toolCallWaitMs: run.harness.toolCallWaitMs,
         },
-        input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
+        input: turnInput,
       },
       messages:
         hasMore || !capabilities.has('live-messages')
@@ -231,6 +245,7 @@ async function runTokenTurn(
       silent,
       hasMore: hasMore || opening.images.isCapped,
       notedThrough: note?.throughSequence ?? null,
+      waitTelling: buildWaitTelling(waits, turnInput),
       images: opening.images.spent,
       isSilent: plan.silence.isSilent(),
       runID: buildStepRunID(input),
@@ -301,4 +316,17 @@ async function writeAssistantReply(
   live.written.push(sequence);
 
   return sequence;
+}
+
+// The opening rides on the first message, so the notices count as told only once the model reads
+// that message.
+function buildWaitTelling(
+  told: readonly LogRecord[],
+  turnInput: readonly InboxMessage[],
+): WaitTelling | null {
+  const [carrier] = turnInput;
+
+  return told.length === 0 || carrier === undefined
+    ? null
+    : { sequences: told.map((record) => record.sequence), carrierUUID: carrier.uuid };
 }

@@ -174,6 +174,10 @@ export interface SpawnedNixieOptions {
 
   readonly logLevel?: LogLevel;
 
+  // where the model credential lives: the secrets file, or the sandbox backend, which a deployment
+  // with a spending gateway uses
+  readonly modelCredential?: BootFileExtras['modelCredential'];
+
   readonly release?: string;
 
   // The entry file of the test bundle to run, where a suite gets it from a rig program; the test
@@ -337,6 +341,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     definitions: [],
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
+    ...(options.modelCredential === undefined ? {} : { modelCredential: options.modelCredential }),
     ...buildRoleModelExtras(options, doubles),
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),
