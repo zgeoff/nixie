@@ -220,8 +220,8 @@ message carries, because the model never sees the UUID. A task that left the def
 its name from the version its newest ended task run pinned. The filters are `definition`, `outcome`
 and `since`, and `cursor` pages by the sequence of the end through a page that fills to the byte
 budget of a recall page. Its `run` input gives one task run with the whole report, its fields, the
-stored cause, the reason a failed task run failed, and its steps, turns and dollars. Only the
-conversation holds the tool: a started task and a worker never hold it.
+stored cause, the reason a failed task run failed, and its steps and turns. Only the conversation
+holds the tool: a started task and a worker never hold it.
 
 While a task is paused or closed, nixie claims none of its [actions](./actions.md) that have not
 started an attempt, so a pause keeps the queued actions with the task. A stop

@@ -43,3 +43,32 @@ test('it does not go again for a sandbox the gateway lacks', async () => {
   expect(isPatched).toBe(false);
   expect(gateway.patchSandbox.mock.calls).toHaveLength(1);
 });
+
+test('it sends a limit only after the write in flight for the sandbox was answered', async () => {
+  const gateway = buildStubSpendGateway();
+  const answer = Promise.withResolvers<{ kind: 'ok' }>();
+  const events: string[] = [];
+
+  gateway.patchSandbox.mockImplementationOnce(async () => {
+    const done = await answer.promise;
+
+    events.push('first answered');
+
+    return done;
+  });
+
+  gateway.patchSandbox.mockImplementationOnce(() => {
+    events.push('second sent');
+
+    return Promise.resolve({ kind: 'ok' });
+  });
+
+  const first = patchSandboxLimit(gateway, 's1', { dollars: 4 });
+  const second = patchSandboxLimit(gateway, 's1', { dollars: 1 });
+
+  answer.resolve({ kind: 'ok' });
+
+  await Promise.all([first, second]);
+
+  expect(events).toStrictEqual(['first answered', 'second sent']);
+});

@@ -3,6 +3,7 @@ import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { startTestSpend } from '../test-utils';
 import { patchLimitUntilSet } from './patch-limit-until-set';
+import { withSandboxLimitLock } from './with-sandbox-limit-lock';
 
 async function setupTest() {
   const spend = await startTestSpend();
@@ -120,4 +121,39 @@ test('it stops when the signal aborts while the gateway does not answer', async 
   const outcome = await patching;
 
   expect(outcome).toBe('stopped');
+});
+
+test('it holds a limit that a step sets after its check until the gateway answered the patch', async () => {
+  const ctx = await setupTest();
+
+  const answer = Promise.withResolvers<{ kind: 'ok' }>();
+  const events: string[] = [];
+
+  ctx.gateway.patchSandbox.mockImplementationOnce(async () => {
+    const done = await answer.promise;
+
+    events.push('retry answered');
+
+    return done;
+  });
+
+  ctx.gateway.patchSandbox.mockImplementationOnce(() => {
+    events.push('step limit sent');
+
+    return Promise.resolve({ kind: 'ok' });
+  });
+
+  const patching = ctx.patch();
+
+  await waitForCondition(() => ctx.gateway.patchSandbox.mock.calls.length === 1);
+
+  const stepWrite = withSandboxLimitLock('sandbox-1', () =>
+    ctx.gateway.patchSandbox('sandbox-1', { dollars: 1 }),
+  );
+
+  answer.resolve({ kind: 'ok' });
+
+  await Promise.all([patching, stepWrite]);
+
+  expect(events).toStrictEqual(['retry answered', 'step limit sent']);
 });

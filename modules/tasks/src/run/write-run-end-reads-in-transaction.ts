@@ -3,6 +3,7 @@ import type { TasksContext } from '../types';
 import { collectUnsettledSandboxes } from './collect-unsettled-sandboxes';
 import { readMeterReads } from './read-meter-reads';
 import { RunEndUnsettledError } from './run-end-unsettled-error';
+import { settledSandboxes } from './settled-sandboxes';
 import { toTransactionContext } from './to-transaction-context';
 import type { TaskRun } from './types';
 import { writeMeterReadInTransaction } from './write-meter-read-in-transaction';
@@ -17,7 +18,7 @@ export async function writeRunEndReadsInTransaction(
 ): Promise<void> {
   const reads = await readMeterReads(toTransactionContext(context, tx), run);
 
-  const unsettled = collectUnsettledSandboxes(reads, run.taskID);
+  const unsettled = collectUnsettledSandboxes(reads, run.taskID, settledSandboxes.getStore());
 
   if (unsettled.some((sandbox) => !sandbox.isTally)) {
     throw new RunEndUnsettledError(run.taskID, run.runID);

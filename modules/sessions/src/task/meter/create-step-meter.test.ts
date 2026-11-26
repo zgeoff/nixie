@@ -63,6 +63,15 @@ async function setupTest() {
         { context, gateway, logger: mock<Logger>(() => {}) },
         { taskRun, used: { turns: 0, dollars: 0 }, prices: null },
       ),
+    recordsMeter: () =>
+      createStepMeter(
+        { context, gateway: undefined, logger: mock<Logger>(() => {}) },
+        {
+          taskRun: { ...run, opened: { ...run.opened, meter: 'records' as const } },
+          used: { turns: 0, dollars: 0 },
+          prices: { input: 3, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
+        },
+      ),
     writeLegacyTurn: (dollars: number) =>
       writeRecords(tasks.context.log, [
         {
@@ -163,4 +172,34 @@ test('it writes only the sandbox read for a task run from before the reads whose
   expect(reads).toStrictEqual([
     { sandbox: 'sandbox-1', reason: 'run_start', countMicros: 2_000_000 },
   ]);
+});
+
+test('it gives each of two worker runs that start together on the records meter what the other left', async () => {
+  const ctx = await setupTest();
+  const begun = await ctx.recordsMeter().begin('sandbox-1');
+
+  invariant(begun.kind === 'ready', 'the step begins');
+
+  const grants = await Promise.all([
+    begun.budget.onWorkerStart?.(2),
+    begun.budget.onWorkerStart?.(2),
+  ]);
+
+  expect(grants).toStrictEqual([2, 1]);
+  expect(begun.budget.getLeftDollars()).toBe(0);
+});
+
+test('it frees the dollars a worker run planned and did not spend on the records meter', async () => {
+  const ctx = await setupTest();
+  const begun = await ctx.recordsMeter().begin('sandbox-1');
+
+  invariant(begun.kind === 'ready', 'the step begins');
+
+  await begun.budget.onWorkerStart?.(2);
+
+  begun.budget.onSpend(0.5);
+
+  await begun.budget.onWorkerEnd?.({ plannedDollars: 2, chargedDollars: 0.5 });
+
+  expect(begun.budget.getLeftDollars()).toBe(2.5);
 });

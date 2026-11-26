@@ -2,6 +2,7 @@ import type { TaskClaim, TasksContext } from '../types';
 import { LeaseLostError } from '../utils/lease-lost-error';
 import { RunEndUnsettledError } from './run-end-unsettled-error';
 import { settleRunEnd } from './settle-run-end';
+import { settledSandboxes } from './settled-sandboxes';
 
 export interface RunEndWait {
   // aborts the wait, which a step does once it lost its lease
@@ -12,26 +13,28 @@ export interface RunEndWait {
 }
 
 // Runs a write that can end the task's task run. The end waits until the gateway answered a read of
-// each sandbox the task run used, so the write goes again after each read, and nothing of it commits
-// until then. An aborted wait throws and commits nothing.
-export async function withRunEndSettled<Result>(
+// each sandbox the task run used, however many reads an earlier attempt saved, so the write goes
+// again after each read, and nothing of it commits until then. An aborted wait throws and commits nothing.
+export function withRunEndSettled<Result>(
   context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runSettings'>,
   write: () => Promise<Result>,
   wait: RunEndWait = {},
 ): Promise<Result> {
-  for (;;) {
-    const attempt = await tryWrite(write);
+  return settledSandboxes.run(new Set(), async () => {
+    for (;;) {
+      const attempt = await tryWrite(write);
 
-    if (attempt.kind === 'written') {
-      return attempt.result;
+      if (attempt.kind === 'written') {
+        return attempt.result;
+      }
+
+      const settlement = await settleRunEnd(context, attempt.taskID);
+
+      if (settlement === 'waiting') {
+        await waitForGateway(context, wait);
+      }
     }
-
-    const settlement = await settleRunEnd(context, attempt.taskID);
-
-    if (settlement === 'waiting') {
-      await waitForGateway(context, wait);
-    }
-  }
+  });
 }
 
 type Attempt<Result> =

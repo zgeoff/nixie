@@ -520,7 +520,6 @@ test('it clips a listed report to its first line, and gives the whole report for
           cause: 'reported',
           steps: 1,
           turns: 0,
-          dollars: 0,
         },
       ],
       nextCursor: null,
@@ -623,6 +622,8 @@ test('it gives no dollar figure as the reason a run that hit its dollar limit gi
       nextCursor: null,
     },
   });
+
+  expect(JSON.stringify(one)).not.toContain('dollars');
 });
 
 test('it returns a tool error for a run ID that no ended run has', async () => {

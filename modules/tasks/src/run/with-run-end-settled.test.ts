@@ -51,8 +51,11 @@ async function setupTest() {
     claim,
     run,
     readSandboxMicros,
-    writeRead: (sandbox: string, reason: 'run_start' | 'step_end', countMicros: number) =>
-      writeMeterRead(context, { taskID, taskRunID: run.runID, sandbox, reason, countMicros }),
+    writeRead: (
+      sandbox: string,
+      reason: 'run_start' | 'step_end' | 'run_end',
+      countMicros: number,
+    ) => writeMeterRead(context, { taskID, taskRunID: run.runID, sandbox, reason, countMicros }),
     readKinds: async (kind: RecordKind) => {
       const entries = await readRecords(context.log, { afterSequence: 0, kinds: [kind] });
 
@@ -174,4 +177,26 @@ test('it commits nothing of a step that lost its lease while it waited for the e
   expect(settled?.status).toBe('rejected');
   expect(reason).toBeInstanceOf(LeaseLostError);
   expect(ended).toStrictEqual([]);
+});
+
+test('it reads the sandbox again at the end when an earlier attempt saved an end read, and the sandbox spent since', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRead('sandbox-1', 'run_start', 100_000);
+  await ctx.writeRead('sandbox-1', 'run_end', 250_000);
+
+  ctx.readSandboxMicros.mockResolvedValue({ kind: 'ok', micros: 500_000 });
+
+  await writeTaskControl(ctx.context, { taskID: ctx.taskID, control: 'stop' });
+
+  const reads = await readMeterReads(ctx.context, ctx.run);
+  const ended = await readEndedRuns(ctx.context, { taskID: ctx.taskID, limit: 1 });
+
+  expect(ended).toHaveLength(1);
+
+  expect(reads.at(-1)).toStrictEqual({
+    sandbox: 'sandbox-1',
+    reason: 'run_end',
+    countMicros: 500_000,
+  });
 });

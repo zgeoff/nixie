@@ -272,12 +272,42 @@ function createRecordsStepMeter(
 
       budget = called;
 
+      // The dollars that running worker runs planned and have not yet spent. A worker run takes its
+      // grant from what remains after them, in one synchronous step, so two runs that start
+      // together never hold the same dollars.
+      let reservedDollars = 0;
+      let runningSpentDollars = 0;
+
+      const getAvailableDollars = () =>
+        Math.max(0, called.getLeftDollars() - Math.max(0, reservedDollars - runningSpentDollars));
+
       return {
         kind: 'ready',
         budget: {
           ...called,
-          onWorkerStart: (requestedDollars) => Promise.resolve(requestedDollars),
-          onWorkerEnd: () => write('worker_end', readTallyMicros()),
+          getLeftDollars: getAvailableDollars,
+          onSpend: (dollars) => {
+            runningSpentDollars += dollars;
+
+            called.onSpend(dollars);
+          },
+          onWorkerStart: (requestedDollars) => {
+            const grantedDollars = Math.min(requestedDollars, getAvailableDollars());
+
+            if (grantedDollars <= 0) {
+              return Promise.resolve(0);
+            }
+
+            reservedDollars += grantedDollars;
+
+            return Promise.resolve(grantedDollars);
+          },
+          onWorkerEnd: (worker) => {
+            reservedDollars -= worker.plannedDollars;
+            runningSpentDollars -= worker.chargedDollars;
+
+            return write('worker_end', readTallyMicros());
+          },
         },
       };
     },

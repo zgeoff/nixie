@@ -1,8 +1,9 @@
 import type { SandboxLimit, SpendGateway } from '@heynixie/spend';
+import { withSandboxLimitLock } from '@heynixie/spend';
 
 const attempts = 3;
 
-// Sets a sandbox's limit whole. A call that the gateway did not answer goes again, and the result
+// Sets a sandbox's limit whole, behind any limit write of the sandbox that is in flight. A call that the gateway did not answer goes again, and the result
 // says whether the gateway took the limit. A name the gateway lacks never takes one.
 export async function patchSandboxLimit(
   gateway: SpendGateway,
@@ -10,7 +11,9 @@ export async function patchSandboxLimit(
   limit: SandboxLimit | null,
 ): Promise<boolean> {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const patched = await gateway.patchSandbox(sandboxID, limit);
+    const patched = await withSandboxLimitLock(sandboxID, () =>
+      gateway.patchSandbox(sandboxID, limit),
+    );
 
     if (patched.kind === 'ok') {
       return true;

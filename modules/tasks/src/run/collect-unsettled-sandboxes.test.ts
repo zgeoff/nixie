@@ -30,3 +30,17 @@ test.each([
 ])('it collects $name', (row) => {
   expect(collectUnsettledSandboxes(row.reads, 'task-1')).toStrictEqual(row.unsettled);
 });
+
+test.each([
+  { name: 'a read at the end that the attempt did not take', settled: [], isUnsettled: true },
+  { name: 'a read at the end that the attempt took', settled: ['sandbox-1'], isUnsettled: false },
+])('it counts $name as unsettled: $isUnsettled', (row) => {
+  const reads = [
+    { sandbox: 'sandbox-1', reason: 'run_start', countMicros: 100 },
+    { sandbox: 'sandbox-1', reason: 'run_end', countMicros: 400 },
+  ] as const;
+
+  const unsettled = collectUnsettledSandboxes(reads, 'task-1', new Set(row.settled));
+
+  expect(unsettled.length > 0).toBe(row.isUnsettled);
+});

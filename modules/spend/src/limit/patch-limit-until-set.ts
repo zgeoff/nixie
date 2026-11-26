@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import type { SandboxLimit, SpendContext } from '../types';
+import { withSandboxLimitLock } from './with-sandbox-limit-lock';
 
 export interface SandboxLimitPatch {
   readonly sandbox: string;
@@ -22,23 +23,29 @@ export interface PatchLimitOptions {
 export type PatchLimitOutcome = 'set' | 'gone' | 'stale' | 'stopped';
 
 // Sets a sandbox's limit and goes again until the gateway takes it, because a limit that stays lower
-// than the task run's would refuse the task's next request. Each call sets the limit as it stands
-// then, so a retry never overwrites a limit that a step set meanwhile.
+// than the task run's would refuse the task's next request. Each call checks the limit and sends it
+// under the sandbox's limit lock, so a limit that a step sets meanwhile lands after it.
 export async function patchLimitUntilSet(
   context: Pick<SpendContext, 'gateway' | 'clock'>,
   patch: SandboxLimitPatch,
   options: PatchLimitOptions,
 ): Promise<PatchLimitOutcome> {
   while (options.signal?.aborted !== true) {
-    const current = await patch.readLimit();
+    const answer = await withSandboxLimitLock(patch.sandbox, async () => {
+      const current = await patch.readLimit();
 
-    if (current === null) {
+      if (current === null) {
+        return null;
+      }
+
+      return context.gateway.patchSandbox(patch.sandbox, current.limit);
+    });
+
+    if (answer === null) {
       options.logger('spend.sandbox_limit_stale', { sandboxID: patch.sandbox }, 'info');
 
       return 'stale';
     }
-
-    const answer = await context.gateway.patchSandbox(patch.sandbox, current.limit);
 
     if (answer.kind === 'ok') {
       return 'set';
