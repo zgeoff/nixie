@@ -213,7 +213,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'probe-route',
       summary:
-        "Send one model request to the spending gateway's route --route, and read its answer: a route at its limit answers 403 with the error limit_reached, which names the route. Needs a start with NIXIE_VERIFY_SPEND=1",
+        "Send one model request to the spending gateway's route --route, and read its answer: a route at its limit, or on a provider at its limit, answers 403 with the error limit_reached, which names the route and its provider. Needs a start with NIXIE_VERIFY_SPEND=1",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.probeRoute.input,

@@ -2,18 +2,20 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-The spending gateway counts each model reply on its own route, in US dollars, with a day limit and a
-month limit per route. A route at its day limit refuses its requests with `limit_reached` and names
-itself, while a turn on another route completes. The spending page, `/spend`, lists each route's day
-and month count and limit in US dollars, with an approximate amount in the display currency beside
-each figure.
+The spending gateway counts each model reply on its own route and on the route's provider, in US
+dollars, with a day limit and a month limit per provider and an optional pair per route. A route, or
+the provider of a route, at its day limit refuses requests with `limit_reached` and names the route
+and the provider, while a turn on a route of another provider completes. The spending page,
+`/spend`, lists each provider with its routes, and each count and limit in US dollars, with an
+approximate amount in the display currency beside each figure. Each count has a Reset button.
 
 Run this journey on `local` only, on an `up` of its own:
 
 - On `local`, `NIXIE_VERIFY_SPEND=1 bun verify up` runs a test build of nixie with a scripted model
-  behind a spending gateway with 2 routes, and a double of the rate source that gives 1.52
-  Australian dollars for one US dollar. The route `scripted` carries the conversation, with a day
-  limit of 100 dollars and a month limit of 1,000 dollars. The route `second` has a day limit of
+  behind a spending gateway with 2 providers and 2 routes, and a double of the rate source that
+  gives 1.52 Australian dollars for one US dollar. The route `scripted` carries the conversation,
+  with a day limit of 100 dollars and a month limit of 1,000 dollars, on the provider `test`. The
+  route `second` has no limit of its own, and is on the provider `reserve`, which has a day limit of
   1.50 dollars and a month limit of 50 dollars.
 - On `preview`, skip this journey, and list the feature as not verified there in your reply.
 
@@ -25,8 +27,8 @@ Before you start:
 ## Journey
 
 1. Record every later command of this journey under this feature. Then send a request to the route
-   `second` twice. The first reply costs 2 dollars, which passes the route's day limit of 1.50
-   dollars:
+   `second` twice. The first reply costs 2 dollars, which passes the day limit of 1.50 dollars of
+   the provider `reserve`:
 
    ```bash
    bun verify use --feature spend-routes
@@ -35,7 +37,7 @@ Before you start:
    ```
 
    Expect: the first `data` is `{"status":200,"error":null}`. The second `data` is
-   `{"status":403,"error":{"type":"limit_reached","counter":"route_day","route":"second"}}`.
+   `{"status":403,"error":{"type":"limit_reached","counter":"provider_day","route":"second","provider":"reserve"}}`.
 
 2. With the route `second` at its limit, run a turn on the route `scripted`. Its reply reports
    125,000 output tokens, which the gateway prices at 0.50 dollars:
@@ -48,15 +50,23 @@ Before you start:
    bun verify conversation turn --message 'Where did the heron go?' --reply 'The heron left the pond at dawn.'
    ```
 
-   Expect: `conversation turn` exits 0, so the turn completed on `scripted` while `second` was
-   stopped.
+   Expect: `conversation turn` exits 0, so the turn completed on `scripted` while the provider
+   `reserve` was stopped.
 
-3. Read the spending page:
+3. Read the spending page, then reset the day count of the provider `reserve` with one confirm, and
+   probe the route again:
 
    ```bash
    bun verify browser goto /spend
    bun verify browser snapshot
+   bun verify browser click --role button --name 'Reset today for reserve'
+   bun verify browser click --role button --name 'Confirm reset today for reserve'
+   bun verify browser snapshot
+   bun verify action probe-route --route second
    ```
+
+   Expect: the probe's `data` is `{"status":200,"error":null}`. Read the first snapshot for the end
+   state's counts, and the second for the reset.
 
 4. Start a task on the route `scripted`, and read the dollars of its task run. The gateway counts
    the task's sandbox, so the task run's dollars are that count, which the task meter writes:
@@ -76,11 +86,16 @@ Before you start:
 
 ## End state
 
-- Under the heading "scripted", the page reads "Today: $0.50 (about A$0.76) of $100.00 (about
-  A$152)" and "This month: $0.50 (about A$0.76) of $1,000.00 (about A$1,520)". A count of $0.00
-  means the reply was not counted, so the journey failed.
-- Under the heading "second", the page reads "Today: $2.00 (about A$3.04) of $1.50 (about A$2.28)
-  (limit reached)" and "This month: $2.00 (about A$3.04) of $50.00 (about A$76)".
+- Under the heading "Provider test", the page reads "Today: $0.50 (about A$0.76) of $10,000.00
+  (about A$15,200)". Under it, the heading "scripted" reads "Today: $0.50 (about A$0.76) of $100.00
+  (about A$152)" and "This month: $0.50 (about A$0.76) of $1,000.00 (about A$1,520)". A count of
+  $0.00 means the reply was not counted, so the journey failed.
+- Under the heading "Provider reserve", the page reads "Today: $2.00 (about A$3.04) of $1.50 (about
+  A$2.28) (limit reached)" and "This month: $2.00 (about A$3.04) of $50.00 (about A$76)". Its route
+  `second` sits under it, and reads "$2.00 (about A$3.04) no limit of its own" on both lines. Each
+  count has a Reset button.
+- After the reset, the second snapshot reads "Today: $0.00 (about A$0.00) of $1.50 (about A$2.28)"
+  under "Provider reserve", and the probe of `second` is answered with status 200.
 - The page says that the figures in Australian dollars are approximate.
 - The first query shows a `run_start` read of 0 and a `step_end` read above 0, in that order. The
   second shows one row, whose `amount` equals the `step_end` micros, so the task run's dollars are

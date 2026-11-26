@@ -57,8 +57,8 @@ export async function runVerifyHarness(): Promise<void> {
   }
 
   // A start with NIXIE_VERIFY_SPEND=1 sends every model request through a spending gateway with 2
-  // routes: the profile's route `scripted`, and the route `second`, whose day limit one reply
-  // passes. A rate site answers for the display currency.
+  // routes: the profile's route `scripted`, and the route `second`, which has no limit of its own and
+  // is on the provider `reserve`, whose day limit one reply passes. A rate site answers for the display currency.
   const isSpendOn = process.env['NIXIE_VERIFY_SPEND'] === '1';
   const spend: { gateway: TestModelGateway | null } = { gateway: null };
   const rates = isSpendOn ? startFakeRateSite() : null;
@@ -122,7 +122,8 @@ export async function runVerifyHarness(): Promise<void> {
               periods: {
                 zone: 'Australia/Sydney',
                 countBySandbox: true,
-                secondRoute: { id: 'second', limits: { day: 1.5, month: 50 } },
+                secondProvider: { id: 'reserve', limits: { day: 1.5, month: 50 } },
+                secondRoute: { id: 'second', limits: null, provider: 'reserve' },
               },
             });
 

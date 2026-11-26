@@ -184,6 +184,7 @@ export const controlRoutes = {
           type: z.string(),
           counter: z.string().optional(),
           route: z.string().optional(),
+          provider: z.string().optional(),
         })
         .nullable(),
     }),
