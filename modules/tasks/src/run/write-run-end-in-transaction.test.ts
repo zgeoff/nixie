@@ -16,6 +16,7 @@ import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
 import type { StartedClaim, TaskRunOptions } from '../types';
 import { readEndedRuns } from './read-ended-runs';
 import { readOpenRun } from './read-open-run';
+import { taskMeterReadCodec } from './task-meter-read-codec';
 import { taskRunEndedCodec } from './task-run-ended-codec';
 import { taskRunOpenedCodec } from './task-run-opened-codec';
 
@@ -146,6 +147,74 @@ test('it sets the ledger row of a task run that began before the meter from the 
       periodKind: 'none',
       periodStart: '',
       amount: 410_000,
+    },
+  ]);
+});
+
+test('it leaves the ledger row of a task run that began before the meter, and has a read, as its reads set it', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: taskRunOpenedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: 'legacy-task',
+      payload: taskRunOpenedCodec.encode({
+        taskID: 'legacy-task',
+        runID: 'legacy-run',
+        openedByStep: 'legacy-task:1',
+        origin: { kind: 'message', sequence: null },
+        definitionID: null,
+        definitionHash: null,
+        triggerKey: null,
+        carriesRunID: null,
+        briefID: null,
+        report: { mode: 'none', target: null },
+        reportShape: null,
+        limits: { turns: 5, dollars: 2, calls: {} },
+      }),
+    },
+    {
+      kind: taskMeterReadCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: 'legacy-task',
+      payload: taskMeterReadCodec.encode({
+        taskRunID: 'legacy-run',
+        sandbox: 'legacy-task',
+        reason: 'step_start',
+        countMicros: 500_000,
+      }),
+    },
+    {
+      kind: taskRunEndedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: 'legacy-task',
+      payload: taskRunEndedCodec.encode({
+        taskID: 'legacy-task',
+        runID: 'legacy-run',
+        cause: 'reported',
+        detail: {},
+        endedBy: 'step:legacy-task:1',
+        definitionID: null,
+        triggerKey: null,
+        carriesRunID: null,
+        used: { turns: 3, dollars: 0.41, calls: {} },
+        reportID: 'r1',
+        reportTo: null,
+        delivery: 'kept',
+      }),
+    },
+  ]);
+
+  const ledger = await readSpendLedger(ctx.writer.db);
+
+  expect(ledger).toStrictEqual([
+    {
+      counter: 'task_run:legacy-run',
+      unit: 'micros:USD',
+      periodKind: 'none',
+      periodStart: '',
+      amount: 500_000,
     },
   ]);
 });

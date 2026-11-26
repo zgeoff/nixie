@@ -27,7 +27,7 @@ const workerRunEndedSchema = z.object({
 });
 
 // A record sets a task run's or a worker run's row and never adds to it: a meter read sets the task
-// run's, a worker run's end sets its own, and so does the end of a task run that began with no meter.
+// run's, a worker run's end sets its own, and so does the end of a task run that has no meter read.
 // Returns the keys that it set.
 export async function foldRunSpend(
   tx: Transaction<unknown>,
@@ -47,7 +47,7 @@ export async function foldRunSpend(
   if (kind === taskRunEndedKind) {
     const ended = taskRunEndedSchema.parse(record.payload);
 
-    const isMetered = await probeRunBeganWithMeter(tx, record, ended.runID);
+    const isMetered = await probeRunIsMetered(tx, record, ended.runID);
 
     if (isMetered) {
       return [];
@@ -134,7 +134,9 @@ async function setRow(
   return ledgerKey;
 }
 
-async function probeRunBeganWithMeter(
+// A task run that began with a meter, or that has a meter read before its end, has its row set by
+// its reads, so its end sets none.
+async function probeRunIsMetered(
   tx: Transaction<unknown>,
   record: EnvelopeRecord,
   runID: string,
@@ -147,5 +149,16 @@ async function probeRunBeganWithMeter(
 
   const row = z.object({ meter: z.string().nullable() }).safeParse(opened.rows[0]);
 
-  return row.success && typeof row.data.meter === 'string';
+  if (row.success && typeof row.data.meter === 'string') {
+    return true;
+  }
+
+  const reads = await sql`select 1 as found
+    from records
+    where thread = ${record.thread}
+      and kind = ${taskMeterReadKind}
+      and json_extract(payload, '$.taskRunID') = ${runID}
+    limit 1`.execute(tx);
+
+  return reads.rows.length > 0;
 }

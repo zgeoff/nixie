@@ -43,6 +43,7 @@ import { getHarnessImage } from './get-harness-image';
 import { holdTaskStep } from './hold-task-step';
 import type { SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { collectCompactionDollars } from './meter/collect-compaction-dollars';
 import { createStepMeter } from './meter/create-step-meter';
 import { settleRunEnds } from './meter/settle-run-ends';
 import { isGuestPurged } from './pick-cleaned-task-ids';
@@ -456,7 +457,12 @@ async function runTaskTurn(
     .then((result) => ({ result, error: null }))
     .catch((error: unknown) => ({ result: null, error }));
 
-  const spent = await meter.end(held.sandbox.id, startedAtMs);
+  const spent = await meter.end(
+    held.sandbox.id,
+    startedAtMs,
+    collectCompactionDollars(ended.result?.records ?? []),
+  );
+
   const isPauseRequested = await probePauseRequested(context.log.writer.db, input.taskID);
 
   const plan = planTaskTurnEnd({

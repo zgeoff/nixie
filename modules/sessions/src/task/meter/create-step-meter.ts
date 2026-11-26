@@ -9,6 +9,7 @@ import invariant from 'tiny-invariant';
 import type { CallBudget } from '../create-call-budget';
 import { createCallBudget } from '../create-call-budget';
 import { readRunUsage } from '../read-run-usage';
+import { readWorkerDollars } from '../read-worker-dollars';
 import { createGatewayBudget } from './create-gateway-budget';
 import { patchSandboxLimit } from './patch-sandbox-limit';
 
@@ -50,18 +51,26 @@ export interface StepMeter {
   readonly begin: (sandboxID: string) => Promise<StepBegin>;
 
   // after the turn, whether or not it threw: the read of the sandbox that ends the step. A sandbox
-  // that refused a request at or after the instant ended the step at the dollar limit.
-  readonly end: (sandboxID: string, startedAtMs: number) => Promise<StepEnd>;
+  // that refused a request at or after the instant ended the step at the dollar limit. The dollars
+  // of the session summaries the step wrote count only for a meter that prices calls itself.
+  readonly end: (
+    sandboxID: string,
+    startedAtMs: number,
+    compactionDollars: number,
+  ) => Promise<StepEnd>;
 }
 
-// A task run's meter is the one its start record names. A task run that began before the start
-// record named a meter keeps pricing its turn from the runner's own tally, and records no read.
+// A task run's meter is the one its start record names. A task run with none, from before the
+// reads, moves to the gateway's count behind a gateway, from the dollars its records hold. Without
+// one, it prices its turn from the runner's tally and records no read.
 export function createStepMeter(deps: StepMeterDeps, facts: StepMeterFacts): StepMeter {
   const meter = facts.taskRun.opened.meter;
 
   if (meter === 'gateway') {
     invariant(deps.gateway !== undefined, 'a task run that the gateway counts needs the gateway');
+  }
 
+  if (deps.gateway !== undefined && meter !== 'records') {
     return createGatewayStepMeter({ ...deps, gateway: deps.gateway }, facts);
   }
 
@@ -103,6 +112,19 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
     return read.value;
   };
 
+  // The dollars that the records of a task run from before the meter reads hold, which the task
+  // run's own count under the task's ID carries on. Its worker runs' dollars count apart.
+  const writeLegacyDollars = async () => {
+    const usage = await readRunUsage(deps.context, taskRun);
+    const workerDollars = await readWorkerDollars(deps.context, taskRun);
+
+    const legacyMicros = Math.max(0, toMicrosUp(usage.used.dollars) - toMicrosUp(workerDollars));
+
+    if (legacyMicros > 0) {
+      await write(taskID, 'step_start', legacyMicros);
+    }
+  };
+
   return {
     begin: async (sandboxID) => {
       const count = await readCount(sandboxID, 'step_start');
@@ -115,7 +137,11 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 
       const reads = await readMeterReads(deps.context, taskRun);
 
-      const reason = reads.length === 0 ? 'run_start' : 'step_start';
+      if (taskRun.opened.meter === undefined && reads.length === 0) {
+        await writeLegacyDollars();
+      }
+
+      const reason = reads.some((read) => read.sandbox !== taskID) ? 'step_start' : 'run_start';
 
       await write(sandboxID, reason, startMicros);
 
@@ -206,7 +232,10 @@ function createRecordsStepMeter(
 
   let baseMicros = 0;
   let budget: CallBudget | undefined;
-  const readTallyMicros = () => baseMicros + toMicrosUp(budget?.getSpentDollars() ?? 0);
+  let compactionDollars = 0;
+
+  const readTallyMicros = () =>
+    baseMicros + toMicrosUp((budget?.getSpentDollars() ?? 0) + compactionDollars);
 
   return {
     begin: async () => {
@@ -240,8 +269,10 @@ function createRecordsStepMeter(
         },
       };
     },
-    end: async () => {
+    end: async (_sandboxID, _startedAtMs, summarizedDollars) => {
       invariant(budget !== undefined, 'a step ends after it began');
+
+      compactionDollars = summarizedDollars;
 
       await write('step_end', readTallyMicros());
 
@@ -249,7 +280,7 @@ function createRecordsStepMeter(
 
       const used = read?.used ?? {
         turns: facts.used.turns,
-        dollars: facts.used.dollars + budget.getSpentDollars(),
+        dollars: facts.used.dollars + budget.getSpentDollars() + compactionDollars,
       };
 
       return { isLimitReached: budget.signal.aborted, isRefused: false, used };

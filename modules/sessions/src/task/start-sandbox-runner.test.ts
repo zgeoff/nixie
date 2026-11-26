@@ -712,6 +712,34 @@ test("it compacts a started task's session under the task prompt, with its name 
   expect(prompts.join('')).not.toInclude('You are Pip.');
 });
 
+test('it counts the dollars of a session summary in the step end read of a task run that the runner prices', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.meteredTask(3);
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const reads = await ctx.readKinds('task.meter_read');
+  const [summary] = await ctx.readKinds('model.session_summarized');
+
+  const ends = reads.filter((read) => read.payload['reason'] === 'step_end');
+  const summarized = summary?.payload['dollars'];
+
+  invariant(typeof summarized === 'number', 'the summary holds the dollars of its tokens');
+
+  const [first, second] = ends.map((read) => read.payload['countMicros']);
+
+  invariant(typeof first === 'number' && typeof second === 'number', 'two steps ended');
+
+  expect(summarized).toBeGreaterThan(0);
+  expect(second - first).toBeWithin(Math.floor(summarized * 1_000_000), summarized * 1_000_000 + 2);
+});
+
 test('it commits a step whose imp fails to sleep, with no step error', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();
