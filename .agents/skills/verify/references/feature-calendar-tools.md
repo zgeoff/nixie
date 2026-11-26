@@ -84,8 +84,9 @@ Before you start:
    bun verify browser snapshot
    ```
 
-   Expect: one collapsed item, which reads
-   `Invite lee@example.org to "Lunch with Lee" on Wed 2 Dec 2026, 12:00 Sydney`.
+   Expect: one collapsed item under "Routine", in the group "Conversation". It reads
+   `Invite lee@example.org to "Lunch with Lee" on Wed 2 Dec 2026, 12:00 Sydney` and holds a checkbox
+   "Select".
 
 6. Expand the item, check its card, and approve it. For `<item_ref>`, pass the `ref` of the line in
    the step 5 snapshot that holds the item's text and `[cursor=pointer]`. Take no other snapshot
@@ -97,9 +98,9 @@ Before you start:
    bun verify browser click --role button --name 'Send invitations'
    ```
 
-   Expect: the card shows the fields `title` "Lunch with Lee", `start` and `end` in the owner's
-   zone, `guests` `lee@example.org (no permission)` and `calendar` `primary`. The approve button
-   reads "Send invitations". Both clicks exit 0.
+   Expect: the card shows the fields `title` "Lunch with Lee", `start` and `end` in the user's zone,
+   `guests` `lee@example.org (no permission)`, `connection` and `calendar` `primary`. The approve
+   button reads "Send invitations", beside "Defer" and "Decline". Both clicks exit 0.
 
 7. Check that the invitation went out once, with the email to its guest:
 
