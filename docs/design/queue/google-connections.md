@@ -13,8 +13,8 @@ lives only in that call's record. The connection itself is built. Read
 [Google connections](../../architecture/connectors/google-connections.md) for the client, the
 consent, the fewer-scopes check and the fetcher, and follow
 [the setup guide](../../guides/google.md) for the steps you take. Below is what the Google tools
-need from the connection. The Gmail tools are built. Calendar and Drive are the remaining work
-items: build each on these contracts, and describe its tools in the architecture doc once built.
+need from the connection. The Gmail, Calendar and Drive tools are all built on these contracts, and
+a new Google tool follows them too.
 
 | Part                                                                              | What it holds                                                                        |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -36,13 +36,13 @@ rules. With no pin on a job run, a tool resolves each call against every live Go
 ### The connector
 
 ```ts
-// connectors module. The Google connector holds the Gmail actions. Add each later tool's actions
-// here in its own work item.
+// connectors module. The Google connector holds the actions of every Google tool. Add a new
+// tool's actions here.
 const googleConnector: Connector = {
   id: 'google',
   auth: googleOAuth, // built
   setup: googleSetup, // built
-  actions, // the Gmail tools; the Calendar and Drive tools join here as each work item lands
+  actions, // the Gmail, Calendar and Drive tools
   check: checkGoogleScopes, // built: one read per scope, reports `missing`
 };
 

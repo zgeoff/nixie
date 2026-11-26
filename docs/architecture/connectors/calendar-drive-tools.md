@@ -2,8 +2,10 @@
 
 The Google connector holds 10 `calendar.*` tools and 4 `drive.*` tools beside the
 [Gmail tools](gmail-tools.md). They share the Gmail tools' rules for connections, item IDs, effects,
-cards and untrusted words, so this page covers only what Calendar and Drive add. For the consent and
-the scopes, see [Google connections](google-connections.md). The
+cards and untrusted words, which the Gmail tools page sets out under
+[Items and connections](gmail-tools.md#items-and-connections), [Sends](gmail-tools.md#sends) and
+[The card](gmail-tools.md#the-card). This page covers only what Calendar and Drive add. For the
+consent and the scopes, see [Google connections](google-connections.md). The
 [Google guide](../../guides/google.md) covers the picker setup.
 
 ## The tools
@@ -30,15 +32,19 @@ the check's wait has passed. A write that a check does not find runs again, beca
 one else. A send that a check does not find goes to the user on a card and runs again only after the
 user answers, because Google may have emailed the guests.
 
-`buildGoogleActions` builds the Gmail, Calendar and Drive actions together, and the `google_tools`
-part holds them. Every Calendar and Drive tool is one entry of the connector's `actions`, so the
-tool filter and the notice about missing scopes cover them.
+[`buildGoogleActions`](../../../modules/connectors/src/google/build-google-actions.ts) builds the
+Gmail, Calendar and Drive actions together, and the
+[`google_tools` part](../../../apps/server/src/part/start-google-tools-part.ts) holds them. The
+[action queue](../../../modules/actions/src/action/build-action-queue.ts) runs the queued ones.
+Every Calendar and Drive tool is one entry of the connector's `actions`, so the tool filter and the
+notice about missing scopes cover them.
 
 ## Items
 
-- An event ID is the connection's short ID, a dot and Google's event ID. An event of a calendar
-  other than `primary` adds `@` and the calendar's ID. A Drive file ID is the connection's short ID,
-  a dot and Drive's file ID.
+- An event ID is the connection's short ID, a dot and Google's event ID. The prefix lets a tool find
+  the connection from the ID, as it does for Gmail items. An event of a calendar other than
+  `primary` adds `@` and the calendar's ID. A Drive file ID is the connection's short ID, a dot and
+  Drive's file ID.
 - `calendar.list_calendars` and `calendar.list_events` answer one page, and `next` goes back as
   `after` for the next.
 - Each tool takes a `calendar` argument that defaults to `primary`. Without the scope
@@ -162,8 +168,9 @@ A calendar card shows the title, the times with their zone, the calendar, the lo
 guest. A change card shows each changed field before and after, a description in full. The card's
 facts of a change, a cancel and a response are sealed on the call's record when `prepare` reads
 them, so a forget of the record removes them, and the card reads them from there. A time shows in
-the zone of the user's newest message, else the deployment's default zone. `readGoogleBodyFields`
-chains the Gmail, Calendar and Drive cards for the approvals API.
+the zone of the user's newest message, else the deployment's default zone.
+[`readGoogleBodyFields`](../../../modules/connectors/src/google/read-google-body-fields.ts) chains
+the Gmail, Calendar and Drive cards for the approvals API.
 
 ## The Drive picker
 
@@ -178,9 +185,11 @@ user chooses files on a connection's page with "Choose Drive files":
    shows for a connection that holds the `drive.file` scope, whatever other scopes it lacks.
 2. The page opens Google Picker with that token, the client's picker key and its project number as
    the app ID.
-3. The page sends the chosen file IDs to `connections.checkPicked`. The server reads each file with
-   the connection's own token and answers its name and whether nixie can see it. The page shows a
-   file that nixie cannot see with the likely cause, a choice under another Google account.
+3. The page sends the chosen file IDs to `connections.checkPicked`, which
+   [the connection procedures](../../../modules/api/src/connection/create-connection-procedures.ts)
+   define. The server reads each file with the connection's own token and answers its name and
+   whether nixie can see it. The page shows a file that nixie cannot see with the likely cause, a
+   choice under another Google account.
 
 The connection's tokens carry `gmail.modify` and never reach the browser, and the browser's token
 never reaches the server. The web server sends
@@ -191,12 +200,13 @@ client's public ID comes back with the setup reading for this purpose.
 
 ## Testing
 
-The connector's `test-utils` folder holds a fake Calendar and a fake Drive beside the fake Gmail.
-The fake Drive holds a request on demand, and can answer leading list pages with no file. The fake
-Calendar pages its calendar list, and refuses a stale `If-Match` with 412, an insert of an ID that
-exists with 409, and a delete of a cancelled event with 410. Each fake records its requests and
-writes, and fails or holds a request on demand. `startGmailTools` builds all three groups of tools
-on one loopback HTTPS site. The test build's fake Google site serves the same fakes on their paths,
-with one event and one file, and the `calendar-tools` and `drive-tools` verify journeys run against
-them. A local journey cannot open Google's own picker window, so the choice of files runs only in
-the web client's tests, against stand-ins for Google's scripts.
+The connector's [`test-utils` folder](../../../modules/connectors/src/test-utils/) holds a fake
+Calendar and a fake Drive beside the fake Gmail. The fake Drive holds a request on demand, and can
+answer leading list pages with no file. The fake Calendar pages its calendar list, and refuses a
+stale `If-Match` with 412, an insert of an ID that exists with 409, and a delete of a cancelled
+event with 410. Each fake records its requests and writes, and fails or holds a request on demand.
+[`startGmailTools`](../../../modules/connectors/src/test-utils/start-gmail-tools.ts) builds all
+three groups of tools on one loopback HTTPS site. The test build's fake Google site serves the same
+fakes on their paths, with one event and one file, and the `calendar-tools` and `drive-tools` verify
+journeys run against them. A local journey cannot open Google's own picker window, so the choice of
+files runs only in the web client's tests, against stand-ins for Google's scripts.

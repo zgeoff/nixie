@@ -20,8 +20,9 @@ built yet. For a change or a new tool, keep each rule under "Every Google tool",
 tool's own contract from the architecture doc for its connector. For a missing part of the Gmail
 tools, start from "Not built yet". The
 [Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md) are built and
-follow these rules; their per-tool contracts are in that doc. The Gmail tools are `gmail.*`. The
-`mail.*` tools belong to the assistant's own mailbox, in the
+follow these rules; their per-tool contracts are in that doc. The Google tools are the `gmail.*`,
+`calendar.*` and `drive.*` tools, and the rules below bind all three families alike. The `mail.*`
+tools belong to the assistant's own mailbox, in the
 [mail design](https://github.com/zgeoff/nixie/pull/1420). That design also defines `gmail.wake_set`,
 `gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
 `gmail.reply`. The mail polls work item builds them. The tokens, the consent and the scopes belong
