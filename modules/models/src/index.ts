@@ -1,4 +1,6 @@
 export { buildCallCost } from './session/build-call-cost';
+export type { TokenCounts } from './session/build-tokens-cost';
+export { buildTokensCost } from './session/build-tokens-cost';
 export type { ModelRecordSource } from './model/build-model-record';
 export { buildModelEventRecord, buildModelRecord } from './model/build-model-record';
 export type { HarnessFit } from './model/check-harness-fit';
@@ -19,6 +21,7 @@ export { modelSessionOpenedCodec } from './session/model-session-opened-codec';
 export { modelSessionRebuiltCodec } from './session/model-session-rebuilt-codec';
 export { modelSessionSummarizedCodec } from './session/model-session-summarized-codec';
 export { modelTurnEndedCodec } from './session/model-turn-ended-codec';
+export { collectMissingPriceIssues } from './model/collect-missing-price-issues';
 export { modelsConfigSchema } from './model/models-config-schema';
 export { resolveModelCredentials } from './model/resolve-model-credentials';
 export { getCLIContextWindow } from './agent/get-cli-context-window';

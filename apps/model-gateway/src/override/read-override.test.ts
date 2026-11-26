@@ -15,17 +15,13 @@ async function setupTest() {
 test('it reads a valid override', async () => {
   const ctx = await setupTest();
 
-  const override = {
-    period: 'day' as const,
-    start: '2026-11-13',
-    limit: { dollars: 200, tokens: 5 },
-  };
+  const override = { preview: { start: '2026-11-13', dollars: 200 } };
 
   await writeFile(ctx.path, JSON.stringify(override));
 
   const read = await readOverride(ctx.path);
 
-  expect(read).toStrictEqual({ kind: 'found', override });
+  expect(read).toStrictEqual({ kind: 'found', overrides: override });
 });
 
 test('it reads no override from a missing file', async () => {
@@ -37,18 +33,9 @@ test('it reads no override from a missing file', async () => {
 
 test.each([
   ['a file that is not JSON', 'nope'],
-  [
-    'an override of a period that does not exist',
-    '{"period":"week","start":"2026-11-13","limit":{"dollars":1,"tokens":1}}',
-  ],
-  [
-    'an override with an unknown field',
-    '{"period":"day","start":"2026-11-13","limit":{"dollars":1,"tokens":1},"x":1}',
-  ],
-  [
-    'an override with a limit of zero',
-    '{"period":"day","start":"2026-11-13","limit":{"dollars":0,"tokens":1}}',
-  ],
+  ['an override of a day that is not a date', '{"preview":{"start":"today","dollars":1}}'],
+  ['an override with an unknown field', '{"preview":{"start":"2026-11-13","dollars":1,"x":1}}'],
+  ['an override with a limit of zero', '{"preview":{"start":"2026-11-13","dollars":0}}'],
 ])('it reports %s as unreadable, so it binds nothing', async (_name, text) => {
   const ctx = await setupTest();
 

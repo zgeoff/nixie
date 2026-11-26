@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { buildTrippedGatewayStatus } from '@heynixie/spend/test-utils';
 import { createRouterClient } from '@orpc/server';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
@@ -21,14 +20,12 @@ async function setupTest(options: TestOptions) {
   };
 }
 
-test('#spend.raise writes the host as the actor and answers the totals in force', async () => {
+test('#spend.raise writes the host as the actor and answers the turns in force', async () => {
   const ctx = await setupTest({ isSpendOn: true });
   const raised = await ctx.spend.raise({ turns: 9 });
 
   expect(raised).toStrictEqual({
     start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u),
-    dollars: 60,
-    tokens: 80_000_000,
     turns: 9,
   });
 });
@@ -46,7 +43,7 @@ test('#spend.raise refuses a config with no spendStop', async () => {
 test('#nixie.resume is refused while the stop stands', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
-  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
   const resume = ctx.nixie.resume();
 
@@ -58,7 +55,7 @@ test('#nixie.resume is refused while the stop stands', async () => {
 test('#tasks.resume is refused while the stop stands', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
-  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
   const resume = ctx.tasks.resume({ taskID: 'task-a' });
 

@@ -9,14 +9,14 @@ test('it shows the budget and its reset when a budget refused the last call', ()
     toolCall: {
       callID: 'call-1',
       outcome: 'denied',
-      content: { message: 'budget reached: search-day ($5.00 of $5.00). Resets at midnight.' },
+      content: { message: 'budget reached: search-day. Resets at midnight.' },
     },
   });
 
   const rendered = render(<BudgetNotice records={[refused]} />);
 
   expect(rendered.getByRole('status')).toHaveTextContent(
-    'budget reached: search-day ($5.00 of $5.00). Resets at midnight.',
+    'budget reached: search-day. Resets at midnight.',
   );
 });
 

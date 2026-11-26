@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
+import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { spendLimitRaisedCodec } from '@heynixie/spend';
 import { buildMockGatewayStatus, buildTrippedGatewayStatus } from '@heynixie/spend/test-utils';
-import { sql } from 'kysely';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -10,17 +12,86 @@ interface TestOptions {
 }
 
 async function setupTest(options: TestOptions) {
-  const api = await startTestAPI(undefined, options);
+  // the stub gateway counts the day of 13 Nov 2026
+  const api = await startTestAPI(undefined, {
+    ...options,
+    writerClock: createFakeClock({ startMs: Date.parse('2026-11-13T09:00:00Z') }),
+  });
+
   const laptop = await createDeviceSession(api.context, 'laptop');
 
-  return { ...api, laptop, client: buildTestClient(api.url, laptop.token) };
+  return {
+    ...api,
+    laptop,
+    client: buildTestClient(api.url, laptop.token),
+    writeTurns: (count: number) =>
+      withWriteTransaction(api.writer, (tx) =>
+        writeRecordsInTransaction(
+          tx,
+          api.context.log,
+          Array.from({ length: count }, () => ({
+            kind: 'model.turn_ended' as const,
+            definitions: api.context.definitions(),
+            thread: 'task-a',
+            payload: {},
+          })),
+        ),
+      ),
+  };
 }
 
-test('#spend.read gives clear and calls no gateway when the config sets no spendStop', async () => {
+test('#spend.read gives clear with no route and calls no gateway when the config sets no spendStop', async () => {
   const ctx = await setupTest({ isSpendOn: false });
   const read = await ctx.client.spend.read({});
 
-  expect([read, ctx.spendGateway.readStatus.mock.calls]).toStrictEqual([{ state: 'clear' }, []]);
+  expect([read, ctx.spendGateway.readStatus.mock.calls]).toStrictEqual([
+    { state: 'clear', routes: [] },
+    [],
+  ]);
+});
+
+test('#spend.counts gives no route and no display, and calls no gateway when the config sets no spendStop', async () => {
+  const ctx = await setupTest({ isSpendOn: false });
+  const counts = await ctx.client.spend.counts({});
+
+  expect([counts, ctx.spendGateway.readStatus.mock.calls]).toStrictEqual([
+    { routes: [], display: null },
+    [],
+  ]);
+});
+
+test('#spend.counts gives each route its day and month count in US dollars, with the display rate', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  const counts = await ctx.client.spend.counts({});
+
+  expect(counts).toStrictEqual({
+    routes: [
+      {
+        route: 'plan',
+        day: { dollars: 41.2, limit: 40, tripped: true },
+        month: { dollars: 0, limit: 600, tripped: false },
+      },
+      {
+        route: 'metered',
+        day: { dollars: 0, limit: 5, tripped: false },
+        month: { dollars: 0, limit: 600, tripped: false },
+      },
+    ],
+    display: { currency: 'AUD', rate: 1.52 },
+  });
+});
+
+test('#spend.counts refuses a caller with no session', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  const counts = buildTestClient(ctx.url).spend.counts({});
+
+  await Promise.allSettled([counts]);
+
+  expect(counts).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('#spend.read refuses a caller with no session', async () => {
@@ -33,7 +104,7 @@ test('#spend.read refuses a caller with no session', async () => {
   expect(read).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
-test('#spend.read gives the trip of the day with its measures and its times', async () => {
+test('#spend.read lists the route at its day limit and leaves nixie clear', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
   ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
@@ -41,18 +112,39 @@ test('#spend.read gives the trip of the day with its measures and its times', as
   const read = await ctx.client.spend.read({});
 
   expect(read).toStrictEqual({
+    state: 'clear',
+    routes: [
+      {
+        route: 'plan',
+        period: 'day',
+        start: '2026-11-13',
+        limit: 40,
+        spent: 41.2,
+        at: new Date('2026-11-13T08:42:07Z'),
+        resetsAt: new Date('2026-11-14T00:00:00Z'),
+        canRaise: true,
+        cap: 80,
+      },
+    ],
+  });
+});
+
+test('#spend.read gives the trip of the turn count with its limit, its count and its cap', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+
+  await ctx.writeTurns(3);
+
+  const read = await ctx.client.spend.read({});
+
+  expect(read).toMatchObject({
     state: 'tripped',
     period: 'day',
-    start: '2026-10-16',
-    measure: 'dollars',
-    limit: 60,
-    spent: 61.2,
-    at: new Date('2026-10-16T08:42:07Z'),
-    resetsAt: new Date('2026-10-17T00:00:00Z'),
+    measure: 'turns',
+    limit: 3,
+    spent: 3,
     canRaise: true,
-    limits: { dollars: 60, tokens: 80_000_000, turns: 3 },
-    used: { dollars: 61.2, tokens: 51_200_000, turns: 0 },
-    cap: { dollars: 120, tokens: 160_000_000, turns: 5 },
+    cap: 5,
+    routes: [],
   });
 });
 
@@ -63,72 +155,56 @@ test('#spend.read gives unreachable when the gateway does not answer', async () 
 
   const read = await ctx.client.spend.read({});
 
-  expect(read).toStrictEqual({ state: 'unreachable' });
+  expect(read).toStrictEqual({ state: 'unreachable', routes: [] });
 });
 
-test('#spend.raise lifts a day trip with one call, and writes the session as the actor', async () => {
+test('#spend.raise lifts a route with one call, and writes the session as the actor', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
   ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
   ctx.spendGateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-  const raised = await ctx.client.spend.raise({
-    start: '2026-10-16',
-    dollars: 90,
-    tokens: 120_000_000,
-    turns: 4,
+  const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 60 });
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['spend.limit_raised'],
   });
-
-  const result =
-    await sql`select kind, payload from records where kind = 'spend.limit_raised'`.execute(
-      ctx.writer.db,
-    );
-
-  const rows = result.rows;
 
   expect(raised).toStrictEqual({ state: 'clear' });
 
-  expect(rows).toStrictEqual([
-    {
-      kind: 'spend.limit_raised',
-      payload: JSON.stringify({
-        start: '2026-10-16',
-        dollars: 90,
-        tokens: 120_000_000,
-        turns: 4,
-        by: ctx.laptop.caller.identityID,
-      }),
-    },
+  expect(ctx.spendGateway.postRaise.mock.calls).toStrictEqual([
+    [{ route: 'plan', start: '2026-11-13', dollars: 60 }],
+  ]);
+
+  expect(records.map((entry) => spendLimitRaisedCodec.decode(entry.record.payload))).toStrictEqual([
+    { start: '2026-11-13', route: 'plan', dollars: 60, by: ctx.laptop.caller.identityID },
   ]);
 });
 
-test('#spend.raise answers above_cap with the cap, and writes nothing', async () => {
+test('#spend.raise answers above_cap with the route and its cap, and writes nothing', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
   ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
 
-  const raised = await ctx.client.spend.raise({
-    start: '2026-10-16',
-    dollars: 130,
-    tokens: 120_000_000,
-    turns: 4,
-  });
+  const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 90 });
 
   expect([raised, ctx.spendGateway.postRaise.mock.calls]).toStrictEqual([
-    { error: 'above_cap', cap: { dollars: 120, tokens: 160_000_000, turns: 5 } },
+    { error: 'above_cap', measure: 'dollars', route: 'plan', cap: 80 },
     [],
   ]);
 });
 
+test('#spend.raise answers unknown_route for a route the gateway does not hold', async () => {
+  const ctx = await setupTest({ isSpendOn: true });
+  const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'ghost', dollars: 5 });
+
+  expect(raised).toStrictEqual({ error: 'unknown_route' });
+});
+
 test('#spend.raise gives clear and calls no gateway when the config sets no spendStop', async () => {
   const ctx = await setupTest({ isSpendOn: false });
-
-  const raised = await ctx.client.spend.raise({
-    start: '2026-10-16',
-    dollars: 90,
-    tokens: 120_000_000,
-    turns: 4,
-  });
+  const raised = await ctx.client.spend.raise({ start: '2026-11-13', route: 'plan', dollars: 60 });
 
   expect([raised, ctx.spendGateway.postRaise.mock.calls]).toStrictEqual([{ state: 'clear' }, []]);
 });
@@ -136,7 +212,7 @@ test('#spend.raise gives clear and calls no gateway when the config sets no spen
 test('#nixie.resume is refused while the stop stands, with the way it clears', async () => {
   const ctx = await setupTest({ isSpendOn: true });
 
-  ctx.spendGateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
+  await ctx.writeTurns(3);
 
   const resume = ctx.client.nixie.resume({
     clientActionID: '4b2d6f8a-1c3e-4a5b-9d7f-0e2c4a6b8d1f',

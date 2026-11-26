@@ -178,9 +178,11 @@ async function tryRunApproved(
   facts: ApprovedRunFacts,
 ): Promise<Settled> {
   try {
-    const outcome = await runPaidCall(registered, { call, run: facts.run }, options, () =>
+    const paid = await runPaidCall(registered, { call, run: facts.run }, options, () =>
       registered.definition.run(call, { run: facts.run, callSequence: facts.callSequence }),
     );
+
+    const outcome = paid.outcome;
 
     if (outcome.status === 'budget_reached') {
       return buildMessage('denied', outcome.message, {
@@ -190,17 +192,20 @@ async function tryRunApproved(
     }
 
     // a tool's error can quote what an outside service said, so it counts as outside content
-    return outcome.status === 'error'
-      ? buildMessage('error', outcome.message, {
-          source: 'untrusted',
-          hidden: outcome.hidden,
-          actionID: facts.actionID,
-        })
-      : buildTypedResult(
-          registered,
-          { ...outcome, result: omitRelatedMemory(outcome.result) },
-          facts.actionID,
-        );
+    const settled =
+      outcome.status === 'error'
+        ? buildMessage('error', outcome.message, {
+            source: 'untrusted',
+            hidden: outcome.hidden,
+            actionID: facts.actionID,
+          })
+        : buildTypedResult(
+            registered,
+            { ...outcome, result: omitRelatedMemory(outcome.result) },
+            facts.actionID,
+          );
+
+    return paid.charge === null ? settled : { ...settled, writeCharge: paid.charge };
   } catch (error) {
     return buildMessage(
       'error',

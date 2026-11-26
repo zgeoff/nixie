@@ -18,6 +18,7 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/periods": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/secret-scan": "workspace:*",
     "@heynixie/tasks": "workspace:*",

@@ -1,7 +1,8 @@
 import type { Kysely } from 'kysely';
+import { buildBudgetLedgerKey } from '../ledger/build-budget-ledger-key';
 import { pickBudgetLimit } from '../limit/pick-budget-limit';
 import { readBudgetsInForce } from '../limit/read-budgets-in-force';
-import { buildBudgetPeriod } from '../period/build-budget-period';
+import { buildBudgetBounds } from '../period/build-budget-bounds';
 import type { BudgetUnknown, BudgetsContext, BudgetsTables } from '../types';
 import type { ChargeFact } from './pick-charge-refusal';
 
@@ -23,17 +24,24 @@ export async function readChargeFacts(
       return { error: 'budget_unknown', budgetID };
     }
 
-    const bounds = buildBudgetPeriod(now, context.zone, limit.period);
+    const bounds = buildBudgetBounds(now, context.zone, limit.period);
+    const ledgerKey = buildBudgetLedgerKey(budgetID, bounds.period);
 
     const row = await db
       .$extendTables<BudgetsTables>()
-      .selectFrom('budget_ledger')
-      .select('spent_micros')
-      .where('budget_id', '=', budgetID)
-      .where('period_start', '=', bounds.start)
+      .selectFrom('spend_ledger')
+      .select('amount')
+      .where('ledger_key', '=', ledgerKey)
       .executeTakeFirst();
 
-    facts.push({ limit, spentMicros: row?.spent_micros ?? 0, bounds });
+    facts.push({
+      limit,
+      spentMicros: row?.amount ?? 0,
+      ledgerKey,
+      periodStart: bounds.period.start,
+      resetsAtMs: bounds.resetsAtMs,
+      resetsOn: bounds.resetsOn,
+    });
   }
 
   return facts;

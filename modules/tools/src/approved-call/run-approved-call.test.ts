@@ -14,6 +14,7 @@ import { buildMockVariantToolDefinition } from '../test-utils/build-mock-variant
 import { buildStubActionQueue } from '../test-utils/build-stub-action-queue';
 import { setupTestLog } from '../test-utils/setup-test-log';
 import type { PaidTool, ToolContext, ToolDefinition, ToolOutcome, ToolRun } from '../types';
+import { ToolResultRefusedError } from '../types';
 import { runApprovedCall } from './run-approved-call';
 
 interface ApprovalOverrides {
@@ -274,7 +275,7 @@ test("it marks the result of an approved variant call with the sources of that v
   });
 });
 
-test('it charges the approved call of a paid tool once, before it runs', async () => {
+test('it charges the approved call of a paid tool once, in the transaction of its result record', async () => {
   const ctx = await setupTest(undefined, { priceMicros: 40_000 });
 
   await ctx.approve({});
@@ -282,6 +283,65 @@ test('it charges the approved call of a paid tool once, before it runs', async (
   const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'notes_wipe-day');
 
   expect(day).toMatchObject({ spentMicros: 40_000 });
+});
+
+test('it writes the charge of an approved call after its result record, which commit together', async () => {
+  const ctx = await setupTest(undefined, { priceMicros: 40_000 });
+
+  await ctx.approve({});
+
+  const records = await ctx.readRecords();
+
+  expect(records.slice(-3).map((record) => record.kind)).toStrictEqual([
+    'tool_result',
+    'budget.charged',
+    'budget.charged',
+  ]);
+});
+
+test('it charges nothing for an approved call that failed with no bill', async () => {
+  const ctx = await setupTest(
+    { status: 'error', message: 'the provider said no' },
+    { priceMicros: 40_000 },
+  );
+
+  await ctx.approve({});
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'notes_wipe-day');
+
+  expect(day).toMatchObject({ spentMicros: 0 });
+});
+
+test('it keeps the charge of an approved call whose provider billed before the error', async () => {
+  const ctx = await setupTest(
+    { status: 'error', message: 'the provider failed late', billed: true },
+    { priceMicros: 40_000 },
+  );
+
+  await ctx.approve({});
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'notes_wipe-day');
+
+  expect(day).toMatchObject({ spentMicros: 40_000 });
+});
+
+test('it keeps the charge of an approved call whose result the log refuses', async () => {
+  const ctx = await setupTest(
+    {
+      status: 'ok',
+      result: { text: 'wiped' },
+      writeBeside: () => Promise.reject(new ToolResultRefusedError('the write was refused')),
+    },
+    { priceMicros: 40_000 },
+  );
+
+  const approved = await ctx.approve({});
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'notes_wipe-day');
+
+  expect([approved, day?.spentMicros]).toStrictEqual([
+    { status: 'failed', resultSequence: 4 },
+    40_000,
+  ]);
 });
 
 test('it refuses the approved call of a paid tool whose budget is full, and runs nothing', async () => {

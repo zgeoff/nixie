@@ -43,7 +43,7 @@ async function setupTest() {
   return {
     tasks,
     run,
-    writeTurn: (tokens: Partial<Record<string, number>>) =>
+    writeTurn: (tokens: Partial<Record<string, number>>, dollars?: number) =>
       writeRecords(tasks.context.log, [
         {
           kind: modelTurnEndedCodec.kind,
@@ -63,6 +63,7 @@ async function setupTest() {
             invalidatedThrough: 0,
             sessionImageBytes: 0,
             sessionImageCount: 0,
+            ...(dollars === undefined ? {} : { dollars }),
           }),
         },
       ]),
@@ -102,9 +103,9 @@ async function setupTest() {
           }),
         },
       ]),
-    readDollars: () =>
+    readDollars: (inputPrice = 3) =>
       buildDollarsMeter(() => ({
-        input: 3,
+        input: inputPrice,
         cacheWrite: 3.75,
         cacheWrite1h: 6,
         cachedInput: 0.3,
@@ -149,6 +150,53 @@ test("it prices a turn's cache reads at the cached rate and its cache writes at 
   const dollars = await ctx.readDollars();
 
   expect(dollars).toBeCloseTo(6.3, 10);
+});
+
+test('it keeps the dollars that a turn recorded when the price of its tokens changes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn({ input: 1_000_000 }, 3);
+
+  const dollars = await ctx.readDollars(6);
+
+  expect(dollars).toBeCloseTo(3, 10);
+});
+
+test('it prices a turn that recorded no dollars by the price table now', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn({ input: 1_000_000 });
+
+  const dollars = await ctx.readDollars(6);
+
+  expect(dollars).toBeCloseTo(6, 10);
+});
+
+test('it keeps the dollars that a summary recorded when the price of its tokens changes', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: modelSessionSummarizedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: ctx.run.taskID,
+      payload: modelSessionSummarizedCodec.encode({
+        model: 'claude-test',
+        profile: 'task-direct',
+        throughSequence: 1,
+        boundary: { sessionID: 'session-a', messageID: 'message-a' },
+        trigger: 'threshold',
+        summaryTokens: 900,
+        isCut: false,
+        usage: { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        dollars: 3,
+      }),
+    },
+  ]);
+
+  const dollars = await ctx.readDollars(6);
+
+  expect(dollars).toBeCloseTo(3, 10);
 });
 
 test('it counts the dollars of a turn that left no turn record', async () => {

@@ -10,6 +10,7 @@ import { readOpenRun } from '../run/read-open-run';
 import type { TaskRun } from '../run/types';
 import type { StepErrorOptions } from '../step/build-step-failure-plan';
 import { isBeforeTurnFailure } from '../step/is-before-turn-failure';
+import { isSpendRefusal } from '../step/is-spend-refusal';
 import { startStepControlWatch } from '../step/start-step-control-watch';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
@@ -164,8 +165,8 @@ async function runOrHoldStep(
   });
 }
 
-// A step that ran a model turn and failed while the stop stands failed because of it, such as at the
-// gateway's refusal. It counts no step error, and the task keeps its state and its work for the next
+// A step that ran a model turn and failed while the stop stands, or that the gateway refused at its
+// route's limit, failed because of the stop. It counts no step error, and the task keeps its state and its work for the next
 // claim, which comes after the stop clears.
 async function probeFailureOfSpendStop(
   context: TasksContext,
@@ -174,6 +175,10 @@ async function probeFailureOfSpendStop(
 ): Promise<boolean> {
   if (isBeforeTurnFailure(error)) {
     return false;
+  }
+
+  if (isSpendRefusal(error)) {
+    return true;
   }
 
   const gate = await readTaskGateSnapshot(context, claim.lease.workID);

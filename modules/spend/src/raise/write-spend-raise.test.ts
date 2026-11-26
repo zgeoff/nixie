@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 import { readPause, withWriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { readSpendFacts } from '../stop/read-spend-facts';
-import { readSpendStopRow } from '../stop/read-spend-stop-row';
+import { readSpendRouteStops } from '../stop/read-spend-route-stops';
 import { settleSpendStop } from '../stop/settle-spend-stop';
 import { buildMockGatewayStatus, buildTrippedGatewayStatus, startTestSpend } from '../test-utils';
 import type { RaiseRequest } from './pick-raise-refusal';
@@ -11,6 +12,9 @@ import { writeSpendRaise } from './write-spend-raise';
 
 async function setupTest() {
   const spend = await startTestSpend();
+
+  // the mock gateway counts the day of 13 Nov 2026
+  spend.clock.advance(28 * 86_400_000);
 
   return {
     ...spend,
@@ -26,27 +30,33 @@ async function setupTest() {
     },
     raise: (overrides: Partial<RaiseRequest> = {}) =>
       writeSpendRaise(spend.context, {
-        start: '2026-10-16',
-        dollars: 90,
-        tokens: 120_000_000,
-        turns: 1500,
+        start: '2026-11-13',
+        route: 'plan',
+        dollars: 50,
         by: 'session-a',
         ...overrides,
       }),
     hostRaise: (turns: number) => writeHostSpendRaise(spend.context, { turns }),
     readPaused: () => withWriteTransaction(spend.writer, (tx) => readPause(tx)),
-    readRaises: async () => {
+    readRouteRaises: async () => {
       const result =
-        await sql`select start, dollars, tokens, turns, raised_by from spend_raises`.execute(
+        await sql`select route_id, start, dollars, raised_by from spend_route_raises`.execute(
           spend.writer.db,
         );
+
+      return result.rows;
+    },
+    readTurnRaises: async () => {
+      const result = await sql`select start, turns, raised_by from spend_raises`.execute(
+        spend.writer.db,
+      );
 
       return result.rows;
     },
   };
 }
 
-test('it lifts a day trip with one call: it records the raise, tells the gateway and resumes nixie', async () => {
+test('it lifts a route trip with one call: it records the raise, tells the gateway the route and clears the route stop', async () => {
   const ctx = await setupTest();
 
   await ctx.trip();
@@ -54,24 +64,65 @@ test('it lifts a day trip with one call: it records the raise, tells the gateway
   ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
   const result = await ctx.raise();
-  const row = await readSpendStopRow(ctx.writer.db);
-  const paused = await ctx.readPaused();
-  const raises = await ctx.readRaises();
+  const stops = await readSpendRouteStops(ctx.writer.db);
+  const raises = await ctx.readRouteRaises();
 
   expect(result).toStrictEqual({ state: 'clear' });
 
   expect(ctx.gateway.postRaise.mock.calls).toStrictEqual([
-    [{ start: '2026-10-16', limit: { dollars: 90, tokens: 120_000_000 } }],
+    [{ route: 'plan', start: '2026-11-13', dollars: 50 }],
   ]);
 
-  expect([row, paused]).toStrictEqual([null, null]);
+  expect(stops).toStrictEqual([]);
 
   expect(raises).toStrictEqual([
-    { start: '2026-10-16', dollars: 90, tokens: 120_000_000, turns: 1500, raised_by: 'session-a' },
+    { route_id: 'plan', start: '2026-11-13', dollars: 50, raised_by: 'session-a' },
   ]);
 });
 
-test('it leaves the stop standing when the raise lifts only some of what tripped', async () => {
+test('it keeps the day stop of a route whose month is at its limit too, when midnight passes during the raise', async () => {
+  const ctx = await setupTest();
+
+  await ctx.trip();
+
+  const tripped = buildTrippedGatewayStatus();
+  const plan = tripped.routes['plan'];
+
+  invariant(plan !== undefined, 'the mock status holds the route plan');
+
+  const both = {
+    ...tripped,
+    routes: { plan: { day: plan.day, month: { ...plan.month, tripped: true } } },
+  };
+
+  ctx.gateway.postRaise.mockImplementation(() => {
+    ctx.clock.advance(16 * 3_600_000);
+
+    return Promise.resolve({ kind: 'ok', value: both });
+  });
+
+  await ctx.raise();
+
+  const stops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(stops.map((stop) => [stop.route, stop.period])).toStrictEqual([['plan', 'day']]);
+});
+
+test('it never pauses nixie for a raise of a route', async () => {
+  const ctx = await setupTest();
+
+  await ctx.trip();
+
+  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await ctx.raise();
+
+  const paused = await ctx.readPaused();
+
+  expect(paused).toBeNull();
+});
+
+test('it leaves the route stop standing when the raise does not lift the route', async () => {
   const ctx = await setupTest();
 
   await ctx.trip();
@@ -79,24 +130,20 @@ test('it leaves the stop standing when the raise lifts only some of what tripped
   ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildTrippedGatewayStatus() });
 
   const result = await ctx.raise();
-  const row = await readSpendStopRow(ctx.writer.db);
+  const stops = await readSpendRouteStops(ctx.writer.db);
 
-  expect([result, row?.reason]).toStrictEqual([{ state: 'stopped' }, 'limit']);
+  expect([result, stops.map((stop) => stop.route)]).toStrictEqual([{ state: 'stopped' }, ['plan']]);
 });
 
-test('it refuses a raise above a cap, writes nothing and tells the gateway nothing', async () => {
+test('it refuses a raise above the route cap, writes nothing and tells the gateway nothing', async () => {
   const ctx = await setupTest();
 
   await ctx.trip();
 
-  const result = await ctx.raise({ dollars: 121 });
-  const raises = await ctx.readRaises();
+  const result = await ctx.raise({ dollars: 80.01 });
+  const raises = await ctx.readRouteRaises();
 
-  expect(result).toStrictEqual({
-    error: 'above_cap',
-    cap: { dollars: 120, tokens: 160_000_000, turns: 2000 },
-  });
-
+  expect(result).toStrictEqual({ error: 'above_cap', measure: 'dollars', route: 'plan', cap: 80 });
   expect([raises, ctx.gateway.postRaise.mock.calls]).toStrictEqual([[], []]);
 });
 
@@ -107,7 +154,7 @@ test('it refuses a turn raise above the turn cap', async () => {
 
   const result = await ctx.raise({ turns: 2001 });
 
-  expect(result).toMatchObject({ error: 'above_cap', cap: { turns: 2000 } });
+  expect(result).toStrictEqual({ error: 'above_cap', measure: 'turns', route: null, cap: 2000 });
 });
 
 test('it refuses a raise for a day that has ended', async () => {
@@ -115,10 +162,20 @@ test('it refuses a raise for a day that has ended', async () => {
 
   await ctx.trip();
 
-  const result = await ctx.raise({ start: '2026-10-15' });
-  const raises = await ctx.readRaises();
+  const result = await ctx.raise({ start: '2026-11-12' });
+  const raises = await ctx.readRouteRaises();
 
   expect([result, raises]).toStrictEqual([{ error: 'period_ended' }, []]);
+});
+
+test('it refuses a raise for a route the gateway does not hold', async () => {
+  const ctx = await setupTest();
+
+  await ctx.trip();
+
+  const result = await ctx.raise({ route: 'ghost' });
+
+  expect(result).toStrictEqual({ error: 'unknown_route' });
 });
 
 test('it writes nothing and returns the error when the gateway refuses the raise above its cap', async () => {
@@ -126,20 +183,12 @@ test('it writes nothing and returns the error when the gateway refuses the raise
 
   await ctx.trip();
 
-  ctx.gateway.postRaise.mockResolvedValue({
-    kind: 'above_cap',
-    period: 'day',
-    cap: { dollars: 80, tokens: 100_000_000 },
-  });
+  ctx.gateway.postRaise.mockResolvedValue({ kind: 'above_cap', route: 'plan', cap: 45 });
 
   const result = await ctx.raise();
-  const raises = await ctx.readRaises();
+  const raises = await ctx.readRouteRaises();
 
-  expect(result).toStrictEqual({
-    error: 'above_cap',
-    cap: { dollars: 80, tokens: 100_000_000, turns: 2000 },
-  });
-
+  expect(result).toStrictEqual({ error: 'above_cap', measure: 'dollars', route: 'plan', cap: 45 });
   expect(raises).toStrictEqual([]);
 });
 
@@ -151,14 +200,10 @@ test('it keeps the record when the gateway does not answer the raise, for the wa
   ctx.gateway.postRaise.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
   const result = await ctx.raise();
-  const raises = await ctx.readRaises();
-  const row = await readSpendStopRow(ctx.writer.db);
+  const raises = await ctx.readRouteRaises();
+  const stops = await readSpendRouteStops(ctx.writer.db);
 
-  expect([result, raises.length, row?.reason]).toStrictEqual([
-    { error: 'unreachable' },
-    1,
-    'limit',
-  ]);
+  expect([result, raises.length, stops.length]).toStrictEqual([{ error: 'unanswered' }, 1, 1]);
 });
 
 test('it answers unreachable and writes nothing when the gateway does not answer the status', async () => {
@@ -167,7 +212,7 @@ test('it answers unreachable and writes nothing when the gateway does not answer
   ctx.gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
   const result = await ctx.raise();
-  const raises = await ctx.readRaises();
+  const raises = await ctx.readRouteRaises();
 
   expect([result, raises]).toStrictEqual([{ error: 'unreachable' }, []]);
 });
@@ -175,41 +220,53 @@ test('it answers unreachable and writes nothing when the gateway does not answer
 test('it keeps the turns that an earlier raise set above what this raise holds', async () => {
   const ctx = await setupTest();
 
-  await ctx.trip();
-
-  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
-
   await ctx.hostRaise(3000);
-  await ctx.raise({ turns: 1500 });
 
-  const raises = await ctx.readRaises();
+  await writeSpendRaise(ctx.context, { start: '2026-11-13', turns: 1500, by: 'session-a' });
+
+  const raises = await ctx.readTurnRaises();
 
   expect(raises).toMatchObject([{ turns: 3000 }]);
 });
 
-test('it keeps the larger totals when two raises land at once', async () => {
+test('it keeps the larger dollars when two raises of a route land at once', async () => {
   const ctx = await setupTest();
 
   await ctx.trip();
 
   ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
 
-  await Promise.all([
-    ctx.raise({ dollars: 110, tokens: 110_000_000, turns: 1900 }),
-    ctx.raise({ dollars: 90, tokens: 100_000_000, turns: 1200 }),
-  ]);
+  await Promise.all([ctx.raise({ dollars: 60 }), ctx.raise({ dollars: 45 })]);
 
-  const raises = await ctx.readRaises();
+  const raises = await ctx.readRouteRaises();
 
-  expect(raises).toStrictEqual([
-    {
-      start: '2026-10-16',
-      dollars: 110,
-      tokens: 110_000_000,
-      turns: 1900,
-      raised_by: 'session-a',
-    },
-  ]);
+  expect(raises).toMatchObject([{ route_id: 'plan', dollars: 60 }]);
+});
+
+test('it puts back no route stop that a raise of the route cleared while a raise of turns waited on its status', async () => {
+  const ctx = await setupTest();
+
+  const turnsStatus = Promise.withResolvers<Awaited<ReturnType<typeof ctx.gateway.readStatus>>>();
+
+  await ctx.trip();
+
+  ctx.gateway.readStatus.mockReturnValueOnce(turnsStatus.promise);
+
+  const turnsRaise = writeSpendRaise(ctx.context, {
+    start: '2026-11-13',
+    turns: 1500,
+    by: 'session-a',
+  });
+
+  await ctx.raise({ dollars: 60 });
+
+  turnsStatus.resolve({ kind: 'ok', value: buildTrippedGatewayStatus() });
+
+  await turnsRaise;
+
+  const routeStops = await readSpendRouteStops(ctx.writer.db);
+
+  expect(routeStops).toStrictEqual([]);
 });
 
 test('it holds the plan logins that the gateway reports', async () => {

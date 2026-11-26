@@ -1,18 +1,15 @@
 import type { Logger } from '@heynixie/logger';
-import type { Override } from '../types';
+import type { Overrides } from '../types';
 import { readOverride } from './read-override';
 
-// Reads the override that binds, or null when the config names no file or the file holds none. A
+// Reads the overrides that bind, or none when the config names no file or the file holds none. A
 // file that cannot be read binds nothing, and is logged once per process.
-export function makeOverrideReader(
-  path: string | null,
-  log: Logger,
-): () => Promise<Override | null> {
+export function makeOverrideReader(path: string | null, log: Logger): () => Promise<Overrides> {
   let failureLogged = false;
 
   return async () => {
     if (path === null) {
-      return null;
+      return {};
     }
 
     const read = await readOverride(path);
@@ -23,6 +20,6 @@ export function makeOverrideReader(
       log('override.unreadable', { reason: read.reason }, 'error');
     }
 
-    return read.kind === 'found' ? read.override : null;
+    return read.kind === 'found' ? read.overrides : {};
   };
 }

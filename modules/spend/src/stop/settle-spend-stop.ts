@@ -1,40 +1,43 @@
-import { withWriteTransaction } from '@heynixie/log';
+import { buildSpendPeriods } from '../time/build-spend-periods';
 import type { SpendContext, SpendStop } from '../types';
 import { pickSpendMove } from './pick-spend-move';
 import type { SpendFacts } from './pick-spend-stop';
 import { pickSpendStop } from './pick-spend-stop';
+import { readSpendRaise } from './read-spend-raise';
 import { readSpendStopRow } from './read-spend-stop-row';
-import { writeSpendClear } from './write-spend-clear';
+import { readSpendTurns } from './read-spend-turns';
+import { settleRouteStopsInTransaction } from './settle-route-stops-in-transaction';
+import { withSettleTransaction } from './with-settle-transaction';
 import { writeSpendClearInTransaction } from './write-spend-clear-in-transaction';
-import { writeSpendTrip } from './write-spend-trip';
 import { writeSpendTripInTransaction } from './write-spend-trip-in-transaction';
 
-// Brings the log's stop in line with the facts, and returns what the stop is. The watcher calls it
-// each poll, and a raise calls it so that the stop clears with the raise.
-export async function settleSpendStop(
-  context: SpendContext,
-  facts: SpendFacts,
-): Promise<SpendStop> {
-  const stop = pickSpendStop(facts);
+// Brings the log's stop and each route's stop in line with the facts, in one transaction, and
+// returns what the stop is. It reads the day, its turns and its raise again inside the transaction,
+// so facts read before a raise or before midnight never put back the stop that either cleared.
+export function settleSpendStop(context: SpendContext, facts: SpendFacts): Promise<SpendStop> {
+  return withSettleTransaction(context, async (tx) => {
+    const now = context.clock.now();
+    const periods = buildSpendPeriods(now, context.zone);
 
-  const standing = await readSpendStopRow(context.log.writer.db);
+    const [turns, raise, standing] = await Promise.all([
+      readSpendTurns(tx, { dayMs: periods.day.startMs, monthMs: periods.month.startMs }),
+      readSpendRaise(tx, periods.day.start),
+      readSpendStopRow(tx),
+    ]);
 
-  const move = pickSpendMove(standing, stop, facts.now);
+    const stop = pickSpendStop({ ...facts, turns, raise, now, periods });
+    const move = pickSpendMove(standing, stop, now);
 
-  if (move.clear !== null && move.trip !== null) {
-    // A stop that replaces another never shows an open state between the two.
-    const clear = move.clear;
-    const trip = move.trip;
+    if (move.clear !== null) {
+      await writeSpendClearInTransaction(tx, context, move.clear);
+    }
 
-    await withWriteTransaction(context.log.writer, async (tx) => {
-      await writeSpendClearInTransaction(tx, context, clear);
-      await writeSpendTripInTransaction(tx, context, trip);
-    });
-  } else if (move.clear !== null) {
-    await writeSpendClear(context, move.clear);
-  } else if (move.trip !== null) {
-    await writeSpendTrip(context, move.trip);
-  }
+    if (move.trip !== null) {
+      await writeSpendTripInTransaction(tx, context, move.trip);
+    }
 
-  return stop;
+    await settleRouteStopsInTransaction(tx, context, facts);
+
+    return stop;
+  });
 }

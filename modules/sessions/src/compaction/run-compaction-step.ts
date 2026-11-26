@@ -1,6 +1,7 @@
 import { runSessionCompaction } from '@heynixie/compaction';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
+import { isToldWaitNotice } from '../inbox/is-told-wait-notice';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import type { SessionStep } from '../types';
 import { isTaskWorkCut } from '../utils/is-task-work-cut';
@@ -19,13 +20,17 @@ export async function runCompactionStep(
     }),
   );
 
-  const hasWork = step.input.inbox.length > 0 || isTaskWorkCut(step.run.frame, step.marks);
+  // a wait notice that an earlier turn's opening told is no work for a turn
+  const told = step.input.inbox.filter((record) => isToldWaitNotice(record, step.toldWaitNotices));
+
+  const hasWork =
+    step.input.inbox.length > told.length || isTaskWorkCut(step.run.frame, step.marks);
 
   if (outcome.isSummarized || !hasWork) {
     return {
       next: hasWork ? 'continue' : 'wait',
       records: [outcome.record],
-      acknowledged: [],
+      acknowledged: hasWork ? [] : told.map((record) => record.sequence),
       sessionBoundary: outcome.isSummarized ? null : step.input.sessionBoundary,
     };
   }

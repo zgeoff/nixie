@@ -18,6 +18,11 @@ export const modelTurnEndedCodec = defineRecordCodec(
     outputTokens: z.int(),
     cacheReadTokens: z.int(),
     cacheWriteTokens: z.int(),
+
+    // The dollars of the tokens at the prices in force when the record was written, so a later
+    // change of prices never reprices it. Absent for a profile with no prices.
+    dollars: z.number().nonnegative().exactOptional(),
+
     thinkingTokens: z.int().nonnegative().exactOptional(),
     cutCalls: z.int().positive().exactOptional(),
     contextSize: z.int().nonnegative().exactOptional(),
@@ -30,6 +35,10 @@ export const modelTurnEndedCodec = defineRecordCodec(
     sessionImageCount: mark,
     recalledThrough: mark.exactOptional(),
     memoryNotedThrough: mark.exactOptional(),
+
+    // the wait notices past the turn's batch that its opening told, so no later turn tells them
+    // again
+    waitNoticesTold: mark.array().exactOptional(),
     isSilent: z.literal(true).exactOptional(),
     isInterrupted: z.literal(true).exactOptional(),
   }),

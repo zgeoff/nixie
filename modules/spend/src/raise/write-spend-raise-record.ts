@@ -1,40 +1,69 @@
+import type { WriteTransaction } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { spendLimitRaisedCodec } from '../record/spend-limit-raised-codec';
 import { readSpendRaise } from '../stop/read-spend-raise';
+import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import type { SpendContext } from '../types';
 import type { RaiseRequest } from './pick-raise-refusal';
 
 export interface WrittenRaise {
   readonly start: string;
-  readonly dollars: number;
-  readonly tokens: number;
-  readonly turns: number;
+  readonly route?: string;
+  readonly dollars?: number;
+  readonly turns?: number;
 }
 
 // A raise that the gateway did not answer stands, and the watcher sends it again until the day ends.
-// The earlier raise is read in the transaction, so two raises at once leave the larger totals.
+// The earlier raise is read in the transaction, so two raises at once leave the larger totals. A
+// raise of a route's dollars and a raise of the turns are records of their own.
 export function writeSpendRaiseRecord(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
 ): Promise<WrittenRaise> {
   return withWriteTransaction(context.log.writer, async (tx) => {
-    const earlier = await readSpendRaise(tx, request.start);
+    const raised = await readRaisedTotals(tx, request);
 
-    const totals = {
-      start: request.start,
-      dollars: Math.max(request.dollars, earlier?.dollars ?? 0),
-      tokens: Math.max(request.tokens, earlier?.tokens ?? 0),
-      turns: Math.max(request.turns, earlier?.turns ?? 0),
-    };
+    await writeRecordsInTransaction(
+      tx,
+      context.log,
+      [raised.route, raised.turns]
+        .filter((totals) => totals !== null)
+        .map((totals) => ({
+          kind: spendLimitRaisedCodec.kind,
+          definitions: context.definitions(),
+          payload: spendLimitRaisedCodec.encode({ ...totals, by: request.by }),
+        })),
+    );
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: spendLimitRaisedCodec.kind,
-        definitions: context.definitions(),
-        payload: spendLimitRaisedCodec.encode({ ...totals, by: request.by }),
-      },
-    ]);
-
-    return totals;
+    return { start: request.start, ...raised.route, ...raised.turns };
   });
+}
+
+interface RaisedTotals {
+  readonly route: { start: string; route: string; dollars: number } | null;
+  readonly turns: { start: string; turns: number } | null;
+}
+
+async function readRaisedTotals(
+  tx: WriteTransaction,
+  request: RaiseRequest,
+): Promise<RaisedTotals> {
+  const routeRaises = await readSpendRouteRaises(tx, request.start);
+  const earlier = await readSpendRaise(tx, request.start);
+
+  const route =
+    request.route === undefined || request.dollars === undefined
+      ? null
+      : {
+          start: request.start,
+          route: request.route,
+          dollars: Math.max(request.dollars, routeRaises[request.route] ?? 0),
+        };
+
+  const turns =
+    request.turns === undefined
+      ? null
+      : { start: request.start, turns: Math.max(request.turns, earlier?.turns ?? 0) };
+
+  return { route, turns };
 }

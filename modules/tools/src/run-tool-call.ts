@@ -14,7 +14,9 @@ import invariant from 'tiny-invariant';
 import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
 import { callCapRefusal } from './cap/call-cap-refusal';
-import { runPaidCall } from './paid/run-paid-call';
+import { preparePaidCall } from './paid/prepare-paid-call';
+import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
+import type { PaidGate, PaidPreparation } from './paid/types';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { pickVariant } from './policy-call/pick-variant';
@@ -36,6 +38,7 @@ import type {
   RegisteredTool,
   SchemaCheck,
   ToolCall,
+  ToolOutcome,
   ToolRegistry,
   ToolRun,
 } from './types';
@@ -206,27 +209,43 @@ export async function runToolCall(
     actionHash,
   });
 
-  const written = await recorder.writeCall({
-    policy,
-    stored,
-    destinations,
-    args: policyArgs,
-    frame: policyCall,
-    deadlineAt,
-    repeatOf,
-    actionHash,
-    expectURL: prepared?.expectURL,
-    expectWindow: prepared?.expectWindow,
-    policyTool,
-    declaration: pickCallDeclaration(registered, effects),
-    ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
-  });
+  const paid = await tryPreparePaidCall({ policy, registered, call, run, options });
+
+  const plan = paid.status === 'plan' ? paid.plan : undefined;
+
+  const written = await recorder
+    .writeCall({
+      policy,
+      stored,
+      destinations,
+      args: policyArgs,
+      frame: policyCall,
+      deadlineAt,
+      repeatOf,
+      actionHash,
+      expectURL: prepared?.expectURL,
+      expectWindow: prepared?.expectWindow,
+      policyTool,
+      declaration: pickCallDeclaration(registered, effects),
+      ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
+      ...(plan === undefined ? {} : { paid: plan }),
+    })
+    .catch((error: unknown) => {
+      plan?.release();
+      throw error;
+    });
 
   await prepared?.settleAttachments?.(written.sequence);
+
+  if (written.isCapped) {
+    plan?.release();
+  }
 
   const settled = written.isCapped
     ? buildMessage('denied', renderCallCapRefusal(run, call.tool), { source: 'owner_data' })
     : await runDecidedCall({
+        paid,
+        gate: written.gate,
         policy,
         stored,
         registered,
@@ -335,6 +354,48 @@ function withPreparedAmount(
     : { ...args, [name]: prepared.amount };
 }
 
+// What the call charges: a plan for a paid tool that runs, a result that its check ended with, or
+// the failure of that check, which the call settles as the tool's failure.
+type PaidState = PaidPreparation | { readonly status: 'failed'; readonly error: unknown };
+
+interface PaidFacts {
+  readonly policy: PolicyDecision;
+  readonly registered: RegisteredTool | null;
+  readonly call: ToolCall;
+  readonly run: ToolRun;
+  readonly options: ToolCallOptions;
+}
+
+// Only a call that the policy lets run, on a tool that runs inside the turn, charges. The check and
+// the price come first, because the charge lands in the transaction that writes the call record.
+async function tryPreparePaidCall(facts: PaidFacts): Promise<PaidState> {
+  const policy = facts.policy;
+  const registered = facts.registered;
+  const isAsk = policy.decision.outcome === 'ask' && !isMemoryRuleAsk(policy);
+
+  if (
+    registered === null ||
+    registered.definition.paid === undefined ||
+    registered.definition.execution !== 'direct' ||
+    isAsk ||
+    policy.decision.outcome === 'deny'
+  ) {
+    return { status: 'free' };
+  }
+
+  try {
+    const prepared = await preparePaidCall(
+      registered,
+      { call: facts.call, run: facts.run },
+      facts.options.budgets,
+    );
+
+    return prepared;
+  } catch (error) {
+    return { status: 'failed', error };
+  }
+}
+
 // A prepared call's effects join the declared ones in the proposal the call may write.
 function pickCallDeclaration(
   registered: RegisteredTool | null,
@@ -358,6 +419,8 @@ function renderCallCapRefusal(run: ToolRun, tool: string): string {
 }
 
 interface DecidedCall {
+  readonly paid: PaidState;
+  readonly gate: PaidGate | null;
   readonly policy: PolicyDecision;
   readonly stored: Decision;
   readonly registered: RegisteredTool | null;
@@ -424,6 +487,8 @@ function buildAskMessage(shortID: string | null): Settled {
 }
 
 interface AllowedCall {
+  readonly paid: PaidState;
+  readonly gate: PaidGate | null;
   readonly registered: RegisteredTool;
   readonly decision: Decision;
   readonly call: ToolCall;
@@ -456,27 +521,52 @@ function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runDirect(allowed: AllowedCall): Promise<Settled> {
-  const outcome = await runPaidCall(
-    allowed.registered,
-    { call: allowed.call, run: allowed.run },
-    allowed.options,
-    () =>
-      allowed.registered.definition.run(allowed.call, {
-        run: allowed.run,
-        callSequence: allowed.callSequence,
-        ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
-        ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
-      }),
-  );
+  const registered = allowed.registered;
+  const paid = allowed.paid;
 
-  if (outcome.status === 'budget_reached') {
-    return buildMessage('denied', outcome.message, { source: 'owner_data' });
+  if (paid.status === 'failed') {
+    throw paid.error;
   }
 
+  const runTool = () =>
+    registered.definition.run(allowed.call, {
+      run: allowed.run,
+      callSequence: allowed.callSequence,
+      ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
+      ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
+    });
+
+  if (paid.status === 'ended') {
+    return settleOutcome(registered, paid.outcome);
+  }
+
+  if (paid.status === 'free') {
+    const outcome = await runTool();
+
+    return settleOutcome(registered, outcome);
+  }
+
+  invariant(allowed.gate, 'a paid call was charged in the transaction of its call record');
+
+  if (allowed.gate.status !== 'passed') {
+    paid.plan.release();
+
+    // a budget that is reached tells the model so as a denial
+    return allowed.gate.status === 'capped'
+      ? buildMessage('error', allowed.gate.message, { source: 'untrusted' })
+      : buildMessage('denied', allowed.gate.message, { source: 'owner_data' });
+  }
+
+  const charged = await runChargedCall(paid.plan, runTool);
+
+  return withCreditBeside(settleOutcome(registered, charged.outcome), charged.credit);
+}
+
+function settleOutcome(registered: RegisteredTool, outcome: ToolOutcome): Settled {
   // a tool's error can quote what an outside service said, so it counts as outside content
   return outcome.status === 'error'
     ? buildMessage('error', outcome.message, { source: 'untrusted', hidden: outcome.hidden })
-    : buildTypedResult(allowed.registered, outcome, null);
+    : buildTypedResult(registered, outcome, null);
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {

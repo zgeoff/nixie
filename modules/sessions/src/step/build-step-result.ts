@@ -1,8 +1,9 @@
 import type { RecordInput } from '@heynixie/log';
-import type { Harness, ModelRecordSource } from '@heynixie/models';
+import type { Harness, ModelPrices, ModelRecordSource } from '@heynixie/models';
 import {
   buildModelEventRecord,
   buildModelRecord,
+  buildTokensCost,
   modelReplyCodec,
   modelTurnEndedCodec,
 } from '@heynixie/models';
@@ -16,6 +17,14 @@ import type { GuestTurn } from '../utils/run-guest-turn';
 import { checkEndedContract } from './check-ended-contract';
 import { ModelAuthError } from './model-auth-error';
 
+export interface WaitTelling {
+  // the wait notices past the batch that the turn's opening told
+  readonly sequences: readonly number[];
+
+  // the uuid of the message that carried the opening
+  readonly carrierUUID: string;
+}
+
 export interface CompletedTurn {
   readonly turn: GuestTurn;
 
@@ -28,6 +37,9 @@ export interface CompletedTurn {
   readonly hasMore: boolean;
 
   readonly notedThrough: number | null;
+
+  // the wait notices that the turn's opening told, or null for none
+  readonly waitTelling: WaitTelling | null;
 
   readonly images: ImageTally;
 
@@ -46,6 +58,9 @@ interface TurnMemoryRefs {
 
 export interface StepTurn extends CompletedTurn {
   readonly harness: Harness;
+
+  // the prices of the profile the turn ran on, null when it sets none
+  readonly prices: ModelPrices | null;
   readonly memory: TurnMemoryRefs;
 }
 
@@ -96,10 +111,13 @@ export function buildStepResult(
 }
 
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
+  const summary = buildTurnSummary(completed.turn);
+
   return [
     ...buildReplyRecords(source, completed),
     buildModelEventRecord(source, modelTurnEndedCodec, {
-      ...buildTurnSummary(completed.turn),
+      ...summary,
+      ...buildTurnDollars(summary, completed.prices),
       ...(buildThinkingTokens(completed.turn) > 0
         ? { thinkingTokens: buildThinkingTokens(completed.turn) }
         : {}),
@@ -114,33 +132,7 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         ? {}
         : { recalledThrough: completed.turn.endedMark }),
       ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
-    }),
-  ];
-}
-
-// The turn wrote each reply as the model sent it. The commit writes only the error texts the turn
-// held, and voids the replies after the last result, which no resumed session holds.
-function buildReplyRecords(
-  source: ModelRecordSource,
-  completed: Pick<CompletedTurn, 'turn' | 'runID'>,
-): readonly RecordInput[] {
-  const turn = completed.turn;
-
-  const errors = turn.assistants
-    .filter((assistant) => assistant.isError === true && assistant.text !== '')
-    .map((assistant) =>
-      buildModelRecord(source, modelReplyCodec, {
-        payload: { messageID: assistant.messageID },
-        text: assistant.text,
-      }),
-    );
-
-  return [
-    ...errors,
-    ...buildReplyVoids(source, {
-      sequences: turn.written.slice(turn.settledWritten),
-      runID: completed.runID,
-      reason: 'turn_dropped',
+      ...buildWaitNoticesTold(completed),
     }),
   ];
 }
@@ -182,10 +174,54 @@ function buildTurnSummary(turn: GuestTurn): TurnSummary {
   };
 }
 
+// The turn wrote each reply as the model sent it. The commit writes only the error texts the turn
+// held, and voids the replies after the last result, which no resumed session holds.
+function buildReplyRecords(
+  source: ModelRecordSource,
+  completed: Pick<CompletedTurn, 'turn' | 'runID'>,
+): readonly RecordInput[] {
+  const turn = completed.turn;
+
+  const errors = turn.assistants
+    .filter((assistant) => assistant.isError === true && assistant.text !== '')
+    .map((assistant) =>
+      buildModelRecord(source, modelReplyCodec, {
+        payload: { messageID: assistant.messageID },
+        text: assistant.text,
+      }),
+    );
+
+  return [
+    ...errors,
+    ...buildReplyVoids(source, {
+      sequences: turn.written.slice(turn.settledWritten),
+      runID: completed.runID,
+      reason: 'turn_dropped',
+    }),
+  ];
+}
+
+function buildTurnDollars(
+  summary: TurnSummary,
+  prices: ModelPrices | null,
+): { readonly dollars?: number } {
+  return prices === null ? {} : { dollars: buildTokensCost(summary, prices) };
+}
+
 function buildThinkingTokens(turn: GuestTurn): number {
   return turn.ended.reduce((total, frame) => total + (frame.thinkingTokens ?? 0), 0);
 }
 
 function buildCutCalls(turn: GuestTurn): number {
   return turn.ended.reduce((total, frame) => total + (frame.cutCalls ?? 0), 0);
+}
+
+// A turn that never read the message carrying its opening told nothing, so the next turn tells
+// the notices again.
+function buildWaitNoticesTold(completed: StepTurn): { readonly waitNoticesTold?: number[] } {
+  const telling = completed.waitTelling;
+
+  return telling === null || !completed.turn.read.includes(telling.carrierUUID)
+    ? {}
+    : { waitNoticesTold: [...telling.sequences] };
 }

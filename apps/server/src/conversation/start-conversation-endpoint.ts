@@ -72,6 +72,7 @@ import { buildConversationTools } from './build-conversation-tools';
 interface ConversationSearch {
   readonly provider: SearchProvider;
   readonly dailyCallCap: number;
+  readonly priceMicros: number;
 }
 
 interface ConversationImages {
@@ -267,6 +268,7 @@ export async function startConversationEndpoint(
             log: options.context.log,
             clock: options.context.clock,
             dailyCallCap: tools.search.dailyCallCap,
+            priceMicros: tools.search.priceMicros,
             timeZone: options.config.time.default_zone,
           }),
         ];

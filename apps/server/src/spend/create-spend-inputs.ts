@@ -1,8 +1,12 @@
+import { systemClock } from '@heynixie/clock';
 import type { CredentialAccess } from '@heynixie/credentials';
-import type { PlanLoginsHolder, SpendGateway } from '@heynixie/spend';
-import { createPlanLoginsHolder } from '@heynixie/spend';
+import type { Logger } from '@heynixie/logger';
+import { buildFrankfurterRates } from '@heynixie/rates-frankfurter';
+import type { DisplayRates, PlanLoginsHolder, SpendGateway } from '@heynixie/spend';
+import { createDisplayRates, createPlanLoginsHolder } from '@heynixie/spend';
 import { createSpendGateway } from '@heynixie/spend-model-gateway';
 import invariant from 'tiny-invariant';
+import type { DisplayConfig } from './display-config-schema';
 import type { SpendStopConfig } from './spend-stop-schema';
 
 export interface SpendInputs {
@@ -12,6 +16,14 @@ export interface SpendInputs {
 
   // the server's last read of the gateway's plan logins, which the spend context shares
   readonly planLogins: PlanLoginsHolder;
+
+  // the currency the client shows beside each dollar figure, or null when the config sets none
+  readonly display: DisplayRates | null;
+}
+
+export interface SpendDisplayInputs {
+  readonly config: DisplayConfig | undefined;
+  readonly log: Logger;
 }
 
 // The deployment runs the gateway and names its control URL in the config, so only this fetcher
@@ -19,6 +31,7 @@ export interface SpendInputs {
 export function createSpendInputs(
   config: SpendStopConfig | undefined,
   credentials: CredentialAccess,
+  display: SpendDisplayInputs,
 ): SpendInputs | null {
   if (config === undefined) {
     return null;
@@ -48,5 +61,17 @@ export function createSpendInputs(
       fetch: credentials.store.fetcher(binding, [origin], { deploymentService: true }),
     }),
     planLogins: createPlanLoginsHolder(),
+    display:
+      display.config === undefined
+        ? null
+        : createDisplayRates({
+            currency: display.config.currency,
+            source: buildFrankfurterRates({
+              apiURL: display.config.rates_url,
+              fetch: globalThis.fetch,
+            }),
+            clock: systemClock,
+            log: display.log,
+          }),
   };
 }

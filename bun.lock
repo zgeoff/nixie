@@ -97,6 +97,18 @@
         "msw": "catalog:",
       },
     },
+    "adapters/rates-frankfurter": {
+      "name": "@heynixie/rates-frankfurter",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/spend": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/mock-server": "workspace:*",
+        "msw": "catalog:",
+      },
+    },
     "adapters/sandbox-imp": {
       "name": "@heynixie/sandbox-imp",
       "version": "0.0.0",
@@ -166,6 +178,7 @@
       "dependencies": {
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/periods": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "@zgeoff/std": "catalog:",
         "gunshi": "catalog:",
@@ -212,6 +225,7 @@
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",
+        "@heynixie/rates-frankfurter": "workspace:*",
         "@heynixie/reminders": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
@@ -504,6 +518,13 @@
         "msw": "catalog:",
       },
     },
+    "libs/periods": {
+      "name": "@heynixie/periods",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+      },
+    },
     "libs/retry": {
       "name": "@heynixie/retry",
       "version": "0.0.0",
@@ -647,6 +668,7 @@
         "@heynixie/clock": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/periods": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
@@ -741,6 +763,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/periods": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/secret-scan": "workspace:*",
         "@heynixie/tasks": "workspace:*",
@@ -1073,6 +1096,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/budgets": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
         "kysely": "catalog:",
@@ -1112,13 +1136,15 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
+        "@heynixie/periods": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
-        "@heynixie/triggers": "workspace:*",
         "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -1447,6 +1473,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
+        "@heynixie/model-gateway": "workspace:*",
         "@heynixie/server": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/web": "workspace:*",
@@ -1784,6 +1811,8 @@
 
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
+    "@heynixie/periods": ["@heynixie/periods@workspace:libs/periods"],
+
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
 
     "@heynixie/prompts": ["@heynixie/prompts@workspace:modules/prompts"],
@@ -1791,6 +1820,8 @@
     "@heynixie/proposals": ["@heynixie/proposals@workspace:modules/proposals"],
 
     "@heynixie/pulumi-k8s": ["@heynixie/pulumi-k8s@workspace:deploy/pulumi-k8s"],
+
+    "@heynixie/rates-frankfurter": ["@heynixie/rates-frankfurter@workspace:adapters/rates-frankfurter"],
 
     "@heynixie/reminders": ["@heynixie/reminders@workspace:modules/reminders"],
 

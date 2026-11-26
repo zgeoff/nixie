@@ -1,6 +1,6 @@
 # Budgets
 
-A budget limits how much one kind of spending may cost in a period. nixie charges a budget before a
+A budget limits how much one kind of spending may cost in a period. nixie checks a budget before a
 paid tool call or a purchase goes out, so a loop or a runaway task stops at the limit. The
 [budgets module](../../../modules/budgets/) owns the ledger. The [policy](rules.md) module parses
 the budget files and the `lift` field of a rule, and [the decision point](decision-point.md) passes
@@ -22,10 +22,11 @@ seed and names both files. The definitions read budgets from format 5, as
 | `period` | `day`, `week` or `month`                                      |
 
 The parser converts the limit to whole micros (millionths of a dollar) once, with
-`Math.round(dollars * 1_000_000)`, and the ledger holds integers only. Each release publishes the
-format as the JSON Schema `definitions-budgets.schema.json`, generated from the schema the parser
-uses. `bun run --cwd modules/policy rules-schema` rewrites it with the rules schema, and a test
-fails while the committed file differs. The release assets do not include it yet.
+`Math.round(dollars * 1_000_000)`, and the ledger holds integers only. The format is committed as
+the JSON Schema `definitions-budgets.schema.json`, generated from the schema the parser uses.
+`bun run --cwd modules/policy rules-schema` rewrites this file and the rules schema, and a test
+fails while the committed file differs. A release uploads the rules schema and leaves this one in
+the repo.
 
 A period starts at local midnight in the time tool's default zone: a day at each midnight, a week on
 Monday and a month on the first. The refusal text and the client show the next start as the reset.
@@ -36,7 +37,7 @@ The seed compares each budget with the one in force, as it does for a rule, and 
 once, as [rules in force](rules.md#rules-in-force) explains. The seed record lists each edit with
 its class:
 
-- A new budget, a removed budget and a lower limit narrow.
+- A new budget, a removed budget and a lower limit narrow, except as the next two lines say.
 - A higher limit, or a changed period or counts, widens the budget.
 - A budget that raises the built-in limit of a paid tool widens too.
 
@@ -46,12 +47,12 @@ keeps the rule store.
 
 ## The ledger
 
-Two record kinds on no thread write the ledger: `budget.charged` names the budget, the start of its
-period, the amount in micros and what the charge is for, and `budget.credited` gives one charge
-back. A charge is for a tool call or for an action. The `budget_charges` projection keeps one row
-per charge and marks a credited one, and the `budget_ledger` projection keeps the spent micros of
-each budget in each period. A credit changes the ledger once, so a retried transaction never gives
-the money back twice.
+The ledger comes from two record kinds, neither on a thread. `budget.charged` names the budget, the
+start of its period, the amount in micros and what the charge is for, and `budget.credited` gives
+one charge back. A charge is for a tool call or for an action. The `budget_charges` projection keeps
+one row per charge and marks a credited one, and the `spend_ledger` projection keeps the spent
+micros of each budget in each period, as [metering](metering.md#the-spend-ledger) describes. A
+credit changes the ledger once, so a retried transaction never gives the money back twice.
 
 A charge names every budget it touches and lands in one transaction, or does not land. The writer is
 the only writer, so two charges at the same moment never both fit in the last of a budget. A charge
@@ -67,15 +68,21 @@ the built-in budgets `<tool>-day` at $5 and `<tool>-month` at $50, and a budget 
 with the same ID replaces one. A [voice call](../channels/calls.md#price-and-budget) charges the
 same way, per minute, against `call-day` and `call-month` at the default limits. `image.draw` has
 its own limits: `image.draw-day` at $2 and `image.draw-month` at $20, and its cost never counts
-toward the spending stop. `run-tool-call` charges both in one transaction before the provider sees
-the call:
+toward the spending stop. `run-tool-call` charges both in the transaction that writes the call's
+`tool_called` record, before the provider sees the call, so the record and its charge commit
+together or not at all. A call the user approved is the one exception, as the last item says:
 
-- At the limit, the call returns `budget reached: search-day ($5.00 of $5.00). Resets at midnight.`
-  to the model, and nothing else is written.
+- At the limit, the call returns `budget reached: search-day. Resets at midnight.` to the model,
+  with no dollar figure, and the provider gets nothing.
 - A tool that answers with an error, or with a refusal code, did not spend, so its charges are
-  credited. An error that sets `billed`, because the provider answered before the error, keeps its
-  charges.
+  credited in the transaction that writes the call's `tool_result` record. An error that sets
+  `billed`, because the provider answered before the error, keeps its charges.
 - A tool that throws leaves an unknown outcome, so its charges stand.
+- A call that the user approved from a held action has its call record from earlier. Before the
+  provider sees the call, the cap and the budgets are checked and nothing is written. The charge
+  then commits in the transaction of the result record, so the result and its charge commit
+  together, and a call that errors with no bill charges nothing. The charge can take a budget past
+  its room when another call filled it since the check, because the provider has already billed.
 
 A paid tool can also set a call cap, a limit on the count of its calls, such as the search tool's
 [daily call cap](../connectors/search.md#the-daily-call-cap). The charge's write transaction first
@@ -83,8 +90,8 @@ checks the cap, then charges both budgets, then counts the call, so a call passe
 neither. When both are full, the cap's refusal wins. A call that is counted stays counted when the
 tool errors, because nothing credits the count.
 
-The same charge runs for a call the user approved. The [client](../channels/client.md) shows the
-last refusal in a notice beside the spending-stop notice.
+The [client](../channels/client.md) shows the last refusal in a notice beside the spending-stop
+notice.
 
 ## Lifts
 
@@ -107,13 +114,14 @@ approval.
 
 A charge goes back in the transaction that settles the action without a purchase:
 
-- A failed action credits it, whatever wrote the failure: a refusal, a rule deny, a held action the
-  user declined or let lapse, or an unknown outcome the user dropped.
-- A Stop that cancels the action before an attempt credits it in the Stop's transaction.
+- A failed action gets its charge back, whatever wrote the failure: a refusal, a rule deny, a held
+  action the user declined, let lapse or approved after its deadline, or an unknown outcome the user
+  dropped. A held action that the user approves in time is released and keeps its charge.
+- A Stop that cancels the action before an attempt credits the charge in the Stop's transaction.
 - An unknown outcome stays charged until the user settles it.
 
-A purchase that the user approved is not charged, because the approval already answered the
-question.
+A purchase that the user approves from an ask is not charged, because no lift allowed it and only a
+lift charges at the queue.
 
 ## Changing a lift or a budget
 

@@ -186,7 +186,7 @@ export interface SearchHit {
 }
 
 export type SearchReply =
-  | { readonly kind: 'hits'; readonly hits: readonly SearchHit[]; readonly costUSD: number }
+  | { readonly kind: 'hits'; readonly hits: readonly SearchHit[] }
   | { readonly kind: 'failed'; readonly reason: string };
 
 // The shape of fetch that the credential store's fetcher has: it adds the provider's credential on
@@ -194,8 +194,6 @@ export type SearchReply =
 export type ProviderFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 export interface SearchProvider {
-  // the price of one search, in millionths of a dollar
-  readonly priceMicros: number;
   readonly readHits: (request: SearchRequest) => Promise<SearchReply>;
 }
 

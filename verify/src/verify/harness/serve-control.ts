@@ -27,6 +27,9 @@ export interface ControlHandlers {
   // how many requests of the scripted model hold the text, after waiting for one to come
   readonly countModelRequests: (text: string) => Promise<number>;
 
+  // sends one model request to the route of the spending gateway, and reports its answer
+  readonly probeRoute: (route: string) => Promise<z.input<typeof controlRoutes.probeRoute.output>>;
+
   readonly readTasks: () => Promise<z.input<typeof controlRoutes.tasks.output>>;
 
   readonly readActionProposals: () => Promise<z.input<typeof controlRoutes.actionProposals.output>>;
@@ -99,6 +102,11 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
         POST: makeRouteHandler(controlRoutes.modelReceived, async (received) => ({
           requests: await handlers.countModelRequests(received.text),
         })),
+      },
+      [controlRoutes.probeRoute.path]: {
+        POST: makeRouteHandler(controlRoutes.probeRoute, (probe) =>
+          handlers.probeRoute(probe.route),
+        ),
       },
       [controlRoutes.addReply.path]: {
         POST: makeRouteHandler(controlRoutes.addReply, (reply) => ({
