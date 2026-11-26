@@ -232,8 +232,7 @@ another level. The server section of the deployment configuration sets the lowes
 writes, info by default, and nixie applies it once the configuration loads, so a failure to start
 before then still logs. A line names its level unless the level is info, so an info line reads the
 same as a line from before nixie had levels. A field named level never reaches a line, so an info
-line cannot pass for another level. Every event logs at info today, so a level above info leaves
-only a command's failure in the log.
+line cannot pass for another level.
 
 Most events log only when nixie acts, such as a start, a seed or a check, so a conversation turn and
 an idle nixie write no line. The definitions poll logs each probe, whether or not the definitions
