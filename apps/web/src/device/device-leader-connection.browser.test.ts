@@ -71,6 +71,48 @@ test('it holds one device stream for three tabs that each show the device view, 
   expect(shown).toStrictEqual([true, true, true]);
 });
 
+test.each([
+  ['a lock manager', false],
+  ['no lock manager', true],
+])(
+  'it keeps the device stream where it is when each of three tabs with %s changes route',
+  async (_title, isLockManagerHidden) => {
+    const ctx = await setupTest();
+
+    for (const tab of ctx.tabs) {
+      await (isLockManagerHidden ? ctx.hideLockManager(tab) : Promise.resolve());
+
+      await tab.navigate(`${ctx.appURL}/device-view`);
+      await ctx.waitForSaturday(tab);
+    }
+
+    await waitFor(
+      () => {
+        expect(mockLive.deviceOpenCount).toBe(1);
+      },
+      { timeout: 5000 },
+    );
+
+    const openedBefore = mockLive.deviceOpenedCount;
+
+    for (const tab of ctx.tabs) {
+      await tab.evaluate("window.__TSR_ROUTER__.navigate({ to: '/tasks' })");
+
+      await waitForPage(tab, "location.pathname === '/tasks'", 8000);
+    }
+
+    // a tab shows the device view's content again only once some tab holds the stream
+    for (const tab of ctx.tabs) {
+      await tab.evaluate("window.__TSR_ROUTER__.navigate({ to: '/device-view' })");
+      await ctx.waitForSaturday(tab);
+    }
+
+    expect([mockLive.deviceOpenCount, mockLive.deviceOpenedCount - openedBefore]).toStrictEqual([
+      1, 0,
+    ]);
+  },
+);
+
 test('it holds one device stream for three tabs of a browser with no lock manager', async () => {
   const ctx = await setupTest();
 

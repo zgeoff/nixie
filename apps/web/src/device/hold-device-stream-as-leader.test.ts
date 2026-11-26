@@ -1,7 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
+import { buildBrowserClient } from '../client/build-browser-client';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
+import { createDeviceSession } from '../test-utils/create-device-session';
 import type { DeviceFeed } from './create-device-feed';
+import { createDeviceFeed } from './create-device-feed';
 import type { DeviceChannel, DeviceLocks } from './hold-device-stream-as-leader';
 import { holdDeviceStreamAsLeader } from './hold-device-stream-as-leader';
 import { initialDeviceEvents } from './initial-device-events';
@@ -144,6 +147,22 @@ function setupTest() {
           }
         },
       };
+    },
+
+    // a tab whose feed opens a real device stream against the mock API
+    createStreamingTab: (tab: string) => {
+      const feed = createDeviceFeed({ client: buildBrowserClient(), startTimer: timer.startTimer });
+
+      const stop = holdDeviceStreamAsLeader(feed, {
+        tab,
+        locks: null,
+        openChannel,
+        startTimer: timer.startTimer,
+      });
+
+      onTestFinished(stop);
+
+      return { feed };
     },
     buildTabWithoutChannel: () => {
       const state = { retained: 0 };
@@ -318,6 +337,31 @@ test('it takes the stream when the holder of a browser with no lock manager stop
 
   await waitFor(() => {
     expect(second.state.retained).toBe(1);
+  });
+});
+
+test('it shows what the keeper shows in a tab that gave up the stream it took at the same time', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const keeper = ctx.buildTab('a', null);
+  const yielder = ctx.createStreamingTab('b');
+
+  keeper.showOnStream({
+    ...initialDeviceEvents,
+    event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+    connection: 'open',
+  });
+
+  ctx.timer.advance(200);
+
+  await waitFor(() => {
+    expect(yielder.feed.getSnapshot()).toStrictEqual({
+      ...initialDeviceEvents,
+      event: { kind: 'idle', scene: [{ kind: 'markdown', text: '# Sunday' }] },
+      connection: 'open',
+    });
   });
 });
 

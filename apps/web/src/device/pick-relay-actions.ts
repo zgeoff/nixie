@@ -3,12 +3,13 @@ import type { DeviceRelayMessage } from './parse-device-relay-message';
 import type { DeviceEvents } from './types';
 
 export type RelayAction =
+  | { readonly kind: 'stepDown' }
+
   // post what this tab's stream shows
   | { readonly kind: 'announce' }
 
   // tell a probing tab that this tab holds the stream
   | { readonly kind: 'answer' }
-  | { readonly kind: 'stepDown' }
 
   // a holder is there, so this tab need not take the stream
   | { readonly kind: 'heard' }
