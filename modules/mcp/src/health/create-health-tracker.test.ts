@@ -159,3 +159,28 @@ test('it keeps the grant signed in and backs off when a listing gets 401 after a
     health.nextTryAtMs === null,
   ]).toStrictEqual(['failed', ['ok'], 1, false]);
 });
+
+test('it schedules no retry for a listing that fails after the stop', async () => {
+  const ctx = await setupTest();
+
+  jest.useFakeTimers();
+
+  onTestFinished(() => jest.useRealTimers());
+
+  await ctx.mcp.stop();
+
+  ctx.site.failListings(true);
+
+  await ctx.mcp.list('tracker');
+
+  const listingsBefore = ctx.site.readListingCount();
+
+  ctx.test.clock.advance(300_000);
+  jest.advanceTimersByTime(300_000);
+
+  for (let step = 0; step < 300; step += 1) {
+    await ctx.mcp.readServers();
+  }
+
+  expect(ctx.site.readListingCount()).toBe(listingsBefore);
+});

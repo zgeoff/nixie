@@ -32,3 +32,17 @@ test('it refuses a fence whose closing ID differs from the opening one', () => {
     }),
   ).toThrow('the text block is fenced as untrusted');
 });
+
+test('it refuses a result that also carries an unfenced structured copy', () => {
+  expect(() =>
+    parseFencedResult({
+      content: [
+        {
+          type: 'text',
+          text: '<tool-result source="untrusted" fence="3f9a0c21">\n{"stdout":"hi"}\n</tool-result fence="3f9a0c21">',
+        },
+      ],
+      structuredContent: { stdout: 'hi' },
+    }),
+  ).toThrow('the result holds no unfenced structured copy');
+});

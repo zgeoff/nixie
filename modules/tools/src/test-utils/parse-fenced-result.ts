@@ -6,6 +6,8 @@ const fencedPattern =
 
 // The JSON body of a tool result that reached the model as one fenced text block.
 export function parseFencedResult(result: CallToolResult): unknown {
+  invariant(result.structuredContent === undefined, 'the result holds no unfenced structured copy');
+
   const block = result.content.find((candidate) => candidate.type === 'text');
 
   invariant(block?.type === 'text', 'the result holds a text block');

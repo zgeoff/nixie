@@ -207,6 +207,9 @@ server error settles the action as refused, and a call that fails after it left 
 ambiguous, as does an answer that nixie cannot read or that breaks the output schema. Unless the
 tool's override sets a reconcile, an ambiguous action comes to the user.
 
+The model reads a queued action that failed, was cancelled or ended unknown as an error, with the
+reason fenced as `untrusted`, because the reason can hold the server's own words.
+
 A retry runs only under the declaration its first attempt ran under. The action runner hands the
 connector the snapshot of that first attempt. A connector whose declaration came from another
 snapshot sends nothing and leaves the action ambiguous, whether the new declaration sets a key or a

@@ -29,6 +29,8 @@ export function createHealthTracker(
   const states = new Map<string, ServerHealth>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
+  let isStopped = false;
+
   const clearTimer = (serverID: string) => {
     const timer = timers.get(serverID);
 
@@ -50,7 +52,7 @@ export function createHealthTracker(
   const schedule = (serverID: string, nextTryAtMs: number | null) => {
     clearTimer(serverID);
 
-    if (nextTryAtMs === null) {
+    if (nextTryAtMs === null || isStopped) {
       return;
     }
 
@@ -82,6 +84,8 @@ export function createHealthTracker(
       return plan.next;
     },
     start: async () => {
+      isStopped = false;
+
       states.clear();
 
       for (const serverID of await readUnhealthyServers(context)) {
@@ -93,6 +97,8 @@ export function createHealthTracker(
       }
     },
     stop: () => {
+      isStopped = true;
+
       for (const serverID of timers.keys()) {
         clearTimer(serverID);
       }

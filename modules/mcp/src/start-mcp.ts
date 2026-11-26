@@ -351,28 +351,33 @@ export function startMcp(options: McpOptions): Mcp {
     return { kind: 'refused', text: `${serverID} is unreachable` };
   };
 
-  const refit = async () => {
-    await refitTools(context, readOverrides);
-
-    await tools.refresh();
-  };
-
-  // the refreshes that a change started, which a stop waits for
+  // the refreshes of the tool catalog, from a change or a caller, which a stop waits for
   const refreshes = new Set<Promise<void>>();
 
-  const subscription = { stop: () => {} };
-
-  const runRefresh = async (refresh: () => Promise<void>) => {
-    const running = refresh();
+  const refreshTools = async () => {
+    const running = tools.refresh();
 
     refreshes.add(running);
 
     try {
       await running;
-    } catch (error) {
-      options.onRefreshFailed(error);
     } finally {
       refreshes.delete(running);
+    }
+  };
+
+  const refit = async () => {
+    await refitTools(context, readOverrides);
+    await refreshTools();
+  };
+
+  const subscription = { stop: () => {} };
+
+  const runRefresh = async (refresh: () => Promise<void>) => {
+    try {
+      await refresh();
+    } catch (error) {
+      options.onRefreshFailed(error);
     }
   };
 
@@ -447,7 +452,7 @@ export function startMcp(options: McpOptions): Mcp {
   });
 
   return {
-    tools,
+    tools: { ...tools, refresh: refreshTools },
     makeProposalHandler: () =>
       makeMcpProposalHandler({
         ...context,
@@ -464,14 +469,13 @@ export function startMcp(options: McpOptions): Mcp {
       await health.start();
 
       await refitTools(context, readOverrides);
-
-      await tools.refresh();
+      await refreshTools();
 
       subscription.stop = subscribeToChanged(options.log.writer, (topics) => {
         if (topics.includes('definitions')) {
           void runRefresh(refit);
         } else if (topics.includes('mcp')) {
-          void runRefresh(tools.refresh);
+          void runRefresh(refreshTools);
         }
       });
 
