@@ -172,37 +172,38 @@ rule. A reply rule's origin is `reply`, which `mail.wake_list` shows.
 A rule holds a mailbox, a match, a target and a window, and an optional expiry. The triggers module
 stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table folds them.
 
-- **Match.** A rule can hold `from`, a list of addresses or `@domain` entries, `subject`, a
-  substring, and `thread`. Each field present must match, with case ignored. A `@domain` entry
+- **Match.** A rule can hold `from`, a list of addresses or `@domain` entries; `subject`, a
+  substring; and `thread`. Each field present must match, with case ignored. A `@domain` entry
   matches that domain and no subdomain. The From header proves nothing about who sent a mail, so a
   match filters and never checks trust.
-- **Target.** The rule wakes the conversation, or any task, which the call that sets the rule names.
-  A call from a task that names no target wakes that task. A rule whose task ended ends with it.
+- **Target.** A rule wakes one target, the conversation or a task, given in the call that sets it.
+  When a task sets a rule with no target, the rule wakes that task. A rule whose task ended ends
+  with it.
 - **Expiry.** The expiry is optional, so a rule can stay for good. The tool's schema sets the
   longest expiry. A rule matches the mail received before its expiry.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's
-  `wake_rules.window` sets the default, and a call sets a window of a minute at least. Each rule
+  `wake_rules.window` sets the default, and a call can set a window of a minute or more. Each rule
   keeps its own window, and no limit holds for the mailbox as a whole.
 - **Replace.** A rule with the match and target of a live rule replaces it and keeps its ID.
 
-Mail is silent by default. A mail that no rule matches writes no record in the triggers module.
+Mail is silent by default. The triggers module writes no record for a mail that no rule matches.
 
 ## The arrival path
 
-A rule names one mailbox: the assistant's own, or one Gmail connection, whose
+A rule holds one mailbox: the assistant's own, or one Gmail connection, whose
 [arrivals](../connectors/gmail-tools.md#arrivals) take the same path.
 
 The trigger core takes a mail arrival in the same write transaction as the rest of a batch, and
-drops it when the dedupe key is held. Then it reads the live rules and matches the mail:
+drops a repeat arrival by its dedupe key. Then it reads the live rules and matches the mail:
 
 1. With no match, the core writes nothing.
 2. With a match, it writes one `trigger.mail_arrived` record. Its sender and subject are erasable.
 3. A rule that never woke, or whose last wake is a window ago or more, is ready. For each target
    that has a ready rule, the core writes one `trigger.mail_woke` record to the target's inbox,
-   which wakes it. The record names the rules and holds the arriving mail only.
-4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval
-   and wakes the target of each held match whose rule is ready, with every held mail of that target
-   in one record, whichever mailbox the mail came from. Each mail in the record names its mailbox,
+   which wakes it. The record lists the rules and holds the arriving mail only.
+4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval.
+   It wakes the target of each held match whose rule is ready, with every held mail of that target
+   in one record, whichever mailbox the mail came from. Each mail in the record carries its mailbox,
    so a forget of one Gmail connection finds the wakes that show its mail.
 
 `trigger.mail_woke` renders for the model as the rules that matched, a mail count, and each sender
@@ -210,14 +211,14 @@ and subject as outside content, with the mail's short ID. A mail forgotten since
 The model then opens a mail with `mail.read`.
 
 The wake flush runs inside the write transaction that writes the wakes, so an arrival that wakes a
-rule at the same time cannot let the flush wake it again inside its window. When the task of a rule
-has ended, the flush drops the rule's held matches, a cancelled rule's too.
+rule at the same time cannot let the flush wake it again inside its window. The flush drops the held
+matches of a cancelled rule and of a rule whose task has ended.
 
-The arrival's erasable fields keep their key while a held match names the arrival. Each arrival sits
-in `wake_arrival_cleanup` from its write. The core removes the key of each such arrival that no held
-match names, after each batch that holds a mail and at each flush, and then removes the row. A crash
-between a commit and the removal leaves the row, so a later flush destroys the sender and subject of
-a mail that woke nothing more.
+The arrival's erasable fields keep their key while a held match refers to the arrival. The core adds
+each arrival to `wake_arrival_cleanup` when it writes it. After each batch that holds a mail, and at
+each flush, the core removes the key of each such arrival that no held match refers to, and then
+removes its row. A crash between a commit and the removal leaves the row, so a later flush still
+destroys the arrival's sender and subject.
 
 ## What is not built
 

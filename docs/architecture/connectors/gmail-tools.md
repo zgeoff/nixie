@@ -186,12 +186,12 @@ the decision point.
   [`read-gmail-changes.ts`](../../../modules/connectors/src/google/gmail/poll/read-gmail-changes.ts).
   A mail that arrives between the two reads is in the list or after the new cursor. The dedupe keys
   drop each mail already recorded.
-- A reply rule asks the source to read again the mail since its send. Each poll reads the live reply
-  rules of the connection from the log, and lists the mail since the earliest start among those
-  whose ID the connection's cursor entry does not hold in `replayed`, as a resync does. The delivery
-  that commits adds the rule IDs to `replayed`. A reply that arrived before the rule existed was
-  dropped, and this is how the rule still wakes on it. The request lives in the log and the cursor,
-  so a restart between the rule and the next poll loses nothing.
+- The source reads again the mail since each reply rule's send, so a rule still wakes on a reply
+  that arrived, and was dropped, before the rule existed. Each poll reads the live reply rules of
+  the connection from the log, and lists the mail since the earliest start among those whose ID the
+  connection's cursor entry does not hold in `replayed`, as a resync does. The delivery that commits
+  adds the rule IDs to `replayed`. The rules live in the log and `replayed` in the cursor, so a
+  restart between the rule and the next poll loses nothing.
 - A failed poll keeps the cursor. The source polls again after a backoff that doubles after each
   further failure up to a cap, both set in
   [`build-poll-retry-ms.ts`](../../../modules/connectors/src/google/gmail/poll/build-poll-retry-ms.ts),
@@ -216,9 +216,9 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
   when it lists every effect of the call, and no starter rule lists `schedule`, so a call asks the
   user unless a rule covers it. The effect `write` makes the call queued, so under an allow rule too
   it runs as an action. The rule starts when the action runs, and the action fails with `TASK_ENDED`
-  when the target task has ended by then. It answers `BAD_DURATION` for a duration under a minute,
-  and sets no upper limit. It answers `NOT_POLLED` for a connection that the poll does not read,
-  which holds no `gmail.modify` or needs a new consent, because a rule there would never fire.
+  when the target task has ended by then. The tool answers `BAD_DURATION` for a duration under a
+  minute, and sets no upper limit. It answers `NOT_POLLED` for a connection that the poll does not
+  read, which holds no `gmail.modify` or needs a new consent, because a rule there would never fire.
 - A rule write checks in its own write transaction that the connection is still live, so a call that
   read the connection before a forget refuses after it, and no rule outlives the forget.
 - `gmail.wake_list` lists every live rule of the connection, and `gmail.wake_cancel` answers
@@ -239,7 +239,7 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
 ### Forgetting
 
 Forgetting a connection calls the trigger module's `eraseGmailMailbox` twice, once when the
-connection is hidden and once when its indexes clean. It ends the connection's rules as
+connection is hidden and once when its indexes clean. Each call ends the connection's rules as
 `connection_forgotten`, drops the matches they held, and destroys the sender and subject of every
 arrival and wake of that mailbox. A wake keeps its record, which renders each mail as forgotten. The
 forget also captures the wakes that show the connection's mail. It cleans the sessions on each
