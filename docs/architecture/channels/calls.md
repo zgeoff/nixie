@@ -20,9 +20,9 @@ that the next section describes in place of the adapter.
   session.
 - `events` takes a session ID and returns the session's stream of `SpeechEvent`s. `open` returns no
   events.
-- `answer` and `say` tell the provider what to speak, and `close` ends the session once the speech
-  layer has finished the line it is speaking, so a hang-up never cuts off the last line. The module
-  sends each answer with `final: true`.
+- `answer` and `say` tell the provider what to speak. `close` ends the session once the speech layer
+  has finished the line it is speaking, or once a time limit passes, so a hang-up never cuts off the
+  last line. The module sends each answer with `final: true`.
 - `model` names the provider's model that speaks the call. Each `call.spoke` record carries it.
 
 The package's `test-utils` holds a fake layer in memory. It records each `open`, `answer`, `say` and
@@ -68,10 +68,10 @@ after the cut.
 Other rules of the adapter:
 
 - `answer` sends the whole answer as one commentary on the delegation. The provider takes at most
-  500 tokens in a commentary, so a text past 400 estimated tokens, counting a character outside
-  ASCII as several, goes as several commentaries, split at the end of a sentence. Every word of the
-  text goes out in order. `final` marks the end inside nixie, because the provider has no close for
-  a delegation.
+  500 tokens in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than
+  its tokens, so a text past 400 bytes goes as several commentaries of 400 bytes at most, split at
+  the end of a sentence. Every word of the text goes out in order. `final` marks the end inside
+  nixie, because the provider has no close for a delegation.
 - `say` sends a commentary with no delegation, which the speech layer words as its own. It splits a
   long line the same way.
 - `close` waits for the line that the speech layer is speaking, for a bounded time, and then closes

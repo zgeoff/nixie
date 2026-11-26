@@ -10,9 +10,9 @@
 
 You talk to nixie in a call in the app, and nixie can ring you. GPT-Live hears and speaks the call
 under [0014](../../../decisions/0014-voice-pipeline.md): it answers small talk itself, and it hands
-each request to nixie's own turn, so Claude writes every answer and GPT-Live speaks it. A call runs
-as its own thread beside the conversation, with nixie's persona and memory, and posts a summary to
-the conversation when it ends.
+each request to nixie's own turn, so Claude writes the answer to every request and GPT-Live speaks
+it. A call runs as its own thread beside the conversation, with nixie's persona and memory, and
+posts a summary to the conversation when it ends.
 
 The call thread, the speech layer and its GPT-Live adapter, the hand-offs, the call records and the
 per-minute charge are built: [Voice calls](../../../architecture/channels/calls.md) describes them.

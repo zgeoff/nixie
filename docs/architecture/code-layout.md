@@ -5,7 +5,7 @@ sits in 5 folders by trust zone and role. The server is one deployable that comp
 packages, and the programs that run inside a sandbox live in their own folder, so a boundary check
 stops sandbox code from importing the trusted core. Package boundaries are the module boundaries: a
 package exposes only its entry points, and a tag rule decides which kinds of package may depend on
-which. The database adds no boundary of its own: every module reads and writes it through the one
+which. The database draws no line between modules: every module reads and writes it through the one
 writer. [The server](deployment/server.md) covers how the composition root wires the packages at
 start, and [the release pipeline](deployment/release-pipeline.md) covers the images built from them.
 
