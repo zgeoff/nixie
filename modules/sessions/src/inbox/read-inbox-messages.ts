@@ -58,12 +58,10 @@ export async function readInboxMessages(
   const messages: InboxMessage[] = [];
   const silent: LogRecord[] = [];
   let spent: ImageTally = { bytes: 0, count: 0 };
+  const groups = groupSettlements(records.filter((record) => isInboxRecord(record)));
 
-  for (const record of records) {
-    // A kind that no module registers is passed over, as the live inbox does.
-    if (!isInboxRecord(record)) {
-      continue;
-    }
+  for (const group of groups) {
+    const [record] = group;
 
     if (isSilentRecord(record) || isToldWaitNotice(record, read.toldWaitNotices ?? noneTold)) {
       taken.push(record);
@@ -73,7 +71,7 @@ export async function readInboxMessages(
 
     const gaps = messages.length === 0 ? await read.gaps?.(record) : undefined;
 
-    const message = await readInboxMessage(context, record, read, gaps);
+    const message = await readInboxMessage(context, record, read, { gaps, settled: group });
 
     const images = countImages(message);
 
@@ -83,19 +81,52 @@ export async function readInboxMessages(
 
     spent = mergeImageTallies(spent, images);
 
-    taken.push(record);
+    taken.push(...group);
     messages.push(message);
   }
 
   return { records: taken, messages, silent };
 }
 
+// The settlements that land before a wake read as one note, so a run of them is one group. Any other
+// record is a group of its own.
+function groupSettlements(
+  records: readonly LogRecord[],
+): readonly (readonly [LogRecord, ...LogRecord[]])[] {
+  const groups: [LogRecord, ...LogRecord[]][] = [];
+
+  for (const record of records) {
+    const last = groups.at(-1);
+
+    if (
+      last !== undefined &&
+      record.kind === 'proposals.settled' &&
+      last[0].kind === 'proposals.settled'
+    ) {
+      last.push(record);
+    } else {
+      groups.push([record]);
+    }
+  }
+
+  return groups;
+}
+
+interface MessageExtra {
+  readonly gaps: TurnGaps | undefined;
+
+  // the records the message stands for, the first being the one it reads
+  readonly settled: readonly [LogRecord, ...LogRecord[]];
+}
+
 async function readInboxMessage(
   context: InboxContext,
   record: LogRecord,
   read: Pick<InboxRead, 'times' | 'view' | 'replies'>,
-  gaps: TurnGaps | undefined,
+  extra: MessageExtra,
 ): Promise<InboxMessage> {
+  const gaps = extra.gaps;
+
   const reminder = await readReminder(context, record, read.times.defaultZone);
 
   const result = await readActionResult(
@@ -116,6 +147,7 @@ async function readInboxMessage(
       approvedAt,
       cut,
       smallTalk,
+      settled: extra.settled,
       ...(gaps === undefined ? {} : { gaps }),
     });
   }

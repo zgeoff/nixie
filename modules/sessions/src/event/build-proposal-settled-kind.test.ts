@@ -48,3 +48,32 @@ test('it lists every settlement of a proposer past the cap of 10 events', async 
 
   expect([block.count, block.text]).toStrictEqual([11, expect.not.stringContaining('…and')]);
 });
+
+test('it lists a settlement past the first 1000 that the turn boundary covers', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(
+    ctx.log,
+    Array.from({ length: 1001 }, (_, index) => ({
+      kind: 'proposals.settled' as const,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: proposalsSettledCodec.encode({
+        proposalID: `proposal-${index}`,
+        shortID: `short-${index}`,
+        family: 'skill',
+        outcome: 'approved',
+        answeredBy: 'owner',
+        usedBy: null,
+        detail: null,
+        task: null,
+        replaced: null,
+        byProposer: false,
+      }),
+    })),
+  );
+
+  const block = await ctx.readBlock(1001);
+
+  expect(block.count).toBe(1001);
+});

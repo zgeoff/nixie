@@ -28,6 +28,9 @@ export interface InboxExtras {
   // the small talk that came before a hand-off
   readonly smallTalk?: readonly string[];
 
+  // the settlements that read as one note, the record being the first of them
+  readonly settled?: readonly [LogRecord, ...LogRecord[]];
+
   // set on the message that starts a turn, or cuts into one
   readonly gaps?: TurnGaps;
 }

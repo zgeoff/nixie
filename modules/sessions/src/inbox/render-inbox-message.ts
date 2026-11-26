@@ -36,6 +36,9 @@ interface RenderedExtras {
   readonly approvedAt?: Date | null;
   readonly cut?: HeardCut | null;
   readonly smallTalk?: readonly string[];
+
+  // the settlements that read as one note, the first of them being the record
+  readonly settled?: readonly [LogRecord, ...LogRecord[]];
 }
 
 export function renderInboxMessage(
@@ -130,7 +133,7 @@ export function renderInboxMessage(
   }
 
   if (record.kind === 'proposals.settled') {
-    return renderProposalSettled(record, times);
+    return renderProposalSettled(extras.settled ?? [record], times);
   }
 
   if (record.kind === 'proposals.deferred' || record.kind === 'proposals.returned') {

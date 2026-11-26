@@ -22,11 +22,16 @@ const outcomeWords = {
 
 // The settlement of a proposal that the task's own call asked for, or that a task it started
 // asked for. Each settlement that lands before the task's next wake reads as one line of one note.
-export function renderProposalSettled(record: LogRecord, times: MessageTimeOptions): string {
+export function renderProposalSettled(
+  records: readonly [LogRecord, ...LogRecord[]],
+  times: MessageTimeOptions,
+): string {
   return renderSystemMessage({
     type: 'approval',
-    at: formatMessageTime(record.recordedAt, null, times),
-    body: `[#${String(record.sequence)}] ${renderSettledLine(record)}`,
+    at: formatMessageTime(records[0].recordedAt, null, times),
+    body: records
+      .map((record) => `[#${String(record.sequence)}] ${renderSettledLine(record)}`)
+      .join('\n'),
   });
 }
 
