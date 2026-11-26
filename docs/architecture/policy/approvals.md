@@ -48,9 +48,11 @@ Every family goes through the same steps, in the proposals module:
 5. The proposer hears the settlement: a conversation reads it in the note of its next turn, and a
    task reads it as an inbox record that wakes it. An action's settlement is never an inbox record:
    the task hears `action.outcome`. A proposer's own withdrawal writes the record and leaves out the
-   note, because the call's result holds the outcome. A finished task keeps the settlement on its
-   thread, as a plain record that wakes nothing, so its audit thread stays whole. Settlements that
-   land in one batch read as one message.
+   note, because the call's result holds the outcome. A finished task takes no input, so its
+   settlement goes to the report target of the task run that opened or merged into the proposal,
+   else to the task's starter, and carries the task's ID. A finished task with neither keeps the
+   settlement on its thread, as a plain record that wakes nothing, so its audit thread stays whole.
+   Settlements that land in one batch read as one message.
 
 Every close of a row goes through the lifecycle, so each writes `proposals.settled`: an answer, a
 lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested rule resting on it,
