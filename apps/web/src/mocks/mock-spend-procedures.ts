@@ -1,4 +1,10 @@
-import type { SpendRaiseInput, SpendRaiseOutput, SpendSetCountOutput } from '../types';
+import type {
+  SpendPeriodCount,
+  SpendRaiseInput,
+  SpendRaiseOutput,
+  SpendSetCountInput,
+  SpendSetCountOutput,
+} from '../types';
 import { mockImplementer } from './mock-implementer';
 import { readMockSpendStop } from './read-mock-spend-stop';
 import { requireMockSession } from './require-mock-session';
@@ -25,6 +31,8 @@ export const mockSpendProcedures = {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
     await spendStore.countSets.create(options.input);
+
+    await setMockCount(options.input);
 
     spendStore.stops.clear();
 
@@ -68,6 +76,44 @@ export const mockSpendProcedures = {
     return { state: 'clear' };
   }),
 };
+
+// The count of the period that the gateway took, so a read after the change shows the new dollars
+async function setMockCount(input: SpendSetCountInput): Promise<void> {
+  const held = spendStore.counts.all().findLast(() => true);
+
+  if (held === undefined) {
+    return;
+  }
+
+  const counts = held.counts;
+
+  const change = <
+    Count extends { readonly day: SpendPeriodCount; readonly month: SpendPeriodCount },
+  >(
+    count: Count,
+  ): Count => ({
+    ...count,
+    [input.period]: buildChangedPeriod(count[input.period], input.dollars),
+  });
+
+  spendStore.counts.clear();
+
+  await spendStore.counts.create({
+    counts: {
+      ...counts,
+      providers: counts.providers.map((count) =>
+        'provider' in input && count.provider === input.provider ? change(count) : count,
+      ),
+      routes: counts.routes.map((count) =>
+        'route' in input && count.route === input.route ? change(count) : count,
+      ),
+    },
+  });
+}
+
+function buildChangedPeriod(period: SpendPeriodCount, dollars: number): SpendPeriodCount {
+  return { ...period, dollars, tripped: period.limit !== null && dollars >= period.limit };
+}
 
 async function raiseMockProvider(
   stop: ReturnType<typeof readMockSpendStop>,

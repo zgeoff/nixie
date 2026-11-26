@@ -134,7 +134,11 @@ interface ResetCountProps {
 // high. One confirm is the whole approval.
 function ResetCount(props: ResetCountProps): ReactNode {
   const reset = useSpendSetCount();
-  const [isOpen, setIsOpen] = useState(false);
+
+  // The confirm belongs to the period it opened on, so a refresh that brings a new period closes it
+  // and a reset never zeroes a count the person did not see.
+  const [confirmedStart, setConfirmedStart] = useState<string | null>(null);
+  const isOpen = confirmedStart === props.count.start;
   const name = 'route' in props.target ? props.target.route : props.target.provider;
   const label = props.period === 'day' ? 'today' : 'this month';
 
@@ -142,7 +146,9 @@ function ResetCount(props: ResetCountProps): ReactNode {
     return (
       <button
         onClick={() => {
-          setIsOpen(true);
+          reset.reset();
+
+          setConfirmedStart(props.count.start);
         }}
         type="button"
       >
@@ -158,12 +164,21 @@ function ResetCount(props: ResetCountProps): ReactNode {
       <button
         disabled={reset.isPending}
         onClick={() => {
-          reset.mutate({
-            ...props.target,
-            period: props.period,
-            start: props.count.start,
-            dollars: 0,
-          });
+          reset.mutate(
+            {
+              ...props.target,
+              period: props.period,
+              start: props.count.start,
+              dollars: 0,
+            },
+            {
+              onSuccess: (outcome) => {
+                if (!('error' in outcome)) {
+                  setConfirmedStart(null);
+                }
+              },
+            },
+          );
         }}
         type="button"
       >

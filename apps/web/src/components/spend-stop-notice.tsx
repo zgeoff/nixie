@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { formatProviderNotice } from '../spend/format-provider-notice';
 import { formatSpendAmount } from '../spend/format-spend-amount';
 import type { SpendDisplay } from '../spend/format-spend-amount';
-import {
-  formatProviderNotice,
-  formatRouteNotice,
-  formatSpendNotice,
-} from '../spend/format-spend-notice';
+import { formatRouteNotice, formatSpendNotice } from '../spend/format-spend-notice';
 import { pickRaiseOffer } from '../spend/pick-raise-offer';
 import { pickRouteRaiseOffer } from '../spend/pick-route-raise-offer';
 import { useSpendCounts } from '../spend/use-spend-counts';

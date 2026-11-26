@@ -1,13 +1,48 @@
 import { expect, test } from 'bun:test';
+import { useQueryClient } from '@tanstack/react-query';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { spendStore } from '../mocks/spend-store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { SpendCounts } from './spend-counts';
 
 function setupTest() {
+  const refreshLabel = 'Read the counts again';
+
+  // the page reads the counts again on an interval, so a test asks for the read at once
+  const CountsReader = (): ReactNode => {
+    const nixie = useNixieClient();
+    const queryClient = useQueryClient();
+
+    return (
+      <button
+        onClick={() => {
+          void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.spend.key() });
+        }}
+        type="button"
+      >
+        {refreshLabel}
+      </button>
+    );
+  };
+
   return {
+    refreshLabel,
+    CountsReader,
+    buildProviderCounts: (start: string, dollars: number) => ({
+      providers: [
+        {
+          provider: 'main',
+          day: { start, dollars, limit: 100, tripped: dollars >= 100 },
+          month: { start: '2026-11-01', dollars: 300, limit: 1000, tripped: false },
+        },
+      ],
+      routes: [],
+      display: null,
+    }),
     buildCounts: (display: { currency: string; rate: number } | null) => ({
       providers: [],
       routes: [
@@ -138,4 +173,54 @@ test('it resets the count of a provider with one confirm, sending zero for the p
       { provider: 'main', period: 'day', start: '2026-11-13', dollars: 0 },
     ]);
   });
+});
+
+test('it closes a reset confirm that a refresh of the counts left for the day before', async () => {
+  const ctx = setupTest();
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await spendStore.counts.create({ counts: ctx.buildProviderCounts('2026-11-13', 120) });
+
+  const rendered = render(
+    <>
+      <SpendCounts />
+      <ctx.CountsReader />
+    </>,
+  );
+
+  const open = await rendered.findByRole('button', { name: 'Reset today for main' });
+
+  await user.click(open);
+
+  spendStore.counts.clear();
+
+  await spendStore.counts.create({ counts: ctx.buildProviderCounts('2026-11-14', 7) });
+  await user.click(rendered.getByRole('button', { name: ctx.refreshLabel }));
+  await rendered.findByText('Today: $7.00 of $100.00');
+
+  expect([
+    rendered.queryByRole('button', { name: 'Confirm reset today for main' }),
+    spendStore.countSets.all(),
+  ]).toStrictEqual([null, []]);
+});
+
+test('it closes the reset confirm once the reset succeeds and shows the new count', async () => {
+  const ctx = setupTest();
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await spendStore.counts.create({ counts: ctx.buildProviderCounts('2026-11-13', 120) });
+
+  const rendered = render(<SpendCounts />);
+
+  const open = await rendered.findByRole('button', { name: 'Reset today for main' });
+
+  await user.click(open);
+  await user.click(rendered.getByRole('button', { name: 'Confirm reset today for main' }));
+  await rendered.findByText('Today: $0.00 of $100.00');
+
+  expect(rendered.queryByRole('button', { name: 'Confirm reset today for main' })).toBeNull();
 });
