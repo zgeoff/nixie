@@ -85,8 +85,8 @@ A task run's row, `task_run:<ID>`, and a worker run's row, `worker_run:<ID>`, si
 `none` and hold the run's dollars in micros, rounded up. A worker run ends once, and
 `worker.run_ended` sets its row, with its row in tokens, so a rebuild reproduces it. A task run's
 row follows the task run's meter reads, as [the task meter](#the-task-meter) says. A task run that
-began before its start record named a meter has its row set by `task.run_ended`. The ledger reads
-only the run's ID and what it used from those records.
+began before its start record named a meter and has no meter read has its row set by
+`task.run_ended`. The ledger reads only the run's ID and what it used from those records.
 
 A charge reads the budget's row, compares it with the limit, and writes its record in one
 transaction, so the ledger row and the record that causes it commit together or not at all. A paid
@@ -133,15 +133,23 @@ task.meter_read  { taskRunID, sandbox, reason, countMicros }
 - The server reads before a step starts, after a step ends, after each worker run ends and when a
   task run ends. When the read before a step, or the patch that follows it, gets no answer, the step
   does not start and tries again after a wait. When any other read gets no answer, the next read
-  catches up. A task run does not end until its end read succeeds, and the task's sandbox stays
-  until then.
+  catches up. `task.run_ended`, and every record that would end a task run, commits only once each
+  sandbox the task run read has its end read. While the gateway gives no answer, nothing of that
+  commit lands, and the commit tries again after a wait. A sandbox the gateway no longer holds ends
+  at its last count. The task's sandbox stays until the task run ends.
+- A `task-raise` patch reads the limit as the log stands before each try, and stops once a step has
+  read the sandbox again and set its own limit, so a late retry never lowers a newer limit.
+- A limit of zero dollars is a valid sandbox limit: the gateway accepts it and refuses every
+  request.
 - A step whose sandbox refused a request since the step began ends at the task's dollar limit. The
   sandbox's limit stops the turn, so the runner prices no call itself.
 - A task run that has no gateway has `meter: 'records'`. The runner prices the guest's call frames
   with the profile's price table, and writes `task.meter_read` at the same points, with its own
   running tally under the task's ID as the sandbox.
-- A task run whose start record names no meter began before the meter reads, and keeps the meter
-  that priced its turn records until it ends.
+- A task run whose start record names no meter began before the meter reads. Behind a gateway, its
+  first step writes the dollars its records hold as a read under the task's ID, then reads the
+  sandbox, so the task run keeps its spend and counts the gateway's from then on. Without a gateway
+  it keeps the meter that priced its turn records until it ends.
 
 Without a gateway, nothing stops model spend outside nixie, and the deployment's provider limit is
 the only backstop, as [the spending stop](spending-stop.md) sets out.

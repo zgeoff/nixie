@@ -34,9 +34,11 @@ export async function runTaskStep(
   const controls = startStepControlWatch(context, claim);
 
   try {
+    const signal = AbortSignal.any([renewal.signal, controls.ended]);
+
     const failure = await tryCommitStep(context, claim, {
       ...options,
-      signal: AbortSignal.any([renewal.signal, controls.ended]),
+      signal,
       interrupt: controls.interrupted,
     });
 
@@ -47,17 +49,22 @@ export async function runTaskStep(
     const isStopped = await probeFailureOfSpendStop(context, claim, failure.error);
 
     if (isStopped) {
-      await writeStepCommit(context, claim, {
-        next: 'continue',
-        records: [],
-        acknowledged: [],
-        sessionBoundary: await readSessionBoundary(context, claim.lease.workID),
-      });
+      await writeStepCommit(
+        context,
+        claim,
+        {
+          next: 'continue',
+          records: [],
+          acknowledged: [],
+          sessionBoundary: await readSessionBoundary(context, claim.lease.workID),
+        },
+        signal,
+      );
 
       return null;
     }
 
-    return await writeStepError(context, claim, { ...options, error: failure.error });
+    return await writeStepError(context, claim, { ...options, error: failure.error }, signal);
   } catch (error) {
     if (!(error instanceof LeaseLostError)) {
       throw error;
@@ -91,7 +98,7 @@ async function tryCommitStep(
       return null;
     }
 
-    await writeStepCommit(context, claim, result);
+    await writeStepCommit(context, claim, result, options.signal);
 
     return null;
   } catch (error) {

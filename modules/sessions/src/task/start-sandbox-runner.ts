@@ -45,7 +45,6 @@ import type { SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
 import { collectCompactionDollars } from './meter/collect-compaction-dollars';
 import { createStepMeter } from './meter/create-step-meter';
-import { settleRunEnds } from './meter/settle-run-ends';
 import { isGuestPurged } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
@@ -210,18 +209,8 @@ async function removeEndedTasks(runner: TaskRunner): Promise<void> {
     among: candidates,
   });
 
-  const waiting = await settleRunEnds(
-    { context: options.context, gateway: options.gateway, logger: options.log },
-    candidates,
-  );
-
-  // One task whose removal fails stays ended, so it is in the next sweep, and the rest go now. A task
-  // whose task run has no end read yet keeps its sandbox and its count until the read succeeds.
+  // One task whose removal fails stays ended, so it is in the next sweep, and the rest go now.
   for (const taskID of ended) {
-    if (waiting.has(taskID)) {
-      continue;
-    }
-
     try {
       await removeEndedTask(runner, taskID);
     } catch (error) {

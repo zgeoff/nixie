@@ -5,6 +5,7 @@ import { createTestCredentials } from '@heynixie/credentials/test-utils';
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
+import type { SpendGateway } from '@heynixie/spend';
 import { withSandboxCounts } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import {
@@ -87,18 +88,34 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
     model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' },
   });
 
+  const events: string[] = [];
+
+  // the gateway that a test passes to its runner, which the end of a task run reads through
+  const metered: { gateway: Pick<SpendGateway, 'readSandbox'> | undefined } = {
+    gateway: undefined,
+  };
+
   const host = await startTestSessionHost({
     clock,
     runSettings: buildRunSettings({
       models,
       credentials,
       hopLimit: 20,
-      isGatewayMetered: options.isGatewayMetered === true,
+      logger: (event) => {
+        events.push(event);
+      },
+      ...(options.isGatewayMetered === true
+        ? {
+            gateway: {
+              readSandbox: (name) =>
+                metered.gateway?.readSandbox(name) ?? Promise.resolve({ kind: 'not_found' }),
+            },
+          }
+        : {}),
     }),
   });
 
   const tools = buildStubToolEndpoint();
-  const events: string[] = [];
   const clearFetchPauses = mock<() => void>();
 
   const noMemory = buildStubMemory({
@@ -114,6 +131,8 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
       >
     > = {},
   ) => {
+    metered.gateway = parts.gateway ?? metered.gateway;
+
     const runner = await startSandboxRunner({
       context: host.context,
       models,
@@ -3712,7 +3731,7 @@ test('it runs no turn for a task run whose count is at its limit, and ends it at
   expect(ended?.payload).toMatchObject({ cause: 'limit', used: { dollars: 1.5 } });
 });
 
-test('it keeps the sandbox of a closed task, and its count, until the end read of its task run succeeds', async () => {
+test('it holds the end of a task run, and keeps its sandbox, until the gateway answers its end read', async () => {
   const ctx = await setupTest({ isGatewayMetered: true });
   const taskID = await ctx.seed.meteredTask(3);
 
@@ -3727,14 +3746,18 @@ test('it keeps the sandbox of a closed task, and its count, until the end read o
 
   await ctx.runNextStep(runner);
 
-  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+  const closing = writeTaskControl(ctx.context, { taskID, control: 'close' });
+
   await waitForCondition(() => ctx.events.includes('task.meter_read_failed'));
 
+  const endedBefore = await ctx.readKinds('task.run_ended');
+  const closedBefore = await ctx.readKinds('task.closed');
   const kept = await ctx.sandboxes.list(taskID);
-  const before = await ctx.readKinds('task.meter_read');
 
   gateway.readSandbox.mockResolvedValue(buildCountAnswer(0.6));
-  ctx.clock.advance(60_000);
+  ctx.clock.advance(5000);
+
+  await closing;
 
   await waitForCondition(async () => {
     const remaining = await ctx.sandboxes.list(taskID);
@@ -3742,14 +3765,60 @@ test('it keeps the sandbox of a closed task, and its count, until the end read o
     return remaining.length === 0;
   });
 
-  const after = await ctx.readKinds('task.meter_read');
+  const reads = await ctx.readKinds('task.meter_read');
+  const [ended] = await ctx.readKinds('task.run_ended');
 
+  expect(endedBefore).toStrictEqual([]);
+  expect(closedBefore).toStrictEqual([]);
   expect(kept).toHaveLength(1);
-  expect(before.map((read) => read.payload['reason'])).toStrictEqual(['run_start', 'step_end']);
 
-  expect(after.map((read) => [read.payload['reason'], read.payload['countMicros']])).toStrictEqual([
+  expect(reads.map((read) => [read.payload['reason'], read.payload['countMicros']])).toStrictEqual([
     ['run_start', 0],
     ['step_end', 500_000],
     ['run_end', 600_000],
   ]);
+
+  expect(ended?.payload).toMatchObject({ used: { dollars: 0.6 } });
+});
+
+test('it ends at its limit the task run of a step only once the gateway answers the end read', async () => {
+  const ctx = await setupTest({ isGatewayMetered: true });
+  const taskID = await ctx.seed.meteredTask(3);
+
+  const gateway = buildStubSpendGateway();
+
+  gateway.readSandbox
+    .mockResolvedValueOnce(buildCountAnswer(0))
+    .mockResolvedValueOnce(
+      buildCountAnswer(2.5, { counter: 'sandbox', route: 'router-b', atMs: 9_000_000 }),
+    )
+    .mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  const runner = await ctx.startRunner({ gateway });
+
+  const stepping = ctx.runNextStep(runner);
+
+  await waitForCondition(() => ctx.events.includes('task.meter_read_failed'));
+
+  const endedBefore = await ctx.readKinds('task.run_ended');
+  const committedBefore = await ctx.readKinds('task.step_committed');
+
+  gateway.readSandbox.mockResolvedValue(buildCountAnswer(2.75));
+  ctx.clock.advance(5000);
+
+  await stepping;
+
+  const reads = await ctx.readKinds('task.meter_read');
+  const [ended] = await ctx.readKinds('task.run_ended');
+
+  expect(endedBefore).toStrictEqual([]);
+  expect(committedBefore).toStrictEqual([]);
+
+  expect(reads.map((read) => read.payload['reason'])).toStrictEqual([
+    'run_start',
+    'step_end',
+    'run_end',
+  ]);
+
+  expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', used: { dollars: 2.75 } });
 });

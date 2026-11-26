@@ -34,6 +34,7 @@ export type {
   RunMeterName,
   RunSettings,
   RunState,
+  SandboxMicrosRead,
   TaskRun,
   TaskRunEnded,
   TaskRunOpened,
@@ -158,6 +159,7 @@ export type { TaskMeterReadReason } from './run/task-meter-read-codec';
 export { taskMeterReadCodec, taskMeterReadReasons } from './run/task-meter-read-codec';
 export { readMeterReads } from './run/read-meter-reads';
 export type { MeterReadWrite } from './run/write-meter-read';
+export { withRunEndSettled } from './run/with-run-end-settled';
 export { writeMeterRead } from './run/write-meter-read';
 export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './task/limit/write-task-limit-raise';
 export type { RaisedSandboxLimit } from './task/limit/types';

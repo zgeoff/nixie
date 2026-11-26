@@ -248,10 +248,10 @@ A model turn of the conversation, or of a started task whose start lists the too
 holds it, calls `worker.run` with a question, an optional list of tools and an optional `model`. The
 call starts one worker: a model loop in a sandbox of its own, with a fresh session and the question
 as its only input. The call waits for the worker's last reply and returns it as the answer, with the
-minutes, turns, tokens and dollars the worker used. A reasoning block that the model sends after its
-text is not a reply, so the text before it stays the answer. The tool's description tells the model
-to use a worker when it needs the answer in the same turn, and a task when the work can run on while
-the conversation goes on.
+minutes, turns and tokens the worker used. A reasoning block that the model sends after its text is
+not a reply, so the text before it stays the answer. The tool's description tells the model to use a
+worker when it needs the answer in the same turn, and a task when the work can run on while the
+conversation goes on.
 
 The `model` option takes one of the [selectable models](./model-profiles.md#selectable-models) that
 the start tool offers, with the same names and descriptions, and leaves out each entry with
@@ -274,6 +274,9 @@ Four limits stop a worker, each with a sentence that tells the caller which limi
 - The limits, the price table and the gateway's count apply on the profile the worker runs on, and
   one pool of slots covers every model.
 - A worker's dollar limit is the smaller of its own limit and what its caller's task run has left.
+  Where a gateway counts the task's sandbox, the run asks the sandbox for its dollars when it
+  starts, and gets at most what the sandbox has left then. Workers that start together never get the
+  same dollars, and the run starts no record, sandbox or slot when the sandbox gives none.
 - `tasks.workerRuns` sets how many workers run at once, and whether a call past that cap waits for a
   slot or gets an error. With no setting, no cap applies.
 - A call that the calling step's signal aborts rejects, so the step ends as it would for any call
@@ -281,11 +284,13 @@ Four limits stop a worker, each with a sentence that tells the caller which limi
 
 A worker run writes 3 kinds of record on its caller's thread, each with the calling `tool_called`
 record as its parent: `worker.run_started`, one `worker.turn_ended` after each model call, and one
-`worker.run_ended`. A run that the gateway counted past its priced calls also writes one
-`worker.gateway_charged` with the excess dollars, before `worker.run_ended`. Every way out of a
-worker run writes the end record once, stops the worker's tool run, destroys its sandbox and frees
-its slot. The destroy runs after the call has its result, and a destroy that fails is tried again
-before the next worker creates its sandbox. A rebuilt session leaves the worker records out.
+`worker.run_ended`. A run that starts at all writes its end record, and the call's result and the
+model's limit sentences state no dollar figure. A run that the gateway counted past its priced calls
+also writes one `worker.gateway_charged` with the excess dollars, before `worker.run_ended`. Every
+way out of a worker run writes the end record once, stops the worker's tool run, destroys its
+sandbox and frees its slot. The destroy runs after the call has its result, and a destroy that fails
+is tried again before the next worker creates its sandbox. A rebuilt session leaves the worker
+records out.
 
 A worker's model calls count in the dollars of the caller's task run, and in no turn. A worker run's
 planned dollars come off the calling turn's budget while it goes, and what it charged stays off, so

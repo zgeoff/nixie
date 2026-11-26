@@ -473,7 +473,10 @@ A started task has a limit of turns and of dollars, which its start set or took 
 A task run whose start record names no meter began before the meter reads. Its dollars meter adds
 the dollars that each turn record and each session summary of the task holds, priced when the record
 was written, and adds each `task.failed_turn_spent` record of the task run. The records stay
-readable, and nothing writes them any more.
+readable, and nothing writes them any more. When such a task run resumes behind a gateway, its first
+step reads the sandbox as a task run's start does, and writes the dollars that its records hold as a
+read under the task's ID, so the task run keeps what it spent and counts the gateway's count from
+then on.
 
 The config schema refuses a profile with no price table for a profile a task can run on when the
 deployment has no gateway, as [selectable models](./model-profiles.md#selectable-models) describes,
@@ -484,9 +487,9 @@ gateway counts. When either has reached its limit, the step runs no turn and ret
 its end, and the step's commit ends the task run as `limit`, which writes the report, a
 `task.limit_reached` record, and a pause under the limit hold. The paused task keeps its work, and
 the user's raise of the limit resumes it. The starter learns of it through the report or the limit
-notice, and its model reads the task's ID and counts in a system message that says only the user can
-resume the task. The message leaves out the task's name, because a model wrote that name, and the
-model trusts a system message as nixie's own text.
+notice, and its model reads the task's ID and its turns in a system message that says only the user
+can resume the task, with no dollar figure. The message leaves out the task's name, because a model
+wrote that name, and the model trusts a system message as nixie's own text.
 
 A turn can pass the dollar limit on its own. With a gateway, the sandbox's limit stops it: the
 gateway refuses the next request, and a step whose sandbox refused a request since the step began
