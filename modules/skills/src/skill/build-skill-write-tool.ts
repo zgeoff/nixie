@@ -1,13 +1,15 @@
 import { createShortID } from '@heynixie/db';
 import type { DefinitionsInForce, ParseProblem, ParsedSkill } from '@heynixie/definitions';
 import { checkSkillFiles, loadSkillVersions } from '@heynixie/definitions';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { checkUntypedToken, defaultGateLimits } from '@heynixie/memory';
+import { buildProposeDeps, proposeInTransaction } from '@heynixie/proposals';
 import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { z } from 'zod';
 import type { SkillToolsContext } from '../types';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
+import { makeSkillProposalHandler } from './make-skill-proposal-handler';
 import { writeRuleAppliedSkill } from './write-rule-applied-skill';
 
 const writeArguments = z.object({
@@ -162,28 +164,62 @@ async function runSkillWrite(
     }
   }
 
-  const proposalID = createShortID();
+  const answerContext = {
+    log: context.log,
+    clock: context.clock,
+    definitions: () => definitions,
+    runInForceSeed: context.runInForceSeed,
+  };
 
-  await writeRecords(context.log, [
-    {
-      kind: 'skills.write_proposed',
+  const deps = buildProposeDeps({
+    ...answerContext,
+    config: context.proposalConfig,
+    handler: makeSkillProposalHandler(answerContext),
+  });
+
+  const proposed = await withWriteTransaction(context.log.writer, async (tx) => {
+    const created = await proposeInTransaction(deps, tx, {
+      family: 'skill',
+      kind: 'internal_change',
+      cause: 'skill_write',
+      riskClass: 'routine',
+      actionHash: skill.skillHash,
+      ruleHash: null,
       thread: run.thread,
-      definitions,
-      payload: skillsWriteProposedCodec.encode({
-        proposalID,
-        name,
-        skillHash: skill.skillHash,
-        baseHash,
-        files: [...skill.files].map(([path, text]) => ({ path, text })),
-        untypedToken: token === null ? null : { kind: token.kind, raw: token.raw },
-        provenance,
-      }),
-    },
-  ]);
+      taskID: null,
+      deadlineAt: null,
+      sameThing: name,
+    });
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'skills.write_proposed',
+        thread: run.thread,
+        definitions,
+        payload: skillsWriteProposedCodec.encode({
+          proposalID: created.proposalID,
+          name,
+          skillHash: skill.skillHash,
+          baseHash,
+          files: [...skill.files].map(([path, text]) => ({ path, text })),
+          untypedToken: token === null ? null : { kind: token.kind, raw: token.raw },
+          provenance,
+        }),
+      },
+    ]);
+
+    return created;
+  });
+
+  const replacedNote = proposed.replaced === null ? '' : `; it replaced ${proposed.replaced}`;
 
   return {
     status: 'ok',
-    result: { status: 'pending', proposalID, message: `pending approval as ${proposalID}` },
+    result: {
+      status: 'pending',
+      proposalID: proposed.shortID,
+      message: `pending approval as ${proposed.shortID}${replacedNote}`,
+    },
   };
 }
 

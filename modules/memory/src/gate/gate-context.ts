@@ -320,11 +320,20 @@ export interface PendingFilter {
   readonly subjects?: readonly MemorySubject[];
 }
 
+export interface ProposalLapse {
+  readonly proposalID: string;
+  readonly writeInTransaction: WriteInTransaction;
+}
+
 export interface MemoryProposals {
   readonly listPending: (filter?: PendingFilter) => Promise<readonly MemoryProposal[]>;
   readonly approve: (answer: ProposalAnswer) => Promise<ApprovalResult>;
   readonly reject: (rejection: ProposalRejection) => Promise<void>;
 
+  // Lapses one due proposal in a transaction of its own, which calls writeInTransaction first.
+  readonly lapseProposal: (lapse: ProposalLapse) => Promise<boolean>;
+
+  // closes the keys of the proposals that closed, which the sweep runs after a commit
   readonly lapse: () => Promise<number>;
 
   readonly readRejectedEdits: (
@@ -358,7 +367,7 @@ export interface MemoryProposalTable {
   readonly is_pinned: number;
 
   readonly review_reason: string;
-  readonly status: 'pending' | 'consumed' | 'rejected' | 'lapsed';
+  readonly status: 'pending' | 'consumed' | 'rejected' | 'lapsed' | 'withdrawn';
   readonly action_hash: string;
   readonly sealed: string;
   readonly evidence: string | null;

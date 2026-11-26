@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { ProposalAnswerInput } from '@heynixie/proposals';
 import { answerProposal, buildProposalsProjection } from '@heynixie/proposals';
+import { buildMockSettlementDeps } from '@heynixie/proposals/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { mapMemoryProposalRecord } from '../proposal/map-memory-proposal-record';
@@ -28,7 +29,6 @@ async function setupTest() {
   const handlerOptions = {
     log: memory.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    lapseIntervalMs: 14 * 24 * 60 * 60 * 1000,
   };
 
   const deps = {
@@ -39,6 +39,7 @@ async function setupTest() {
       ['memory' as const, makeMemoryProposalHandler({ ...handlerOptions, readStore: () => port })],
     ]),
     projection: buildProposalsProjection([mapMemoryProposalRecord]),
+    ...buildMockSettlementDeps(),
     readDeferContext: () => Promise.resolve({ quietHours: null, zone: 'UTC' }),
     writeThreadRecord: async (
       tx: Parameters<typeof writeRecordsInTransaction>[0],

@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
-import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
+import {
+  promptsOverrideProposedCodec,
+  readPromptProposals,
+  writePromptApproval,
+} from '@heynixie/prompts';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -16,6 +20,11 @@ import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
 import { buildPromptChangeKind } from './build-prompt-change-kind';
 import { checkPromptProposal } from './check-prompt-proposal';
+
+interface PromptEdits {
+  readonly entry: Record<string, string>;
+  readonly files: readonly { readonly path: string; readonly text: string }[];
+}
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -44,19 +53,39 @@ async function setupTest() {
 
   const log = { writer, deploymentKey, projections: [] };
 
+  const answerContext = {
+    log,
+    clock: createFakeClock({ startMs: Date.parse('2026-10-16T09:00:00Z') }),
+    definitions: () => ({ snapshotHash: 'snapshot-a' }),
+    readInForce: () => null,
+    checkProposal: checkPromptProposal,
+  };
+
+  const approvePrompt = async (proposalID: string, edits?: PromptEdits) => {
+    const approvalID = await withWriteTransaction(writer, async (tx) => {
+      const [state] = await readPromptProposals(tx, [proposalID]);
+
+      invariant(state, 'the proposal was written');
+
+      return writePromptApproval(tx, answerContext, {
+        state,
+        entry: edits?.entry ?? state.proposal.entry,
+        files: edits?.files ?? state.proposal.files,
+        identityID: 'owner',
+      });
+    });
+
+    return { status: 'approved' as const, approvalID };
+  };
+
   return {
     root,
     writer,
     log,
     source: createPathSource({ directory: root }),
     repo: buildStubDefinitionsRepo(root),
-    answerContext: {
-      log,
-      clock: createFakeClock({ startMs: Date.parse('2026-10-16T09:00:00Z') }),
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      readInForce: () => null,
-      checkProposal: checkPromptProposal,
-    },
+    answerContext,
+    approvePrompt,
   };
 }
 
@@ -91,11 +120,7 @@ test('it opens a pull request with the part files and the prompts entry, which a
     },
   ]);
 
-  const approved = await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  const approved = await ctx.approvePrompt('k3x9m2p7qa');
 
   const result = await runDefinitionsExports({
     log: ctx.log,
@@ -198,11 +223,7 @@ test("it moves a part file that another prompt reads, and the seed after the mer
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  await ctx.approvePrompt('k3x9m2p7qa');
 
   await runDefinitionsExports({
     log: ctx.log,
@@ -271,10 +292,7 @@ test('it exports the edited entry and files that the approval holds', async () =
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
+  await ctx.approvePrompt('k3x9m2p7qa', {
     entry: {
       instruction: 'prompts/compaction-instruction.md',
       _template: '{{ parts.instruction }}\n\n{{ parts.safety }}',
@@ -333,11 +351,7 @@ test('it records the pull request on the thread of the proposal, for the answer 
     },
   ]);
 
-  const approved = await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  const approved = await ctx.approvePrompt('k3x9m2p7qa');
 
   await runDefinitionsExports({
     log: ctx.log,
@@ -398,11 +412,7 @@ test('it exports each approval once', async () => {
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  await ctx.approvePrompt('k3x9m2p7qa');
 
   const kinds = [buildPromptChangeKind(ctx.log, { agentName: null, ownerName: null })];
 
@@ -450,11 +460,7 @@ test('it records the pull request it already opened when an export mark outlives
     },
   ]);
 
-  const approved = await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  const approved = await ctx.approvePrompt('k3x9m2p7qa');
 
   invariant(approved.status === 'approved');
 
@@ -530,11 +536,7 @@ test('it opens one pull request when a retry follows a pull request write whose 
     },
   ]);
 
-  const approved = await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  const approved = await ctx.approvePrompt('k3x9m2p7qa');
 
   invariant(approved.status === 'approved');
 
@@ -632,19 +634,11 @@ test('it writes a later approval of the same prompt onto its open pull request a
 
   const kinds = [buildPromptChangeKind(ctx.log, { agentName: null, ownerName: null })];
 
-  const first = await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  const first = await ctx.approvePrompt('k3x9m2p7qa');
 
   await runDefinitionsExports({ log: ctx.log, repo: ctx.repo, kinds, onError: () => {} });
 
-  const second = await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'w7tn4c9rhz',
-    proposalHash: 'hash-b',
-  });
+  const second = await ctx.approvePrompt('w7tn4c9rhz');
 
   const result = await runDefinitionsExports({
     log: ctx.log,
@@ -702,11 +696,7 @@ test('it passes an export to onError when the definitions repo has no manifest',
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  await ctx.approvePrompt('k3x9m2p7qa');
 
   const errors: unknown[] = [];
 
@@ -751,11 +741,7 @@ test('it passes an export to onError when the files on the base branch leave no 
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  await ctx.approvePrompt('k3x9m2p7qa');
 
   const errors: unknown[] = [];
 
@@ -814,11 +800,7 @@ test('it passes an export to onError when the definitions after the change fail 
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  await ctx.approvePrompt('k3x9m2p7qa');
 
   const errors: unknown[] = [];
 
@@ -877,11 +859,7 @@ test('it opens a pull request beside a file that the seed skips, such as a hidde
     },
   ]);
 
-  await writePromptProposalAnswer(ctx.answerContext, {
-    answer: 'approve',
-    proposalID: 'k3x9m2p7qa',
-    proposalHash: 'hash-a',
-  });
+  await ctx.approvePrompt('k3x9m2p7qa');
 
   await runDefinitionsExports({
     log: ctx.log,

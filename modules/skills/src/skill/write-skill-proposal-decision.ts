@@ -1,14 +1,10 @@
 import type { ParseProblem, ParsedSkill } from '@heynixie/definitions';
 import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { writeThreadRecordInTransaction } from '@heynixie/tasks';
+import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import invariant from 'tiny-invariant';
-import { findAnswerRefusal } from '../proposal/find-answer-refusal';
 import { SkillProposalCheckError } from '../proposal/skill-proposal-check-error';
 import type {
-  SkillAnswerContext,
   SkillFile,
   SkillProposalAnswer,
   SkillProposalAnswerResult,
@@ -16,50 +12,17 @@ import type {
   SkillProposalState,
 } from '../types';
 import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
-import { skillsWriteRejectedCodec } from '../write/skills-write-rejected-codec';
-import { readCurrentSkillHashes } from './read-current-skill-hashes';
-import { readSkillProposals } from './read-skill-proposals';
-
-export async function writeSkillProposalAnswer(
-  context: SkillAnswerContext,
-  answer: SkillProposalAnswer,
-): Promise<SkillProposalAnswerResult> {
-  const log = context.log;
-
-  const result = await withWriteTransaction(log.writer, async (tx) => {
-    const state = await readOpenProposal(tx, context, answer);
-
-    return writeSkillProposalDecision(tx, context, state, answer);
-  });
-
-  if (result.approvalID !== null) {
-    await context.runInForceSeed();
-  }
-
-  return result;
-}
 
 // The records of an answer, once the checks passed. The shared answer path calls it too, with its
 // own checks of the state and the lapse.
-export async function writeSkillProposalDecision(
+export function writeSkillProposalDecision(
   tx: Transaction<unknown>,
   context: SkillProposalContext,
   state: SkillProposalState,
   answer: SkillProposalAnswer,
 ): Promise<SkillProposalAnswerResult> {
   if (answer.answer === 'reject') {
-    await writeThreadRecordInTransaction(tx, context, {
-      definitions: context.definitions(),
-      ...(state.thread === null ? {} : { thread: state.thread }),
-      kind: 'skills.write_rejected',
-      payload: skillsWriteRejectedCodec.encode({
-        proposalID: answer.proposalID,
-        ...(answer.identityID === undefined ? {} : { identityID: answer.identityID }),
-      }),
-      erasable: { reason: answer.reason },
-    });
-
-    return { proposalID: answer.proposalID, approvalID: null, skillHash: null };
+    return Promise.resolve({ proposalID: answer.proposalID, approvalID: null, skillHash: null });
   }
 
   return writeApproval(tx, context, {
@@ -67,26 +30,6 @@ export async function writeSkillProposalDecision(
     files: answer.files ?? null,
     identityID: answer.identityID ?? null,
   });
-}
-
-async function readOpenProposal(
-  tx: Transaction<unknown>,
-  context: SkillProposalContext,
-  answer: SkillProposalAnswer,
-): Promise<SkillProposalState> {
-  const [state] = await readSkillProposals(tx, [answer.proposalID]);
-  const current = await readCurrentSkillHashes(tx);
-
-  const currentHash = state === undefined ? null : (current.get(state.proposal.name) ?? null);
-  const refusal = findAnswerRefusal({ answer, state, now: context.clock.now(), currentHash });
-
-  if (refusal !== null) {
-    throw refusal;
-  }
-
-  invariant(state);
-
-  return state;
 }
 
 interface Approval {

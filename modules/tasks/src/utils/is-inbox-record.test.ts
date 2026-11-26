@@ -11,10 +11,6 @@ test.each([
   ['trigger.skipped', 'task-1', false],
   ['recovery.notice', 'conversation', true],
   ['tool_changed', 'conversation', true],
-  ['memory.proposal_rejected', 'task-1', true],
-  ['skills.write_rejected', 'task-1', true],
-  ['memory.proposal_rejected', 'conversation', false],
-  ['skills.write_rejected', 'conversation', false],
   ['task.limit_reached', 'task-1', false],
   ['turn_finished', 'task-1', false],
   ['task.step_committed', 'task-1', false],
@@ -45,5 +41,31 @@ test.each([
       thread: 'conversation',
       ...(row.payload === undefined ? {} : { payload: row.payload }),
     }),
+  ).toBe(row.expected);
+});
+
+test.each([
+  {
+    title: 'of a skill on a task thread',
+    thread: 'task-1',
+    payload: { family: 'skill' },
+    expected: true,
+  },
+  { title: 'of an action', thread: 'task-1', payload: { family: 'action' }, expected: false },
+  {
+    title: 'the proposer already read in its call result',
+    thread: 'task-1',
+    payload: { family: 'skill', byProposer: true },
+    expected: false,
+  },
+  {
+    title: 'on the conversation thread, which reads it in its turn note',
+    thread: 'conversation',
+    payload: { family: 'skill' },
+    expected: false,
+  },
+])('it reads a settlement $title as inbox: $expected', (row) => {
+  expect(
+    isInboxRecord({ kind: 'proposals.settled', thread: row.thread, payload: row.payload }),
   ).toBe(row.expected);
 });

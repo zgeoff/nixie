@@ -1,7 +1,7 @@
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import { readWithdrawals, writeMcpProposal } from '../proposal/write-mcp-proposal';
+import { withdrawProposal, writeMcpProposal } from '../proposal/write-mcp-proposal';
 import { mcpNoticeCodec } from '../record/mcp-notice-codec';
 import { mcpPinMovedCodec } from '../record/mcp-pin-moved-codec';
 import { mcpToolChangedCodec } from '../record/mcp-tool-changed-codec';
@@ -89,7 +89,8 @@ async function writePlan(
   }
 
   const proposalID = await writeAllowProposal(context, tx, plan);
-  const withdrawals = await readWithdrawals(tx, context, plan.withdrawProposalID);
+
+  await withdrawProposal(tx, context, plan.withdrawProposalID);
 
   const moved: RecordInput[] =
     decision.move === null
@@ -103,7 +104,6 @@ async function writePlan(
         ];
 
   await writeRecordsInTransaction(tx, context.log, [
-    ...withdrawals,
     {
       kind: mcpToolChangedCodec.kind,
       definitions: context.definitions(),

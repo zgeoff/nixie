@@ -9,7 +9,7 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select('item_id')
-    .where('status', 'in', ['rejected', 'lapsed', 'consumed'])
+    .where('status', 'in', ['rejected', 'lapsed', 'consumed', 'withdrawn'])
     .where('is_new_item', '=', 1)
     .where((eb) =>
       eb.not(

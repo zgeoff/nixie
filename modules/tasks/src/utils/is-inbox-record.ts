@@ -13,8 +13,7 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'recovery.notice',
   'spend.wait_notice',
   'policy.action_answered',
-  'memory.proposal_rejected',
-  'skills.write_rejected',
+  'proposals.settled',
   'proposals.deferred',
   'proposals.returned',
   'computer.takeover_started',
@@ -32,18 +31,18 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'call.closing',
 ]);
 
-// The conversation reads these 2 in its turns' events block, so as inbox records too they would
-// reach it twice.
-const declineKinds: ReadonlySet<string> = new Set([
-  'memory.proposal_rejected',
-  'skills.write_rejected',
-]);
-
 export function isInboxRecord(
   record: Pick<EnvelopeRecord, 'kind' | 'thread'> & Partial<Pick<EnvelopeRecord, 'payload'>>,
 ): boolean {
-  if (record.thread === conversationTaskID && declineKinds.has(record.kind)) {
-    return false;
+  // The conversation reads a settlement in the note of its next turn, so as an inbox record it
+  // would reach it twice. A task hears an action's own outcome in place of a settlement.
+  if (record.kind === 'proposals.settled') {
+    return (
+      record.thread !== null &&
+      record.thread !== conversationTaskID &&
+      record.payload?.['family'] !== 'action' &&
+      record.payload?.['byProposer'] !== true
+    );
   }
 
   // A page event is in the inbox only when its wake was kept. One without it waits in the events

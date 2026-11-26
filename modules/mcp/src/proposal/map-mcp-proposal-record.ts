@@ -1,9 +1,11 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { ProposalChange } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
 import { mcpAnsweredCodec } from '../record/mcp-answered-codec';
 import { mcpLapsedCodec } from '../record/mcp-lapsed-codec';
 import { mcpProposedCodec } from '../record/mcp-proposed-codec';
+
+// the lapse that every record written before the config set one carried
+const legacyLapseMs = 14 * 24 * 60 * 60 * 1000;
 
 // What each record of the mcp family means for the shared proposals row. A server proposal asks the
 // owner to approve with the passkey; a tool's allow is routine.
@@ -24,7 +26,7 @@ export function mapMcpProposalRecord(record: EnvelopeRecord): ProposalChange | n
         ruleHash: null,
         cause: isServer ? 'mcp_config' : 'mcp_allow',
         taskID: null,
-        lapsesAt: record.recordedAt.getTime() + proposalLapseMs,
+        lapsesAt: record.recordedAt.getTime() + legacyLapseMs,
         deadlineAt: null,
       },
     };

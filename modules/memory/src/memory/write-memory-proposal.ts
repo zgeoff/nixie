@@ -1,5 +1,7 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { buildProposeDeps, proposeInTransaction } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import type { ReviewReason, WriteCaller } from '../gate/gate-context';
@@ -159,7 +161,34 @@ async function writeProposalOrMerge(
     return merged;
   }
 
-  await writeProposalRecord(tx, parts, pending);
+  const gate = parts.context.gate;
+
+  // memory names a proposal by the short ID of its UUID, so every reader of it keeps one
+  const proposed = await proposeInTransaction(
+    buildProposeDeps({
+      log: parts.context.log,
+      clock: gate.clock,
+      definitions: parts.context.definitions,
+    }),
+    tx,
+    {
+      proposalID: pending.sealed.proposalID,
+      shortID: buildShortIDFromUUID(pending.sealed.proposalID),
+      family: 'memory',
+      kind: 'memory_write',
+      cause: pending.plan.reason,
+      riskClass: 'routine',
+      actionHash: pending.sealed.actionHash,
+      ruleHash: null,
+      thread: pending.plan.caller.thread,
+      taskID: pending.plan.caller.taskID,
+      deadlineAt: pending.plan.until ?? null,
+      sameThing: null,
+      intervalMs: gate.limits.proposalLapseMs,
+    },
+  );
+
+  await writeProposalRecord(tx, parts, pending, proposed.lapsesAt);
 
   return { proposalID: pending.sealed.proposalID, merged: false };
 }

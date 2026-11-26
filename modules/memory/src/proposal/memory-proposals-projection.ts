@@ -1,5 +1,5 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
-import { proposalsDeferredCodec } from '@heynixie/proposals';
+import { proposalsDeferredCodec, proposalsSettledCodec } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import type { MemoryTables } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
@@ -7,6 +7,14 @@ import { parseLabelRecord } from '../utils/record/parse-label-record';
 import type { ProposalRecord } from '../utils/record/parse-proposal-record';
 import { parseProposalRecord } from '../utils/record/parse-proposal-record';
 import { parseSubjectRecord } from '../utils/record/parse-subject-record';
+
+// the settlement of an answer that wrote no approval record of its own
+const statusOfOutcome = {
+  approved: 'consumed',
+  declined: 'rejected',
+  lapsed: 'lapsed',
+  withdrawn: 'withdrawn',
+} as const;
 
 export const memoryProposalsProjection: Projection = {
   table: 'memory_proposals',
@@ -24,6 +32,24 @@ export const memoryProposalsProjection: Projection = {
         .execute();
 
       return [deferred.proposalID];
+    }
+
+    if (record.kind === proposalsSettledCodec.kind) {
+      const settled = proposalsSettledCodec.decode(record.payload);
+
+      if (settled.family !== 'memory') {
+        return [];
+      }
+
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_proposals')
+        .set({ status: statusOfOutcome[settled.outcome], resolved_sequence: record.sequence })
+        .where('proposal_id', '=', settled.proposalID)
+        .where('status', '=', 'pending')
+        .execute();
+
+      return [settled.proposalID];
     }
 
     const marked = parseSubjectRecord(record);

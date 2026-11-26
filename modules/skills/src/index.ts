@@ -1,6 +1,5 @@
 export type { SkillReloadChange, SkillReloadEvent } from './skill/build-skill-reload-kind';
 export { buildSkillReloadKind } from './skill/build-skill-reload-kind';
-export { buildSkillProposalAnswerKind } from './skill/build-skill-proposal-answer-kind';
 export { buildSkillTools } from './skill/build-skill-tools';
 export type { SkillVendorContext } from './skill/build-skill-vendor-tool';
 export { buildSkillVendorTool } from './skill/build-skill-vendor-tool';
@@ -29,7 +28,6 @@ export type {
   SkillToolsContext,
 } from './types';
 
-export { writeSkillProposalAnswer } from './skill/write-skill-proposal-answer';
 export type { WrittenSkillResolution } from './skill/write-written-skill-resolution';
 export { writeWrittenSkillResolution } from './skill/write-written-skill-resolution';
 export { makeSkillProposalHandler } from './skill/make-skill-proposal-handler';

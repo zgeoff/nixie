@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import type { CheckPromptProposal } from '../types';
 import { buildPromptWriteTool } from './build-prompt-write-tool';
@@ -34,6 +35,7 @@ test("it records a proposal on the caller's thread and returns its short ID", as
 
   const tool = buildPromptWriteTool({
     log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => ({ snapshotHash: 'snapshot-a', personaVersion: 'persona-a', prompts: {} }),
     checkProposal: () => [],
   });
@@ -74,7 +76,7 @@ test("it records a proposal on the caller's thread and returns its short ID", as
       thread: 'conversation',
       definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
       payload: {
-        proposalID: outcome.result['proposalID'],
+        proposalID: expect.stringMatching(/^[0-9a-f-]{36}$/u),
         promptID: 'compaction',
         proposalHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
         baseHash: null,
@@ -92,6 +94,7 @@ test('it records the hash of the override in force as the base of the proposal',
 
   const tool = buildPromptWriteTool({
     log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => ({
       snapshotHash: 'snapshot-a',
       personaVersion: 'persona-a',
@@ -134,6 +137,7 @@ test('it passes the entry and the files to the definitions check, and refuses wi
 
   const tool = buildPromptWriteTool({
     log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => ({ snapshotHash: 'snapshot-a', personaVersion: 'persona-a', prompts: {} }),
     checkProposal,
   });
@@ -177,6 +181,7 @@ test('it refuses a proposal with no reason', async () => {
 
   const tool = buildPromptWriteTool({
     log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => ({ snapshotHash: 'snapshot-a', personaVersion: 'persona-a', prompts: {} }),
     checkProposal: () => [],
   });
@@ -206,6 +211,7 @@ test('it refuses a proposal before any definitions are in force', async () => {
 
   const tool = buildPromptWriteTool({
     log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => null,
     checkProposal: () => [],
   });

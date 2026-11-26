@@ -1,7 +1,7 @@
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import { readWithdrawals, writeMcpProposal } from '../proposal/write-mcp-proposal';
+import { withdrawProposal, writeMcpProposal } from '../proposal/write-mcp-proposal';
 import { mcpServerChangedCodec } from '../record/mcp-server-changed-codec';
 import type { McpServerRow } from '../rows/mcp-tables';
 import { readServerRows } from '../rows/read-server-rows';
@@ -82,11 +82,11 @@ async function writeStep(
     return;
   }
 
-  const withdrawals = await readWithdrawals(tx, context, row?.proposal_id ?? null);
+  await withdrawProposal(tx, context, row?.proposal_id ?? null);
 
   const changed = buildStepRecord(context, step, row);
 
-  await writeRecordsInTransaction(tx, context.log, [...withdrawals, changed]);
+  await writeRecordsInTransaction(tx, context.log, [changed]);
 }
 
 interface ServerChange {

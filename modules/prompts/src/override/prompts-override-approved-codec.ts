@@ -10,5 +10,6 @@ export const promptsOverrideApprovedCodec = defineRecordCodec(
     isEdited: z.boolean(),
     approver: z.literal('owner'),
     channel: z.literal('host'),
+    identityID: z.string().exactOptional(),
   }),
 );

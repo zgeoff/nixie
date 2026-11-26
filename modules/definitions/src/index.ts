@@ -138,8 +138,6 @@ export { readPendingRuleProposals } from './rule/read-pending-rule-proposals';
 export type { RuleContext } from './runtime/write-runtime-rule';
 export { writeRuntimeRule } from './runtime/write-runtime-rule';
 export { writeRuleResolution } from './rule/write-rule-resolution';
-export type { RuleProposalAnswer, RuleProposalResult } from './rule/write-rule-proposal-answer';
-export { writeRuleProposalAnswer } from './rule/write-rule-proposal-answer';
 export type { DefinitionsRecordKind } from './skill/definitions-record-kind';
 export type { RulesRecordKind } from './skill/rules-record-kind';
 export { makeRuleProposalHandler } from './rule/make-rule-proposal-handler';

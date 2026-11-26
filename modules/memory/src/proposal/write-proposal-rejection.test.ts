@@ -85,7 +85,7 @@ test('it keeps your reason in the erasable fields of the rejection record', asyn
 
   const records = await readRecords(memory.log, {
     afterSequence: 0,
-    kinds: ['memory.proposal_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
@@ -105,7 +105,7 @@ test('it writes no erasable fields for a rejection with no reason', async () => 
 
   const records = await readRecords(memory.log, {
     afterSequence: 0,
-    kinds: ['memory.proposal_rejected'],
+    kinds: ['proposals.settled'],
   });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([{ status: 'none' }]);
@@ -123,7 +123,7 @@ test('it keeps your reason after the rejection removes the key of the item it wo
   });
 
   const [records, keys] = await Promise.all([
-    readRecords(memory.log, { afterSequence: 0, kinds: ['memory.proposal_rejected'] }),
+    readRecords(memory.log, { afterSequence: 0, kinds: ['proposals.settled'] }),
     readRecordKeys(memory.log, [proposal.itemID]),
   ]);
 

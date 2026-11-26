@@ -68,12 +68,16 @@ async function setupTest() {
       });
 
       return withWriteTransaction(started.writer, (tx) =>
-        handler.approve({ tx, guard: () => Promise.resolve() }, row, {
-          proposalID: row.id,
-          actionHash,
-          choice: 'approve',
-          identityID: 'identity-1',
-        }),
+        handler.approve(
+          { tx, guard: () => Promise.resolve(), settle: () => Promise.resolve() },
+          row,
+          {
+            proposalID: row.id,
+            actionHash,
+            choice: 'approve',
+            identityID: 'identity-1',
+          },
+        ),
       );
     },
     approveBoundClick: async () => {
@@ -109,12 +113,16 @@ async function setupTest() {
       });
 
       return withWriteTransaction(started.writer, (tx) =>
-        handler.approve({ tx, guard: () => Promise.resolve() }, row, {
-          proposalID: row.id,
-          actionHash,
-          choice: 'approve',
-          identityID: 'identity-1',
-        }),
+        handler.approve(
+          { tx, guard: () => Promise.resolve(), settle: () => Promise.resolve() },
+          row,
+          {
+            proposalID: row.id,
+            actionHash,
+            choice: 'approve',
+            identityID: 'identity-1',
+          },
+        ),
       );
     },
     readRetopicBody: async () => {

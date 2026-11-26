@@ -11,7 +11,7 @@ import type {
   ProposalKindHandler,
   SharedProposal,
 } from '@heynixie/proposals';
-import { proposalLapseMs } from '@heynixie/proposals';
+import { buildDiscardedOutcome } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -24,7 +24,6 @@ import { describeProposedRule } from './describe-proposed-rule';
 import type { GapSettings } from './gap-settings';
 import { dayMs } from './gap-settings';
 import { ruleAnsweredCodec } from './rule-answered-codec';
-import { ruleLapsedCodec } from './rule-lapsed-codec';
 import { ruleProposedCodec } from './rule-proposed-codec';
 
 export interface ProposedRuleHandlerDeps extends RuleContext {
@@ -34,7 +33,7 @@ export interface ProposedRuleHandlerDeps extends RuleContext {
 export function makeProposedRuleHandler(deps: ProposedRuleHandlerDeps): ProposalKindHandler {
   return {
     family: 'rule_change',
-    lapseIntervalMs: proposalLapseMs,
+    lapseIntervalMs: (config) => config.lapseDays.rule_change * dayMs,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const records = await readProposalRecords(deps.log, db, rows);
@@ -46,22 +45,7 @@ export function makeProposedRuleHandler(deps: ProposedRuleHandlerDeps): Proposal
     },
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: null }),
     approve: (run, row, answer) => writeApproval(deps, run, row, answer),
-    decline: (run, row, answer) => writeDecline(deps, run, row, answer),
-    lapse: async (tx, row) => {
-      const groupHash = await readGroupHash(tx, row.id);
-
-      await writeRecordsInTransaction(tx, deps.log, [
-        {
-          kind: ruleLapsedCodec.kind,
-          definitions: deps.definitions(),
-          payload: ruleLapsedCodec.encode({
-            proposalID: row.id,
-            groupHash,
-            quietUntil: deps.clock.now() + deps.settings.quietDays * dayMs,
-          }),
-        },
-      ]);
-    },
+    discard: (_run, row, outcome) => Promise.resolve(buildDiscardedOutcome(row, outcome)),
   };
 }
 
@@ -188,6 +172,9 @@ async function writeApproval(
   return {
     status: 'done',
     result: { proposalID: row.id, state: 'approved', rule: { id: ruleID, revision: 1 } },
+    usedBy: ruleID,
+    detail: null,
+    otherThreads: [],
     afterCommit: async () => {
       await deps.runInForceSeed();
     },
@@ -205,33 +192,4 @@ async function readGroupHash(tx: Transaction<unknown>, proposalID: string): Prom
   invariant(group, 'an open proposed rule belongs to its group');
 
   return group.group_hash;
-}
-
-async function writeDecline(
-  deps: ProposedRuleHandlerDeps,
-  run: ApplyRun,
-  row: SharedProposal,
-  answer: ProposalAnswerInput,
-): Promise<ApplyOutcome> {
-  const tx = run.tx;
-
-  invariant(tx, 'a proposed rule answers in the transaction that the core opens');
-
-  const groupHash = await readGroupHash(tx, row.id);
-
-  await writeRecordsInTransaction(tx, deps.log, [
-    {
-      kind: ruleAnsweredCodec.kind,
-      definitions: deps.definitions(),
-      payload: ruleAnsweredCodec.encode({
-        proposalID: row.id,
-        groupHash,
-        answer: 'declined',
-        identityID: answer.identityID,
-        quietUntil: deps.clock.now() + deps.settings.quietDays * dayMs,
-      }),
-    },
-  ]);
-
-  return { status: 'done', result: { proposalID: row.id, state: 'declined' } };
 }

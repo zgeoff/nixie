@@ -2,8 +2,11 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { RecordInput } from '@heynixie/log';
 import { startWriter, writeRecords } from '@heynixie/log';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
+import { mapPromptProposalRecord } from './map-prompt-proposal-record';
 import { readPromptProposalAnswers } from './read-prompt-proposal-answers';
 
 async function setupTest() {
@@ -24,127 +27,52 @@ async function setupTest() {
     'unwrapKey',
   ]);
 
-  return { log: { writer, deploymentKey, projections: [] } };
-}
+  const definitions = { snapshotHash: 'snapshot-a' };
 
-test('it reads each answer on the thread with its prompt, its edits and the reason for a rejection', async () => {
-  const ctx = await setupTest();
-
-  await writeRecords(ctx.log, [
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'k3x9m2p7qa',
-        promptID: 'compaction',
-        proposalHash: 'hash-a',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
-      }),
-    },
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'w7tn4c9rhz',
-        promptID: 'compaction',
-        proposalHash: 'hash-b',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-1', callID: 'call-2', profile: 'standard' },
-      }),
-    },
-    {
-      kind: 'prompts.override_approved',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: {
-        proposalID: 'k3x9m2p7qa',
-        approvalID: 'approval-a',
-        proposalHash: 'hash-c',
-        isEdited: true,
-        approver: 'owner',
-        channel: 'host',
-      },
-    },
-    {
-      kind: 'prompts.override_rejected',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: { proposalID: 'w7tn4c9rhz' },
-      erasable: { reason: 'Keep the quote rule.' },
-    },
-  ]);
-
-  const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
-    after: 0,
-    through: 4,
+  const proposed = (proposalID: string, thread: string): RecordInput => ({
+    kind: 'prompts.override_proposed',
+    definitions,
+    thread,
+    payload: promptsOverrideProposedCodec.encode({
+      proposalID,
+      promptID: 'compaction',
+      proposalHash: 'hash-a',
+      baseHash: null,
+      entry: { _template: '{{ parts.safety }}' },
+      files: [],
+      reason: 'Drop the instruction part.',
+      provenance: { runID: 'run-1', callID: `call-${proposalID}`, profile: 'standard' },
+    }),
   });
 
-  expect(answers).toStrictEqual([
-    {
-      sequence: 3,
-      at: expect.toBeNumber(),
-      detail: {
-        proposalID: 'k3x9m2p7qa',
-        promptID: 'compaction',
-        step: 'approved',
-        isEdited: true,
-        pullRequestURL: null,
-        reason: null,
-      },
+  const exported = (proposalID: string, thread: string): RecordInput => ({
+    kind: 'prompts.override_exported',
+    definitions,
+    thread,
+    payload: {
+      proposalID,
+      approvalID: `approval-${proposalID}`,
+      pullRequestURL: `https://definitions.test/pull/${proposalID}`,
     },
-    {
-      sequence: 4,
-      at: expect.toBeNumber(),
-      detail: {
-        proposalID: 'w7tn4c9rhz',
-        promptID: 'compaction',
-        step: 'rejected',
-        isEdited: false,
-        pullRequestURL: null,
-        reason: 'Keep the quote rule.',
-      },
-    },
-  ]);
-});
+  });
 
-test('it reads the export of an approved proposal with its pull request', async () => {
+  return {
+    proposed,
+    exported,
+    log: {
+      writer,
+      deploymentKey,
+      projections: [buildProposalsProjection([mapPromptProposalRecord])],
+    },
+  };
+}
+
+test('it reads the export of an approved proposal with its prompt and its pull request', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'k3x9m2p7qa',
-        promptID: 'compaction',
-        proposalHash: 'hash-a',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
-      }),
-    },
-    {
-      kind: 'prompts.override_exported',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: {
-        proposalID: 'k3x9m2p7qa',
-        approvalID: 'approval-a',
-        pullRequestURL: 'https://definitions.test/pull/4',
-      },
-    },
+    ctx.proposed('k3x9m2p7qa', 'conversation'),
+    ctx.exported('k3x9m2p7qa', 'conversation'),
   ]);
 
   const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
@@ -152,43 +80,28 @@ test('it reads the export of an approved proposal with its pull request', async 
     through: 2,
   });
 
-  expect(answers.map((answer) => answer.detail)).toStrictEqual([
+  expect(answers).toStrictEqual([
     {
-      proposalID: 'k3x9m2p7qa',
-      promptID: 'compaction',
-      step: 'exported',
-      isEdited: false,
-      pullRequestURL: 'https://definitions.test/pull/4',
-      reason: null,
+      sequence: 2,
+      at: expect.toBeNumber(),
+      detail: {
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        step: 'exported',
+        isEdited: false,
+        pullRequestURL: 'https://definitions.test/pull/k3x9m2p7qa',
+        reason: null,
+      },
     },
   ]);
 });
 
-test('it never reads an answer on another thread', async () => {
+test('it never reads an export on another thread', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'task-a',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'k3x9m2p7qa',
-        promptID: 'compaction',
-        proposalHash: 'hash-a',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
-      }),
-    },
-    {
-      kind: 'prompts.override_lapsed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'task-a',
-      payload: { proposalID: 'k3x9m2p7qa' },
-    },
+    ctx.proposed('k3x9m2p7qa', 'task-a'),
+    ctx.exported('k3x9m2p7qa', 'task-a'),
   ]);
 
   const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
@@ -199,54 +112,14 @@ test('it never reads an answer on another thread', async () => {
   expect(answers).toStrictEqual([]);
 });
 
-test('it reads the answers through the end of the range and none after it', async () => {
+test('it reads the exports through the end of the range and none after it', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'k3x9m2p7qa',
-        promptID: 'compaction',
-        proposalHash: 'hash-a',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
-      }),
-    },
-    {
-      kind: 'prompts.override_proposed',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID: 'w7tn4c9rhz',
-        promptID: 'compaction',
-        proposalHash: 'hash-b',
-        baseHash: null,
-        entry: { _template: '{{ parts.safety }}' },
-        files: [],
-        reason: 'Drop the instruction part.',
-        provenance: { runID: 'run-1', callID: 'call-2', profile: 'standard' },
-      }),
-    },
-    {
-      kind: 'prompts.override_rejected',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: { proposalID: 'k3x9m2p7qa' },
-      erasable: { reason: 'Keep the quote rule.' },
-    },
-    {
-      kind: 'prompts.override_rejected',
-      definitions: { snapshotHash: 'snapshot-a' },
-      thread: 'conversation',
-      payload: { proposalID: 'w7tn4c9rhz' },
-      erasable: { reason: 'Keep the instruction part.' },
-    },
+    ctx.proposed('k3x9m2p7qa', 'conversation'),
+    ctx.proposed('w7tn4c9rhz', 'conversation'),
+    ctx.exported('k3x9m2p7qa', 'conversation'),
+    ctx.exported('w7tn4c9rhz', 'conversation'),
   ]);
 
   const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
@@ -254,56 +127,23 @@ test('it reads the answers through the end of the range and none after it', asyn
     through: 3,
   });
 
-  expect(answers).toStrictEqual([
-    {
-      sequence: 3,
-      at: expect.toBeNumber(),
-      detail: {
-        proposalID: 'k3x9m2p7qa',
-        promptID: 'compaction',
-        step: 'rejected',
-        isEdited: false,
-        pullRequestURL: null,
-        reason: 'Keep the quote rule.',
-      },
-    },
-  ]);
+  expect(answers.map((answer) => answer.detail.proposalID)).toStrictEqual(['k3x9m2p7qa']);
 });
 
-test('it reads every answer in the range, past the size of one page of records', async () => {
+test('it reads every export in the range, past the size of one page of records', async () => {
   const ctx = await setupTest();
 
-  const proposals = Array.from({ length: 1001 }, (_, index) => ({
-    kind: 'prompts.override_proposed' as const,
-    definitions: { snapshotHash: 'snapshot-a' },
-    thread: 'conversation',
-    payload: promptsOverrideProposedCodec.encode({
-      proposalID: `proposal-${String(index)}`,
-      promptID: 'compaction',
-      proposalHash: 'hash-a',
-      baseHash: null,
-      entry: { _template: '{{ parts.safety }}' },
-      files: [],
-      reason: 'Drop the instruction part.',
-      provenance: { runID: 'run-1', callID: `call-${String(index)}`, profile: 'standard' },
-    }),
-  }));
+  const ids = Array.from({ length: 1001 }, (_, index) => `proposal-${String(index)}`);
 
-  const rejections = proposals.map((_, index) => ({
-    kind: 'prompts.override_rejected' as const,
-    definitions: { snapshotHash: 'snapshot-a' },
-    thread: 'conversation',
-    payload: { proposalID: `proposal-${String(index)}` },
-  }));
-
-  await writeRecords(ctx.log, [...proposals, ...rejections]);
+  await writeRecords(ctx.log, [
+    ...ids.map((id) => ctx.proposed(id, 'conversation')),
+    ...ids.map((id) => ctx.exported(id, 'conversation')),
+  ]);
 
   const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
     after: 1001,
     through: 2002,
   });
 
-  expect(answers.map((answer) => answer.detail.proposalID)).toStrictEqual(
-    rejections.map((rejection) => rejection.payload.proposalID),
-  );
+  expect(answers.map((answer) => answer.detail.proposalID)).toStrictEqual(ids);
 });

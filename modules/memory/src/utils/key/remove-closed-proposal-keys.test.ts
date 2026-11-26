@@ -9,6 +9,7 @@ import {
 } from '@heynixie/log';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { createProposal } from '../../test-utils/create-proposal';
+import { lapseTestProposal } from '../../test-utils/lapse-test-proposal';
 import { startKeyStoreReader } from '../../test-utils/start-key-store-reader';
 import { startNextTestMemory } from '../../test-utils/start-next-test-memory';
 import { startTestMemory } from '../../test-utils/start-test-memory';
@@ -99,14 +100,12 @@ test('it finishes on the next lapse sweep a key removal whose checkpoint a reade
     },
   });
 
-  await createProposal(memory.store, { text: 'Likes jazz' });
-
+  const proposed = await createProposal(memory.store, { text: 'Likes jazz' });
   const reader = await startKeyStoreReader(memory.dataDir);
 
   clock.advance(5000);
 
-  const blocked = await memory.store.proposals
-    .lapse()
+  const blocked = await lapseTestProposal(memory, proposed.proposalID)
     .then(() => 'finished')
     .catch(() => 'blocked');
 

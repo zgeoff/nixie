@@ -1,10 +1,5 @@
 import type { Definitions, JSONObject, Log, LogRecord, RecordInput } from '@heynixie/log';
-import {
-  JSON_OBJECT_SCHEMA,
-  parseJSONObject,
-  readRecords,
-  writeRecordsInTransaction,
-} from '@heynixie/log';
+import { JSON_OBJECT_SCHEMA, parseJSONObject, readRecords } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
@@ -14,6 +9,7 @@ import type {
   ProposalRefusal,
   SharedProposal,
 } from '@heynixie/proposals';
+import { buildDiscardedOutcome } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -21,8 +17,6 @@ import { ruleBodySchema } from '../rule/rule-body-schema';
 import type { Rule } from '../types';
 import { hasQueuedEffect } from '../utils/has-queued-effect';
 import { actionAnsweredCodec } from './action-answered-codec';
-import { actionLapsedCodec } from './action-lapsed-codec';
-import { actionProposalLapseMs } from './action-proposal-lapse-ms';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
 import { buildActionProposalSentence } from './build-action-proposal-sentence';
@@ -113,7 +107,7 @@ export interface ActionHandlerDeps {
   readonly failHeld: (
     tx: Transaction<unknown>,
     row: SharedProposal,
-    reason: 'declined' | 'lapsed',
+    reason: 'declined' | 'lapsed' | 'withdrawn',
   ) => Promise<void>;
 
   // runs after the answer commits, so a rule takes effect at once
@@ -127,10 +121,12 @@ export interface ActionHandlerDeps {
   readonly runGapCheck: (groupHash: string) => Promise<void>;
 }
 
+const dayMs = 24 * 60 * 60 * 1000;
+
 export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKindHandler {
   return {
     family: 'action',
-    lapseIntervalMs: actionProposalLapseMs,
+    lapseIntervalMs: (config) => config.lapseDays.action * dayMs,
     ownsTransaction: false,
     readBodies: async (db, rows) => {
       const records = await readProposedRecords(deps, db, rows);
@@ -141,20 +137,21 @@ export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKind
 
       return new Map(bodies);
     },
+
+    // reads only the proposal's own record: a tool's extra card fields read on another connection
+    readSentence: (tx, row) => readSentence(deps, tx, row),
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: row.ruleHash }),
     approve: (run, row, answer) => writeAnswer(deps, run, row, answer),
-    decline: (run, row, answer) => writeAnswer(deps, run, row, answer),
-    lapse: async (tx, row) => {
-      await writeRecordsInTransaction(tx, deps.log, [
-        {
-          kind: actionLapsedCodec.kind,
-          definitions: deps.definitions(),
-          ...(row.thread === null ? {} : { thread: row.thread }),
-          payload: actionLapsedCodec.encode({ proposalID: row.id }),
-        },
-      ]);
+    discard: async (run, row, outcome, answer) => {
+      if (outcome === 'declined' && answer !== null) {
+        return writeAnswer(deps, run, row, answer);
+      }
 
-      await deps.failHeld(tx, row, 'lapsed');
+      invariant(run.tx, 'a held action fails in the transaction that the core opens');
+
+      await deps.failHeld(run.tx, row, outcome);
+
+      return buildDiscardedOutcome(row, outcome);
     },
   };
 }
@@ -278,6 +275,26 @@ function buildActionApproveLabel(tool: string, destination: string | undefined):
   return destination === undefined ? `Run ${tool}` : `Run ${tool} to ${destination}`;
 }
 
+async function readSentence(
+  deps: ActionHandlerDeps,
+  db: Parameters<ProposalKindHandler['readBodies']>[0],
+  row: SharedProposal,
+): Promise<string | null> {
+  const records = await readProposedRecords(deps, db, [row]);
+
+  const record = records.get(row.createdSequence);
+  const erasable = record === undefined ? null : findErasable(record);
+
+  if (record === undefined || erasable === null) {
+    return null;
+  }
+
+  const payload = actionProposedCodec.decode(record.payload);
+  const destinations = erasable.destinations.map((destination) => destination.value);
+
+  return buildActionProposalSentence(payload.tool, payload.effects, destinations);
+}
+
 async function writeAnswer(
   deps: ActionHandlerDeps,
   run: ApplyRun,
@@ -346,6 +363,9 @@ async function writeAnswer(
     return {
       status: 'done',
       result: { proposalID: row.id, state: 'declined' },
+      usedBy: null,
+      detail: null,
+      otherThreads: [],
       afterCommit: afterGap,
     };
   }
@@ -354,6 +374,9 @@ async function writeAnswer(
     return {
       status: 'done',
       result: { proposalID: row.id, state: 'approved' },
+      usedBy: queued?.status === 'queued' ? queued.actionID : null,
+      detail: null,
+      otherThreads: [],
       afterCommit: afterGap,
     };
   }
@@ -367,6 +390,9 @@ async function writeAnswer(
   return {
     status: 'done',
     result: { proposalID: row.id, state: 'approved', rule: { id: rule.ruleID, revision: 1 } },
+    usedBy: queued?.status === 'queued' ? queued.actionID : null,
+    detail: null,
+    otherThreads: [],
     afterCommit: async () => {
       await deps.runAfterRule();
     },

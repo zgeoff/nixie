@@ -1,6 +1,7 @@
+import type { Clock } from '@heynixie/clock';
 import type { CheckedTables } from '@heynixie/db';
 import type { Log } from '@heynixie/log';
-import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
+import type { ProposalConfig, ProposalContext, ProposalOutcome } from '@heynixie/proposals';
 import type { promptsOverrideProposedCodec } from './override/prompts-override-proposed-codec';
 
 interface PromptOwner {
@@ -87,6 +88,10 @@ export type CheckPromptProposal = (draft: PromptProposalDraft) => readonly Promp
 
 export interface PromptToolsContext {
   readonly log: Log;
+  readonly clock: Pick<Clock, 'now'>;
+
+  // the lapse of each family; the defaults apply when the server sets none
+  readonly proposalConfig?: ProposalConfig | undefined;
   readonly readInForce: () => PromptsInForce | null;
   readonly checkProposal: CheckPromptProposal;
 }
@@ -115,21 +120,6 @@ export interface PendingPromptProposal {
   readonly inForce: PromptOverride | null;
 }
 
-export type PromptProposalAnswer =
-  | {
-      readonly answer: 'approve';
-      readonly proposalID: string;
-      readonly proposalHash: string;
-      readonly entry?: Readonly<Record<string, string>>;
-      readonly files?: readonly PromptPartFile[];
-    }
-  | {
-      readonly answer: 'reject';
-      readonly proposalID: string;
-      readonly proposalHash: string;
-      readonly reason: string;
-    };
-
 export type PromptAnswerRefusalCode =
   | 'NOT_FOUND'
   | 'PROPOSAL_CLOSED'
@@ -156,7 +146,7 @@ export type PromptProposalAnswerResult =
   | { readonly status: 'rejected'; readonly proposalID: string }
   | PromptAnswerRefusal;
 
-export type PromptProposalStep = ProposalOutcome | 'exported';
+export type PromptProposalStep = 'exported';
 
 export interface PromptProposalAnswerEvent {
   readonly proposalID: string;

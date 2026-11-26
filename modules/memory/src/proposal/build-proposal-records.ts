@@ -1,6 +1,5 @@
 import type { RecordInput } from '@heynixie/log';
 import type { StoreParts } from '../types';
-import { buildProposalLapseTime } from './build-proposal-lapse-time';
 import type { PendingProposal } from './write-proposal-record';
 
 const proposalMarkKinds = {
@@ -11,9 +10,9 @@ const proposalMarkKinds = {
 export function buildProposalRecords(
   parts: Pick<StoreParts, 'context'>,
   pending: PendingProposal,
+  lapseAt: number,
 ): readonly RecordInput[] {
   const plan = pending.plan;
-  const gate = parts.context.gate;
   const { sealedLabels, ...sealed } = pending.sealed;
 
   const proposed: RecordInput = {
@@ -36,7 +35,7 @@ export function buildProposalRecords(
       checks: plan.checks,
       model: plan.caller.model,
       noticeKey: plan.group.noticeKey,
-      lapseAt: buildProposalLapseTime(gate.clock.now(), gate.limits, plan.until),
+      lapseAt,
     },
   };
 

@@ -1,13 +1,16 @@
 import type { Clock } from '@heynixie/clock';
 import type { DefinitionsInForce, SkillOrigin } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
-import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
+import type { ProposalConfig, ProposalContext, ProposalOutcome } from '@heynixie/proposals';
 import type { RelatedMemoryLookup, ToolRun } from '@heynixie/tools';
 import type { skillsWriteProposedCodec } from './write/skills-write-proposed-codec';
 
 export interface SkillToolsContext {
   readonly log: Log;
   readonly clock: Pick<Clock, 'now'>;
+
+  // the lapse of each family; the defaults apply when the server sets none
+  readonly proposalConfig?: ProposalConfig | undefined;
   readonly readInForce: () => DefinitionsInForce | null;
 
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;

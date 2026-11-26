@@ -444,7 +444,10 @@ test('it leaves every value of an item no purge reached readable through the rea
 
   const written = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 200 });
 
-  const rejection = written.find((entry) => entry.record.kind === 'memory.proposal_rejected');
+  const rejection = written.find(
+    (entry) =>
+      entry.record.kind === 'proposals.settled' && entry.record.payload['outcome'] === 'declined',
+  );
 
   expect(versions).toStrictEqual([
     {

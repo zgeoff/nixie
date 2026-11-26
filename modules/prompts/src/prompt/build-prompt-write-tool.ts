@@ -1,11 +1,12 @@
-import { createShortID } from '@heynixie/db';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { buildProposeDeps, proposeInTransaction } from '@heynixie/proposals';
 import type { ToolCall, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import type { PromptToolsContext } from '../types';
 import { buildPromptOverrideHash } from './build-prompt-override-hash';
 import { buildPromptProposalHash } from './build-prompt-proposal-hash';
+import { makePromptProposalHandler } from './make-prompt-proposal-handler';
 import { promptIDs } from './prompt-ids';
 import { promptPartFileSchema } from './prompt-proposal-schema';
 
@@ -105,32 +106,74 @@ async function runPromptWrite(
     return { status: 'error', message: 'a proposal needs a reason for the owner' };
   }
 
-  const proposalID = createShortID();
+  const definitions = {
+    snapshotHash: inForce.snapshotHash,
+    personaVersion: inForce.personaVersion,
+  };
 
-  await writeRecords(context.log, [
-    {
-      kind: 'prompts.override_proposed',
+  const proposalHash = buildPromptProposalHash({
+    promptID: input.id,
+    entry: input.entry,
+    files: input.files,
+  });
+
+  const answerContext = {
+    log: context.log,
+    clock: context.clock,
+    definitions: () => definitions,
+    readInForce: context.readInForce,
+    checkProposal: context.checkProposal,
+  };
+
+  const deps = buildProposeDeps({
+    ...answerContext,
+    config: context.proposalConfig,
+    handler: makePromptProposalHandler(answerContext),
+  });
+
+  const proposed = await withWriteTransaction(context.log.writer, async (tx) => {
+    const created = await proposeInTransaction(deps, tx, {
+      family: 'prompt',
+      kind: 'internal_change',
+      cause: 'prompt_override',
+      riskClass: 'always_ask',
+      actionHash: proposalHash,
+      ruleHash: null,
       thread: run.thread,
-      definitions: { snapshotHash: inForce.snapshotHash, personaVersion: inForce.personaVersion },
-      payload: promptsOverrideProposedCodec.encode({
-        proposalID,
-        promptID: input.id,
-        proposalHash: buildPromptProposalHash({
+      taskID: null,
+      deadlineAt: null,
+      sameThing: input.id,
+    });
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'prompts.override_proposed',
+        thread: run.thread,
+        definitions,
+        payload: promptsOverrideProposedCodec.encode({
+          proposalID: created.proposalID,
           promptID: input.id,
+          proposalHash,
+          baseHash: buildPromptOverrideHash(inForce.prompts[input.id]),
           entry: input.entry,
           files: input.files,
+          reason: input.reason,
+          provenance: { runID: run.runID, callID: call.callID, profile: run.model.profile },
         }),
-        baseHash: buildPromptOverrideHash(inForce.prompts[input.id]),
-        entry: input.entry,
-        files: input.files,
-        reason: input.reason,
-        provenance: { runID: run.runID, callID: call.callID, profile: run.model.profile },
-      }),
-    },
-  ]);
+      },
+    ]);
+
+    return created;
+  });
+
+  const replacedNote = proposed.replaced === null ? '' : `; it replaced ${proposed.replaced}`;
 
   return {
     status: 'ok',
-    result: { status: 'pending', proposalID, message: `pending approval as ${proposalID}` },
+    result: {
+      status: 'pending',
+      proposalID: proposed.shortID,
+      message: `pending approval as ${proposed.shortID}${replacedNote}`,
+    },
   };
 }

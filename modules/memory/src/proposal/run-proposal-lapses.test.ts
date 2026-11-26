@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecordKeys } from '@heynixie/log';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { createProposal } from '../test-utils/create-proposal';
+import { lapseTestProposal } from '../test-utils/lapse-test-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import type { MemoryTables } from '../types';
 
@@ -19,7 +20,9 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
 
   clock.advance(5000);
 
-  const lapsed = await memory.store.proposals.lapse();
+  const lapsed = await lapseTestProposal(memory, proposed.proposalID);
+
+  await memory.store.proposals.lapse();
 
   const row = await memory.writer.db
     .$extendTables<MemoryTables>()
@@ -30,7 +33,7 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
 
   const keys = await readRecordKeys(memory.log, [row.item_id]);
 
-  expect(lapsed).toBe(1);
+  expect(lapsed).toBe(true);
   expect(row.status).toBe('lapsed');
   expect(keys.get(row.item_id)).toBeUndefined();
 });
@@ -45,23 +48,13 @@ test('it never lapses a proposal before its lapse time', async () => {
     },
   });
 
-  await memory.store.writes.remember({
-    text: 'Likes jazz',
-    caller: {
-      origin: 'conversation',
-      thread: 'conversation',
-      logThread: 'conversation',
-      taskID: 'conversation',
-      runID: 'conversation',
-      model: 'claude-opus-5-5',
-    },
-  });
+  const pendingProposal = await createProposal(memory.store, { text: 'Likes jazz' });
 
   clock.advance(4999);
 
-  const lapsed = await memory.store.proposals.lapse();
+  const lapsed = await lapseTestProposal(memory, pendingProposal.proposalID);
   const pending = await memory.store.proposals.listPending();
 
-  expect(lapsed).toBe(0);
+  expect(lapsed).toBe(false);
   expect(pending).toHaveLength(1);
 });

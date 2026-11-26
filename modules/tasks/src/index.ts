@@ -289,6 +289,8 @@ export type {
 export { waitAtFaultPoint } from './lease/wait-at-fault-point';
 export { writeInboxRecords } from './task/projection/write-inbox-records';
 export { writeInboxRecordsInTransaction } from './inbox/write-inbox-records-in-transaction';
+export type { SettlementTarget } from './inbox/read-settlement-target';
+export { readSettlementTarget } from './inbox/read-settlement-target';
 export { writeThreadRecordInTransaction } from './inbox/write-thread-record-in-transaction';
 export { readToolHolders } from './inbox/read-tool-holders';
 export { writeStepCommit } from './step/write-step-commit';

@@ -6,7 +6,6 @@ import type { TurnMemorySettings } from '../turn/types';
 import { defaultGateLimits } from './default-gate-limits';
 import type { GateLimits } from './gate-context';
 
-const dayMs = 24 * 60 * 60 * 1000;
 const countSchema = z.number().int().positive();
 
 export interface MemoryConfig {
@@ -31,7 +30,10 @@ const indexTokensSchema = z
 export const memoryConfigSchema = z
   .strictObject({
     evidence_window: countSchema.default(defaultGateLimits.evidenceWindow),
-    proposal_lapse_days: countSchema.default(defaultGateLimits.proposalLapseMs / dayMs),
+    proposal_lapse_days: z
+      .never({ error: 'moved to approvals.lapse_days.memory' })
+      .exactOptional()
+      .describe('Moved: set approvals.lapse_days.memory.'),
     proposal_cap: countSchema.default(defaultGateLimits.proposalCap),
     close_match_score: z.number().min(0).max(1).default(defaultGateLimits.closeMatchScore),
 
@@ -61,7 +63,7 @@ export const memoryConfigSchema = z
   .transform((config): MemoryConfig => ({
     limits: {
       evidenceWindow: config.evidence_window,
-      proposalLapseMs: config.proposal_lapse_days * dayMs,
+      proposalLapseMs: defaultGateLimits.proposalLapseMs,
       proposalCap: config.proposal_cap,
       closeMatchScore: config.close_match_score,
     },

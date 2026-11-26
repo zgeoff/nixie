@@ -1,5 +1,4 @@
 import { removeRecordKey, withWriteTransaction } from '@heynixie/log';
-import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { ProposalRejection } from '../gate/gate-context';
 import { requirePendingProposal } from '../pending/require-pending-proposal';
 import type { MemoryTables, StoreParts } from '../types';
@@ -18,18 +17,6 @@ export async function writeProposalRejection(
     });
 
     await answer.writeInTransaction?.(tx);
-
-    await writeThreadRecordInTransaction(
-      tx,
-      { log },
-      {
-        kind: 'memory.proposal_rejected',
-        definitions: parts.context.definitions(),
-        ...(pending.thread === null ? {} : { thread: pending.thread }),
-        payload: { proposalID: pending.proposal_id, identityID: answer.identityID },
-        ...(answer.reason === undefined ? {} : { erasable: { reason: answer.reason } }),
-      },
-    );
 
     return pending;
   });

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import { tasksProjections } from '@heynixie/tasks';
 import { writeTestTriggerFire } from '@heynixie/tasks/test-utils';
 import { triggersProjections } from '@heynixie/triggers';
@@ -29,6 +30,7 @@ import { toCanonicalJSON } from '../utils/to-canonical-json';
 import { readWrittenSkills } from '../written/read-written-skills';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
+import { mapRuleProposalRecord } from './map-rule-proposal-record';
 import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
 import { ruleFiresProjection } from './rule-fires-projection';
@@ -1802,7 +1804,7 @@ test('it puts a rule edit that widens in force', async () => {
 });
 
 test('it withdraws a rule change proposal that an earlier release left pending, and puts the widening in force', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ projections: [buildProposalsProjection([mapRuleProposalRecord])] });
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
@@ -1853,7 +1855,7 @@ test('it withdraws a rule change proposal that an earlier release left pending, 
 });
 
 test('it withdraws a rule change proposal that an earlier release left pending, when nothing else changed', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ projections: [buildProposalsProjection([mapRuleProposalRecord])] });
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');

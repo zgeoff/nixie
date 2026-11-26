@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { proposalsSettledCodec } from '@heynixie/proposals';
 import { collectMandateList } from './collect-mandate-list';
 import type { ListedMandate, MandateEvent } from './collect-mandate-list';
 import { mandateDeclinedCodec } from './mandate-declined-codec';
@@ -16,6 +17,7 @@ const mandateKinds = [
   mandateDeclinedCodec.kind,
   mandateLapsedCodec.kind,
   mandateEndedCodec.kind,
+  proposalsSettledCodec.kind,
 ];
 
 // Every mandate that a recent record names, in each state, the newest proposal first.
@@ -52,6 +54,22 @@ export async function readMandateList(log: Log, now: number): Promise<readonly L
 
     if (record.kind === mandateLapsedCodec.kind) {
       return [{ type: 'lapsed', ...mandateLapsedCodec.decode(record.payload) }];
+    }
+
+    if (record.kind === proposalsSettledCodec.kind) {
+      const settled = proposalsSettledCodec.decode(record.payload);
+
+      if (settled.family !== 'rule_change') {
+        return [];
+      }
+
+      if (settled.outcome === 'declined') {
+        return [{ type: 'declined', proposalID: settled.proposalID }];
+      }
+
+      return settled.outcome === 'lapsed'
+        ? [{ type: 'lapsed', proposalID: settled.proposalID }]
+        : [];
     }
 
     if (record.kind === mandateEndedCodec.kind) {

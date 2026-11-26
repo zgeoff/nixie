@@ -1,5 +1,6 @@
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import type { EffectDeclaration, McpOverrides, McpReconcile } from '@heynixie/policy';
+import type { ProposalConfig } from '@heynixie/proposals';
 import type { Kysely, Transaction } from 'kysely';
 
 // The facts in use for one server, folded from records into the mcp_servers projection.
@@ -60,6 +61,9 @@ export interface McpContext {
   readonly log: Log;
   readonly definitions: () => Definitions;
   readonly now: () => number;
+
+  // the lapse of each family; the defaults apply when the server sets none
+  readonly proposalConfig?: ProposalConfig | undefined;
 }
 
 // One move of a pin.

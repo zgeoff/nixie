@@ -1,6 +1,6 @@
 import type { Projection } from '@heynixie/log';
 import { actionAnsweredCodec } from '@heynixie/policy';
-import { proposalsWithdrawnCodec } from '@heynixie/proposals';
+import { proposalsSettledCodec, proposalsWithdrawnCodec } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import { rulesChangeLapsedCodec } from '../change/rules-change-lapsed-codec';
 import type { DefinitionsTables } from '../types';
@@ -66,6 +66,16 @@ export const gapGroupsProjection: Projection = {
       return closeProposal(tx, rulesChangeLapsedCodec.decode(record.payload).proposalID, {
         lapsed_at: record.recordedAt.getTime(),
       });
+    }
+
+    // A decline and a lapse start the quiet time from the record's time, as a lapse of the release
+    // before does, and the check adds the quiet days to it.
+    if (record.kind === proposalsSettledCodec.kind) {
+      const settled = proposalsSettledCodec.decode(record.payload);
+      const isQuiet = settled.outcome === 'declined' || settled.outcome === 'lapsed';
+      const closing = isQuiet ? { lapsed_at: record.recordedAt.getTime() } : {};
+
+      return closeProposal(tx, settled.proposalID, closing);
     }
 
     if (record.kind === proposalsWithdrawnCodec.kind) {

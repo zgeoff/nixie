@@ -28,8 +28,6 @@ export { MemoryItemNotFoundError } from './utils/error/memory-item-not-found-err
 export { MemoryStateError } from './utils/error/memory-state-error';
 export type { ForgetFloorCause } from './forget/read-forget-floor';
 export { readForgetFloor } from './forget/read-forget-floor';
-export type { AnswerQuoteSource, ProposalAnswerEvent } from './proposal/build-proposal-answer-kind';
-export { buildProposalAnswerKind } from './proposal/build-proposal-answer-kind';
 export { buildMemoryChangeKind } from './memory/build-memory-change-kind';
 export type { HostMemory, HostMemoryStore } from './memory/build-host-memory';
 export { buildHostMemory } from './memory/build-host-memory';

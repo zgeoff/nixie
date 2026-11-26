@@ -6,7 +6,7 @@ import { creditFailedActions } from './credit-failed-actions';
 
 export interface HeldClose {
   readonly proposalID: string;
-  readonly reason: 'declined' | 'lapsed';
+  readonly reason: 'declined' | 'lapsed' | 'withdrawn';
 }
 
 // A declined or lapsed proposal fails the action it held, so the task hears that the owner said no.

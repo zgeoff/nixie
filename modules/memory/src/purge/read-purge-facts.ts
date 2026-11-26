@@ -105,7 +105,7 @@ async function readRejectionKeyIDs(
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select('key_id')
-    .where('kind', '=', 'memory.proposal_rejected')
+    .where('kind', 'in', ['memory.proposal_rejected', 'proposals.settled'])
     .where(sql`json_extract(payload, '$.proposalID')`, 'in', proposalIDs)
     .where('key_id', 'is not', null)
     .execute();

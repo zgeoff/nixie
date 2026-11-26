@@ -119,7 +119,7 @@ test('it proposes a new skill for review and records its files and the run that 
       thread: 'conversation',
       definitions: { snapshotHash: seeded.inForce?.snapshotHash },
       payload: {
-        proposalID,
+        proposalID: expect.stringMatching(/^[0-9a-f-]{36}$/u),
         name: 'tide-tables',
         skillHash: expect.toSatisfy((hash: string) => /^[0-9a-f]{64}$/u.test(hash)),
         baseHash: null,

@@ -19,8 +19,8 @@ import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderMailWoke } from './render-mail-woke';
 import { renderPageEventMessage } from './render-page-event-message';
-import { renderProposalDecline } from './render-proposal-decline';
 import { renderProposalDefer } from './render-proposal-defer';
+import { renderProposalSettled } from './render-proposal-settled';
 import { renderRecoveryNotice } from './render-recovery-notice';
 import type { ReminderRead } from './render-reminder-notice';
 import { renderReminderNotice } from './render-reminder-notice';
@@ -129,11 +129,8 @@ export function renderInboxMessage(
     return renderReminderNotice(record, times, reminder);
   }
 
-  // memory and skills register these kinds, and sessions depends on neither
-  const kind: string = record.kind;
-
-  if (kind === 'memory.proposal_rejected' || kind === 'skills.write_rejected') {
-    return renderProposalDecline(record, times);
+  if (record.kind === 'proposals.settled') {
+    return renderProposalSettled(record, times);
   }
 
   if (record.kind === 'proposals.deferred' || record.kind === 'proposals.returned') {

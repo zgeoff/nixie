@@ -1,7 +1,7 @@
 import type { LogTables } from '@heynixie/log';
+import type { ProposalTables } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import { skillProposalOutcomes } from '../proposal/skill-proposal-outcomes';
 import type { SkillProposalState } from '../types';
 import { skillProposalSchema } from '../utils/skill-proposal-schema';
 
@@ -31,25 +31,28 @@ export async function readSkillProposals(
     return [];
   }
 
-  const closing = await records
-    .selectFrom('records')
-    .select(['kind', proposalIDColumn.as('proposal_id')])
-    .where('kind', 'in', [...skillProposalOutcomes.keys()])
+  // A proposal's state lives in the shared row, which every outcome of every family writes.
+  const rows = await db
+    .$extendTables<ProposalTables>()
+    .selectFrom('proposals')
+    .select(['proposal_id', 'state'])
     .where(
-      proposalIDColumn,
+      'proposal_id',
       'in',
-      proposed.map((row) => row.proposal_id),
+      proposed.map((row) => String(row.proposal_id)),
     )
     .execute();
 
   const closed = new Map(
-    closing.map((row) => [row.proposal_id, skillProposalOutcomes.get(row.kind) ?? null]),
+    rows.flatMap((row) =>
+      row.state === 'pending' || row.state === 'deferred' ? [] : [[row.proposal_id, row.state]],
+    ),
   );
 
   return proposed.map((row) => ({
     proposal: skillProposalSchema.parse(JSON.parse(row.payload)),
     thread: row.thread,
     proposedAt: row.recorded_at,
-    outcome: closed.get(row.proposal_id) ?? null,
+    outcome: closed.get(String(row.proposal_id)) ?? null,
   }));
 }

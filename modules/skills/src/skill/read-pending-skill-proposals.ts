@@ -1,5 +1,5 @@
 import { loadSkillVersions, readDefinitionsInForce } from '@heynixie/definitions';
-import { proposalLapseMs, readProposalLapses } from '@heynixie/proposals';
+import { readProposalLapses } from '@heynixie/proposals';
 import type { PendingSkillProposal, SkillProposalContext, SkillProposalState } from '../types';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
@@ -19,7 +19,7 @@ export async function readPendingSkillProposals(
   );
 
   const lapseOf = (entry: SkillProposalState): number =>
-    lapses.get(entry.proposal.proposalID) ?? entry.proposedAt + proposalLapseMs;
+    lapses.get(entry.proposal.proposalID) ?? entry.proposedAt;
 
   const pending = proposals.filter((entry) => entry.outcome === null && lapseOf(entry) > now);
 
