@@ -1,14 +1,15 @@
 import type { ActionAttempt, ProviderResponse } from '../../types';
-import { collectStaleMarkerKeys } from '../build-action-marker';
+import { collectStaleMarkerKeys, isMarkerKept } from '../build-action-marker';
+import { buildAttemptMarker } from '../build-attempt-marker';
 import { callGoogle } from '../call-google';
 import { pickGoogleErrorResponse } from '../pick-google-error-response';
-import { readActionMarker } from '../read-action-marker';
 import type { GoogleDeps } from '../types';
 import { buildEventPatch } from './build-event-patch';
 import { buildEventPath } from './build-event-path';
 import { buildEventRef } from './build-event-ref';
 import { calendarArgumentsSchema } from './calendar-arguments-schema';
 import { collectEventDestinations } from './collect-event-destinations';
+import { collectOtherAddresses } from './collect-other-addresses';
 import { isSameAddresses } from './is-same-addresses';
 import { parseCalendarEvent } from './parse-calendar-event';
 import { pickEventRefusal } from './pick-event-refusal';
@@ -42,9 +43,8 @@ export async function runCalendarChange(
   const context = read.context;
   const ref = read.ref;
   const event = read.event;
-  const addGuests = parsed.data.addGuests ?? [];
-
-  const marker = await readActionMarker(deps, attempt.actionID);
+  const addGuests = collectOtherAddresses(parsed.data.addGuests ?? [], context.account);
+  const marker = buildAttemptMarker(attempt, deps.clock.now());
 
   if (marker.key in event.privateProperties) {
     return {
@@ -53,6 +53,15 @@ export async function runCalendarChange(
         event: buildEventRef(context.connection, ref.event, ref.calendar),
         link: event.link,
       },
+    };
+  }
+
+  const destinations = withGuests ? collectEventDestinations(event, addGuests) : [];
+
+  if (withGuests && !isSameAddresses(destinations, attempt.destinations)) {
+    return {
+      kind: 'destinations_changed',
+      reason: 'the guests of the event differ from the ones that were checked',
     };
   }
 
@@ -66,24 +75,20 @@ export async function runCalendarChange(
     return { kind: 'refused', reason: refusal.message };
   }
 
-  const destinations = withGuests ? collectEventDestinations(event, addGuests) : [];
-
-  if (withGuests && !isSameAddresses(destinations, attempt.destinations)) {
-    return {
-      kind: 'destinations_changed',
-      reason: 'the guests of the event differ from the ones that were checked',
-    };
-  }
-
   const patched = await callGoogle(deps.hosts, context, {
     path: buildEventPath(ref.calendar, ref.event),
     method: 'PATCH',
     query: { sendUpdates: withGuests ? 'all' : 'none' },
     ...(withGuests ? { headers: { 'if-match': event.etag } } : {}),
-    json: buildEventPatch(event, parsed.data, {
-      marker,
-      staleKeys: collectStaleMarkerKeys(event.privateProperties, marker),
-    }),
+    json: buildEventPatch(
+      event,
+      { ...parsed.data, addGuests },
+      {
+        marker,
+        isMarkerKept: isMarkerKept(event.privateProperties, marker),
+        staleKeys: collectStaleMarkerKeys(event.privateProperties, marker),
+      },
+    ),
   });
 
   if (patched.kind === 'error') {

@@ -23,21 +23,40 @@ export function collectMarkerKeys(properties: Readonly<Record<string, string>>):
   return Object.keys(properties).filter((key) => markerKeyPattern.test(key));
 }
 
-// The markers an item carries besides the new one that a write must delete, so the item keeps the
-// newest ones: the new marker and the newest of the rest, up to the kept count.
+// The markers an item holds besides the new one that a write must delete, so the item keeps the
+// newest ten of all its markers, the new one counted by its own value.
 export function collectStaleMarkerKeys(
   properties: Readonly<Record<string, string>>,
   marker: ActionMarker,
 ): string[] {
-  const others = collectMarkerKeys(properties)
-    .filter((key) => key !== marker.key)
+  return rankMarkerKeys(properties, marker)
+    .slice(keptMarkerCount)
+    .filter((key) => key !== marker.key);
+}
+
+// Whether the new marker is among the newest ten. A delayed action older than ten markers that the
+// item holds already writes none, because its marker would be the one deleted.
+export function isMarkerKept(
+  properties: Readonly<Record<string, string>>,
+  marker: ActionMarker,
+): boolean {
+  return rankMarkerKeys(properties, marker).indexOf(marker.key) < keptMarkerCount;
+}
+
+// The keys of the item's markers and the new one, the newest first.
+function rankMarkerKeys(
+  properties: Readonly<Record<string, string>>,
+  marker: ActionMarker,
+): string[] {
+  const values = { ...properties, [marker.key]: marker.value };
+
+  return Object.keys(values)
+    .filter((key) => markerKeyPattern.test(key))
     .toSorted((left, right) => {
-      const byValue = Number(properties[right]) - Number(properties[left]);
+      const byValue = Number(values[right]) - Number(values[left]);
 
       return byValue === 0 ? left.localeCompare(right) : byValue;
     });
-
-  return others.slice(keptMarkerCount - 1);
 }
 
 // Whether a missing marker proves that the action's write never landed: a write deletes the older

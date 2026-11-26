@@ -1,12 +1,11 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
-import { seedQueuedAction } from '../../test-utils/seed-queued-action';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 
 async function setupTest() {
   const ctx = await startGmailTools();
 
-  const check = (tool: string, args: Record<string, unknown>) => {
+  const check = (tool: string, args: Record<string, unknown>, queuedAt?: number) => {
     const queued = ctx.findAction(tool).queued;
 
     invariant(queued?.check, `${tool} has a check`);
@@ -20,6 +19,7 @@ async function setupTest() {
       idempotencyKey: 'key-1',
       destinations: [],
       attemptStartedAt: ctx.clock.now(),
+      ...(queuedAt === undefined ? {} : { queuedAt }),
       actionHash: 'hash-1',
       deadlineAt: null,
     });
@@ -44,6 +44,26 @@ async function setupTest() {
     createEvent,
   };
 }
+
+test('it finds an event that a with-guests create made on a calendar other than the primary', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({
+    calendar: 'team@group.calendar.google.com',
+    id: '0b9d3c4e7a214f0e8c551e6f2a9d4c03',
+  });
+
+  const outcome = await ctx.check('calendar.create_event_with_guests', {
+    ...ctx.createArgs,
+    calendar: 'team@group.calendar.google.com',
+    guests: ['sam@example.org'],
+  });
+
+  expect(outcome).toMatchObject({
+    kind: 'found',
+    result: { event: expect.stringContaining(`${seeded.id}@team@group.calendar.google.com`) },
+  });
+});
 
 test('it finds a created event by the ID that the action gives it', async () => {
   const ctx = await setupTest();
@@ -240,21 +260,17 @@ test('it finds a response that the account entry holds, and never answers not fo
 test('it finds a change by the marker whose value is the time the queue recorded the action', async () => {
   const ctx = await setupTest();
 
-  await seedQueuedAction(ctx.deps.log, {
-    actionID: '0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03',
-    queuedAtMs: 1_700_000_000_000,
-  });
-
   const seeded = ctx.createEvent({
     privateProperties: { nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03: '1700000000' },
   });
 
   ctx.clock.advance(3_600_000);
 
-  const outcome = await ctx.check('calendar.create_event_with_guests', {
-    ...ctx.createArgs,
-    guests: ['sam@example.org'],
-  });
+  const outcome = await ctx.check(
+    'calendar.create_event_with_guests',
+    { ...ctx.createArgs, guests: ['sam@example.org'] },
+    1_700_000_000_000,
+  );
 
   expect(outcome).toMatchObject({ kind: 'found', result: { event: `k3x9m2p7qa.${seeded.id}` } });
 });

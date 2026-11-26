@@ -35,6 +35,40 @@ async function setupTest() {
   };
 }
 
+test('it hands the decision point each guest in lowercase, once, and without the connected account', async () => {
+  const ctx = await setupTest();
+
+  const resolved = await ctx.findAction('calendar.create_event_with_guests').tool.resolveInput?.(
+    {
+      ...ctx.event,
+      connection: 'k3x9m2p7qa',
+      guests: ['OWNER@Example.test', 'owner@example.test ', 'Me@Example.test'],
+    },
+    { run: ctx.buildContext().run },
+  );
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    input: { ...ctx.event, connection: 'k3x9m2p7qa', guests: ['owner@example.test'] },
+  });
+});
+
+test('it refuses guests that name only the connected account', async () => {
+  const ctx = await setupTest();
+
+  const resolved = await ctx
+    .findAction('calendar.create_event_with_guests')
+    .tool.resolveInput?.(
+      { ...ctx.event, connection: 'k3x9m2p7qa', guests: ['ME@example.test'] },
+      { run: ctx.buildContext().run },
+    );
+
+  expect(resolved).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('NO_GUESTS'),
+  });
+});
+
 test('it creates an event with the action ID as its ID and asks Google to email no one', async () => {
   const ctx = await setupTest();
   const response = await ctx.attempt('calendar.create_event', ctx.event);

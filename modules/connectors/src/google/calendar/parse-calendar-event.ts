@@ -15,6 +15,9 @@ const attendeeSchema = z.object({
   optional: z.boolean().exactOptional(),
   organizer: z.boolean().exactOptional(),
   displayName: z.string().exactOptional(),
+  id: z.string().exactOptional(),
+  comment: z.string().exactOptional(),
+  additionalGuests: z.number().exactOptional(),
 });
 
 const organizerSchema = z.object({
@@ -94,8 +97,7 @@ export function parseCalendarEvent(body: unknown, source: EventSource): Calendar
     isAllDay: event.start?.date !== undefined && event.start.dateTime === undefined,
     link: event.htmlLink ?? null,
     organizer,
-    isOrganizedByAccount:
-      event.organizer?.self === true || (organizer !== null && organizer === account),
+    isOrganizedByAccount: organizer !== null && organizer === account,
     guests,
     attendees: attendees.flatMap((attendee) =>
       attendee.email === undefined ? [] : [{ ...attendee, email: attendee.email }],

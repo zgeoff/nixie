@@ -39,5 +39,4 @@ export { createFakeCalendar } from './fake-calendar/create-fake-calendar';
 export type { FakeDrive, FakeFileSeed, StoredFile } from './fake-drive/types';
 export { createFakeDrive } from './fake-drive/create-fake-drive';
 export { serveFakeGoogle } from './serve-fake-google';
-export { seedQueuedAction } from './seed-queued-action';
 export { parseFakePrivate } from './fake-calendar/parse-fake-private';

@@ -1,8 +1,8 @@
 import type { ActionAttempt, ProviderResponse } from '../../types';
+import { buildAttemptMarker } from '../build-attempt-marker';
 import { callGoogle } from '../call-google';
 import { readCallContext } from '../gmail/read-call-context';
 import { pickGoogleErrorResponse } from '../pick-google-error-response';
-import { readActionMarker } from '../read-action-marker';
 import type { GoogleDeps } from '../types';
 import { buildEventInsert } from './build-event-insert';
 import { buildEventPath } from './build-event-path';
@@ -38,8 +38,7 @@ export async function runCalendarCreate(
 
   const calendar = parsed.data.calendar ?? primaryCalendar;
   const id = attempt.actionID.replaceAll('-', '');
-
-  const marker = await readActionMarker(deps, attempt.actionID);
+  const marker = buildAttemptMarker(attempt, deps.clock.now());
 
   const created = await callGoogle(deps.hosts, context, {
     path: buildEventPath(calendar),

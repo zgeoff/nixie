@@ -4,6 +4,7 @@ import type { GoogleDeps } from '../types';
 import { calendarDeclarations } from './calendar-declarations';
 import { calendarToolNames } from './calendar-tool-names';
 import { guestAddressPattern } from './constants';
+import { makeResolveCreateInput } from './make-resolve-create-input';
 
 const timeProperty = {
   type: 'string',
@@ -58,7 +59,9 @@ export function buildCalendarCreateTool(deps: GoogleDeps, withGuests: boolean): 
       ? calendarDeclarations.createEventWithGuests
       : calendarDeclarations.createEvent,
     execution: 'queued',
-    resolveInput: makeResolveGoogleInput(deps.access, []),
+    resolveInput: withGuests
+      ? makeResolveCreateInput(deps)
+      : makeResolveGoogleInput(deps.access, []),
     run: () =>
       Promise.resolve({
         status: 'error',

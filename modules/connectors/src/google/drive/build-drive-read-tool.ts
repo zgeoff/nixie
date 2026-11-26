@@ -138,6 +138,18 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
         return { status: 'error', message: `GOOGLE_FAILED: ${content.reason}` };
       }
 
+      const after = await readDriveFile(deps.hosts, context, file.id);
+
+      if (after.kind !== 'file' || after.file.modifiedTime !== file.modifiedTime) {
+        return {
+          status: 'error',
+          message:
+            after.kind === 'failed'
+              ? `GOOGLE_FAILED: ${after.reason}`
+              : 'FILE_CHANGED: the file changed while it was read, so read it again',
+        };
+      }
+
       const bytes = file.size ?? content.bytes.byteLength;
 
       const parts = await readAttachmentContent(

@@ -262,6 +262,10 @@ test('it names each file that you chose, and asks Google for a token that holds 
 
   const choose = await rendered.findByRole('button', { name: 'Choose Drive files' });
 
+  await waitFor(() => {
+    expect(choose.hasAttribute('disabled')).toBe(false);
+  });
+
   await user.click(choose);
 
   const chosen = await rendered.findByRole('list', { name: 'Chosen files' });
@@ -310,6 +314,10 @@ test('it drops a token that holds more than drive.file, and never opens the pick
 
   const choose = await rendered.findByRole('button', { name: 'Choose Drive files' });
 
+  await waitFor(() => {
+    expect(choose.hasAttribute('disabled')).toBe(false);
+  });
+
   await user.click(choose);
 
   const alert = await rendered.findByRole('alert');
@@ -317,5 +325,54 @@ test('it drops a token that holds more than drive.file, and never opens the pick
   expect([alert.textContent, stubbed.openings]).toStrictEqual([
     'Google gave a token for more than Drive files, so nixie dropped it.',
     [],
+  ]);
+});
+
+test('it offers the Drive picker to a connection that lacks only a Calendar scope', async () => {
+  await createDeviceSession();
+
+  stubGooglePicker({ scope: 'https://www.googleapis.com/auth/drive.file', picked: [] });
+
+  await connectionStore.clients.create({
+    clientID: 'client-123.apps.test',
+    origin: 'https://nixie.test',
+    redirectURI: 'https://nixie.test/connections/google/return',
+    pickerKey: 'picker-key-1',
+    projectNumber: '123456789012',
+  });
+
+  const connection = await connectionStore.connections.create({
+    label: 'Work',
+    missing: [{ scope: 'calendar.calendarlist.readonly', reason: 'not_granted' }],
+  });
+
+  const rendered = renderRoute(`/settings/connections/${connection.connection}`);
+
+  const choose = await rendered.findByRole('button', { name: 'Choose Drive files' });
+
+  expect(choose).toBeDefined();
+});
+
+test('it keeps the choose button disabled and says so when Google sign-in does not load', async () => {
+  await createDeviceSession();
+
+  await connectionStore.clients.create({
+    clientID: 'client-123.apps.test',
+    origin: 'https://nixie.test',
+    redirectURI: 'https://nixie.test/connections/google/return',
+    pickerKey: 'picker-key-1',
+    projectNumber: '123456789012',
+  });
+
+  const connection = await connectionStore.connections.create({ label: 'Work' });
+
+  const rendered = renderRoute(`/settings/connections/${connection.connection}`);
+
+  const choose = await rendered.findByRole('button', { name: 'Choose Drive files' });
+  const alert = await rendered.findByRole('alert');
+
+  expect([alert.textContent, choose.hasAttribute('disabled')]).toStrictEqual([
+    'Google did not load. Check that the browser can reach Google.',
+    true,
   ]);
 });

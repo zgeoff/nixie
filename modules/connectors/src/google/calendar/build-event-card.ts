@@ -25,6 +25,7 @@ export function buildEventCard(event: CalendarEvent, change: EventCardChange): G
     ['end', event.end],
     ['calendar', event.calendar],
     ['location', event.location],
+    ['description', event.description],
     ['guests', joinCardList(event.guests.map((guest) => guest.address))],
     ['organizer', event.organizer ?? ''],
     ['titleAfter', change.titleAfter],

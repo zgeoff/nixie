@@ -6,7 +6,17 @@ import type { FakeDrive, StoredFile } from './types';
 export function listFakeFiles(drive: FakeDrive, url: URL): Response {
   const query = url.searchParams.get('q') ?? '';
   const limit = Number(url.searchParams.get('pageSize') ?? 100);
-  const offset = Number(url.searchParams.get('pageToken') ?? 0);
+  const token = url.searchParams.get('pageToken');
+  const skipped = token === null ? 0 : readEmptyPage(token);
+
+  if (skipped !== null && skipped < drive.emptyListPages) {
+    return Response.json({
+      files: [],
+      nextPageToken: skipped + 1 < drive.emptyListPages ? `empty${String(skipped + 1)}` : '0',
+    });
+  }
+
+  const offset = Number(token ?? 0);
 
   const matching = [...drive.files.values()]
     .filter((file) => isMatchingQuery(file, query))
@@ -19,6 +29,10 @@ export function listFakeFiles(drive: FakeDrive, url: URL): Response {
     files: page.map((file) => buildFakeFileJSON(file)),
     ...(next === undefined ? {} : { nextPageToken: next }),
   });
+}
+
+function readEmptyPage(token: string): number | null {
+  return token.startsWith('empty') ? Number(token.slice('empty'.length)) : null;
 }
 
 function isMatchingQuery(file: StoredFile, query: string): boolean {

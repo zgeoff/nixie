@@ -7,7 +7,7 @@ import type { ListedConnection } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { openGooglePicker } from './open-google-picker';
 import { pickDriveToken } from './pick-drive-token';
-import { requestPickerToken } from './request-picker-token';
+import { loadPickerSignIn, requestPickerToken } from './request-picker-token';
 
 export interface DrivePickerProps {
   readonly connection: ListedConnection;
@@ -19,6 +19,7 @@ interface PickerChoice {
   readonly projectNumber: string;
 }
 
+const driveScope = 'drive.file';
 const link = css({ color: 'link', textDecoration: 'underline' });
 
 // Lets you choose the Drive files that nixie may see. The sign-in and the picker run in the browser
@@ -36,6 +37,20 @@ export function DrivePicker(props: DrivePickerProps): ReactNode {
       },
     }),
     enabled: isHydrated,
+  });
+
+  const isDriveGranted = !props.connection.missing.some((missing) => missing.scope === driveScope);
+
+  const signIn = useQuery({
+    queryKey: ['google-picker-sign-in'],
+    queryFn: async () => {
+      await loadPickerSignIn();
+
+      return true;
+    },
+    enabled: isHydrated && isDriveGranted,
+    retry: false,
+    staleTime: Infinity,
   });
 
   const choose = useMutation({
@@ -68,7 +83,7 @@ export function DrivePicker(props: DrivePickerProps): ReactNode {
     },
   });
 
-  if (props.connection.status !== 'active' || props.connection.missing.length > 0) {
+  if (props.connection.status !== 'active' || !isDriveGranted) {
     return null;
   }
 
@@ -99,7 +114,7 @@ export function DrivePicker(props: DrivePickerProps): ReactNode {
     <section aria-label="Drive files">
       <p>nixie sees only the Drive files that you choose here and the files it makes.</p>
       <button
-        disabled={!isHydrated || choose.isPending}
+        disabled={!isHydrated || !signIn.isSuccess || choose.isPending}
         onClick={() => {
           choose.mutate({ clientID: client.clientID, pickerKey, projectNumber });
         }}
@@ -107,6 +122,7 @@ export function DrivePicker(props: DrivePickerProps): ReactNode {
       >
         Choose Drive files
       </button>
+      {signIn.isError ? <p role="alert">{signIn.error.message}</p> : null}
       {choose.isError ? <p role="alert">{choose.error.message}</p> : null}
       {choose.isSuccess && choose.data.length > 0 ? (
         <ul aria-label="Chosen files">

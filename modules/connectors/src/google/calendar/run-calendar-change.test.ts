@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { parseFakePrivate } from '../../test-utils/fake-calendar/parse-fake-private';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
+import { parseCardAttachment } from '../gmail/gmail-card';
 
 async function setupTest() {
   const ctx = await startGmailTools();
@@ -40,6 +41,150 @@ async function setupTest() {
 
   return { ...ctx, prepare, attempt, createEvent };
 }
+
+test('it deletes no newer marker and writes none of its own when its action is older than 10 stored markers', async () => {
+  const ctx = await setupTest();
+
+  const newer = Object.fromEntries(
+    Array.from({ length: 10 }, (_, index) => [
+      `nixie${String(index).padStart(32, '0')}`,
+      String(9_000_000_000 + index),
+    ]),
+  );
+
+  const seeded = ctx.createEvent({ privateProperties: newer });
+
+  await ctx.attempt('calendar.change_event', {
+    event: `k3x9m2p7qa.${seeded.id}`,
+    title: 'Renamed',
+  });
+
+  const stored = ctx.site.calendar.events.get('primary')?.get(seeded.id);
+
+  expect(stored?.['extendedProperties']).toStrictEqual({ private: newer });
+});
+
+test('it refuses a change of an event that another account organizes although Google marks the organizer as self', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({
+    organizer: 'boss@example.org',
+    isOrganizerSelf: true,
+    guests: [{ email: 'sam@example.org' }],
+  });
+
+  const prepared = await ctx.prepare('calendar.change_event_with_guests', {
+    event: `k3x9m2p7qa.${seeded.id}`,
+    title: 'Renamed',
+  });
+
+  const response = await ctx.attempt(
+    'calendar.change_event_with_guests',
+    { event: `k3x9m2p7qa.${seeded.id}`, title: 'Renamed' },
+    ['boss@example.org', 'sam@example.org'],
+  );
+
+  expect([prepared, response.kind, ctx.site.calendar.writes]).toStrictEqual([
+    { status: 'error', message: expect.stringContaining('NOT_ORGANIZER') },
+    'refused',
+    [],
+  ]);
+});
+
+test('it keeps the comment and the extra guests of each attendee that stays when it sends the guest list back', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({
+    guests: [{ email: 'sam@example.org', comment: 'No nuts please', additionalGuests: 2 }],
+  });
+
+  await ctx.attempt(
+    'calendar.change_event_with_guests',
+    { event: `k3x9m2p7qa.${seeded.id}`, addGuests: ['lee@example.org'] },
+    ['sam@example.org', 'lee@example.org'],
+  );
+
+  const stored = ctx.site.calendar.events.get('primary')?.get(seeded.id);
+
+  expect(stored?.['attendees']).toContainEqual({
+    email: 'sam@example.org',
+    responseStatus: 'needsAction',
+    comment: 'No nuts please',
+    additionalGuests: 2,
+  });
+});
+
+test('it refuses a change that adds only the connected account to an event with no guest', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent();
+
+  const prepared = await ctx.prepare('calendar.change_event_with_guests', {
+    event: `k3x9m2p7qa.${seeded.id}`,
+    addGuests: ['Me@Example.test'],
+  });
+
+  expect(prepared).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('NO_GUESTS'),
+  });
+});
+
+test('it leaves the connected account out of the destinations of a change', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({ guests: [{ email: 'sam@example.org' }] });
+
+  const prepared = await ctx.prepare('calendar.change_event_with_guests', {
+    event: `k3x9m2p7qa.${seeded.id}`,
+    addGuests: ['ME@example.test'],
+    title: 'Renamed',
+  });
+
+  expect(prepared).toMatchObject({ destinations: ['sam@example.org'] });
+});
+
+test('it answers destinations changed, not no guests, when the last guest leaves after the approval', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({ guests: [{ email: 'sam@example.org' }] });
+  const stored = ctx.site.calendar.events.get('primary')?.get(seeded.id);
+
+  invariant(stored, 'the seeded event is stored');
+
+  stored['attendees'] = [{ email: 'me@example.test', self: true, organizer: true }];
+
+  const response = await ctx.attempt(
+    'calendar.change_event_with_guests',
+    { event: `k3x9m2p7qa.${seeded.id}`, title: 'Renamed' },
+    ['sam@example.org'],
+  );
+
+  expect(response.kind).toBe('destinations_changed');
+});
+
+test('it shows the old and the new description on the card of a description change', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({ description: 'Agenda: budget' });
+  const description = `${'A long new agenda. '.repeat(30)}Last line.`;
+
+  const prepared = await ctx.prepare('calendar.change_event', {
+    event: `k3x9m2p7qa.${seeded.id}`,
+    description,
+  });
+
+  invariant(prepared && 'attachments' in prepared, 'the change is prepared');
+
+  const [bytes] = prepared.attachments ?? [];
+
+  invariant(bytes, 'the card is sealed');
+
+  expect(parseCardAttachment(bytes)).toMatchObject({
+    description: 'Agenda: budget',
+    descriptionAfter: description,
+  });
+});
 
 test('it refuses the change of an event with a guest in the tool without guests', async () => {
   const ctx = await setupTest();

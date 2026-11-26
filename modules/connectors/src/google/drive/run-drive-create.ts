@@ -1,9 +1,9 @@
 import type { ActionAttempt, ProviderResponse } from '../../types';
+import { buildAttemptMarker } from '../build-attempt-marker';
 import { callGoogle } from '../call-google';
 import { buildItemID } from '../gmail/build-item-id';
 import { readCallContext } from '../gmail/read-call-context';
 import { pickGoogleErrorResponse } from '../pick-google-error-response';
-import { readActionMarker } from '../read-action-marker';
 import type { GoogleDeps } from '../types';
 import { buildDriveMultipart } from './build-drive-multipart';
 import { googleDocType } from './constants';
@@ -28,8 +28,7 @@ export async function runDriveCreate(
     return { kind: 'refused', reason: 'the arguments of the file are unreadable' };
   }
 
-  const marker = await readActionMarker(deps, attempt.actionID);
-
+  const marker = buildAttemptMarker(attempt, deps.clock.now());
   const isDoc = parsed.data.as === 'google_doc';
 
   const upload = buildDriveMultipart(

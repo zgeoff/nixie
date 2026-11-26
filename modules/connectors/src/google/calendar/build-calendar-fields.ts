@@ -52,7 +52,7 @@ function collectChangeFields(card: GmailCard, zone: string): readonly FieldEntry
     ['startChange', formatChange(startText, startNew)],
     ['endChange', formatChange(endText, endNew)],
     ['locationChange', formatChange(card['location'], card['locationAfter'])],
-    ['descriptionChange', card['descriptionAfter']],
+    ['descriptionChange', formatChange(card['description'], card['descriptionAfter'])],
     ['removedGuests', card['removeGuests']],
     ['response', card['response']],
   ];

@@ -12,16 +12,20 @@ export interface PickerTokenRequest {
 const signInSource = 'https://accounts.google.com/gsi/client';
 const driveScope = 'https://www.googleapis.com/auth/drive.file';
 
+// Loads Google's sign-in script ahead of the click that needs it, because the browser lets a popup
+// open only shortly after the click, and a script that loads after it can outlast that time.
+export function loadPickerSignIn(): Promise<void> {
+  return loadGoogleScript(signInSource, () => readOAuth2() !== undefined);
+}
+
 // Asks Google's sign-in for an access token of the browser's own, for Drive's picker. The token asks
 // for `drive.file` alone and never adds the scopes already granted, so it stays apart from the
-// connection's tokens, which never reach the page.
-export async function requestPickerToken(request: PickerTokenRequest): Promise<TokenAnswer> {
-  await loadGoogleScript(signInSource, () => readOAuth2() !== undefined);
-
+// connection's tokens, which never reach the page. The script must be loaded before the click.
+export function requestPickerToken(request: PickerTokenRequest): Promise<TokenAnswer> {
   const initTokenClient = readGoogleMember(readOAuth2(), 'initTokenClient');
 
   if (typeof initTokenClient !== 'function') {
-    throw new TypeError('Google sign-in did not load.');
+    return Promise.reject(new TypeError('Google sign-in did not load.'));
   }
 
   return new Promise((resolve, reject) => {

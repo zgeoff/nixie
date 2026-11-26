@@ -3,8 +3,41 @@ import {
   buildActionMarker,
   collectMarkerKeys,
   collectStaleMarkerKeys,
+  isMarkerKept,
   isMarkerLossProvable,
 } from './build-action-marker';
+
+test('#collectStaleMarkerKeys and #isMarkerKept drop the incoming marker, not a newer one, when 10 newer markers are stored', () => {
+  const properties = Object.fromEntries(
+    Array.from({ length: 10 }, (_, index) => [
+      `nixie${String(index).padStart(32, '0')}`,
+      String(100 + index),
+    ]),
+  );
+
+  const delayed = buildActionMarker('0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03', 1);
+
+  expect([
+    collectStaleMarkerKeys(properties, delayed),
+    isMarkerKept(properties, delayed),
+  ]).toStrictEqual([[], false]);
+});
+
+test('#isMarkerKept keeps a marker that is among the 10 newest', () => {
+  const properties = Object.fromEntries(
+    Array.from({ length: 10 }, (_, index) => [
+      `nixie${String(index).padStart(32, '0')}`,
+      String(100 + index),
+    ]),
+  );
+
+  const incoming = buildActionMarker('0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03', 105);
+
+  expect([
+    isMarkerKept(properties, incoming),
+    collectStaleMarkerKeys(properties, incoming),
+  ]).toStrictEqual([true, [`nixie${String(0).padStart(32, '0')}`]]);
+});
 
 test('#buildActionMarker keys the marker by the action ID without hyphens and values it by the queued time', () => {
   expect(buildActionMarker('0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03', 1_794_550_000)).toStrictEqual({

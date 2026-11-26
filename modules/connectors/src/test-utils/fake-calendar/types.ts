@@ -16,8 +16,17 @@ export interface FakeEventSeed {
   // who organizes the event; the account when absent
   readonly organizer?: string;
 
+  // Google marks the organizer `self` on the organizer's own copy of an event, which also appears
+  // on a calendar the account can write, so it is no proof that the account organizes the event
+  readonly isOrganizerSelf?: boolean;
+
   // the other attendees; the account's own entry is added
-  readonly guests?: readonly { readonly email: string; readonly response?: string }[];
+  readonly guests?: readonly {
+    readonly email: string;
+    readonly response?: string;
+    readonly comment?: string;
+    readonly additionalGuests?: number;
+  }[];
 
   // the account's own response when it is invited
   readonly yourResponse?: string;
@@ -41,6 +50,9 @@ export interface FakeCalendar {
   // the events of each calendar by ID, under the calendar's own ID
   readonly events: Map<string, Map<string, StoredEvent>>;
   readonly calendars: { id: string; summary: string; primary?: boolean; accessRole: string }[];
+
+  // the most calendars one page of the calendar list holds
+  listPageSize: number;
 
   // each request as `GET /calendar/v3/calendars/primary/events?...`, in order
   readonly requests: string[];

@@ -40,6 +40,25 @@ async function setupTest() {
   return { ...ctx, prepare, attempt, createEvent };
 }
 
+test('it answers destinations changed, not no guests, when the last guest leaves after the approval', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({ guests: [{ email: 'sam@example.org' }] });
+  const stored = ctx.site.calendar.events.get('primary')?.get(seeded.id);
+
+  invariant(stored, 'the seeded event is stored');
+
+  stored['attendees'] = [{ email: 'me@example.test', self: true, organizer: true }];
+
+  const response = await ctx.attempt(
+    'calendar.cancel_event_with_guests',
+    `k3x9m2p7qa.${seeded.id}`,
+    ['sam@example.org'],
+  );
+
+  expect([response.kind, ctx.site.calendar.writes]).toStrictEqual(['destinations_changed', []]);
+});
+
 test('it cancels an event with no guests and asks Google to email no one', async () => {
   const ctx = await setupTest();
 

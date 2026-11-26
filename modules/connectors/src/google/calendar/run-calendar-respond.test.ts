@@ -42,6 +42,27 @@ async function setupTest() {
   return { ...ctx, prepare, attempt, createEvent };
 }
 
+test('it keeps the comment and the extra guests of every other attendee when it sets the response', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.createEvent({
+    guests: [{ email: 'sam@example.org', comment: 'Running late', additionalGuests: 1 }],
+  });
+
+  await ctx.attempt({ event: `k3x9m2p7qa.${seeded.id}`, response: 'accepted' }, [
+    'boss@example.org',
+  ]);
+
+  const stored = ctx.site.calendar.events.get('primary')?.get(seeded.id);
+
+  expect(stored?.['attendees']).toContainEqual({
+    email: 'sam@example.org',
+    responseStatus: 'needsAction',
+    comment: 'Running late',
+    additionalGuests: 1,
+  });
+});
+
 test('it takes the organizer as the destination and the reply target', async () => {
   const ctx = await setupTest();
 

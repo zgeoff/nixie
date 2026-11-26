@@ -33,12 +33,6 @@ export async function runCalendarCancel(
   }
 
   const event = read.event;
-  const refusal = pickEventRefusal(event, { withGuests, addGuests: [], removeGuests: [] });
-
-  if (refusal !== null) {
-    return { kind: 'refused', reason: refusal.message };
-  }
-
   const destinations = withGuests ? collectEventDestinations(event, []) : [];
 
   if (withGuests && !isSameAddresses(destinations, attempt.destinations)) {
@@ -46,6 +40,12 @@ export async function runCalendarCancel(
       kind: 'destinations_changed',
       reason: 'the guests of the event differ from the ones that were checked',
     };
+  }
+
+  const refusal = pickEventRefusal(event, { withGuests, addGuests: [], removeGuests: [] });
+
+  if (refusal !== null) {
+    return { kind: 'refused', reason: refusal.message };
   }
 
   const deleted = await callGoogle(deps.hosts, context, {

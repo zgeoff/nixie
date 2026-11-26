@@ -1,8 +1,8 @@
 import type { ActionAttempt, CheckResponse } from '../../types';
 import { isMarkerLossProvable } from '../build-action-marker';
+import { buildAttemptMarker } from '../build-attempt-marker';
 import { callGoogle } from '../call-google';
 import { readCallContext } from '../gmail/read-call-context';
-import { readActionMarker } from '../read-action-marker';
 import type { GoogleDeps } from '../types';
 import { buildEventPath } from './build-event-path';
 import { buildEventRef } from './build-event-ref';
@@ -68,7 +68,7 @@ export async function checkCalendarChange(
   }
 
   if (changeTools.has(attempt.tool)) {
-    const marker = await readActionMarker(deps, attempt.actionID);
+    const marker = buildAttemptMarker(attempt, deps.clock.now());
 
     if (marker.key in read.event.privateProperties) {
       return { kind: 'found', result: { ...result, link: read.event.link } };
@@ -94,7 +94,13 @@ interface CreateCheck {
 async function checkCreate(deps: GoogleDeps, check: CreateCheck): Promise<CheckResponse> {
   const context = check.context;
   const attempt = check.attempt;
-  const parsed = calendarArgumentsSchema.create.partial().safeParse(attempt.arguments);
+
+  const schema =
+    attempt.tool === calendarToolNames.createEventWithGuests
+      ? calendarArgumentsSchema.createWithGuests
+      : calendarArgumentsSchema.create;
+
+  const parsed = schema.partial().safeParse(attempt.arguments);
   const calendar = (parsed.success ? parsed.data.calendar : undefined) ?? primaryCalendar;
   const id = attempt.actionID.replaceAll('-', '');
 
@@ -107,7 +113,7 @@ async function checkCreate(deps: GoogleDeps, check: CreateCheck): Promise<CheckR
     };
   }
 
-  const marker = await readActionMarker(deps, attempt.actionID);
+  const marker = buildAttemptMarker(attempt, deps.clock.now());
 
   const listed = await callGoogle(deps.hosts, context, {
     path: buildEventPath(calendar),

@@ -23,6 +23,26 @@ async function setupTest() {
   };
 }
 
+test('it refuses a part whose file changed between the metadata read and the download', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({ name: 'Notes', text: 'old text' });
+  const hold = ctx.site.drive.hold(`GET /drive/v3/files/${seeded.id}?alt=media`);
+  const pending = ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}` });
+
+  await hold.reached;
+
+  ctx.site.drive.seed({ id: seeded.id, name: 'Notes', text: 'new text' });
+  hold.release();
+
+  const outcome = await pending;
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('FILE_CHANGED'),
+  });
+});
+
 test('it reads a Google Doc as Markdown with the name sealed and the time of change plain', async () => {
   const ctx = await setupTest();
 

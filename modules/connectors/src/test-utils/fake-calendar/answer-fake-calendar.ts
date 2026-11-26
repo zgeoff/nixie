@@ -19,7 +19,19 @@ export function answerFakeCalendar(
     .map((segment) => decodeURIComponent(segment));
 
   if (segments[0] === 'users' && segments[2] === 'calendarList') {
-    return Response.json({ items: calendar.calendars });
+    const offset = Number(call.url.searchParams.get('pageToken') ?? 0);
+
+    const size = Math.min(
+      calendar.listPageSize,
+      Number(call.url.searchParams.get('maxResults') ?? 250),
+    );
+
+    const next = offset + size < calendar.calendars.length ? String(offset + size) : undefined;
+
+    return Response.json({
+      items: calendar.calendars.slice(offset, offset + size),
+      ...(next === undefined ? {} : { nextPageToken: next }),
+    });
   }
 
   const [kind, calendarID, events, eventID] = segments;

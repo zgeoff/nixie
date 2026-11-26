@@ -1,16 +1,18 @@
-import type { ActionAttempt, CheckResponse } from '../../types';
+import type { ActionAttempt, CheckResponse, ConnectorContext } from '../../types';
+import type { ActionMarker } from '../build-action-marker';
 import { isMarkerLossProvable } from '../build-action-marker';
+import { buildAttemptMarker } from '../build-attempt-marker';
 import { callGoogle } from '../call-google';
 import { buildItemID } from '../gmail/build-item-id';
 import { parseItemID } from '../gmail/parse-item-id';
 import { readCallContext } from '../gmail/read-call-context';
-import { readActionMarker } from '../read-action-marker';
 import type { GoogleDeps } from '../types';
 import { buildDriveListQuery } from './build-drive-list-query';
 import { driveFileFields, driveListSchema } from './constants';
 import { driveToolNames } from './drive-tool-names';
 import { parseDriveFile } from './parse-drive-file';
 import { readDriveFile } from './read-drive-file';
+import type { DriveFile } from './types';
 
 // The read-only check of a Drive write of unknown outcome. A create is found when a search of the
 // app properties finds the marker, and a change when the file holds it. Any failed read is
@@ -25,33 +27,20 @@ export async function checkDriveChange(
     return { kind: 'inconclusive' };
   }
 
-  const marker = await readActionMarker(deps, attempt.actionID);
+  const marker = buildAttemptMarker(attempt, deps.clock.now());
 
   if (attempt.tool === driveToolNames.create) {
-    const query = buildDriveListQuery(
-      `appProperties has { key='${marker.key}' and value='${marker.value}' }`,
-      { fields: `files(${driveFileFields})` },
-    );
+    const found = await readMarkedFile(deps, context, marker);
 
-    const listed = await callGoogle(deps.hosts, context, { path: '/drive/v3/files', query });
-
-    const files = listed.kind === 'ok' ? driveListSchema.safeParse(listed.body) : null;
-
-    if (files === null || !files.success) {
+    if (found === 'failed') {
       return { kind: 'inconclusive' };
     }
 
-    const [first] = (files.data.files ?? []).flatMap((item) => {
-      const file = parseDriveFile(item);
-
-      return file === null ? [] : [file];
-    });
-
-    return first === undefined
+    return found === null
       ? { kind: 'not_found' }
       : {
           kind: 'found',
-          result: { file: buildItemID(context.connection, first.id), link: first.link },
+          result: { file: buildItemID(context.connection, found.id), link: found.link },
         };
   }
 
@@ -78,4 +67,54 @@ export async function checkDriveChange(
   return isMarkerLossProvable(read.file.appProperties)
     ? { kind: 'not_found' }
     : { kind: 'inconclusive' };
+}
+
+// the pages of the marker search that a check follows, which no real search needs more than a few of
+const maxSearchPages = 10;
+
+// The file that holds the marker, found by a search of the app properties through every page: Drive
+// can answer a page with no file and a token for the next. Null when the search ends with none, and
+// 'failed' when a page cannot be read or the pages run out of the limit.
+async function readMarkedFile(
+  deps: GoogleDeps,
+  context: ConnectorContext,
+  marker: ActionMarker,
+): Promise<DriveFile | 'failed' | null> {
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < maxSearchPages; page += 1) {
+    const query = buildDriveListQuery(
+      `appProperties has { key='${marker.key}' and value='${marker.value}' }`,
+      {
+        fields: `nextPageToken,files(${driveFileFields})`,
+        ...(pageToken === undefined ? {} : { pageToken }),
+      },
+    );
+
+    const listed = await callGoogle(deps.hosts, context, { path: '/drive/v3/files', query });
+
+    const files = listed.kind === 'ok' ? driveListSchema.safeParse(listed.body) : null;
+
+    if (files === null || !files.success) {
+      return 'failed';
+    }
+
+    const [first] = (files.data.files ?? []).flatMap((item) => {
+      const file = parseDriveFile(item);
+
+      return file === null ? [] : [file];
+    });
+
+    if (first !== undefined) {
+      return first;
+    }
+
+    pageToken = files.data.nextPageToken;
+
+    if (pageToken === undefined) {
+      return null;
+    }
+  }
+
+  return 'failed';
 }

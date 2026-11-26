@@ -14,6 +14,11 @@ export interface EventAttendee {
   readonly organizer?: boolean;
   readonly displayName?: string;
   readonly self?: boolean;
+  readonly id?: string;
+
+  // the guest's note with the response, and the people the guest brings
+  readonly comment?: string;
+  readonly additionalGuests?: number;
 }
 
 export interface EventGuest {

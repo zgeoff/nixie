@@ -7,6 +7,9 @@ import type { CalendarEvent } from './types';
 interface PatchFacts {
   readonly marker: ActionMarker;
 
+  // false for a delayed action older than the markers the event holds, which writes none
+  readonly isMarkerKept: boolean;
+
   // the markers of older actions that this write deletes
   readonly staleKeys: readonly string[];
 }
@@ -47,7 +50,7 @@ export function buildEventPatch(
     ...(isGuestChange ? { attendees } : {}),
     extendedProperties: {
       private: {
-        [facts.marker.key]: facts.marker.value,
+        ...(facts.isMarkerKept ? { [facts.marker.key]: facts.marker.value } : {}),
         ...Object.fromEntries(facts.staleKeys.map((key) => [key, null])),
       },
     },

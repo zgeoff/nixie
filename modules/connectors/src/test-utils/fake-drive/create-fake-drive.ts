@@ -1,3 +1,4 @@
+import { buildFakeHold } from '../fake-gmail/build-fake-hold';
 import { answerFakeDrive } from './answer-fake-drive';
 import { buildFakeModifiedTime } from './build-fake-modified-time';
 import type { FakeDrive } from './types';
@@ -11,6 +12,15 @@ export function createFakeDrive(): FakeDrive {
     files: new Map(),
     requests: [],
     failures: [],
+    holds: [],
+    emptyListPages: 0,
+    hold: (line) => {
+      const hold = buildFakeHold(line);
+
+      drive.holds.push(hold);
+
+      return hold;
+    },
     seed: (seed) => {
       const modifiedTime = buildFakeModifiedTime(state);
       const id = seed.id ?? `seeded${String(state.counter).padStart(4, '0')}`;
@@ -29,16 +39,24 @@ export function createFakeDrive(): FakeDrive {
 
       return { id };
     },
-    serve: (request) => {
+    serve: async (request) => {
       const url = new URL(request.url);
 
       if (!url.pathname.startsWith('/drive/v3') && !url.pathname.startsWith('/upload/drive/v3')) {
-        return Promise.resolve(null);
+        return null;
       }
 
       const line = `${request.method} ${url.pathname}${url.search}`;
 
       drive.requests.push(line);
+
+      const held = drive.holds.find((entry) => line.startsWith(entry.line));
+
+      if (held !== undefined) {
+        drive.holds.splice(drive.holds.indexOf(held), 1);
+
+        await held.arrive();
+      }
 
       const failure = drive.failures.find((entry) => line.startsWith(entry.line));
 
@@ -53,10 +71,10 @@ export function createFakeDrive(): FakeDrive {
           },
         );
 
-        return Promise.resolve(failed);
+        return failed;
       }
 
-      return Promise.resolve(answerFakeDrive(drive, state, { request, url }));
+      return answerFakeDrive(drive, state, { request, url });
     },
   };
 

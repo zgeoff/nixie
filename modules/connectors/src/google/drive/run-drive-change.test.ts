@@ -32,6 +32,31 @@ async function setupTest() {
   return { ...ctx, prepare, attempt };
 }
 
+test('it refuses when the file becomes shared between its read and the upload', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.drive.seed({ name: 'Notes', text: 'old' });
+  const hold = ctx.site.drive.hold('PATCH /upload/drive/v3/files');
+  const pending = ctx.attempt({ file: `k3x9m2p7qa.${seeded.id}`, name: null, text: 'new' });
+
+  await hold.reached;
+
+  const stored = ctx.site.drive.files.get(seeded.id);
+
+  invariant(stored, 'the seeded file is stored');
+
+  stored.isShared = true;
+
+  hold.release();
+
+  const response = await pending;
+
+  expect(response).toStrictEqual({
+    kind: 'refused',
+    reason: expect.stringContaining('SHARED_FILE'),
+  });
+});
+
 test('it replaces the whole content of a Google Doc with Markdown and keeps its name', async () => {
   const ctx = await setupTest();
 

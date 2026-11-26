@@ -9,6 +9,7 @@ import { calendarArgumentsSchema } from './calendar-arguments-schema';
 import { calendarDeclarations } from './calendar-declarations';
 import { calendarToolNames } from './calendar-tool-names';
 import { collectEventDestinations } from './collect-event-destinations';
+import { collectOtherAddresses } from './collect-other-addresses';
 import { guestAddressPattern } from './constants';
 import { parseEventRef } from './parse-event-ref';
 import { pickEventRefusal } from './pick-event-refusal';
@@ -96,7 +97,7 @@ export function buildCalendarChangeTool(deps: GoogleDeps, withGuests: boolean): 
       }
 
       const args = parsed.data;
-      const addGuests = args.addGuests ?? [];
+      const addGuests = collectOtherAddresses(args.addGuests ?? [], context.account);
       const removeGuests = args.removeGuests ?? [];
       const refusal = pickEventRefusal(read.event, { withGuests, addGuests, removeGuests });
 
@@ -129,7 +130,7 @@ export function buildCalendarChangeTool(deps: GoogleDeps, withGuests: boolean): 
                 : { locationAfter: args.location }),
               ...(args.description === null || args.description === undefined
                 ? {}
-                : { descriptionAfter: args.description.slice(0, 200) }),
+                : { descriptionAfter: args.description }),
               addGuests,
               removeGuests,
             }),

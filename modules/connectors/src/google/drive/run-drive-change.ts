@@ -1,14 +1,14 @@
 import type { ActionAttempt, ProviderResponse } from '../../types';
-import { collectStaleMarkerKeys } from '../build-action-marker';
+import { collectStaleMarkerKeys, isMarkerKept } from '../build-action-marker';
+import { buildAttemptMarker } from '../build-attempt-marker';
 import { callGoogle } from '../call-google';
 import { buildItemID } from '../gmail/build-item-id';
 import { parseItemID } from '../gmail/parse-item-id';
 import { readCallContext } from '../gmail/read-call-context';
 import { pickGoogleErrorResponse } from '../pick-google-error-response';
-import { readActionMarker } from '../read-action-marker';
 import type { GoogleDeps } from '../types';
 import { buildDriveMultipart } from './build-drive-multipart';
-import { googleDocType } from './constants';
+import { driveFileFields, googleDocType } from './constants';
 import { driveArgumentsSchema } from './drive-arguments-schema';
 import { parseDriveFile } from './parse-drive-file';
 import { pickDriveChangeRefusal } from './pick-drive-change-refusal';
@@ -50,9 +50,7 @@ export async function runDriveChange(
   }
 
   const file = read.file;
-
-  const marker = await readActionMarker(deps, attempt.actionID);
-
+  const marker = buildAttemptMarker(attempt, deps.clock.now());
   const result = { file: buildItemID(context.connection, file.id), link: file.link };
 
   if (marker.key in file.appProperties) {
@@ -73,7 +71,7 @@ export async function runDriveChange(
         ? {}
         : { name: parsed.data.name }),
       appProperties: {
-        [marker.key]: marker.value,
+        ...(isMarkerKept(file.appProperties, marker) ? { [marker.key]: marker.value } : {}),
         ...Object.fromEntries(stale.map((key) => [key, null])),
       },
     },
@@ -87,7 +85,7 @@ export async function runDriveChange(
   const changed = await callGoogle(deps.hosts, context, {
     path: `/upload/drive/v3/files/${encodeURIComponent(file.id)}`,
     method: 'PATCH',
-    query: { uploadType: 'multipart', fields: 'id,webViewLink', supportsAllDrives: 'true' },
+    query: { uploadType: 'multipart', fields: driveFileFields, supportsAllDrives: 'true' },
     raw: upload,
   });
 
@@ -97,7 +95,18 @@ export async function runDriveChange(
 
   const updated = parseDriveFile(changed.body);
 
-  return updated === null
-    ? { kind: 'ambiguous', reason: 'Google answered with no file' }
+  if (updated === null) {
+    return { kind: 'ambiguous', reason: 'Google answered with no file' };
+  }
+
+  // Drive takes no precondition on a write, so a share that lands between the read and the upload
+  // shows only in the file that the upload answers with.
+  return pickDriveChangeRefusal(updated)?.code === 'shared_file'
+    ? {
+        kind: 'refused',
+        reason:
+          'SHARED_FILE: the file became shared while the change ran, so its new content may have ' +
+          'reached each person who can read it',
+      }
     : { kind: 'success', result: { file: result.file, link: updated.link } };
 }

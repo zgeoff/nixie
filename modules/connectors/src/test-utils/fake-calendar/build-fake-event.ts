@@ -24,6 +24,8 @@ export function buildFakeEvent(seed: FakeEventSeed, facts: FakeEventFacts): Stor
   const others = guests.map((guest) => ({
     email: guest.email,
     responseStatus: guest.response ?? 'needsAction',
+    ...(guest.comment === undefined ? {} : { comment: guest.comment }),
+    ...(guest.additionalGuests === undefined ? {} : { additionalGuests: guest.additionalGuests }),
   }));
 
   const hasAttendees = guests.length > 0 || !isOrganizer;
@@ -39,7 +41,10 @@ export function buildFakeEvent(seed: FakeEventSeed, facts: FakeEventFacts): Stor
     htmlLink: `https://www.google.com/calendar/event?eid=${facts.id}`,
     start: toTime(seed.start),
     end: toTime(seed.end),
-    organizer: isOrganizer ? { email: account, self: true } : { email: organizer },
+    organizer:
+      isOrganizer || seed.isOrganizerSelf === true
+        ? { email: organizer, self: true }
+        : { email: organizer },
     ...(hasAttendees ? { attendees: [...own, ...others] } : {}),
     ...(properties === undefined ? {} : { extendedProperties: { private: { ...properties } } }),
   };
