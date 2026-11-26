@@ -965,10 +965,14 @@ test('it leaves no proposal row when the hold write fails after the proposal is 
       }),
   });
 
-  await run.catch(() => {});
-
+  const [settled] = await Promise.allSettled([run]);
   const row = await readProposal(ctx.writer.db, queued.actionID);
   const open = await readOpenProposals(ctx.writer.db, ctx.clock.now());
+
+  expect(settled).toStrictEqual({
+    status: 'rejected',
+    reason: expect.objectContaining({ message: 'the hold write failed' }),
+  });
 
   expect([row, open]).toStrictEqual([null, []]);
 });
