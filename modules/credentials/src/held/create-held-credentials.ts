@@ -6,13 +6,13 @@ import type { CredentialFetch, OAuthProvider } from '../types';
 import { buildClientFields } from './build-client-fields';
 import { createKeyedLock } from './create-keyed-lock';
 import { CredentialRemovedError } from './credential-removed-error';
-import { forgetCredential } from './forget-credential';
 import { isDue } from './is-due';
 import { pickFailureState } from './pick-failure-state';
 import type { RefreshFailureKind } from './pick-failure-state';
 import { pickRevocable } from './pick-revocable';
 import { readAccount } from './read-account';
 import { recoverLostRefreshes } from './recover-lost-refreshes';
+import { removeHeldCredential } from './remove-held-credential';
 import { sendRevocation } from './send-revocation';
 import { pickProviderError, sendTokenRequest } from './send-token-request';
 import { TokenRequestError } from './token-request-error';
@@ -580,7 +580,7 @@ export function createHeldCredentials(options: HeldOptions): HeldCredentials {
         options.ownValues.remove('connector_credentials', `held:${credentialID}:refresh`);
       });
     },
-    forget: (credentialID) => forgetCredential({ backend, held }, credentialID),
+    forget: (credentialID) => removeHeldCredential({ backend, held }, credentialID),
     moveOwnValues: (fromCredentialID, toCredentialID) =>
       removalLock.withLock(toCredentialID, async () => {
         options.ownValues.remove('connector_credentials', `held:${fromCredentialID}:access`);

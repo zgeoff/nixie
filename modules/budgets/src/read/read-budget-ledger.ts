@@ -1,8 +1,9 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import { buildBudgetLedgerKey } from '../ledger/build-budget-ledger-key';
 import { pickBudgetLimit } from '../limit/pick-budget-limit';
 import { readBudgetsInForce } from '../limit/read-budgets-in-force';
-import { buildBudgetPeriod } from '../period/build-budget-period';
+import { buildBudgetBounds } from '../period/build-budget-bounds';
 import type { BudgetsContext, BudgetsTables } from '../types';
 
 export interface LedgerCharge {
@@ -35,29 +36,28 @@ export async function readBudgetLedger(
     return null;
   }
 
-  const bounds = buildBudgetPeriod(context.clock.now(), context.zone, limit.period);
+  const bounds = buildBudgetBounds(context.clock.now(), context.zone, limit.period);
   const tables = db.$extendTables<BudgetsTables>();
+  const ledgerKey = buildBudgetLedgerKey(budgetID, bounds.period);
 
   const rows = await tables
     .selectFrom('budget_charges')
     .select(['charge_id', 'amount_micros', 'for_kind', 'for_id', 'credited'])
-    .where('budget_id', '=', budgetID)
-    .where('period_start', '=', bounds.start)
+    .where('ledger_key', '=', ledgerKey)
     .orderBy(sql`rowid`)
     .execute();
 
   const ledger = await tables
-    .selectFrom('budget_ledger')
-    .select('spent_micros')
-    .where('budget_id', '=', budgetID)
-    .where('period_start', '=', bounds.start)
+    .selectFrom('spend_ledger')
+    .select('amount')
+    .where('ledger_key', '=', ledgerKey)
     .executeTakeFirst();
 
   return {
     budgetID,
-    periodStart: bounds.start,
+    periodStart: bounds.period.start,
     resetsAt: bounds.resetsAtMs,
-    spentMicros: ledger?.spent_micros ?? 0,
+    spentMicros: ledger?.amount ?? 0,
     charges: rows.map((row) => ({
       chargeID: row.charge_id,
       amountMicros: row.amount_micros,

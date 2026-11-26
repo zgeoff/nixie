@@ -8,13 +8,11 @@ test('it finds the sentence of a call that a budget refused', () => {
     toolCall: {
       callID: 'call-1',
       outcome: 'denied',
-      content: { message: 'budget reached: search-day ($5.00 of $5.00). Resets at midnight.' },
+      content: { message: 'budget reached: search-day. Resets at midnight.' },
     },
   });
 
-  expect(findBudgetRefusal([refused])).toBe(
-    'budget reached: search-day ($5.00 of $5.00). Resets at midnight.',
-  );
+  expect(findBudgetRefusal([refused])).toBe('budget reached: search-day. Resets at midnight.');
 });
 
 test('it finds nothing once a later call settled', () => {
@@ -24,7 +22,7 @@ test('it finds nothing once a later call settled', () => {
     toolCall: {
       callID: 'call-1',
       outcome: 'denied',
-      content: { message: 'budget reached: search-day ($5.00 of $5.00). Resets at midnight.' },
+      content: { message: 'budget reached: search-day. Resets at midnight.' },
     },
   });
 

@@ -23,6 +23,7 @@ import { Route as NotebookRouteImport } from './routes/notebook'
 import { Route as PasskeysRouteImport } from './routes/passkeys'
 import { Route as ProposalsRouteImport } from './routes/proposals'
 import { Route as RemindersRouteImport } from './routes/reminders'
+import { Route as SpendRouteImport } from './routes/spend'
 import { Route as MomentsMomentIDRouteImport } from './routes/moments_.$momentID'
 import { Route as NotebookIndexRouteImport } from './routes/notebook.index'
 import { Route as NotebookNoteRouteImport } from './routes/notebook.$note'
@@ -103,6 +104,11 @@ const RemindersRoute = RemindersRouteImport.update({
   path: '/reminders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SpendRoute = SpendRouteImport.update({
+  id: '/spend',
+  path: '/spend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MomentsMomentIDRoute = MomentsMomentIDRouteImport.update({
   id: '/moments_/$momentID',
   path: '/moments/$momentID',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/passkeys': typeof PasskeysRoute
   '/proposals': typeof ProposalsRoute
   '/reminders': typeof RemindersRoute
+  '/spend': typeof SpendRoute
   '/moments/$momentID': typeof MomentsMomentIDRoute
   '/notebook/$note': typeof NotebookNoteRoute
   '/notebook/check': typeof NotebookCheckRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByTo {
   '/passkeys': typeof PasskeysRoute
   '/proposals': typeof ProposalsRoute
   '/reminders': typeof RemindersRoute
+  '/spend': typeof SpendRoute
   '/moments/$momentID': typeof MomentsMomentIDRoute
   '/notebook/$note': typeof NotebookNoteRoute
   '/notebook/check': typeof NotebookCheckRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/passkeys': typeof PasskeysRoute
   '/proposals': typeof ProposalsRoute
   '/reminders': typeof RemindersRoute
+  '/spend': typeof SpendRoute
   '/moments_/$momentID': typeof MomentsMomentIDRoute
   '/notebook/$note': typeof NotebookNoteRoute
   '/notebook/check': typeof NotebookCheckRoute
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/passkeys'
     | '/proposals'
     | '/reminders'
+    | '/spend'
     | '/moments/$momentID'
     | '/notebook/$note'
     | '/notebook/check'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/passkeys'
     | '/proposals'
     | '/reminders'
+    | '/spend'
     | '/moments/$momentID'
     | '/notebook/$note'
     | '/notebook/check'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/passkeys'
     | '/proposals'
     | '/reminders'
+    | '/spend'
     | '/moments_/$momentID'
     | '/notebook/$note'
     | '/notebook/check'
@@ -318,6 +330,7 @@ export interface RootRouteChildren {
   PasskeysRoute: typeof PasskeysRoute
   ProposalsRoute: typeof ProposalsRoute
   RemindersRoute: typeof RemindersRoute
+  SpendRoute: typeof SpendRoute
   MomentsMomentIDRoute: typeof MomentsMomentIDRoute
   TasksTaskIDRoute: typeof TasksTaskIDRoute
   TasksEndedRoute: typeof TasksEndedRoute
@@ -426,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/spend': {
+      id: '/spend'
+      path: '/spend'
+      fullPath: '/spend'
+      preLoaderRoute: typeof SpendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/moments_/$momentID': {
       id: '/moments_/$momentID'
       path: '/moments/$momentID'
@@ -523,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   PasskeysRoute: PasskeysRoute,
   ProposalsRoute: ProposalsRoute,
   RemindersRoute: RemindersRoute,
+  SpendRoute: SpendRoute,
   MomentsMomentIDRoute: MomentsMomentIDRoute,
   TasksTaskIDRoute: TasksTaskIDRoute,
   TasksEndedRoute: TasksEndedRoute,

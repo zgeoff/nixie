@@ -530,17 +530,6 @@
             "day": {
               "type": "object",
               "properties": {
-                "dollars": {
-                  "default": 60,
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "tokens": {
-                  "default": 80000000,
-                  "type": "integer",
-                  "exclusiveMinimum": 0,
-                  "maximum": 9007199254740991
-                },
                 "turns": {
                   "default": 1000,
                   "type": "integer",
@@ -557,23 +546,10 @@
             },
             "month": {
               "default": {
-                "dollars": 600,
-                "tokens": 600000000,
                 "turns": 20000
               },
               "type": "object",
               "properties": {
-                "dollars": {
-                  "default": 600,
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "tokens": {
-                  "default": 600000000,
-                  "type": "integer",
-                  "exclusiveMinimum": 0,
-                  "maximum": 9007199254740991
-                },
                 "turns": {
                   "default": 20000,
                   "type": "integer",
@@ -892,6 +868,7 @@
       "default": {
         "daily_call_cap": 200,
         "credential": null,
+        "price_micros": 12000,
         "api_url": "https://kagi.com/api/v1"
       },
       "type": "object",
@@ -913,6 +890,12 @@
               "type": "null"
             }
           ]
+        },
+        "price_micros": {
+          "default": 12000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         },
         "api_url": {
           "default": "https://kagi.com/api/v1",
@@ -1693,6 +1676,63 @@
       },
       "additionalProperties": false
     },
+    "mcp": {
+      "default": {
+        "listingTimeoutSeconds": 10,
+        "servers": {}
+      },
+      "type": "object",
+      "properties": {
+        "listingTimeoutSeconds": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "servers": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "minLength": 1
+              },
+              "clientID": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scope": {
+                "type": "string",
+                "minLength": 1
+              },
+              "trusted": {
+                "default": false,
+                "type": "boolean"
+              },
+              "privateRange": {
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "url",
+              "clientID",
+              "scope"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "policy": {
       "type": "object",
       "properties": {
@@ -1980,6 +2020,24 @@
         "control",
         "token",
         "modelURL"
+      ],
+      "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "rates_url": {
+          "default": "https://api.frankfurter.dev/v1",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "currency"
       ],
       "additionalProperties": false
     },

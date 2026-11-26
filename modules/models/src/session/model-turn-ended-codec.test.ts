@@ -47,6 +47,76 @@ test('it decodes the payload a writer encodes', () => {
   });
 });
 
+test('it decodes the wait notices that a turn end told', () => {
+  const payload = modelTurnEndedCodec.encode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+    waitNoticesTold: [70, 72],
+  });
+
+  expect(modelTurnEndedCodec.decode(payload)).toStrictEqual({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+    waitNoticesTold: [70, 72],
+  });
+});
+
+test('it decodes a turn end written before turns told wait notices, with none told', () => {
+  const decoded = modelTurnEndedCodec.decode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+  });
+
+  expect(decoded).toStrictEqual({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+  });
+});
+
 test('it decodes a turn end that carries the turn thinking tokens', () => {
   const payload = modelTurnEndedCodec.encode({
     model: 'claude-test-1',

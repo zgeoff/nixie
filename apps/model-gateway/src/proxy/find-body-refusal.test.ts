@@ -12,6 +12,7 @@ test('it passes the provider field that the guest builds for a pinned profile', 
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: null,
     login: null,
+    limits: null,
   };
 
   const body = { model: 'model-small', ...buildProviderOrder('example-host') };
@@ -28,6 +29,7 @@ test('it refuses the provider field that the guest builds for another pin', () =
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: null,
     login: null,
+    limits: null,
   };
 
   const body = { model: 'model-small', ...buildProviderOrder('other-host') };
@@ -71,6 +73,7 @@ function setupTest() {
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: 1000,
     login: { file: '/var/lib/plan.json', routeKeyFile: '/run/secrets/plan-key' },
+    limits: null,
   };
 
   return { planRoute };

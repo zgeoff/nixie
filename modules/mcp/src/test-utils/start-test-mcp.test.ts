@@ -9,7 +9,7 @@ test('it answers the proposal that a start wrote, and the server joins as added'
 
   await runServerStart(ctx.context, {
     config: { tracker: buildServerFacts() },
-    forgetCredentials: () => Promise.resolve(),
+    removeCredentials: () => Promise.resolve(),
   });
 
   const held = await readServerRows(ctx.log.writer.db);

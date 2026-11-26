@@ -53,11 +53,7 @@ export interface NixieTables {
     readonly for_kind: string;
     readonly for_id: string;
     readonly credited: number;
-  };
-  readonly budget_ledger: {
-    readonly budget_id: string;
-    readonly period_start: string;
-    readonly spent_micros: number;
+    readonly ledger_key: string | null;
   };
   readonly budgets_in_force: {
     readonly budget_id: string;
@@ -285,6 +281,10 @@ export interface NixieTables {
     readonly expires_at: number | null;
     readonly epoch: number;
     readonly generation: number;
+  };
+  readonly legacy_charge_kinds: {
+    readonly charge_id: string;
+    readonly period_kind: string | null;
   };
   readonly mail_messages: {
     readonly message_id: string;
@@ -799,6 +799,14 @@ export interface NixieTables {
     readonly in_conversation: number;
     readonly approval_id: string | null;
   };
+  readonly spend_ledger: {
+    readonly ledger_key: string;
+    readonly counter: string;
+    readonly unit: string;
+    readonly period_kind: string;
+    readonly period_start: string;
+    readonly amount: number;
+  };
   readonly spend_raises: {
     readonly start: string;
     readonly dollars: number;
@@ -806,6 +814,28 @@ export interface NixieTables {
     readonly turns: number;
     readonly raised_by: string;
     readonly at: number;
+    readonly updated_sequence: number;
+  };
+  readonly spend_route_holds: {
+    readonly task_id: string;
+    readonly route_id: string;
+    readonly updated_sequence: number;
+  };
+  readonly spend_route_raises: {
+    readonly route_id: string;
+    readonly start: string;
+    readonly dollars: number;
+    readonly raised_by: string;
+    readonly at: number;
+    readonly updated_sequence: number;
+  };
+  readonly spend_route_stops: {
+    readonly route_id: string;
+    readonly period: string;
+    readonly limit_amount: number;
+    readonly spent_amount: number;
+    readonly at: number;
+    readonly resets_at: number;
     readonly updated_sequence: number;
   };
   readonly spend_stop: {

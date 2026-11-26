@@ -39,6 +39,7 @@ import { ruleContract } from './rule-contract';
 import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
 import {
+  spendCountsSchema,
   spendRaiseInputSchema,
   spendRaiseOutputSchema,
   spendStopSchema,
@@ -345,6 +346,7 @@ export const contract = {
   },
   spend: {
     read: signedIn.output(spendStopSchema),
+    counts: signedIn.output(spendCountsSchema),
     raise: signedIn.input(spendRaiseInputSchema).output(spendRaiseOutputSchema),
   },
   recovery: {

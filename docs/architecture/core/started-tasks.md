@@ -464,17 +464,19 @@ A started task has a limit of turns and of dollars, which its start set or took 
 `models.limits.taskRun`. The limits belong to the task run, and 2 meters count a task run's use:
 
 - The turns meter counts the `model.turn_ended` records of the task run.
-- The dollars meter prices those records' token counts with the task's profile, adds each summary of
-  the task's session, which records the token counts of its calls too, and adds each
-  `task.failed_turn_spent` record of the task run, which holds the dollars of a turn that left no
-  turn record. A summary counts as dollars and as no turn.
+- The dollars meter adds the dollars that each of those records holds, which the turn's profile
+  priced when the record was written, adds each summary of the task's session, which holds its
+  dollars too, and adds each `task.failed_turn_spent` record of the task run, which holds the
+  dollars of a turn that left no turn record. A summary counts as dollars and as no turn. A record
+  that holds no dollars is priced from its token counts with the task's profile when the meter reads
+  it.
 
 The config schema refuses a profile with no price table for any profile a task can run on, as
 [selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and
 the per-call usage that the model API reports leaves out thinking tokens, so the meter prices each
 record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
 whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
-above the spend. One exception: a summary can hold no token counts, so it adds no dollars, and the
+above the spend. One exception: a summary written with no token counts adds no dollars, and the
 count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner reads both meters. When either has reached its limit, the
@@ -511,8 +513,8 @@ A step that lost its lease can write its spend record after another claim has ta
 each priced call, the turn's budget reads the spend records written on the task since the turn's
 usage read, and lowers the dollars left by those that name the same task run. The turn therefore
 stops at the dollar limit even when that late spend lands during the turn, and another task run's
-spend never shortens it. A profile with no prices reads nothing. When the read fails, the step
-fails, and its retry counts the task run's use again from the log.
+spend never shortens it. When the read fails, the step fails, and its retry counts the task run's
+use again from the log.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.

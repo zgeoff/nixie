@@ -77,7 +77,11 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const search = createSearchSettings(loaded.search, credentials);
   const imageSettings = createImageSettings(loaded.images, credentials);
-  const spend = createSpendInputs(loaded.spendStop, credentials);
+
+  const spend = createSpendInputs(loaded.spendStop, credentials, {
+    config: loaded.display,
+    log,
+  });
 
   const manifest = await loadSandboxManifest(options.manifestPath);
 

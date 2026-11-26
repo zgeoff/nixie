@@ -11,7 +11,7 @@ digests.
 ## What the file holds
 
 The file holds every setting that a part of nixie leaves to the deployment, in one section per part.
-Each part's doc owns the meaning of its own settings, and the file only carries them:
+Read each part's doc for the meaning of its settings. The sections cover:
 
 - where the server keeps its data, listens and finds the secrets file, and the lowest level of event
   it logs
@@ -36,7 +36,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   `openai`. Every `image.draw` result names the profile and its `model`, and every refusal lists the
   profiles
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
-  request, which `spendStop` names, and the model limits it sets: the day and the month
+  request, which `spendStop` names, and the model limits it sets: the turns of the day and of the
+  month
 - the shortest gap between two fires of a recurring [reminder](../core/reminders.md#tools)
 - the task and action [claim pool](../core/leases-and-restart-sweep.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often
@@ -68,9 +69,9 @@ and only the warning shows it. The error lists the path of each other fault it r
 
 A setting that names a secret holds a reference of the form `deployment:<name>`, which names an
 entry in the secrets file. One schema validates every such key: a model profile's credential, the
-search and image keys, the spend gateway's token and the user's name and pronouns. The user's name
-and each pronoun accept either a reference or the value, so a deployment whose configuration lives
-in a public repo keeps them in the secrets file. The
+search and image keys, the model gateway's control token and the user's name and pronouns. The
+user's name and each pronoun accept either a reference or the value, so a deployment whose
+configuration lives in a public repo keeps them in the secrets file. The
 [credential store](../connectors/credentials.md) resolves each reference once the secrets load, and
 the server refuses to start when the secrets file lacks an entry, except a model profile's, which
 the sandbox host may hold. nixie therefore never shows the model a reference in place of a name or a

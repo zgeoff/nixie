@@ -25,6 +25,11 @@ test('it summarizes a task session and returns the summary record through its la
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: {
+      profile: {
+        prices: { input: 3, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
+      },
+    },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',
@@ -82,6 +87,7 @@ test('it summarizes a task session and returns the summary record through its la
         summaryTokens: expect.toBeNumber(),
         isCut: false,
         usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        dollars: 0.000105,
       },
       erasable: { text: 'Open threads: none.' },
     },
@@ -95,6 +101,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: { profile: { prices: null } },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',
@@ -152,6 +159,7 @@ test('it sends the summary call the compaction template that the definitions ove
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: { profile: { prices: null } },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',
@@ -201,6 +209,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: { profile: { prices: null } },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',
@@ -300,6 +309,7 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: { profile: { prices: null } },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',
@@ -382,6 +392,7 @@ test('it returns a failure record with the count in a row when the summary call 
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: { profile: { prices: null } },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',
@@ -447,6 +458,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
   const run = {
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
+    profile: { profile: { prices: null } },
     turnProfile: {
       harness: 'agent-sdk',
       model: 'claude-test',

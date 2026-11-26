@@ -95,7 +95,7 @@ export function buildProposalCoreDeps(
       log: context.log,
       definitions: context.definitions,
       now: () => context.clock.now(),
-      forgetCredentials: async (credentialIDs) => {
+      removeCredentials: async (credentialIDs) => {
         const port = context.readMcp?.() ?? null;
 
         invariant(port, 'an mcp proposal that removes credentials answers after the proxy starts');

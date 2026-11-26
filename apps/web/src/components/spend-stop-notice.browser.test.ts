@@ -49,7 +49,7 @@ test('it shows the stop notice, then raises the limit with one confirm', async (
 
   const text = await ctx.readPageText();
 
-  expect(text).toInclude('Model spending stopped: the daily limit of $60 was reached');
+  expect(text).toInclude('Model spending stopped: the daily limit of 1,000 turns was reached');
 
   await ctx.view.evaluate(
     "[...document.querySelectorAll('button')].find((button) => button.textContent === \"Raise today's limit\").click()",
@@ -66,7 +66,7 @@ test('it shows the stop notice, then raises the limit with one confirm', async (
 
   await waitFor(
     () => {
-      expect(spendStore.raises.all()).toMatchObject([{ start: '2026-11-13', dollars: 90 }]);
+      expect(spendStore.raises.all()).toMatchObject([{ start: '2026-11-13', turns: 1500 }]);
     },
     { timeout: 10_000 },
   );

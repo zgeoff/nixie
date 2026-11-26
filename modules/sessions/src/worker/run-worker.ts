@@ -433,6 +433,7 @@ async function readGatewayCount(
     dollars: Math.max(plan.limits.dollars, run.tally.dollars),
     tokens: Math.max(plan.limits.tokens, run.tally.tokens),
     tripped: false,
+    lastRefusal: null,
   };
 }
 

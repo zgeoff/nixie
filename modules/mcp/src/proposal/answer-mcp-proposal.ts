@@ -26,7 +26,7 @@ export interface AnswerContext extends McpContext {
   readonly readOverrides?: ReadOverrides;
 
   // Forgets the credentials of a server whose URL or client ID changed, once the answer commits.
-  readonly forgetCredentials?: (credentialIDs: readonly string[]) => Promise<void>;
+  readonly removeCredentials?: (credentialIDs: readonly string[]) => Promise<void>;
 }
 
 interface AnswerRequest {
@@ -142,9 +142,9 @@ async function answerServer(
   return {
     status: 'done',
     result: { proposalID, state: request.isApproved ? 'approved' : 'declined' },
-    ...(forget.length === 0 || context.forgetCredentials === undefined
+    ...(forget.length === 0 || context.removeCredentials === undefined
       ? {}
-      : { afterCommit: () => context.forgetCredentials?.(forget) ?? Promise.resolve() }),
+      : { afterCommit: () => context.removeCredentials?.(forget) ?? Promise.resolve() }),
   };
 }
 

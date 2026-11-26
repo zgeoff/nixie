@@ -1,18 +1,20 @@
 # The model gateway
 
 The model gateway is a process of its own on the host that sits between a deployment and the model
-API. Every model request the deployment sends passes through it. The gateway prices each reply from
-the reply's own token counts, adds the price and the tokens to one running count, and refuses every
-request once the count reaches the configured limit. It fails closed: when it cannot read or write
-its count, it refuses every request instead of letting one through uncounted. Because the gateway
-runs outside the deployment, code that the deployment runs cannot raise or skip its limit. The
-gateway is the first part of the hard spending stop that the
+API. When the deployment's config sets `spendStop`, every model request the deployment sends passes
+through it. The gateway prices each reply from the reply's own token counts, adds the price to its
+route's count, and refuses every request on a route once that route's count reaches the route's own
+limit. It fails closed: when it cannot read or write its count, it refuses every request, so none
+passes uncounted. Because the gateway runs outside the deployment, code that the deployment runs
+cannot skip its limit, or raise it past the cap in the gateway's config. The gateway is the first
+part of the hard spending stop that the
 [budgets design](../../design/platform/policy/budgets.md#the-hard-spending-stop) describes, and a
 preview host runs one per preview with a small limit.
 
-A sandbox reaches the model API only through its credential broker, so every model call from a
-worker's sandbox passes through the gateway.
-[The imp adapter](../connectors/sandboxes.md#the-imp-adapter) gives the sandbox no other route.
+With `spendStop` set, a sandbox reaches the model API only through its credential broker, so every
+model call from a worker's sandbox passes through the gateway.
+[The imp adapter](../connectors/sandboxes.md#the-imp-adapter) sets up the sandbox with no other
+route.
 
 ```mermaid
 flowchart LR
@@ -24,12 +26,12 @@ flowchart LR
 ## Routes
 
 The gateway holds one route per model profile. A route has an ID, the model API it speaks, the
-upstream origin it sends to, the model it allows, and the profile's price table. The API is
-Anthropic's Messages API, `anthropic-messages`, unless the route names OpenAI's Responses API,
-`openai-responses`. A request names its route in the first segment of its path, and the gateway
-sends the rest of the path, with the query, to the route's upstream. A deployment therefore points a
-profile's base URL at the gateway with the route ID on the end, and the model client adds the API
-path after it.
+upstream origin it sends to, the model it allows, the profile's price table and, in a config with
+its own dollar [limits](#the-periods). The API is Anthropic's Messages API, `anthropic-messages`,
+unless the route names OpenAI's Responses API, `openai-responses`. A request names its route in the
+first segment of its path, and the gateway sends the rest of the path, with the query, to the
+route's upstream. A deployment therefore points a profile's base URL at the gateway with the route
+ID on the end, and the model client adds the API path after it.
 
 The gateway prices every reply on a route with that route's table, so a request for another model
 would be priced wrong. The gateway refuses a request to a spending or token count endpoint whose
@@ -120,9 +122,7 @@ plan request itself. The nixie server and each sandbox hold only stand-in values
 token, so every plan request passes through the count.
 
 A route holds a plan login when its config has a `login` block. The nixie server reads each login's
-status from the [control listener](#the-control-listener), and only a config with
-[periods](#the-periods) has a control listener, so the schema refuses a `login` block in a `limits`
-config:
+status from the [control listener](#the-control-listener), which every config has:
 
 ```yaml
 routes:
@@ -132,6 +132,7 @@ routes:
     model: gpt-6-luna
     prices: { … } # the prices the count and the stop use
     maxOutputTokens: 128000
+    limits: { day: 40, month: 600 } # dollars; a route with no limits refuses every request
     login:
       file: /var/lib/model-gateway/logins/codex-plan.json
       routeKeyFile: /run/secrets/codex-plan-route-key # one line: the route key
@@ -175,8 +176,8 @@ model requests, apart from the control listener ([the route of a request](#the-r
   nothing goes upstream.
 - The gateway counts a plan request under the route's prices, as it counts every other request. A
   plan has no price per token, so the operator sets the route's prices and the profile's prices to
-  OpenAI's API prices for the same model. The day and month dollar limits then cap the credits that
-  Codex use past the plan's own limit spends.
+  OpenAI's API prices for the same model. The route's day and month dollar limits then cap the
+  credits that Codex use past the plan's own limit spends.
 
 ### The login file and the refresh
 
@@ -253,16 +254,18 @@ login file shows `needs_login` with a null reason. The model listener serves no 
 
 ## The count
 
-The count is two totals, dollars and tokens, kept in a counter store on the host's disk. The gateway
-reads both from the store before it admits a request, and adds a reply's price and tokens once the
-reply ends. The models module's call pricing sets the price, the same pricing that the deployment's
-own records use, so a cache write for the long lifetime takes the profile's price for that lifetime,
-and a reply to a long prompt takes the profile's
-[long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has them. The
-tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache write
-total and its split by cache lifetime disagree, the larger figure counts for both. A Responses reply
-counts its cache reads and writes inside its input count, so the gateway takes them out of the input
-before it prices the rest as uncached. Its shorter cache lifetime takes the profile's shorter
+The count is dollars and tokens, kept in a counter store on the host's disk. It keeps the dollars of
+each route's day and month, and the dollars and tokens of each sandbox. The gateway reads the count
+from the store before it admits a request, and adds a reply's price once the reply ends. The gateway
+takes the price from the models module's call pricing, the same pricing that the deployment's own
+records use, so a cache write for the long lifetime takes the profile's price for that lifetime, and
+a reply to a long prompt takes the profile's
+[long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has them.
+
+The tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache
+write total and its split by cache lifetime disagree, the larger figure counts for both. A Responses
+reply counts its cache reads and writes inside its input count, so the gateway takes them out of the
+input before it prices the rest as uncached. Its shorter cache lifetime takes the profile's shorter
 lifetime price, and its longer one, or a write with no lifetime, takes the longer lifetime price.
 
 A whole reply carries its usage in its body. A streamed Messages reply carries the input side in its
@@ -304,8 +307,8 @@ A reply that spent, or may have, with no whole usage the gateway can read adds
 The gateway logs each reply it counts from its whole usage as `count.charged`, at the info level,
 with the route, the sandbox, the usage's 5 token counts (uncached input, cache reads, the 2 cache
 writes and output), its reasoning tokens or `null` when the reply reported none, and the dollars and
-tokens it added. The reasoning tokens are a part of the output tokens. The line holds counts only,
-so it never copies a key, a prompt or a reply.
+tokens it added. The reasoning tokens are a part of the output tokens. The line holds counts only
+and never copies a key, a prompt or a reply.
 
 ### The estimate
 
@@ -353,30 +356,21 @@ the reason and the dollars and tokens it added.
 The store writes each count to a new file and renames it over the old one, so a crash leaves the
 last whole count. It adds one reply at a time, so two replies that end together each count once.
 
-## The limit
-
-A config sets either `limits`, which this section describes, or `periods`, which
-[the periods](#the-periods) describes. A preview's config sets `limits`.
-
-The configured limit names dollars, tokens or both, and the gateway refuses a request once either
-total reaches its limit. The refusal is a 403 in the model API's error shape, with a message that
-names the totals and the limit, so the model client stops instead of retrying. Requests already in
-flight when the count crosses the limit finish and count, so the totals can pass the limit by the
-replies that were running at that moment.
-
 ## The periods
 
-A config with `periods` counts a day and a month in place of one total. Each resets at local
-midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone. The server
-sets the limits and the gateway's own config sets the caps above them, so code in the deployment
-cannot move a cap.
+The gateway counts the day and the month of each route in US dollars, and limits each route on its
+own. No limit spans routes, and the gateway holds no limit in tokens. Each period resets at local
+midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone, and
+[`periodOf`](metering.md#periods) works out each start. The route's limits and the cap above its day
+limit sit in the gateway's own config, so code in the deployment cannot move a limit or a cap.
 
 ```yaml
 periods:
   zone: Europe/London
-caps: # default: twice nixie's default day and month limits
-  day: { dollars: 120, tokens: 160000000 }
-  month: { dollars: 1200, tokens: 1200000000 }
+routes:
+  codex-plan:
+    # api, upstream, model and prices as in the routes above
+    limits: { day: 40, month: 600, dayCap: 80 } # dollars; dayCap defaults to twice day
 control:
   listen: { hostname: 127.0.0.1, port: 8790 } # an address no sandbox reaches
   tokenFile: /run/secrets/gateway-control-token # one line
@@ -384,36 +378,50 @@ countBySandbox: true # default false
 override: /var/lib/model-gateway/override.json # no path, no override
 ```
 
-A config with `periods` needs `control`, and the schema refuses a config that sets both `periods`
-and `limits`, or neither. It also refuses `caps`, `control`, `countBySandbox` and `override` in a
-config with `limits`. The store of a `periods` config is a file of its own, in version 2: the start,
-the count, the base limit, the raise and the trip time of each period, and a count and a limit per
-sandbox. A period's trip time is the instant the gateway first found its count at its limit in
+The schema requires `periods` and `control`, and refuses a top-level `limits` key, because no limit
+spans routes. It refuses a `dayCap` below its route's `day`. The store is a file of its own, in
+version 3: the lost mark, for each route its day and its month, and a count and a limit per sandbox.
+A period holds its start, the instant it ends, its count in whole micros of a dollar, the raise and
+the trip time. A sandbox's count is in whole micros too. The count is an integer, so a long run of
+replies adds no drift, whatever the size of the total. A reply that costs less than half a micro
+still adds one micro, so small replies always accumulate, and a limit under half a micro counts as
+one micro. A period's trip time is the instant the gateway first found its count at the limit in
 force, and a reset or a raise that lifts the limit clears it.
 
-At start, the gateway rewrites a store file in the shape of a `limits` count as a version 2 store,
-in one write. The periods start at zero, because a total that never reset says nothing of today's
-spend or this month's. The lost mark carries over, and the gateway logs the old totals. The gateway
-refuses to start on a store file in any other shape.
+At start, the gateway rewrites a store file of an earlier shape, a count of one total or a version 2
+store, as a version 3 store in one write. A count of one total says nothing of a route's spend, so
+every route starts at zero. A version 2 store did not split its count by route, so each route takes
+the whole count of each period still under way, with its raise and its trip. The count of a route is
+then an upper bound, and a restart never reopens a limit. The lost mark and the sandboxes carry
+over, and the gateway logs the old totals. The gateway refuses to start on a store file in any other
+shape, and a route that the config gained starts at zero.
 
 ### Admission and the reset
 
 Before each admission the gateway reads the store and the override file, and answers:
 
-- a 503 while the lost mark stands, or while either period's base limit is null, so a gateway that
-  the server never set sends nothing upstream;
+- a 503 while the lost mark stands, so a gateway that lost count sends nothing upstream;
+- a 503 for a route with no `limits`, so a route nobody limited refuses its requests;
 - a 403 for a sandbox that the store lacks, when the config counts by sandbox;
-- the limit 403 when a period's count has reached its limit in force. That limit is the override
-  when it applies to the period's current start, and otherwise the larger of the base limit and the
-  day's raise;
+- the limit 403 when the route's day or month count has reached its limit in force. The day's limit
+  is the override when it applies to the day's current start, and otherwise the larger of the
+  configured limit and the day's raise. The month's limit is the configured one;
 - the limit 403 when a sandbox's count has reached its own limit.
 
+A limit 403 has the model API's error shape with the type `limit_reached`, and adds `counter`, which
+is `route_day`, `route_month` or `sandbox`, and `route`, the route that the request named. Its
+message holds no dollar figure. Another route goes on while one route is at its limit. A request
+that a sandbox's count refuses also stores the refusal on the sandbox's entry as its last refusal:
+the counter, the route and the time.
+
 Each read of the store, for an admission, a reply or a control call, first resets each period whose
-next start in the zone has passed: the count goes to zero, the start moves, and the raise drops. The
-base limit and the lost mark stay. A reset therefore needs no model request, and a `/status` read
-after midnight shows the new day. The store runs one change at a time, so a reply counted after
-midnight lands in the new day and the month once. A reply adds its dollars and tokens to the day,
-the month and its sandbox in one write.
+end has passed: the count goes to zero, the start and the end move to the zone's current ones, and
+the raise drops. A period keeps the end that the zone gave it when it started, so a changed
+`periods.zone` takes effect at the next reset. A period with no stored end ends at the next start in
+the zone. The lost mark stays. A reset therefore needs no model request, and a `/status` read after
+midnight shows the new day. The store runs one change at a time, so a reply counted after midnight
+lands in the new day and the month once. A reply adds its dollars, rounded to whole micros, to its
+route's day and month, and its micros and tokens to its sandbox, in one write.
 
 ### Count by sandbox
 
@@ -427,28 +435,34 @@ A second listener on `control.listen` serves the server alone. It answers 401 to
 `Authorization: Bearer <token>`, with the token read from `control.tokenFile` at start. The model
 listener serves no control path.
 
-| Call                       | Effect                                                                                                                       |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `GET /status`              | the zone, the lost mark, each period's start, reset time, count, limit in force and cap, and `tripped`                       |
-| `PUT /limits`              | sets the base limits of both periods; 409 `above_cap` past a cap                                                             |
-| `POST /raise`              | raises the day for its start, never below that day's earlier raise; 409 `above_cap`, or 409 `period_ended` for another start |
-| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                |
-| `GET /sandboxes/<name>`    | the sandbox's count and whether it is past its limit; 404 for a name the store lacks                                         |
-| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                     |
+| Call                       | Effect                                                                                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`              | the zone, the lost mark, and for each route its day and month: start, reset time, dollars, limit in force, cap and `tripped`                                                      |
+| `POST /raise`              | raises one route's day for its start, never below that day's earlier raise; 409 `above_cap` with the route and its cap, 409 `period_ended` for another start, 404 `unknown_route` |
+| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                                                                     |
+| `GET /sandboxes/<name>`    | the sandbox's count, whether it is past its limit and its last refusal; 404 for a name the store lacks                                                                            |
+| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                                                                          |
 
-A refused call changes nothing. `tripped` is null while each count is under its limit in force and
-the lost mark is absent. For a limit, its `at` is the period's trip time. While only the lost mark
-stands, `tripped` is `{ "lost": true, "at": … }`, and `at` is the time of the read, because an
-operator clears the mark by deleting one field and the store keeps no time beside it.
+A refused call changes nothing. A raise body is `{ route, start, dollars }`, and the raise is for
+the day only: the month's limit moves only in the gateway's config. A period's `tripped` is true
+while its dollars are at its limit in force, and its `sinceMs` is the period's trip time. The status
+holds the lost mark apart from the routes, and a lost gateway answers its routes as they stand. The
+status lists only the routes in the config: the store keeps the count of a route the config dropped,
+and the status leaves that route out. A count reaches a limit in whole micros of a dollar, so ten
+replies of 0.1 dollars reach a limit of 1 dollar. The status and the sandbox read answer in dollars,
+worked out from the micros.
 
 ### The override
 
-`model-gateway raise --config <file> --period day|month --dollars <n> --tokens <n>` is the only way
-past a cap. It writes the override file for the period now in force in the config's zone, through a
-second file and a rename, and the limit it names may pass the cap. The gateway ignores an override
-whose start is not the period's current start, and an override file that it cannot read. The control
-listener has no call that writes the override, and the server has no path to the override, the store
-or the config. A config with no `override` path makes the command refuse to run.
+`model-gateway raise --config <file> --route <id> --dollars <n>` is the only way past a route's cap.
+It writes the route's entry in the override file for the day now in force in the config's zone,
+through a second file and a rename, and keeps the entries of the other routes. A lock on the file
+spans the command's read and its write, so 2 raises of different routes at once keep both entries.
+The dollars it names may pass the cap, and the command refuses a route that has no `limits`. The
+gateway ignores an entry whose start is not the day's current start, and an override file that it
+cannot read. The control listener has no call that writes the override, and the server has no path
+to the override, the store or the config. A config with no `override` path makes the command refuse
+to run.
 
 ## How nixie uses the gateway
 
@@ -473,17 +487,15 @@ The [spending stop](spending-stop.md) adds the turn count, the pause and the rai
 ### The start checks
 
 After the migrations, and before any other part starts, the server checks the gateway. It refuses to
-start in each of these cases:
+start in either of these cases:
 
 - the secrets file has a `model_credentials` entry;
-- the gateway's `/status` shows a zone that differs from the time tool's `default_zone`;
-- `PUT /limits` with the day and month limits of the models config answers `above_cap`. The error
-  holds the cap.
+- the gateway's `/status` shows a zone that differs from the time tool's `default_zone`.
 
-When the gateway does not answer, the server starts, logs `spend.limits_unsent`, and sends the
-limits on a fixed short interval until the gateway answers. Until then the gateway holds no limit
-and refuses every model request. A late send checks the zone first, and sends nothing to a gateway
-in another zone.
+When the gateway does not answer, the server starts and logs `spend.gateway_unanswered`. The spend
+watcher trips the stop on its first poll that finds no answer, and clears it when the gateway
+answers. The gateway holds each route's limits in its own config, so the server sends none. A late
+answer checks the zone first.
 
 ### The route of a request
 
@@ -526,7 +538,9 @@ limit `dollars` or `tokens`, unless the run ended with an answer, a stop, its mi
 start first. When the gateway does not answer that read, the record holds the run's planned dollars
 and tokens, where the gateway starts to refuse the sandbox's requests, because the guest's own count
 can miss spend. The run's dollars still count toward the calling task run's dollar limit. A task run
-has no token limit: it ends at its turns and its dollars.
+has no token limit: it ends at its turns and its dollars. The same read holds the sandbox's last
+refusal, with the counter and the route that refused it, so a run that a route's limit stopped shows
+which route.
 
 ## The capture
 

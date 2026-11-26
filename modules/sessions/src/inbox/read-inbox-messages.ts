@@ -10,6 +10,7 @@ import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
 import { mergeImageTallies } from '../utils/merge-image-tallies';
 import { isSilentRecord } from './is-silent-record';
+import { isToldWaitNotice } from './is-told-wait-notice';
 import { readActionResult } from './read-action-result';
 import { readApprovalTime } from './read-approval-time';
 import { readHeardCut } from './read-heard-cut';
@@ -32,7 +33,12 @@ export interface InboxRead {
 
   // reads the gaps that the first message of the read shows
   readonly gaps?: GapReader;
+
+  // the wait notices that a turn's opening told, which the read takes with no text
+  readonly toldWaitNotices?: ReadonlySet<number>;
 }
+
+const noneTold: ReadonlySet<number> = new Set();
 
 export interface InboxMessages {
   // the records that the read took, in order: each one that has a message, and each silent one
@@ -59,7 +65,7 @@ export async function readInboxMessages(
       continue;
     }
 
-    if (isSilentRecord(record)) {
+    if (isSilentRecord(record) || isToldWaitNotice(record, read.toldWaitNotices ?? noneTold)) {
       taken.push(record);
       silent.push(record);
       continue;

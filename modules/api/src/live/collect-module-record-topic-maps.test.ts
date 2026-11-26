@@ -417,10 +417,6 @@ test('it sends a changed event with the spend topic when the gateway stops answe
 
   startSpendWatcher({
     context: spend,
-    limits: {
-      day: { dollars: 60, tokens: 80_000_000 },
-      month: { dollars: 600, tokens: 600_000_000 },
-    },
     log: () => {},
     intervalMs: 20,
     signal: stopping.signal,

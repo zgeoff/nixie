@@ -1,20 +1,22 @@
 import { mock } from 'bun:test';
+import invariant from 'tiny-invariant';
 import type { GatewayStatus, SpendGateway } from '../types';
+import { buildMockPeriodStatus } from './build-mock-period-status';
 
 export function buildMockGatewayStatus(overrides: Partial<GatewayStatus> = {}): GatewayStatus {
-  const period = {
-    start: '2026-11-13',
-    resetsAt: '2026-11-14T00:00:00Z',
-    spent: { dollars: 0, tokens: 0 },
-    limit: { dollars: 60, tokens: 80_000_000 },
-    cap: { dollars: 120, tokens: 160_000_000 },
-  };
+  const day = buildMockPeriodStatus();
+
+  const month = buildMockPeriodStatus({
+    start: '2026-11-01',
+    resetsAt: '2026-12-01T00:00:00Z',
+    limit: 600,
+    cap: null,
+  });
 
   return {
     zone: 'UTC',
     lost: false,
-    periods: { day: period, month: { ...period, start: '2026-11-01' } },
-    tripped: null,
+    routes: { plan: { day, month }, metered: { day: { ...day, limit: 5, cap: 10 }, month } },
     ...overrides,
   };
 }
@@ -28,34 +30,39 @@ export function buildStubSpendGateway() {
     readChatGPTLogins: mock<SpendGateway['readChatGPTLogins']>(() =>
       Promise.resolve({ kind: 'ok', value: {} }),
     ),
-    putLimits: mock<SpendGateway['putLimits']>(() =>
-      Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
-    ),
     postRaise: mock<SpendGateway['postRaise']>(() =>
       Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
     ),
     putSandbox: mock<SpendGateway['putSandbox']>(() => Promise.resolve({ kind: 'ok' })),
     readSandbox: mock<SpendGateway['readSandbox']>(() =>
-      Promise.resolve({ kind: 'ok', value: { dollars: 0, tokens: 0, tripped: false } }),
+      Promise.resolve({
+        kind: 'ok',
+        value: { dollars: 0, tokens: 0, tripped: false, lastRefusal: null },
+      }),
     ),
     removeSandbox: mock<SpendGateway['removeSandbox']>(() => Promise.resolve({ kind: 'ok' })),
   } satisfies SpendGateway;
 }
 
-// The day's dollars passed the limit of 60, and the gateway reports the trip.
+// The route `plan` passed its day limit of 40 dollars, and the route `metered` is under its own.
 export function buildTrippedGatewayStatus(): GatewayStatus {
   const status = buildMockGatewayStatus();
+  const plan = status.routes['plan'];
+
+  invariant(plan !== undefined, 'the mock status holds the route plan');
 
   return buildMockGatewayStatus({
-    periods: {
-      day: {
-        ...status.periods.day,
-        start: '2026-10-16',
-        resetsAt: '2026-10-17T00:00:00Z',
-        spent: { dollars: 61.2, tokens: 51_200_000 },
+    routes: {
+      ...status.routes,
+      plan: {
+        ...plan,
+        day: {
+          ...plan.day,
+          dollars: 41.2,
+          tripped: true,
+          sinceMs: Date.parse('2026-11-13T08:42:07Z'),
+        },
       },
-      month: status.periods.month,
     },
-    tripped: { period: 'day', measure: 'dollars', at: '2026-10-16T08:42:07Z' },
   });
 }

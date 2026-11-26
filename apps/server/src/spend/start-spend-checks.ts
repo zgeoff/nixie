@@ -1,12 +1,12 @@
 import type { Logger } from '@heynixie/logger';
 import type { ModelsConfig } from '@heynixie/models';
-import { startSpendLimits } from '@heynixie/spend';
+import { checkSpendStart } from '@heynixie/spend';
 import type { SpendInputs } from './create-spend-inputs';
 
 export interface SpendChecksInputs {
   readonly spend: SpendInputs | null;
   readonly config: {
-    readonly models: Pick<ModelsConfig, 'limits' | 'profiles'>;
+    readonly models: Pick<ModelsConfig, 'profiles'>;
     readonly time: { readonly default_zone: string };
   };
   readonly secrets: { readonly modelCredentialCount: number };
@@ -14,21 +14,17 @@ export interface SpendChecksInputs {
 }
 
 // With spendStop set, the gateway counts every model request, so the server checks it before any
-// work starts. Without it, nothing runs. The result says whether the gateway got its limits.
-export function startSpendChecks(inputs: SpendChecksInputs): Promise<'off' | 'sent' | 'unsent'> {
+// work starts. Without it, nothing runs. The result says whether the gateway answered.
+export function startSpendChecks(
+  inputs: SpendChecksInputs,
+): Promise<'off' | 'answered' | 'unanswered'> {
   if (inputs.spend === null) {
     return Promise.resolve('off');
   }
 
-  const limits = inputs.config.models.limits;
-
-  return startSpendLimits({
+  return checkSpendStart({
     gateway: inputs.spend.gateway,
     planLogins: inputs.spend.planLogins,
-    limits: {
-      day: { dollars: limits.day.dollars, tokens: limits.day.tokens },
-      month: { dollars: limits.month.dollars, tokens: limits.month.tokens },
-    },
     defaultZone: inputs.config.time.default_zone,
     credentialCount: inputs.secrets.modelCredentialCount,
     pathProfileIDs: collectPathProfileIDs(inputs.config.models.profiles),

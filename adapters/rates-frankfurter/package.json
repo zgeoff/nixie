@@ -1,0 +1,21 @@
+{
+  "name": "@heynixie/rates-frankfurter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/spend": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/mock-server": "workspace:*",
+    "msw": "catalog:"
+  }
+}

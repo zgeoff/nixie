@@ -15,13 +15,15 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
+    "@heynixie/periods": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
-    "@heynixie/triggers": "workspace:*",
     "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
 }

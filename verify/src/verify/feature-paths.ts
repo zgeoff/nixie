@@ -14,6 +14,8 @@ const everyJourney = [
   'adapters/image-openai/**',
   'adapters/search-kagi/**',
   'adapters/spend-model-gateway/**',
+  'adapters/rates-frankfurter/**',
+  'apps/model-gateway/**',
   'nixie-test-build.d.ts',
   'bun-serve-options.d.ts',
 ] as const;
@@ -35,6 +37,7 @@ export const featurePaths = {
   'device-screen': [...everyJourney],
   'device-layout': [...everyJourney],
   'live-updates': [...everyJourney],
+  'spend-routes': [...everyJourney],
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],
   'computer-screen': [...everyJourney],
@@ -110,10 +113,9 @@ export const ignoredPaths = [
   '.release-please-manifest.json',
   'release-please-config.json',
 
-  // 4. Code that no journey runs: the backup job, the model gateway, the imp sandbox adapter, and
-  //    the deployment recipes.
+  // 4. Code that no journey runs: the backup job, the imp sandbox adapter, and the deployment
+  //    recipes.
   'apps/backup-job/**',
-  'apps/model-gateway/**',
   'adapters/sandbox-imp/**',
   'deploy/**',
 ] as const;

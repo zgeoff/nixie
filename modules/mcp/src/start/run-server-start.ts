@@ -18,7 +18,7 @@ export interface ServerStartDeps {
   readonly config: Readonly<Record<string, ServerFacts>>;
 
   // Forgets the grant and the client of a server that left the config, after its removal commits.
-  readonly forgetCredentials: (credentialIDs: readonly string[]) => Promise<void>;
+  readonly removeCredentials: (credentialIDs: readonly string[]) => Promise<void>;
 }
 
 // Compares each config entry with the facts in use and writes what the start owes: one proposal for
@@ -46,7 +46,7 @@ export async function runServerStart(
 
     await withWriteTransaction(context.log.writer, (tx) => writeStep(context, tx, step, row));
 
-    await deps.forgetCredentials(collectForgottenCredentials(step, row));
+    await deps.removeCredentials(collectForgottenCredentials(step, row));
   }
 
   return steps;

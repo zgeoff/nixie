@@ -63,6 +63,7 @@ export async function readSessionTurn(
     signal: step.signal,
     invalidatedThrough: step.marks.invalidatedThrough,
     images: isNewSession ? { bytes: 0, count: 0 } : step.marks.images,
+    toldWaitNotices: step.toldWaitNotices,
     sessionKey: isNewSession ? crypto.randomUUID() : getResumedKey(step),
     brief,
     briefPlace,

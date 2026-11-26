@@ -9,7 +9,6 @@ import type {
   PolicyDecision,
 } from '@heynixie/policy';
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
-import { mintBlockID, renderFenced } from '@heynixie/wire';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
 import { isDefinitionMoved } from './call-record/is-definition-moved';
@@ -18,7 +17,10 @@ import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
 import { renderChangedSentence } from './call-record/render-changed-sentence';
 import { callCapRefusal } from './cap/call-cap-refusal';
-import { runPaidCall } from './paid/run-paid-call';
+import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
+import type { PaidState } from './paid/try-prepare-paid-call';
+import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
+import type { PaidGate } from './paid/types';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { pickVariant } from './policy-call/pick-variant';
@@ -29,6 +31,7 @@ import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts'
 import { buildMessage } from './settle/build-message';
 import { buildTypedResult } from './settle/build-typed-result';
 import { readQueuedResult } from './settle/read-queued-result';
+import { toCallToolResult } from './settle/to-call-tool-result';
 import type { Settled } from './settle/types';
 import type {
   ActionQueue,
@@ -39,7 +42,7 @@ import type {
   RegisteredTool,
   SchemaCheck,
   ToolCall,
-  ToolImage,
+  ToolOutcome,
   ToolRegistry,
   ToolRun,
 } from './types';
@@ -216,27 +219,49 @@ export async function runToolCall(
     actionHash,
   });
 
-  const written = await recorder.writeCall({
+  const paid = await tryPreparePaidCall({
     policy,
-    stored,
-    destinations,
-    args: policyArgs,
-    frame: policyCall,
-    deadlineAt,
-    repeatOf,
-    actionHash,
-    expectURL: prepared?.expectURL,
-    expectWindow: prepared?.expectWindow,
-    policyTool,
-    declaration: pickCallDeclaration(registered, effects),
-    ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
+    registered,
+    call,
+    run,
+    budgets: options.budgets,
   });
 
+  const plan = paid.status === 'plan' ? paid.plan : undefined;
+
+  const written = await recorder
+    .writeCall({
+      policy,
+      stored,
+      destinations,
+      args: policyArgs,
+      frame: policyCall,
+      deadlineAt,
+      repeatOf,
+      actionHash,
+      expectURL: prepared?.expectURL,
+      expectWindow: prepared?.expectWindow,
+      policyTool,
+      declaration: pickCallDeclaration(registered, effects),
+      ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
+      ...(plan === undefined ? {} : { paid: plan }),
+    })
+    .catch((error: unknown) => {
+      plan?.release();
+      throw error;
+    });
+
   await prepared?.settleAttachments?.(written.sequence);
+
+  if (written.isCapped) {
+    plan?.release();
+  }
 
   const settled = written.isCapped
     ? buildMessage('denied', renderCallCapRefusal(run, call.tool), { source: 'owner_data' })
     : await runDecidedCall({
+        paid,
+        gate: written.gate,
         policy,
         stored,
         registered,
@@ -267,79 +292,6 @@ async function writeRefusedCall(recorder: CallRecorder, refusal: string): Promis
   );
 
   return toCallToolResult(refused.settled);
-}
-
-function toCallToolResult(settled: Settled): CallToolResult {
-  const reply = settled.reply;
-
-  if (reply.kind === 'text') {
-    const text = reply.isOutside === true ? renderFencedText(reply.text) : reply.text;
-
-    return { content: [{ type: 'text', text }], isError: reply.isError };
-  }
-
-  // The Claude Code CLI ends its turn after a result with this key and makes no further model call.
-  const endTurn = settled.endsTurn === true ? { _meta: { 'claude/endTurn': true } } : {};
-  const isError = reply.isError === true ? { isError: true } : {};
-
-  // Outside text reaches the model inside the one fence, and never as structured content.
-  if (isUntrustedResult(settled)) {
-    return {
-      content: [
-        { type: 'text', text: renderFencedResult(reply.result) },
-        ...reply.images.map(toImageBlock),
-      ],
-      ...isError,
-      ...endTurn,
-    };
-  }
-
-  if (reply.images.length === 0) {
-    return { content: [], structuredContent: reply.result, ...isError, ...endTurn };
-  }
-
-  return {
-    content: [
-      { type: 'text', text: JSON.stringify(reply.result) },
-      ...reply.images.map(toImageBlock),
-    ],
-    ...isError,
-    ...endTurn,
-  };
-}
-
-function renderFencedText(text: string): string {
-  return renderFenced({
-    tag: 'tool-result',
-    attributes: { source: 'untrusted' },
-    text,
-    fence: mintBlockID(),
-  });
-}
-
-// A result is outside text when every one of its fields is untrusted. A result that mixes sources
-// reaches the model as it is, and its tool marks its own outside fields.
-function isUntrustedResult(settled: Settled): boolean {
-  const sources = Object.values(settled.sources);
-
-  return sources.every((source) => source === 'untrusted');
-}
-
-// A result of one text field reads as that text, and any other result as its JSON.
-function renderFencedResult(result: JSONObject): string {
-  const keys = Object.keys(result);
-  const text = result['text'];
-  const body = keys.length === 1 && typeof text === 'string' ? text : JSON.stringify(result);
-
-  return renderFencedText(body);
-}
-
-function toImageBlock(image: ToolImage) {
-  return {
-    type: 'image' as const,
-    data: Buffer.from(image.bytes).toString('base64'),
-    mimeType: image.mediaType,
-  };
 }
 
 // A tool missing from the run's list skips the schema, so its errors never show the tool to the
@@ -398,6 +350,8 @@ function withPreparedAmount(
     : { ...args, [name]: prepared.amount };
 }
 
+// What the call charges: a plan for a paid tool that runs, a result that its check ended with, or
+// the failure of that check, which the call settles as the tool's failure.
 // A prepared call's effects join the declared ones in the proposal the call may write.
 function pickCallDeclaration(
   registered: RegisteredTool | null,
@@ -421,6 +375,8 @@ function renderCallCapRefusal(run: ToolRun, tool: string): string {
 }
 
 interface DecidedCall {
+  readonly paid: PaidState;
+  readonly gate: PaidGate | null;
   readonly policy: PolicyDecision;
   readonly stored: Decision;
   readonly registered: RegisteredTool | null;
@@ -488,6 +444,8 @@ function buildAskMessage(shortID: string | null): Settled {
 }
 
 interface AllowedCall {
+  readonly paid: PaidState;
+  readonly gate: PaidGate | null;
   readonly registered: RegisteredTool;
   readonly decision: Decision;
   readonly call: ToolCall;
@@ -541,27 +499,52 @@ function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runDirect(allowed: AllowedCall): Promise<Settled> {
-  const outcome = await runPaidCall(
-    allowed.registered,
-    { call: allowed.call, run: allowed.run },
-    allowed.options,
-    () =>
-      allowed.registered.definition.run(allowed.call, {
-        run: allowed.run,
-        callSequence: allowed.callSequence,
-        ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
-        ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
-      }),
-  );
+  const registered = allowed.registered;
+  const paid = allowed.paid;
 
-  if (outcome.status === 'budget_reached') {
-    return buildMessage('denied', outcome.message, { source: 'owner_data' });
+  if (paid.status === 'failed') {
+    throw paid.error;
   }
 
+  const runTool = () =>
+    registered.definition.run(allowed.call, {
+      run: allowed.run,
+      callSequence: allowed.callSequence,
+      ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
+      ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
+    });
+
+  if (paid.status === 'ended') {
+    return settleOutcome(registered, paid.outcome);
+  }
+
+  if (paid.status === 'free') {
+    const outcome = await runTool();
+
+    return settleOutcome(registered, outcome);
+  }
+
+  invariant(allowed.gate, 'a paid call was charged in the transaction of its call record');
+
+  if (allowed.gate.status !== 'passed') {
+    paid.plan.release();
+
+    // a budget that is reached tells the model so as a denial
+    return allowed.gate.status === 'capped'
+      ? buildMessage('error', allowed.gate.message, { source: 'untrusted' })
+      : buildMessage('denied', allowed.gate.message, { source: 'owner_data' });
+  }
+
+  const charged = await runChargedCall(paid.plan, runTool);
+
+  return withCreditBeside(settleOutcome(registered, charged.outcome), charged.credit);
+}
+
+function settleOutcome(registered: RegisteredTool, outcome: ToolOutcome): Settled {
   // a tool's error can quote what an outside service said, so it counts as outside content
   return outcome.status === 'error'
     ? buildMessage('error', outcome.message, { source: 'untrusted', hidden: outcome.hidden })
-    : buildTypedResult(allowed.registered, outcome, null);
+    : buildTypedResult(registered, outcome, null);
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {

@@ -1,31 +1,28 @@
-import type { PeriodName, PeriodStore } from '../types';
-import { getPeriodStart } from './get-period-start';
+import type { PeriodName, PeriodStore, RouteCount, RoutePeriods } from '../types';
+import { buildEmptyCount } from './build-empty-count';
 
-const periodNames: readonly PeriodName[] = ['day', 'month'];
-
-// Each period whose current start has passed in the zone resets: its count goes to zero, its start
-// moves, and its raise drops. The limit and the lost mark stay. Returns the same store when no
+// Each route period whose end has passed resets: its count goes to zero, its start and end move to
+// the zone's current ones, and its raise drops. The lost mark stays. Returns the same store when no
 // period has ended, so a caller can tell a reset from a plain read.
-export function buildResetStore(store: PeriodStore, today: string): PeriodStore {
-  const ended = periodNames.filter(
-    (name) => getPeriodStart(name, today) > store.periods[name].start,
+export function buildResetStore(store: PeriodStore, nowMs: number, zone: string): PeriodStore {
+  let isChanged = false;
+
+  const reset = (name: PeriodName, count: RouteCount): RouteCount => {
+    if (nowMs < Date.parse(count.resetsAt)) {
+      return count;
+    }
+
+    isChanged = true;
+
+    return buildEmptyCount(name, nowMs, zone);
+  };
+
+  const routes = Object.fromEntries(
+    Object.entries(store.routes).map(([route, periods]): [string, RoutePeriods] => [
+      route,
+      { day: reset('day', periods.day), month: reset('month', periods.month) },
+    ]),
   );
 
-  if (ended.length === 0) {
-    return store;
-  }
-
-  const reset = (name: PeriodName) =>
-    ended.includes(name)
-      ? {
-          start: getPeriodStart(name, today),
-          dollars: 0,
-          tokens: 0,
-          limit: store.periods[name].limit,
-          raise: null,
-          trippedAt: null,
-        }
-      : store.periods[name];
-
-  return { ...store, periods: { day: reset('day'), month: reset('month') } };
+  return isChanged ? { ...store, routes } : store;
 }

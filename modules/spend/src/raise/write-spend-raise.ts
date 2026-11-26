@@ -1,8 +1,9 @@
 import { readPlanLogins } from '../login/read-plan-logins';
 import { readSpendFacts } from '../stop/read-spend-facts';
-import { readSpendRaise } from '../stop/read-spend-raise';
+import { readSpendRouteRaises } from '../stop/read-spend-route-raises';
 import { settleSpendStop } from '../stop/settle-spend-stop';
-import type { SpendContext, SpendTriple } from '../types';
+import { takeSettleOrder } from '../stop/take-settle-order';
+import type { SpendContext } from '../types';
 import type { RaiseRequest } from './pick-raise-refusal';
 import { pickRaiseRefusal } from './pick-raise-refusal';
 import { writeSpendRaiseRecord } from './write-spend-raise-record';
@@ -10,62 +11,83 @@ import { writeSpendRaiseRecord } from './write-spend-raise-record';
 export type SpendRaiseResult =
   | { readonly state: 'clear' }
   | { readonly state: 'stopped' }
-  | { readonly error: 'above_cap'; readonly cap: SpendTriple }
+  | {
+      readonly error: 'above_cap';
+      readonly measure: 'dollars' | 'turns';
+      readonly route: string | null;
+      readonly cap: number;
+    }
   | { readonly error: 'period_ended' }
-  | { readonly error: 'unreachable' };
+  | { readonly error: 'unknown_route' }
+  | { readonly error: 'unreachable' }
+  | { readonly error: 'unanswered' };
 
-// Your raise of today's limits, confirmed once in the client: it checks the caps, tells the gateway,
-// writes the record unless the gateway refused it, and clears the stop when the raise lifts it. It never lowers a total that an
-// earlier raise set, such as the turns that the host command set above the turn cap.
+// Your raise of today's limits, confirmed once in the client: it checks the caps, tells the gateway
+// of a route's dollars, writes the record unless the gateway refused it, and clears the stops that
+// the raise lifts. It never lowers a total that an earlier raise set. `unreachable` writes nothing.
 export async function writeSpendRaise(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
 ): Promise<SpendRaiseResult> {
+  // The status it settles comes from a request sent after this place, so a settle that a newer read
+  // made never comes undone by it.
+  const order = takeSettleOrder(context);
+  const readAtMs = context.clock.now();
+
   const [status] = await Promise.all([context.gateway.readStatus(), readPlanLogins(context)]);
 
   if (status.kind !== 'ok') {
     return { error: 'unreachable' };
   }
 
-  const refusal = pickRaiseRefusal(status.value.periods.day, context.limits, request);
+  const refusal = pickRaiseRefusal(status.value, context.limits, request);
 
   if (refusal !== null) {
     return refusal;
   }
 
-  const earlier = await readSpendRaise(context.log.writer.db, request.start);
+  const postedAtMs = context.clock.now();
 
-  const posted = await context.gateway.postRaise({
-    start: request.start,
-    limit: {
-      dollars: Math.max(request.dollars, earlier?.dollars ?? 0),
-      tokens: Math.max(request.tokens, earlier?.tokens ?? 0),
-    },
-  });
+  const posted = await postRouteRaise(context, request);
+
+  if (posted !== null && posted.kind !== 'ok' && posted.kind !== 'unreachable') {
+    return posted.kind === 'above_cap'
+      ? { error: 'above_cap', measure: 'dollars', route: posted.route, cap: posted.cap }
+      : { error: posted.kind };
+  }
 
   // A raise the gateway refused never stands, because the turns it holds would lift the turn limit
   // that only nixie counts. One that went unanswered stands, for the watcher to send again.
-  if (posted.kind === 'ok' || posted.kind === 'unreachable') {
-    await writeSpendRaiseRecord(context, request);
-  }
+  await writeSpendRaiseRecord(context, request);
 
-  if (posted.kind === 'above_cap') {
-    return {
-      error: 'above_cap',
-      cap: {
-        dollars: posted.cap.dollars,
-        tokens: posted.cap.tokens,
-        turns: context.limits.dayTurnCap,
-      },
-    };
-  }
-
-  if (posted.kind !== 'ok') {
-    return { error: posted.kind };
+  if (posted?.kind === 'unreachable') {
+    return { error: 'unanswered' };
   }
 
   const facts = await readSpendFacts(context);
-  const stop = await settleSpendStop(context, { ...facts, status: posted.value });
 
-  return { state: stop.state === 'clear' ? 'clear' : 'stopped' };
+  const after = posted?.kind === 'ok' ? posted.value : status.value;
+  const statusAtMs = posted?.kind === 'ok' ? postedAtMs : readAtMs;
+
+  const stop = await settleSpendStop(context, { ...facts, status: after, statusAtMs, order });
+
+  const isRouteTripped = Object.values(after.routes).some(
+    (route) => route.day.tripped || route.month.tripped,
+  );
+
+  return { state: stop.state === 'clear' && !isRouteTripped ? 'clear' : 'stopped' };
+}
+
+async function postRouteRaise(context: SpendContext, request: RaiseRequest) {
+  if (request.route === undefined || request.dollars === undefined) {
+    return null;
+  }
+
+  const earlier = await readSpendRouteRaises(context.log.writer.db, request.start);
+
+  return context.gateway.postRaise({
+    route: request.route,
+    start: request.start,
+    dollars: Math.max(request.dollars, earlier[request.route] ?? 0),
+  });
 }

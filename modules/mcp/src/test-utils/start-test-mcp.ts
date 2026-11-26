@@ -110,7 +110,7 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
 
   const defaultHandler = makeMcpProposalHandler({
     ...context,
-    forgetCredentials: (ids) => {
+    removeCredentials: (ids) => {
       forgotten.push(...ids);
 
       return Promise.resolve();
@@ -158,7 +158,7 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
     addServer: async (serverID, facts) => {
       await runServerStart(context, {
         config: { [serverID]: facts },
-        forgetCredentials: () => Promise.resolve(),
+        removeCredentials: () => Promise.resolve(),
       });
 
       const rows = await readServerRows(writer.db);

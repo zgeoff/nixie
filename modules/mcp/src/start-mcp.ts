@@ -144,7 +144,7 @@ export function startMcp(options: McpOptions): Mcp {
   // whether the newest listing of each server found its grant signed in
   const signIns = new Map<string, 'ok' | 'needs_sign_in'>();
 
-  const forgetCredentials = (ids: readonly string[]) => forgetGrants({ store: options.store }, ids);
+  const removeCredentials = (ids: readonly string[]) => forgetGrants({ store: options.store }, ids);
   const formatTime = options.formatTime ?? formatUTCTime;
 
   const list = (serverID: string): Promise<ListResult> => {
@@ -428,14 +428,14 @@ export function startMcp(options: McpOptions): Mcp {
     makeProposalHandler: () =>
       makeMcpProposalHandler({
         ...context,
-        forgetCredentials,
+        removeCredentials,
         readOverrides,
         ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }),
       }),
     start: async () => {
       const steps = await runServerStart(context, {
         config: options.servers,
-        forgetCredentials,
+        removeCredentials,
       });
 
       await health.start();
@@ -459,7 +459,7 @@ export function startMcp(options: McpOptions): Mcp {
     },
     connect: signIn.connect,
     finishSignIn: signIn.finish,
-    forgetGrants: forgetCredentials,
+    forgetGrants: removeCredentials,
     list,
     refit,
     allow: (tool) => allowTool(context, tool),

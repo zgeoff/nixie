@@ -1,7 +1,13 @@
 import type { BudgetPeriod } from '@heynixie/policy';
 import type { BudgetReached } from '../types';
 
-// The text that a paid tool returns to the model, and the client shows in its notice.
+// The text that a paid tool returns to the model, and the client shows in its notice. It names the
+// budget and its reset and no dollar figure, because the model never reads one.
+export function formatBudgetRefusal(reached: BudgetReached): string {
+  return `budget reached: ${reached.budgetID}. ${formatBudgetReset(reached.period, reached.resetsOn)}`;
+}
+
+// The text that the owner reads in an ask that a budget could not take.
 export function formatBudgetReached(reached: BudgetReached): string {
   const spent = formatDollars(reached.spentMicros);
   const limit = formatDollars(reached.limitMicros);

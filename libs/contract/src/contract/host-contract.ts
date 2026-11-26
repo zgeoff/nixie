@@ -356,8 +356,6 @@ export const hostContract = {
       .output(
         z.object({
           start: z.string(),
-          dollars: z.number(),
-          tokens: z.number(),
           turns: z.number(),
         }),
       ),

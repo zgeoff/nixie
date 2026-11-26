@@ -6,11 +6,13 @@ import type { ModelAPI } from '@heynixie/wire';
 import type { LoginFile } from '../login/login-file-schema';
 import { writeLoginFile } from '../login/write-login-file';
 import { parsePeriodStore } from '../periods/parse-period-store';
+import { toDollars } from '../periods/to-dollars';
 import { startModelGateway } from '../proxy/start-model-gateway';
-import type { Measures } from '../types';
-import { createCounterStore } from '../usage/create-counter-store';
 
 export interface TestModelGateway {
+  // stops the gateway and removes its folder
+  readonly stop: () => Promise<void>;
+
   // the gateway's origin, which a deployment's turn_input_log source names
   readonly url: string;
 
@@ -20,14 +22,14 @@ export interface TestModelGateway {
   // the folder it spools captured requests to
   readonly spoolDir: string;
 
-  // the control listener, which a gateway with periods serves and a gateway with limits does not
-  readonly control: { readonly url: string; readonly token: string } | null;
+  readonly control: { readonly url: string; readonly token: string };
 
-  // the file the host command writes to, null for a gateway with limits
-  readonly overridePath: string | null;
+  // the file the host command writes to
+  readonly overridePath: string;
 
-  // what it has counted so far, which a reply adds to once it has ended; with periods, the day's
-  readonly readCount: () => Promise<{ readonly dollars: number; readonly tokens: number }>;
+  // what it has counted so far, which a reply adds to once it has ended: the day's dollars of the
+  // route `scripted`
+  readonly readCount: () => Promise<{ readonly dollars: number }>;
 }
 
 export interface TestPlanRoute {
@@ -51,20 +53,22 @@ export interface TestModelGatewayOptions {
   // whether it spools captured requests, which is on unless a caller turns it off
   readonly capture?: boolean;
 
-  // what it counts against, which is 100 dollars unless a caller names its own; ignored with periods
-  readonly limits?: { readonly dollars?: number; readonly tokens?: number };
-
-  // adds a plan route, which needs periods; its refresh answers 503, so it never reaches the real
+  // adds a plan route; its refresh answers 503, so it never reaches the real
   // token endpoint
   readonly planRoute?: TestPlanRoute;
 
-  // counts a day and a month in place of one total, with a control listener on a free port, and
-  // limits of null until a caller sets them through the control listener
+  // how it counts each route's day and month, with a control listener on a free port
   readonly periods?: {
     readonly zone: string;
-    readonly caps?: {
-      readonly day?: Measures;
-      readonly month?: Measures;
+
+    // the limits of the route `scripted` in US dollars: 100 a day and 1000 a month unless a caller
+    // names its own, and none with null, which refuses every request on it
+    readonly limits?: { readonly day: number; readonly month: number } | null;
+
+    // a second route to the same upstream, with its own limits
+    readonly secondRoute?: {
+      readonly id: string;
+      readonly limits: { readonly day: number; readonly month: number } | null;
     };
     readonly countBySandbox?: boolean;
 
@@ -84,8 +88,22 @@ export const testGatewayPrices = {
   output: 4,
 } as const;
 
-// An in-process gateway with one route to an upstream, counting against no real budget.
+const defaultLimits = { day: 100, month: 1000 };
+
+// An in-process gateway with one route to an upstream, counting against no real budget. It stops
+// when the test ends.
 export async function startTestModelGateway(
+  options: TestModelGatewayOptions,
+): Promise<TestModelGateway> {
+  const gateway = await createTestModelGateway(options);
+
+  onTestFinished(gateway.stop);
+
+  return gateway;
+}
+
+// The same gateway for a caller that is no test, such as the verify harness, which stops it itself.
+export async function createTestModelGateway(
   options: TestModelGatewayOptions,
 ): Promise<TestModelGateway> {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-gateway-'));
@@ -94,32 +112,28 @@ export async function startTestModelGateway(
 
   await mkdir(spoolDir);
 
-  const limits = options.limits ?? { dollars: 100 };
-  const limitEntries = Object.entries(limits).map(([name, value]) => `${name}: ${String(value)}`);
-  const periods = options.periods;
+  const periods: NonNullable<TestModelGatewayOptions['periods']> = options.periods ?? {
+    zone: 'UTC',
+  };
+
   const overridePath = join(directory, 'override.json');
   const tokenFile = join(directory, 'control-token');
 
-  if (periods !== undefined) {
-    await writeFile(tokenFile, `${testGatewayControlToken}\n`);
-  }
+  await writeFile(tokenFile, `${testGatewayControlToken}\n`);
 
   const planRouteLines = await writePlanRoute(directory, options.planRoute);
+
+  const scriptedLimits = periods.limits === undefined ? defaultLimits : periods.limits;
 
   await writeFile(
     join(directory, 'proxy.yaml'),
     [
       `listen: { port: ${String(options.port ?? 0)} }`,
       `store: ${join(directory, 'counter.json')}`,
-      ...(periods === undefined
-        ? [`limits: { ${limitEntries.join(', ')} }`]
-        : [
-            `periods: { zone: ${periods.zone} }`,
-            `caps: ${JSON.stringify(periods.caps ?? {})}`,
-            `control: { listen: { port: 0 }, tokenFile: ${tokenFile} }`,
-            `countBySandbox: ${String(periods.countBySandbox ?? false)}`,
-            `override: ${overridePath}`,
-          ]),
+      `periods: { zone: ${periods.zone} }`,
+      `control: { listen: { port: 0 }, tokenFile: ${tokenFile} }`,
+      `countBySandbox: ${String(periods.countBySandbox ?? false)}`,
+      `override: ${overridePath}`,
       ...(options.capture === false ? [] : ['capture:', `  spool: ${spoolDir}`]),
       'routes:',
       '  scripted:',
@@ -128,6 +142,8 @@ export async function startTestModelGateway(
       `    model: ${options.model ?? 'claude-test-1'}`,
       `    prices: ${JSON.stringify(testGatewayPrices)}`,
       '    maxOutputTokens: 64000',
+      ...buildLimitsLines(scriptedLimits),
+      ...buildSecondRouteLines(options),
       ...planRouteLines,
     ].join('\n'),
   );
@@ -137,29 +153,22 @@ export async function startTestModelGateway(
     log: () => {},
     waitForDrainDeadline: () => Promise.resolve(),
     authFetch: () => Promise.resolve(new Response('{}', { status: 503 })),
-    ...(periods?.now === undefined ? {} : { now: periods.now }),
+    ...(periods.now === undefined ? {} : { now: periods.now }),
   });
 
-  onTestFinished(async () => {
-    await gateway.stop();
-
-    await rm(directory, { recursive: true, force: true });
-  });
-
-  const readCount =
-    periods === undefined
-      ? await createLimitsCountReader(join(directory, 'counter.json'))
-      : createPeriodsCountReader(join(directory, 'counter.json'));
+  const readCount = createPeriodsCountReader(join(directory, 'counter.json'));
 
   return {
+    stop: async () => {
+      await gateway.stop();
+
+      await rm(directory, { recursive: true, force: true });
+    },
     url: gateway.url,
     baseURL: `${gateway.url}/scripted`,
     spoolDir,
-    control:
-      gateway.controlURL === null
-        ? null
-        : { url: gateway.controlURL, token: testGatewayControlToken },
-    overridePath: periods === undefined ? null : overridePath,
+    control: { url: gateway.controlURL, token: testGatewayControlToken },
+    overridePath,
     readCount,
   };
 }
@@ -194,14 +203,30 @@ async function writePlanRoute(
   ];
 }
 
-async function createLimitsCountReader(path: string): Promise<TestModelGateway['readCount']> {
-  const store = await createCounterStore(path);
+function buildLimitsLines(
+  limits: { readonly day: number; readonly month: number } | null,
+): string[] {
+  return limits === null
+    ? []
+    : [`    limits: { day: ${String(limits.day)}, month: ${String(limits.month)} }`];
+}
 
-  return async () => {
-    const stored = await store.read();
+function buildSecondRouteLines(options: TestModelGatewayOptions): string[] {
+  const second = options.periods?.secondRoute;
 
-    return { dollars: stored.dollars, tokens: stored.tokens };
-  };
+  if (second === undefined) {
+    return [];
+  }
+
+  return [
+    `  ${second.id}:`,
+    `    api: ${options.api ?? 'anthropic-messages'}`,
+    `    upstream: ${options.upstreamURL}`,
+    `    model: ${options.model ?? 'claude-test-1'}`,
+    `    prices: ${JSON.stringify(testGatewayPrices)}`,
+    '    maxOutputTokens: 64000',
+    ...buildLimitsLines(second.limits),
+  ];
 }
 
 function createPeriodsCountReader(path: string): TestModelGateway['readCount'] {
@@ -211,6 +236,6 @@ function createPeriodsCountReader(path: string): TestModelGateway['readCount'] {
 
     const store = parsePeriodStore(stored);
 
-    return { dollars: store.periods.day.dollars, tokens: store.periods.day.tokens };
+    return { dollars: toDollars(store.routes['scripted']?.day.micros ?? 0) };
   };
 }

@@ -14,6 +14,7 @@ import { definitionsConfigSchema } from '@heynixie/definitions';
 import { mailConfigSchema } from '@heynixie/mail';
 import { mcpConfigSchema } from '@heynixie/mcp';
 import { memoryConfigSchema } from '@heynixie/memory';
+import { collectMissingPriceIssues } from '@heynixie/models';
 import { notebookConfigSchema } from '@heynixie/notebook';
 import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
@@ -27,6 +28,7 @@ import { erasureConfigSchema } from '../config/erasure-config-schema';
 import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
+import { displayConfigSchema } from '../spend/display-config-schema';
 import { spendStopSchema } from '../spend/spend-stop-schema';
 import { ownerConfigSchema } from '../utils/owner-config-schema';
 import { modelSections } from './model-sections';
@@ -59,6 +61,7 @@ export const deploymentConfigSchema = z
     backup: backupConfigSchema.default(backupConfigSchema.parse({})),
     turn_input_log: turnInputLogConfigSchema.optional(),
     spendStop: spendStopSchema.optional(),
+    display: displayConfigSchema.optional(),
     coding: codingConfigSchema.optional(),
     voice: voiceConfigSchema.optional(),
     mail: mailConfigSchema.optional(),
@@ -71,6 +74,15 @@ export const deploymentConfigSchema = z
         path: ['imp'],
         message: 'the imp section is unset, and the imp sandbox adapter needs it',
       });
+    }
+
+    // A task counts its model calls against its dollar limit by the profile's prices, with a
+    // gateway or without. A models section that failed its own checks is not yet in its final
+    // shape, so the price check waits for it.
+    if (issues.issues.length === 0) {
+      for (const issue of collectMissingPriceIssues(config.models)) {
+        issues.addIssue({ code: 'custom', path: [...issue.path], message: issue.message });
+      }
     }
 
     // the server reaches the gateway's logins through the spendStop section

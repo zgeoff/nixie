@@ -29,7 +29,7 @@ export { mcpSignInStatePrefix } from './contract/mcp-sign-in-state-prefix';
 export { liveStreamTiming } from './contract/live-stream-timing';
 export type { LiveTopic } from './contract/live-topic-schema';
 export { liveTopicSchema } from './contract/live-topic-schema';
-export { spendStopSchema } from './contract/spend-stop-schema';
+export { spendCountsSchema, spendStopSchema } from './contract/spend-stop-schema';
 export { skipReasonSchema } from './contract/view-contract';
 export { pickSpanSource } from './span/pick-span-source';
 export { renderSessionCookie } from './contract/render-session-cookie';

@@ -13,6 +13,8 @@ test('it starts a writer whose log folds the tasks and actions projections, on a
     'pause_exemptions',
     'recoveries',
     'spend_stop',
+    'spend_route_stops',
+    'spend_route_holds',
     'tasks',
     'timers',
     'task_messages',

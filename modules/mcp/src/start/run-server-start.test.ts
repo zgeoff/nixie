@@ -16,7 +16,7 @@ async function setupTest() {
     start: (config: Parameters<typeof runServerStart>[1]['config']) =>
       runServerStart(mcp.context, {
         config,
-        forgetCredentials: (ids) => {
+        removeCredentials: (ids) => {
           forgotten.push(...ids);
 
           return Promise.resolve();
