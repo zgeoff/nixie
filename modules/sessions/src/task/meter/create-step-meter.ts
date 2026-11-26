@@ -31,12 +31,12 @@ export interface StepMeterFacts {
 
 // 'ready': the turn may run, under the budget. 'held': the gateway did not answer, so the step does
 // not start. 'limit': the read shows the task run at its dollar limit, so the step runs no turn.
-export type StepBegin =
+type StepBegin =
   | { readonly kind: 'ready'; readonly budget: CallBudget }
   | { readonly kind: 'held' }
   | { readonly kind: 'limit'; readonly used: TaskLimits };
 
-export interface StepEnd {
+interface StepEnd {
   readonly isLimitReached: boolean;
 
   // whether the gateway's sandbox refused a request since the step began, which ends the step at the
