@@ -67,9 +67,9 @@ of its provider stands, and after a failed step, after it reads the gateway and 
 The [task gate](../core/pause.md#the-task-gate) reports `spend` for a held task while the stop of
 its route or its provider stands, and the claim filter leaves the task's work unclaimed, so a task
 on another route runs. A held step ends at once with no step commit. A failed step counts no step
-error when a route's stop explains it, or when the gateway recorded a refusal of the step's sandbox
-on the step's route, at the route's limit or its provider's, after the step began, which the
-sandbox's `lastRefusal` holds, though the route has since reset or risen.
+error when a route's stop explains it, or when the gateway recorded, after the step began, a refusal
+of the step's sandbox at the limit of the step's route or its provider, which the sandbox's
+`lastRefusal` holds, though the limit has since reset or risen.
 
 ## The stop of a provider
 

@@ -87,25 +87,25 @@ answer holds no token and no email.
 
    ```yaml
    providers:
-   <provider>:
-     limits: { day: <provider_day_dollars>, month: <provider_month_dollars> }
+     <provider>:
+       limits: { day: <provider_day_dollars>, month: <provider_month_dollars> }
    routes:
-   <route>:
-     provider: <provider>
-     api: openai-responses
-     upstream: https://chatgpt.com/backend-api/codex
-     model: <model>
-     maxOutputTokens: <max_output_tokens>
-     prices:
-       input: <input>
-       cache_write: <cache_write>
-       cache_write_1h: <cache_write_1h>
-       cached_input: <cached_input>
-       output: <output>
-     limits: { day: <day_dollars>, month: <month_dollars> } # optional
-     login:
-       file: <login_file>
-       routeKeyFile: <route_key_file>
+     <route>:
+       provider: <provider>
+       api: openai-responses
+       upstream: https://chatgpt.com/backend-api/codex
+       model: <model>
+       maxOutputTokens: <max_output_tokens>
+       prices:
+         input: <input>
+         cache_write: <cache_write>
+         cache_write_1h: <cache_write_1h>
+         cached_input: <cached_input>
+         output: <output>
+       limits: { day: <day_dollars>, month: <month_dollars> } # optional
+       login:
+         file: <login_file>
+         routeKeyFile: <route_key_file>
    ```
 
    A plan has no price per token, but Codex use past the plan's own limit draws on credits bought
