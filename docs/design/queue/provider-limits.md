@@ -7,8 +7,8 @@ The model gateway limits spend per provider, and a model's own limit becomes opt
 one place nixie's model requests go, such as Anthropic, OpenRouter or the ChatGPT plan. Each
 provider has a required day and month limit in US dollars. A route, which is one model, may add its
 own limit under its provider's. The gateway admits a request only when its provider's limits, and
-its route's limits where it has any, all have room. Without this, the total ceiling grows with every
-model nixie can call.
+its route's limits where it has any, all have room. A provider limit keeps the most nixie can spend
+fixed as models are added.
 
 Build it from this doc and the [model gateway](../../architecture/policy/model-gateway.md),
 [metering](../../architecture/policy/metering.md) and
