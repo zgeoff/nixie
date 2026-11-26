@@ -1,8 +1,9 @@
-import type { Log, LogRecord } from '@heynixie/log';
+import type { Log, LogRecord, LogTables } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { actionProposedCodec } from '@heynixie/policy';
 import { readProposalsByID } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import { sql } from 'kysely';
 import { z } from 'zod';
 import type { ProposedRuleCall } from './build-proposed-rule';
 
@@ -23,9 +24,25 @@ export async function readSuggestedRuleCalls(
     return [];
   }
 
+  const bodies = await tx
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', actionProposedCodec.kind)
+    .where(
+      sql`json_extract(payload, '$.proposalID')`,
+      'in',
+      rows.map((row) => row.id),
+    )
+    .execute();
+
+  if (bodies.length === 0) {
+    return [];
+  }
+
   const records = await readRecords(
     { ...log, writer: { ...log.writer, db: tx } },
-    { afterSequence: 0, sequences: rows.map((row) => row.createdSequence), limit: rows.length },
+    { afterSequence: 0, sequences: bodies.map((body) => body.sequence), limit: bodies.length },
   );
 
   const calls: SuggestedRuleCall[] = [];

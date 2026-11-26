@@ -1,5 +1,5 @@
 import { withWriteTransaction } from '@heynixie/log';
-import type { ProposalContext } from '@heynixie/proposals';
+import type { ProposalConfig, ProposalContext } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import type { DefinitionsTables } from '../types';
 import { buildProposedRule } from './build-proposed-rule';
@@ -10,9 +10,13 @@ import type { SuggestedRuleSettings } from './suggested-rule-settings';
 import { dayMs } from './suggested-rule-settings';
 import { writeProposedRule } from './write-proposed-rule';
 
+export type SuggestedRuleContext = ProposalContext & {
+  readonly proposalConfig?: ProposalConfig | undefined;
+};
+
 // Checks one group in a transaction of its own, and proposes its rule when the group qualifies.
 export function runSuggestedRuleCheck(
-  context: ProposalContext,
+  context: SuggestedRuleContext,
   settings: SuggestedRuleSettings,
   groupHash: string,
 ): Promise<void> {
@@ -23,7 +27,7 @@ export function runSuggestedRuleCheck(
 
 async function writeSuggestedRuleCheck(
   tx: Transaction<unknown>,
-  context: ProposalContext,
+  context: SuggestedRuleContext,
   settings: SuggestedRuleSettings,
   groupHash: string,
 ): Promise<void> {

@@ -1,12 +1,12 @@
-import type { ProposalContext } from '@heynixie/proposals';
 import type { DefinitionsTables } from '../types';
+import type { SuggestedRuleContext } from './run-suggested-rule-check';
 import { runSuggestedRuleCheck } from './run-suggested-rule-check';
 import type { SuggestedRuleSettings } from './suggested-rule-settings';
 
 // At start, checks each group that gained an answer after its last check, so a crash between an
 // answer and its check loses no proposal.
 export async function runSuggestedRuleChecks(
-  context: ProposalContext,
+  context: SuggestedRuleContext,
   settings: SuggestedRuleSettings,
 ): Promise<number> {
   const groups = await context.log.writer.db

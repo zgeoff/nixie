@@ -13,6 +13,7 @@ import type { MandateRefusal } from '@heynixie/definitions';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
+import { buildApprovalsProposalConfig } from '../proposal/build-approvals-proposal-config';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { buildInputHash } from '../utils/build-input-hash';
@@ -33,6 +34,11 @@ const endedMandateSchema = z.object({
 });
 
 export function createMandateProcedures(context: RuleProcedureContext) {
+  const proposalContext = {
+    ...context,
+    proposalConfig: buildApprovalsProposalConfig(context.settings),
+  };
+
   const rules = apiImplementer.rules;
 
   const maxHours =
@@ -60,7 +66,7 @@ export function createMandateProcedures(context: RuleProcedureContext) {
           rule: JSON.stringify(input.rule),
         }),
         write: async (tx) => {
-          const edit = await writeProposedRuleEdit(tx, context, input);
+          const edit = await writeProposedRuleEdit(tx, proposalContext, input);
 
           return edit.status === 'edited'
             ? { status: 'done', result: { proposalID: edit.proposalID } }
@@ -125,7 +131,7 @@ export function createMandateProcedures(context: RuleProcedureContext) {
         write: async (tx) => {
           const proposed = await writeMandateProposal(
             tx,
-            context,
+            proposalContext,
             {
               maxHours,
               readZone: async (reader) => {

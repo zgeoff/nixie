@@ -1,4 +1,5 @@
 import {
+  buildApprovalsProposalConfig,
   buildProposalCoreDeps,
   createFirstEnrolmentCode,
   defaultPolicySettings,
@@ -396,7 +397,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const runInForceSeed = () =>
         runInForceSeedAndWake(reader.find('server_parts'), reader.find('definitions_exports'));
 
-      const rules = { ...apiContext, runInForceSeed };
+      const rules = {
+        ...apiContext,
+        runInForceSeed,
+        proposalConfig: buildApprovalsProposalConfig(apiContext.settings),
+      };
+
       const policy = apiContext.settings.policy ?? defaultPolicySettings;
 
       const onError = (error: unknown) => {

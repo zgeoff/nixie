@@ -1,4 +1,9 @@
 import { expect, test } from 'bun:test';
+import {
+  buildApprovalsProposalConfig,
+  defaultAPISettings,
+  defaultApprovalSettings,
+} from '@heynixie/api';
 import { startTestRules } from '@heynixie/api/test-utils';
 import { runSuggestedRuleChecks, writeProposedRule } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
@@ -10,8 +15,8 @@ import {
 } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 
-async function setupTest() {
-  const rules = await startTestRules();
+async function setupTest(apiSettings = defaultAPISettings) {
+  const rules = await startTestRules(apiSettings);
 
   const dayMs = 24 * 60 * 60 * 1000;
   const settings = { approvals: 3, windowDays: 30, quietDays: 30 };
@@ -89,7 +94,11 @@ async function setupTest() {
     readProposedRules,
     approveSend,
     approveWithoutCheck,
-    runStartChecks: () => runSuggestedRuleChecks(rules.context, settings),
+    runStartChecks: () =>
+      runSuggestedRuleChecks(
+        { ...rules.context, proposalConfig: buildApprovalsProposalConfig(rules.context.settings) },
+        settings,
+      ),
 
     // the lapse that the release before writes for every row of the rule change family
     writeOlderLapse: (proposalID: string) =>
@@ -144,6 +153,47 @@ test('it gives the proposed rule the always-ask risk class and no deadline', asy
   const [proposed] = await ctx.readProposedRules();
 
   expect([proposed?.row.riskClass, proposed?.row.deadlineAt]).toStrictEqual(['always_ask', null]);
+});
+
+test('it lapses a rule proposed by an answer after the configured days', async () => {
+  const ctx = await setupTest({
+    ...defaultAPISettings,
+    approvals: {
+      ...defaultApprovalSettings,
+      lapseDays: { ...defaultApprovalSettings.lapseDays, rule_change: 5 },
+    },
+  });
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [proposed] = await ctx.readProposedRules();
+
+  invariant(proposed, 'the third approval proposed a rule');
+
+  expect(proposed.row.lapsesAt - proposed.row.createdAt).toBe(5 * ctx.dayMs);
+});
+
+test('it lapses a rule proposed by a start check after the configured days', async () => {
+  const ctx = await setupTest({
+    ...defaultAPISettings,
+    approvals: {
+      ...defaultApprovalSettings,
+      lapseDays: { ...defaultApprovalSettings.lapseDays, rule_change: 9 },
+    },
+  });
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveWithoutCheck('sam@example.org');
+  await ctx.runStartChecks();
+
+  const [proposed] = await ctx.readProposedRules();
+
+  invariant(proposed, 'the start check proposed a rule');
+
+  expect(proposed.row.lapsesAt - proposed.row.createdAt).toBe(9 * ctx.dayMs);
 });
 
 test('it proposes nothing after 2 approved calls', async () => {

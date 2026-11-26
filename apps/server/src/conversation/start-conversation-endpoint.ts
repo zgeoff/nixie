@@ -407,6 +407,7 @@ export async function startConversationEndpoint(
     buildContactTool(options.context, tools.refreshDefinitions),
     buildMandateTool({
       context: options.context,
+      proposalConfig: buildProposalConfig(options.config),
       maxHours: options.config.policy.mandates.maxHours,
       defaultZone: options.config.time.default_zone,
     }),

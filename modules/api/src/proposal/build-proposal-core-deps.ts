@@ -27,6 +27,7 @@ import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { APISettings, ReadViewMemory } from '../types';
 import { defaultApprovalSettings, defaultPolicySettings } from '../utils/default-api-settings';
+import { buildApprovalsProposalConfig } from './build-approvals-proposal-config';
 import { proposalsProjection } from './proposals-projection';
 import { readActionBodyFields } from './read-action-body-fields';
 
@@ -82,7 +83,11 @@ export function buildProposalCoreDeps(
       writeSuggestedRuleDecline: (tx, groupHash) =>
         writeSuggestedRuleWithdrawal(tx, context, groupHash),
       runSuggestedRuleCheck: (groupHash) =>
-        runSuggestedRuleCheck(context, suggestedRuleSettings, groupHash),
+        runSuggestedRuleCheck(
+          { ...context, proposalConfig: buildApprovalsProposalConfig(context.settings) },
+          suggestedRuleSettings,
+          groupHash,
+        ),
     }),
     makeMemoryProposalHandler({
       log: context.log,
@@ -149,7 +154,7 @@ export function buildProposalCoreDeps(
   const settings = context.settings?.approvals ?? defaultApprovalSettings;
 
   return {
-    config: { lapseDays: settings.lapseDays },
+    config: buildApprovalsProposalConfig(context.settings),
     conversationThread: conversationTaskID,
     readSettlementTarget: (tx, thread) => readSettlementTarget(tx, thread),
     log: context.log,

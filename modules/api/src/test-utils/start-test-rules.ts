@@ -17,20 +17,14 @@ import {
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import type { JSONObject, Log } from '@heynixie/log';
-import {
-  logProjections,
-  removeRecordKey,
-  startWriter,
-  withWriteTransaction,
-  writeRecords,
-} from '@heynixie/log';
+import { logProjections, removeRecordKey, startWriter, withWriteTransaction } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import type { PolicyCall } from '@heynixie/policy';
 import {
-  buildActionProposalInput,
   makeDecisionPoint,
   replayDecision,
   toStoredDecision,
+  writeActionProposal,
 } from '@heynixie/policy';
 import type { ProposalAnswerInput } from '@heynixie/proposals';
 import { answerProposal, readProposal } from '@heynixie/proposals';
@@ -186,22 +180,30 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
 
     // Writes the action proposal that an ask with no matching rule leaves, and returns its row ID.
     ask: async (facts: AskFacts): Promise<string> => {
-      const proposal = buildActionProposalInput({
-        definitions: context.definitions(),
-        thread: 'conversation',
-        callSequence: 1,
-        tool: facts.tool ?? 'test.send',
-        effects: ['send'],
-        cause: facts.cause ?? 'no_rule',
-        input: { to: facts.to, body: facts.body ?? 'The mooring fee is paid.', account: 'work' },
-        destinations: [{ value: facts.to, replyTarget: false }],
-        content: ['body'],
-        frame: { context: 'conversation', definitionID: null, sources: ['owner'] },
-      });
+      const shortID = await withWriteTransaction(writer, (tx) =>
+        writeActionProposal(
+          tx,
+          { log, clock, definitions: context.definitions },
+          {
+            definitions: context.definitions(),
+            thread: 'conversation',
+            callSequence: 1,
+            tool: facts.tool ?? 'test.send',
+            effects: ['send'],
+            cause: facts.cause ?? 'no_rule',
+            input: {
+              to: facts.to,
+              body: facts.body ?? 'The mooring fee is paid.',
+              account: 'work',
+            },
+            destinations: [{ value: facts.to, replyTarget: false }],
+            content: ['body'],
+            frame: { context: 'conversation', definitionID: null, sources: ['owner'] },
+          },
+        ),
+      );
 
-      await writeRecords(log, [proposal.record]);
-
-      const row = await readProposal(writer.db, proposal.shortID);
+      const row = await readProposal(writer.db, shortID);
 
       invariant(row, 'the ask opened a proposal');
 
@@ -230,10 +232,10 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
 
       invariant(row, 'the proposal exists');
 
-      const found =
-        await sql`select key_id from records where sequence = ${row.createdSequence}`.execute(
-          writer.db,
-        );
+      const found = await sql`select key_id from records
+        where kind = 'policy.action_proposed' and json_extract(payload, '$.proposalID') = ${row.id}`.execute(
+        writer.db,
+      );
 
       const keyID = z.object({ key_id: z.string() }).parse(found.rows[0]).key_id;
 
