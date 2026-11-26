@@ -3,7 +3,9 @@ import { toAdapterSystem } from './to-adapter-system';
 
 test.each([
   { folder: 'image-gemini', system: 'gemini' },
-  { folder: 'definitions-repo-github', system: 'repo-github' },
+  { folder: 'definitions-repo-github', system: 'github' },
+  { folder: 'spend-model-gateway', system: 'model-gateway' },
+  { folder: 'speech-gpt-live', system: 'gpt-live' },
 ])('it reads the system of the adapter $folder as $system', (row) => {
   expect(toAdapterSystem(row.folder)).toBe(row.system);
 });

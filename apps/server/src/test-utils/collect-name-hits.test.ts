@@ -3,6 +3,8 @@ import { expect, test } from 'bun:test';
 import { collectNameHits } from './collect-name-hits';
 import { readSyntaxTrees } from './read-syntax-trees';
 
+// TypeScript 7 has no `ts.createSourceFile`, so the sources go through its compiler API in
+// `typescript/unstable/async`, which parses them in the tsgo process.
 function setupTest() {
   return {
     readHits: async (source: string, names: readonly string[]) => {

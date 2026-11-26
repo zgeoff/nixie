@@ -87,7 +87,7 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/api',
-      names: ['google', 'mail'],
+      names: ['google'],
       removedBy: 'GEO-2879',
     },
     {
@@ -97,8 +97,19 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/api',
-      names: ['coding', 'images', 'mcp', 'spend'],
+      names: ['coding', 'images', 'mail', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
+    },
+    {
+      where: 'modules/connections/src/consent',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the OAuth authorization code and its verifier, and no sandbox',
+    },
+    {
+      where: 'modules/connections',
+      names: ['google'],
+      removedBy: 'GEO-2879',
     },
     {
       where: 'modules/budgets',
@@ -185,17 +196,12 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/sessions',
-      names: ['mail'],
-      removedBy: 'GEO-2879',
-    },
-    {
-      where: 'modules/sessions',
       names: ['voice'],
       removedBy: 'GEO-2880',
     },
     {
       where: 'modules/sessions',
-      names: ['images', 'mcp', 'spend'],
+      names: ['images', 'mail', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
     {
@@ -210,13 +216,13 @@ export const leakExceptions: LeakExceptions = {
       removedBy: 'GEO-2878',
     },
     {
-      where: 'modules/tasks',
-      names: ['mail'],
-      removedBy: 'GEO-2879',
+      where: 'modules/skills',
+      names: ['github'],
+      removedBy: 'GEO-2881',
     },
     {
       where: 'modules/tasks',
-      names: ['spend'],
+      names: ['mail', 'spend'],
       removedBy: 'GEO-2881',
     },
     {
@@ -227,17 +233,23 @@ export const leakExceptions: LeakExceptions = {
     {
       where: 'modules/triggers',
       names: ['mail'],
-      removedBy: 'GEO-2879',
+      removedBy: 'GEO-2881',
     },
   ],
   imports: [
     { where: 'modules/actions', imports: ['@heynixie/connectors'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' },
     { where: 'modules/api', imports: ['@heynixie/coding'], removedBy: 'GEO-2881' },
-    { where: 'modules/api', imports: ['@heynixie/connections'], removedBy: 'GEO-2879' },
     { where: 'modules/api', imports: ['@heynixie/connectors'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/devices'], removedBy: 'GEO-2880' },
-    { where: 'modules/api', imports: ['@heynixie/mail'], removedBy: 'GEO-2879' },
+    { where: 'modules/api', imports: ['@heynixie/mail'], removedBy: 'GEO-2881' },
+    {
+      where: 'modules/connections',
+      imports: ['@heynixie/connectors'],
+      removedBy: 'GEO-2879',
+      reason:
+        "connections owns the core Connector interface, and reaches connectors only for Google's code, which the retrofit moves into a connector-google adapter",
+    },
     { where: 'modules/api', imports: ['@heynixie/mcp'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/spend'], removedBy: 'GEO-2881' },
     { where: 'modules/definitions', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' },

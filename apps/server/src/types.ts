@@ -234,6 +234,9 @@ export interface ImportException {
   // the feature modules that the package depends on
   readonly imports: readonly string[];
   readonly removedBy: 'GEO-2878' | 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
+
+  // why the retrofit removes it, when the package is no feature's own
+  readonly reason?: string;
 }
 
 export interface LeakExceptions {
