@@ -1,9 +1,4 @@
-import {
-  closeCutHandOffs,
-  defaultVoicePrompt,
-  endAskedCall,
-  sendTurnAnswer,
-} from '@heynixie/calls';
+import { callTurnPrompt, closeCutHandOffs, endAskedCall, sendTurnAnswer } from '@heynixie/calls';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
@@ -42,7 +37,7 @@ export async function startSandboxTaskRunner(
     inStepActions: makeInStepActions(parts),
     log: parts.log,
     calls: {
-      voicePrompt: defaultVoicePrompt,
+      voicePrompt: callTurnPrompt,
       conversationToolNames: parts.tools.definitions.map((definition) => definition.name),
       answer: async (answer) => {
         const calls = parts.apiContext.calls;

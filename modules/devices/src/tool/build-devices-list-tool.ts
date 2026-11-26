@@ -20,7 +20,9 @@ export function buildDevicesListTool(options: DeviceToolOptions): ToolDefinition
   return {
     name: 'devices.list',
     description:
-      'Lists the devices the owner enrolled, each with its `shortID`, name, whether its screen and camera ' +
+      'Lists the devices the owner enrolled, each with its `shortID`, name, `deviceKind` (`client` for the ' +
+      'browser or app the owner is signed in on, `screen` for a device enrolled with a device code), ' +
+      '`onCall` (true for the device that carries the live call), whether its screen and camera ' +
       'are on, whether it is online, the time in milliseconds when it went offline (`offlineSinceMs`, ' +
       'present only for an offline device that had a connection since nixie started), the changes ' +
       'of it that wake you (`wake`, which devices.watch sets), its screen size in pixels and what ' +
@@ -35,14 +37,22 @@ export function buildDevicesListTool(options: DeviceToolOptions): ToolDefinition
     execution: 'direct',
     run: async () => {
       const devices = await readDevices(options.log.writer.db);
-      const listed = await Promise.all(devices.map((device) => readListedDevice(options, device)));
+      const callSession = await options.readCallSession();
+
+      const listed = await Promise.all(
+        devices.map((device) => readListedDevice(options, device, callSession)),
+      );
 
       return { status: 'ok', result: { devices: listed } };
     },
   };
 }
 
-async function readListedDevice(options: DeviceToolOptions, device: Device): Promise<JSONObject> {
+async function readListedDevice(
+  options: DeviceToolOptions,
+  device: Device,
+  callSession: string | null,
+): Promise<JSONObject> {
   const isOnline = options.streams.isOnline(device.deviceID);
   const pixels = options.streams.readPixels(device.deviceID);
   const nowMs = options.clock.now();
@@ -56,6 +66,8 @@ async function readListedDevice(options: DeviceToolOptions, device: Device): Pro
   return {
     shortID: device.deviceID,
     name: device.name,
+    deviceKind: device.deviceKind,
+    onCall: callSession !== null && callSession === device.identityID,
     screen: device.capabilities.screen ? 'on' : 'off',
     camera: device.capabilities.camera ? 'on' : 'off',
     online: isOnline,

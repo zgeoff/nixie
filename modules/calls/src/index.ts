@@ -30,6 +30,8 @@ export type { TurnAnswer } from './hand-off/send-turn-answer';
 export { sendTurnAnswer } from './hand-off/send-turn-answer';
 export type { CallRuntime, HandOff, SmallTalkLine } from './types';
 export { defaultVoicePrompt } from './voice/default-voice-prompt';
+export { callTurnPrompt } from './voice/call-turn-prompt';
+export { readRunningCall } from './utils/read-call';
 export { callBudgetName } from './utils/call-budget-ids';
 export type { VoiceFileProblem } from './voice/parse-voice-files';
 export { parseVoiceFiles, voiceFilePaths } from './voice/parse-voice-files';

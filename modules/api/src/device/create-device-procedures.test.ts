@@ -1,14 +1,14 @@
 import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
-import { readDeviceByIdentity } from '@heynixie/devices';
+import { readDeviceByIdentity, removeDevice } from '@heynixie/devices';
 import {
   buildTestFetching,
   makeDeviceToolCaller,
   seedDevicePackage,
 } from '@heynixie/devices/test-utils';
 import type { JSONObject } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -53,6 +53,7 @@ async function setupTest() {
     definitions: api.context.definitions,
     clock: api.context.clock,
     streams: api.context.clients.devices,
+    readCallSession: () => Promise.resolve(null),
     fetching: buildTestFetching({
       clock: api.context.clock,
       allowedHosts: ['tides.example'],
@@ -131,6 +132,8 @@ async function setupTest() {
       return sessions.length;
     },
     readDevice: (sessionID: string) => readDeviceByIdentity(api.writer.db, sessionID),
+    removeDevice: (sessionID: string) =>
+      withWriteTransaction(api.context.log.writer, (tx) => removeDevice(tx, sessionID)),
     readLastSeen: async (sessionID: string) => {
       const identity = await api.writer.db
         .$extendTables<APITables>()
@@ -171,6 +174,7 @@ test('it enrols a device session with a device named for it and its screen off',
       deviceID: expect.toBeString(),
       identityID: device.sessionID,
       name: 'desk panel',
+      deviceKind: 'screen',
       capabilities: { screen: false, camera: false, speaker: false, microphone: false },
       shownSequence: null,
       idleSequence: null,
@@ -178,21 +182,62 @@ test('it enrols a device session with a device named for it and its screen off',
   ]);
 });
 
-test('it enrols a full session from a full code, with no device', async () => {
+test.each(['cookie', 'bearer'] as const)(
+  'it enrols a full session by %s with a client device named for it and its screen on',
+  async (tokenDelivery) => {
+    const ctx = await setupTest();
+
+    const issued = await ctx.ownerClient.sessions.issueCode({
+      clientActionID: crypto.randomUUID(),
+      scope: 'full',
+    });
+
+    const enrolled = await buildTestClient(ctx.url).sessions.enrol({
+      clientActionID: crypto.randomUUID(),
+      code: issued.code,
+      deviceName: 'phone',
+      tokenDelivery,
+    });
+
+    const row = await ctx.readDevice(enrolled.sessionID);
+
+    expect([enrolled.scope, row]).toStrictEqual([
+      'full',
+      {
+        deviceID: expect.toBeString(),
+        identityID: enrolled.sessionID,
+        name: 'phone',
+        deviceKind: 'client',
+        capabilities: { screen: true, camera: false, speaker: false, microphone: false },
+        shownSequence: null,
+        idleSequence: null,
+      },
+    ]);
+  },
+);
+
+test('it removes the client device row when its full session signs out', async () => {
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
+
+  await session.client.sessions.signOut({});
+
   const row = await ctx.readDevice(session.sessionID);
 
-  expect([session.scope, row]).toStrictEqual(['full', null]);
+  expect(row).toBeNull();
 });
 
 test('it tells a full session with no device row to register before it follows', async () => {
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
 
-  const refused = followTestDevice(session.client, { pixels: { width: 800, height: 600 } });
+  await ctx.removeDevice(session.sessionID);
 
-  expect(refused).rejects.toMatchObject({ code: 'NOT_A_DEVICE' });
+  const refused = await followTestDevice(session.client, {
+    pixels: { width: 800, height: 600 },
+  }).catch((error: unknown) => error);
+
+  expect(refused).toMatchObject({ code: 'NOT_A_DEVICE' });
 });
 
 test.each([
@@ -210,12 +255,46 @@ test.each([
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
 
-  expect(call(session.client)).rejects.toMatchObject({ code: 'NOT_A_DEVICE' });
+  await ctx.removeDevice(session.sessionID);
+
+  const refused = await call(session.client).catch((error: unknown) => error);
+
+  expect(refused).toMatchObject({ code: 'NOT_A_DEVICE' });
 });
 
-test('it registers a device for a full session with every capability off', async () => {
+test('it renames the client row at register and leaves its screen on', async () => {
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
+  const before = await ctx.readDevice(session.sessionID);
+
+  invariant(before, 'the enrolled full session has its device row');
+
+  const registered = await session.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  const row = await ctx.readDevice(session.sessionID);
+
+  expect([registered, row]).toStrictEqual([
+    { deviceID: before.deviceID },
+    {
+      deviceID: before.deviceID,
+      identityID: session.sessionID,
+      name: 'kitchen tab',
+      deviceKind: 'client',
+      capabilities: { screen: true, camera: false, speaker: false, microphone: false },
+      shownSequence: null,
+      idleSequence: null,
+    },
+  ]);
+});
+
+test('it gives a full session whose row is gone a client row with its screen on at register', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.enrol('full', 'phone');
+
+  await ctx.removeDevice(session.sessionID);
 
   const registered = await session.client.devices.register({
     clientActionID: crypto.randomUUID(),
@@ -230,7 +309,8 @@ test('it registers a device for a full session with every capability off', async
       deviceID: registered.deviceID,
       identityID: session.sessionID,
       name: 'kitchen tab',
-      capabilities: { screen: false, camera: false, speaker: false, microphone: false },
+      deviceKind: 'client',
+      capabilities: { screen: true, camera: false, speaker: false, microphone: false },
       shownSequence: null,
       idleSequence: null,
     },
@@ -343,12 +423,12 @@ test('it updates the size that devices.list reads when a full session resizes', 
   expect(listed).toStrictEqual({
     status: 'ok',
     result: {
-      devices: [
+      devices: expect.arrayContaining([
         expect.objectContaining({
           online: true,
           pixels: { width: 1024, height: 768, pixelRatio: 2 },
         }),
-      ],
+      ]),
     },
   });
 });
@@ -388,7 +468,7 @@ test('it resizes only the open streams of the session that resizes when 2 device
   expect(listed).toStrictEqual({
     status: 'ok',
     result: {
-      devices: expect.toIncludeSameMembers([
+      devices: expect.arrayContaining([
         expect.objectContaining({
           name: 'desk panel',
           pixels: { width: 640, height: 480, pixelRatio: 1 },
@@ -533,12 +613,12 @@ test('it updates the size that devices.list reads when a session resizes', async
   expect(listed).toStrictEqual({
     status: 'ok',
     result: {
-      devices: [
+      devices: expect.arrayContaining([
         expect.objectContaining({
           online: true,
           pixels: { width: 1024, height: 768, pixelRatio: 1 },
         }),
-      ],
+      ]),
     },
   });
 });
@@ -1198,14 +1278,13 @@ test('it refuses an event from a full session that holds no device', async () =>
   const ctx = await setupTest();
   const full = await ctx.enrol('full', 'laptop');
 
-  const refused = full.client.devices.pageEvent({
-    region: 'pond',
-    shown: 'any',
-    name: 'touched',
-    wake: false,
-  });
+  await ctx.removeDevice(full.sessionID);
 
-  expect(refused).rejects.toMatchObject({ code: 'NOT_A_DEVICE' });
+  const refused = await full.client.devices
+    .pageEvent({ region: 'pond', shown: 'any', name: 'touched', wake: false })
+    .catch((error: unknown) => error);
+
+  expect(refused).toMatchObject({ code: 'NOT_A_DEVICE' });
 });
 
 test('it wakes the conversation with an event that asks for it, when the conversation has a task', async () => {

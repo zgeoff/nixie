@@ -17,6 +17,7 @@ async function setupTest() {
     definitions: ctx.definitions,
     clock: ctx.clock,
     streams: ctx.streams,
+    readCallSession: ctx.readCallSession,
   };
 
   const tools = buildDeviceTools(options);
@@ -951,7 +952,13 @@ test('it never fills a region of a layout that replaced the one the write read',
   });
 
   const written = await writeRegion(
-    { log: ctx.log, definitions: ctx.definitions, clock: ctx.clock, streams: ctx.streams },
+    {
+      log: ctx.log,
+      definitions: ctx.definitions,
+      clock: ctx.clock,
+      streams: ctx.streams,
+      readCallSession: ctx.readCallSession,
+    },
     {
       deviceID: device.deviceID,
       thread: 'conversation',

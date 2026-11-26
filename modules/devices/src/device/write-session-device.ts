@@ -9,8 +9,8 @@ interface SessionDevice {
   readonly nowMs: number;
 }
 
-// The device row of a session that holds at most one: a session with a row keeps it under the new
-// name, and a session with none gets a row with every capability off. Returns the row's short ID.
+// The device row of a full session, which holds at most one: a session with a row keeps it under
+// the new name and screen, and a session with none gets a client row. Returns the row's short ID.
 export async function writeSessionDevice(
   tx: Transaction<unknown>,
   device: SessionDevice,
@@ -18,7 +18,7 @@ export async function writeSessionDevice(
   const existing = await readDeviceByIdentity(tx, device.identityID);
 
   if (existing === null) {
-    return writeDevice(tx, device);
+    return writeDevice(tx, { ...device, deviceKind: 'client' });
   }
 
   await updateDeviceName(tx, device);

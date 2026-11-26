@@ -70,6 +70,7 @@ async function setupTest(options: { hasTrustedTypes?: boolean } = {}) {
     definitions: api.context.definitions,
     clock,
     streams,
+    readCallSession: () => Promise.resolve(null),
   });
 
   await call('device.layout', {

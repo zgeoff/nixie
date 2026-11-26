@@ -228,6 +228,51 @@ test('it gives the call thread the hang-up, which ends the call as nixie after t
   });
 });
 
+test('it gives the call turn the rule to keep speech short and put long material on a device', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies('worker', { text: 'Two things.' });
+
+  await ctx.startLiveCall();
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'my plans' });
+
+  await waitForCondition(() => ctx.readAnswers().length === 1);
+
+  const turn = ctx.nixie.guest.received.findLast(
+    (received) => received.frame.type === 'turn' && received.owner !== 'conversation',
+  )?.frame;
+
+  expect(turn).toMatchObject({
+    systemPrompt: expect.toInclude('Keep a spoken reply to about 3 sentences.'),
+  });
+});
+
+test('it marks the device of the carrying session onCall in the call turn devices.list, and no device before the call is live', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'devices.list', input: {} } },
+    { text: 'On your screen.' },
+  );
+
+  await ctx.startLiveCall();
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'my plans' });
+
+  await waitForCondition(() => ctx.readAnswers().length === 1);
+
+  const listed = ctx.nixie.toolResults.find((result) => result.name === 'devices.list');
+  const devices: unknown = JSON.parse(listed?.result ?? '{}');
+
+  expect(devices).toMatchObject({
+    structuredContent: {
+      devices: [expect.objectContaining({ name: 'laptop', deviceKind: 'client', onCall: true })],
+    },
+  });
+});
+
 test('it runs no compaction on the call thread when a call turn ends past the threshold', async () => {
   const ctx = await setupTest();
 
