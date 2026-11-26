@@ -87,10 +87,10 @@ export function buildProposalsPendingTool(deps: ProposalsToolDeps): ToolDefiniti
         !proposers.leftProposalIDs.has(row.id) &&
         (row.thread === caller || proposers.mergedProposalIDs.has(row.id));
 
+      // a card that the caller opened still lists here when a task it started merged into it
       const ofTasks = (row: SharedProposal) =>
-        !own(row) &&
-        ((row.thread !== null && proposers.startedTaskIDs.has(row.thread)) ||
-          proposers.taskMergedProposalIDs.has(row.id));
+        (row.thread !== null && proposers.startedTaskIDs.has(row.thread)) ||
+        proposers.taskMergedProposalIDs.has(row.id);
 
       const listed = open.filter(
         (row) =>

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { parseFencedResult } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -98,4 +99,54 @@ test("it lists none of the conversation's proposals under tasks when it started 
   await sendClientMessage(ctx.api.client, { text: 'What do my tasks hold?' }, 'None.');
 
   expect(ctx.readLastResult().result).toStrictEqual({ proposals: [] });
+});
+
+test('it lists a proposal of the conversation under tasks once a task it started merged into it', async () => {
+  const ctx = await setupTest();
+  const proposed = await ctx.propose('Keeps two cats');
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Cat note',
+          brief: 'Save that the owner keeps two cats.',
+          memory: 'read',
+          tools: ['memory.remember'],
+        },
+      },
+    },
+    { text: 'Started.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: 'Keeps two cats' },
+      },
+    },
+    { text: 'Saved.' },
+  );
+
+  await sendClientMessage(ctx.api.client, { text: 'Start the cat note.' }, 'Started.');
+
+  await waitForCondition(
+    () => ctx.nixie.toolResults.filter((result) => result.name === 'memory.remember').length >= 2,
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    { toolUse: { name: 'proposals.pending', input: { by: 'tasks' } } },
+    { text: 'One waits.' },
+  );
+
+  await sendClientMessage(ctx.api.client, { text: 'What do my tasks hold?' }, 'One waits.');
+
+  expect(ctx.readLastResult().result).toMatchObject({
+    proposals: [{ shortID: proposed.shortID, family: 'memory', task: null }],
+  });
 });
