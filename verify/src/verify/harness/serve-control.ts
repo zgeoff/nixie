@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { McpApprovalLabel } from './approve-held-mcp';
 import type { ControlRoute } from './control-routes';
 import { controlRoutes } from './control-routes';
 
@@ -14,6 +15,8 @@ export interface ControlHandlers {
   readonly layoutOnDevice: (
     layout: z.output<typeof controlRoutes.layoutOnDevice.input>,
   ) => Promise<number>;
+
+  readonly approveHeldMcp: (label: McpApprovalLabel) => Promise<number>;
 
   readonly runCallStep: (
     call: z.output<typeof controlRoutes.callStep.input>,
@@ -71,6 +74,11 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       [controlRoutes.showOnDevice.path]: {
         POST: makeRouteHandler(controlRoutes.showOnDevice, async (show) => ({
           replies: await handlers.showOnDevice(show),
+        })),
+      },
+      [controlRoutes.approveHeldMcp.path]: {
+        POST: makeRouteHandler(controlRoutes.approveHeldMcp, async (approval) => ({
+          approved: await handlers.approveHeldMcp(approval.label),
         })),
       },
       [controlRoutes.layoutOnDevice.path]: {

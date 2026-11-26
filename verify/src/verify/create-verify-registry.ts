@@ -191,6 +191,16 @@ export function createVerifyRegistry(): Wringer {
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.layoutOnDevice, input),
     })
     .action({
+      name: 'approve-held-mcp',
+      summary:
+        'Approve the pending MCP cards that carry the label --label, Add the server or Allow the tool, as the owner would, which a journey browser cannot because the answer takes a passkey. Needs a start with NIXIE_VERIFY_MCP=1',
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.approveHeldMcp.input,
+      data: controlRoutes.approveHeldMcp.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.approveHeldMcp, input),
+    })
+    .action({
       name: 'probe-route',
       summary:
         "Send one model request to the spending gateway's route --route, and read its answer: a route at its limit answers 403 with the error limit_reached, which names the route. Needs a start with NIXIE_VERIFY_SPEND=1",
@@ -467,6 +477,11 @@ export function createVerifyRegistry(): Wringer {
         name: 'google-connections',
         summary: 'Connect a Google account and forget it',
         paths: featurePaths['google-connections'],
+      },
+      {
+        name: 'mcp-servers',
+        summary: 'Connect an MCP server, see its tools and approve one',
+        paths: featurePaths['mcp-servers'],
       },
       ...computerFeatures,
       ...lastFeatures,

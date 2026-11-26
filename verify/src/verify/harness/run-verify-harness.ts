@@ -1,6 +1,7 @@
 import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
+import { startStandInMcpLoopback } from '@heynixie/mcp/test-utils';
 import {
   createTestModelGateway,
   testGatewayControlToken,
@@ -16,6 +17,7 @@ import {
 import type { ScriptedModel } from '@heynixie/testing';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { approveHeldInstall } from './approve-held-install';
+import { approveHeldMcp } from './approve-held-mcp';
 import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { localMemoryConfig } from './local-memory-config';
@@ -67,6 +69,26 @@ export async function runVerifyHarness(): Promise<void> {
 
   // A start with NIXIE_VERIFY_MAIL=1 gives nixie its own mailbox, on a host in memory.
   const hasMail = process.env['NIXIE_VERIFY_MAIL'] === '1';
+
+  // A start with NIXIE_VERIFY_MCP=1 adds an MCP server to nixie's config: a stand-in on a loopback
+  // port, with its own authorization server, that lists one tool.
+  const mcp =
+    process.env['NIXIE_VERIFY_MCP'] === '1'
+      ? startStandInMcpLoopback({
+          tools: [
+            {
+              name: 'lookup',
+              description: 'Look up an issue by its number',
+              inputSchema: { type: 'object', properties: { number: { type: 'integer' } } },
+              annotations: { readOnlyHint: true },
+            },
+          ],
+        })
+      : null;
+
+  if (mcp !== null) {
+    stack.defer(() => mcp.stop());
+  }
 
   // the test build reaches Google's endpoints at this site, so no journey reaches Google
   const google = await startFakeGoogleSite();
@@ -124,6 +146,7 @@ export async function runVerifyHarness(): Promise<void> {
       '  package_registry: https://registry.test',
       ...(gateway === null ? [] : buildCodingConfigLines()),
       ...(hasMail ? buildMailConfigLines() : []),
+      ...(mcp === null ? [] : buildMcpConfigLines(mcp.mcpURL, mcp.clientID)),
     ],
     extraSecrets: [
       'connector_credentials:',
@@ -210,6 +233,8 @@ export async function runVerifyHarness(): Promise<void> {
 
       return runDeviceLayout(api.client, nixie.model, { ...layout, step: layout.step });
     },
+    approveHeldMcp: (label) =>
+      approveHeldMcp((operation, args) => server.request(operation, args), label),
     runCallStep: (call) =>
       runCallStep(
         {
@@ -324,6 +349,18 @@ function buildCodingConfigLines(): string[] {
 
 function buildMailConfigLines(): string[] {
   return ['mail:', '  address: assistant@nixie.example.org'];
+}
+
+function buildMcpConfigLines(url: string, clientID: string): string[] {
+  return [
+    'mcp:',
+    '  servers:',
+    '    tracker:',
+    `      url: ${url}`,
+    `      clientID: ${clientID}`,
+    '      scope: read write',
+    '      privateRange: 127.0.0.0/8',
+  ];
 }
 
 async function watchExit(exited: Promise<unknown>, running: RunningState): Promise<void> {

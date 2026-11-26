@@ -1,5 +1,5 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
-import { runActionProposalAnswer } from '@heynixie/api';
+import { runActionProposalAnswer, runMcpProposalAnswer } from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
@@ -95,6 +95,16 @@ export function registerHarnessOperations(
     });
 
     return installs.length;
+  });
+
+  link.registerOperation('approveMcp', schemas.approveMcp, async (request) => {
+    const approved = await runMcpProposalAnswer(context, request.change);
+
+    if (approved === 0) {
+      throw new Error(`no MCP ${request.change} proposal waits for an answer`);
+    }
+
+    return approved;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

@@ -10,3 +10,9 @@ test.each([
 
   expect(declaration?.needs).toContain(row.needed);
 });
+
+test('it lets the mcp part read the tools part, which names the tools a proxied name must not take', () => {
+  const declaration = serverPartDeclarations.find((candidate) => candidate.name === 'mcp');
+
+  expect(declaration?.uses).toContain('tools');
+});

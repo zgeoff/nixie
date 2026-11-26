@@ -68,6 +68,9 @@ export function buildNixieOperationSchemas() {
     // the owner's approval of a device page package, which a journey cannot give with a passkey
     approvePackage: z.null(),
 
+    // the owner's approval of each open MCP proposal of one change, which takes a passkey on the page
+    approveMcp: z.object({ change: z.enum(['server', 'tool']) }),
+
     // a mail that arrives at the assistant's own mailbox, on the in-memory host of a test build
     deliverMail: z.object({
       from: z.string(),
