@@ -1,10 +1,15 @@
 import { startSweep } from '@heynixie/clock';
 import type { Connections } from '@heynixie/connections';
-import { createDatabaseHeldBackend, startConnections } from '@heynixie/connections';
+import {
+  createDatabaseHeldBackend,
+  probeConnectionEnabled,
+  startConnections,
+} from '@heynixie/connections';
 import { createGoogleConnector } from '@heynixie/connectors';
 import { createCredentialRecorder } from '@heynixie/credentials';
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
+import { eraseGmailMailbox, readGmailWakeRecords } from '@heynixie/triggers';
 import type { ServerParts } from '../types';
 import type { GoogleToolsPart } from './start-google-tools-part';
 
@@ -40,12 +45,22 @@ export async function startConnectionsPart(
     erasure,
     now,
     connector: createGoogleConnector(google.hosts, [...google.actions]),
+    eraseDependents: (connectionID) =>
+      eraseGmailMailbox({ log, clock: parts.context.clock, definitions }, connectionID),
+    readWakes: async (tx, connectionID) => {
+      const wakes = await readGmailWakeRecords(tx, connectionID);
+
+      return wakes.map((wake) => ({ sequence: wake.sequence, thread: wake.thread }));
+    },
   });
 
   google.bindRuntime({
     readLiveContexts: (connection) => connections.readLiveContexts(connection),
+    readStates: () => connections.readStates(),
+    probeLive: probeConnectionEnabled,
     log,
     clock: parts.context.clock,
+    definitions,
   });
 
   await store.recover();

@@ -798,6 +798,7 @@
         "@heynixie/secret-scan": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",

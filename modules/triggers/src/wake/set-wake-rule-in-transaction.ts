@@ -6,6 +6,7 @@ import { triggerWakeRuleSetCodec } from '../record/trigger-wake-rule-set-codec';
 import { wakeMatchSchema } from '../record/wake-match-schema';
 import type { TriggerCoreContext, WakeRule, WakeRuleInput } from '../types';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
+import { buildMailboxKey } from './build-mailbox-key';
 import { readLiveWakeRules } from './read-live-wake-rules';
 
 export type WakeRuleContext = Pick<TriggerCoreContext, 'log' | 'clock' | 'definitions'>;
@@ -47,7 +48,7 @@ export async function setWakeRuleInTransaction(
       payload: triggerWakeRuleSetCodec.encode({
         ruleID: rule.ruleID,
         shortID: rule.shortID,
-        mailbox: 'mail',
+        mailbox: buildMailboxKey(rule.mailbox),
         match: wakeMatchSchema.parse(rule.match),
         target: rule.target,
         targetTaskID: rule.target.kind === 'task' ? rule.target.taskID : conversationTaskID,

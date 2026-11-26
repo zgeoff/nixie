@@ -73,10 +73,11 @@ export interface TaskInputEvent {
   readonly payload: JSONObject;
 }
 
-// The one mailbox that a mail source reads: the assistant's own.
-export interface Mailbox {
-  readonly kind: 'mail';
-}
+// A mailbox that a mail source reads: the assistant's own, or one Google connection's Gmail. A
+// mail source takes the kind as its ID.
+export type Mailbox =
+  | { readonly kind: 'mail' }
+  | { readonly kind: 'gmail'; readonly connectionID: string };
 
 // Every field is optional, and every field present must match. An empty match takes every arrival.
 export interface WakeMatch {
@@ -86,7 +87,7 @@ export interface WakeMatch {
   // a substring, both sides in NFC and lowered
   readonly subject?: string;
 
-  // the mailbox's thread ID: a short ID for the assistant's mailbox
+  // the mailbox's thread ID: a short ID for the assistant's mailbox, Gmail's own for a Gmail one
   readonly thread?: string;
 }
 
@@ -124,11 +125,11 @@ export interface WakeRule extends WakeRuleInput {
   readonly createdAt: number;
 }
 
-export type WakeRuleEndReason = 'cancelled' | 'task_ended';
+export type WakeRuleEndReason = 'cancelled' | 'task_ended' | 'connection_forgotten';
 
 // One new mail in one mailbox, as the source read it from the host.
 export interface MailArrival {
-  // the short ID of the stored mail
+  // the short ID of the stored mail, or the ID a Gmail tool takes for a Gmail mail
   readonly messageID: string;
   readonly threadID: string;
 
@@ -144,7 +145,7 @@ export interface MailArrivalEvent {
   readonly kind: 'mail';
   readonly mailbox: Mailbox;
 
-  // the source's part of the key: the host's message ID
+  // the source's part of the key: the host's message ID, or the connection and Gmail's for Gmail
   readonly dedupeKey: string;
 
   // ISO instant: when the source read it

@@ -5,7 +5,7 @@ const releasedSchema = z.array(z.int());
 
 const wakeRuleEndedSchema = z.object({
   ruleID: z.string(),
-  reason: z.enum(['cancelled', 'task_ended']),
+  reason: z.enum(['cancelled', 'task_ended', 'connection_forgotten']),
   released: releasedSchema,
 });
 

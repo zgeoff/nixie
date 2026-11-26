@@ -29,7 +29,11 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
     input: sendDraftInputSchema,
     output: {
       type: 'object',
-      properties: { message: { type: 'string' }, thread: { type: 'string' } },
+      properties: {
+        message: { type: 'string' },
+        thread: { type: 'string' },
+        replyRule: { type: ['string', 'null'] },
+      },
       required: ['message', 'thread'],
       additionalProperties: false,
     },

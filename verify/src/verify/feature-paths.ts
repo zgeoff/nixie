@@ -35,6 +35,7 @@ export const featurePaths = {
   'notebook-pages': [...everyJourney],
   'google-connections': [...everyJourney],
   'gmail-tools': [...everyJourney],
+  'gmail-wake': [...everyJourney],
   'device-in-browser': [...everyJourney],
   'device-screen': [...everyJourney],
   'device-layout': [...everyJourney],

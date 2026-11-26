@@ -11,8 +11,7 @@ type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
 export function buildScriptedReplies(
   reply: z.output<typeof controlRoutes.addReply.input>,
 ): ScriptedReply[] {
-  const forConversation =
-    reply.task === undefined && reply.codingTask === undefined ? {} : { when: isConversationTurn };
+  const forConversation = pickTurnFilter(reply);
 
   const forCost =
     reply.outputTokens === undefined
@@ -54,6 +53,20 @@ export function buildScriptedReplies(
         ];
 
   const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
+
+  const gmailWatch =
+    reply.gmailWatch === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__gmail_wake_set',
+              input: { from: [reply.gmailWatch.from], window: '1m' },
+            },
+            ...forConversation,
+          },
+        ];
+
   const gmailReply = reply.gmailReply === undefined ? [] : buildGmailReplyReplies(reply.gmailReply);
 
   const forgetNote =
@@ -102,6 +115,7 @@ export function buildScriptedReplies(
       ...notebook,
       ...mailWatch,
       ...mailRead,
+      ...gmailWatch,
       ...gmailReply,
       ...forgetNote,
       ...handover,
@@ -120,6 +134,7 @@ export function buildScriptedReplies(
     ...notebook,
     ...mailWatch,
     ...mailRead,
+    ...gmailWatch,
     ...gmailReply,
     ...forgetNote,
     ...handover,
@@ -132,6 +147,26 @@ export function buildScriptedReplies(
 
 export function isConversationTurn(body: ScriptedBody): boolean {
   return body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true;
+}
+
+// The consent checker asks the same model before a Gmail wake rule is set, so those replies wait
+// for a request that offers the wake tool.
+function pickTurnFilter(reply: z.output<typeof controlRoutes.addReply.input>): {
+  when?: (body: ScriptedBody) => boolean;
+} {
+  if (reply.gmailWatch !== undefined) {
+    return { when: isGmailWakeTurn };
+  }
+
+  if (reply.task === undefined && reply.codingTask === undefined) {
+    return {};
+  }
+
+  return { when: isConversationTurn };
+}
+
+function isGmailWakeTurn(body: ScriptedBody): boolean {
+  return body.tools?.some((tool) => tool.name === 'mcp__nixie__gmail_wake_set') === true;
 }
 
 // A reminder far in the future, and a note that holds the short ID of the memory that the

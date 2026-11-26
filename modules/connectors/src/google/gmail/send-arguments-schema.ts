@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pickReplyExpiry } from './pick-reply-expiry';
 
 // An address that a send writes into a header: printable ASCII only, with an ASCII host.
 const gmailAddressPattern = "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+$";
@@ -6,8 +7,16 @@ const maxBodyChars = 100_000;
 const maxAddresses = 20;
 const maxFiles = 10;
 const addressSchema = z.string().regex(new RegExp(gmailAddressPattern, 'u'));
+const replyWakePattern = '^(off|[1-9][0-9]{0,6}(ms|s|m|h|d))$';
 
 const bodyFields = {
+  replyWake: z
+    .string()
+    .regex(new RegExp(replyWakePattern, 'u'))
+    .refine((text) => pickReplyExpiry(text, 0).status === 'ok', {
+      message: 'BAD_DURATION: replyWake is off, or a duration from 1m to 3650d',
+    })
+    .exactOptional(),
   text: z.string().min(1).max(maxBodyChars),
   html: z.string().max(maxBodyChars).nullable().exactOptional(),
   files: z.array(z.string()).max(maxFiles).exactOptional(),
@@ -57,6 +66,13 @@ const addressesSchema = {
 } as const;
 
 const bodyProperties = {
+  replyWake: {
+    type: 'string',
+    pattern: replyWakePattern,
+    description:
+      'how long a reply to this mail wakes you: a duration from 1m, such as 2d, or off for none; ' +
+      'the default is set by the deployment',
+  },
   text: { type: 'string', minLength: 1, maxLength: maxBodyChars },
   html: {
     type: ['string', 'null'],
@@ -74,15 +90,26 @@ const bodyProperties = {
   connection: { type: 'string', description: 'the connection to send from, when 2 or more exist' },
 } as const;
 
+const { replyWake: _replyWake, ...draftBodyProperties } = bodyProperties;
+
+const newMailProperties = {
+  to: { ...addressesSchema, minItems: 1 },
+  cc: addressesSchema,
+  bcc: addressesSchema,
+  subject: { type: 'string', minLength: 1, maxLength: 998 },
+} as const;
+
 export const newMailInputSchema = {
   type: 'object',
-  properties: {
-    to: { ...addressesSchema, minItems: 1 },
-    cc: addressesSchema,
-    bcc: addressesSchema,
-    subject: { type: 'string', minLength: 1, maxLength: 998 },
-    ...bodyProperties,
-  },
+  properties: { ...newMailProperties, ...bodyProperties },
+  required: ['to', 'subject', 'text'],
+  additionalProperties: false,
+} as const;
+
+// A draft sends nothing, so it has no reply rule to set.
+export const draftInputSchema = {
+  type: 'object',
+  properties: { ...newMailProperties, ...draftBodyProperties },
   required: ['to', 'subject', 'text'],
   additionalProperties: false,
 } as const;

@@ -23,13 +23,13 @@ every host.
 | `findSent(messageID)`     | finds a sent mail by the Message-ID header that the send set, or null                                                                                                          |
 | `watch(signal)`, optional | yields a hint when mail may have arrived, so the source reads at once                                                                                                          |
 
-A test build serves the one host built so far, which keeps mail in memory. The server starts it when
-the config holds a `mail` section, and the harness operation `deliverMail` puts a mail in it. A
-release build with a `mail` section refuses to start, and a deployment with no `mail` section starts
-with no mailbox, as it does without a coding runner. The `mail` section holds the assistant's
-`address` and `host_poll_interval`. The host in memory keeps its mail, its sent mail and its IDs in
-a file in the data folder, so a restart of nixie loses none of them, and a cursor from before the
-restart still reads only the mail after it.
+A test build serves the one host built so far, the host in memory. The server starts it when the
+config holds a `mail` section, and the harness operation `deliverMail` puts a mail in it. A release
+build with a `mail` section refuses to start, and a deployment with no `mail` section starts with no
+mailbox, as it does without a coding runner. The `mail` section holds the assistant's `address` and
+`host_poll_interval`. The host in memory keeps its mail, its sent mail and its IDs in a file in the
+data folder, so a restart of nixie loses none of them, and a cursor from before the restart still
+reads only the mail after it.
 
 The mail module never imports the connectors module, which owns the web tools and the code files. It
 takes the files of a thread, the link IDs of a session and the stored file of an attachment as ports
@@ -71,8 +71,8 @@ a thread lookup needs no text.
 
 The parser reads UTF-8, Latin-1 and Windows-1252 text, quoted-printable and base64 bodies, encoded
 subject words and multipart mail. The sender is the address in angle brackets, so an address inside
-a display name never counts. A mail keeps its plain text and its HTML as they came, the HTML cut at
-1,000,000 characters, and the module never reads the HTML itself. `mail.list` searches the text and
+a display name never counts. The module stores a mail's plain text and HTML as they came, and cuts
+the HTML at 1,000,000 characters. It never parses the HTML itself. `mail.list` searches the text and
 the source of the HTML. A mail with attachments lists each by name and size. The parser reads a
 quoted name that holds a semicolon and an extended name such as `filename*=UTF-8''caf%C3%A9.pdf`,
 and keeps each name as its last path segment with no control character.
@@ -80,10 +80,11 @@ and keeps each name as its last path segment with no control character.
 `mail.read` numbers each link of a plain text as a link ID of the session, such as
 `[L1 · example.org/reset]`, and the model opens it with `web_fetch` by that ID. An address that
 stands alone on its line is taken whole, with any punctuation at its end, and any other address
-loses the punctuation that ends its sentence. The text the model sees never holds the address of a
-link, so a link with a token stays out of the model's input until it opens the link. The numbers
-belong to the conversation session, or the task run, that reads the mail, and the same address keeps
-its number there.
+loses the punctuation that ends its sentence. The text the model sees holds only a link's host and
+the start of its path, as [link IDs](../connectors/web-fetch.md#link-ids) shows, so a token in a
+link's query stays out of the model's input until it opens the link. The numbers belong to the
+conversation session, or the task run, that reads the mail, and the same address keeps its number
+there.
 
 ### HTML mail
 
@@ -172,48 +173,53 @@ rule. A reply rule's origin is `reply`, which `mail.wake_list` shows.
 A rule holds a mailbox, a match, a target and a window, and an optional expiry. The triggers module
 stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table folds them.
 
-- **Match.** A rule can hold `from`, a list of addresses or `@domain` entries, `subject`, a
-  substring, and `thread`. Each field present must match, with case ignored. A `@domain` entry
+- **Match.** A rule can hold `from`, a list of addresses or `@domain` entries; `subject`, a
+  substring; and `thread`. Each field present must match, with case ignored. A `@domain` entry
   matches that domain and no subdomain. The From header proves nothing about who sent a mail, so a
   match filters and never checks trust.
-- **Target.** The rule wakes the conversation, or any task, which the call that sets the rule names.
-  A call from a task that names no target wakes that task. A rule whose task ended ends with it.
+- **Target.** A rule wakes one target, the conversation or a task. The call that sets the rule names
+  it, and when a call from a task names none, the rule wakes that task. A rule whose task ended ends
+  with it.
 - **Expiry.** The expiry is optional, so a rule can stay for good. The tool's schema sets the
-  longest expiry. A rule matches the mail received before its expiry.
+  longest expiry. A rule matches only mail received before its expiry.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's
-  `wake_rules.window` sets the default, and a call sets a window of a minute at least. Each rule
+  `wake_rules.window` sets the default, and a call can set a window of a minute or more. Each rule
   keeps its own window, and no limit holds for the mailbox as a whole.
 - **Replace.** A rule with the match and target of a live rule replaces it and keeps its ID.
 
-Mail is silent by default. A mail that no rule matches writes no record in the triggers module.
+Mail is silent by default. The triggers module writes no record for a mail that no rule matches.
 
 ## The arrival path
 
+A rule holds one mailbox: the assistant's own, or one Gmail connection, whose
+[arrivals](../connectors/gmail-tools.md#arrivals) take the same path.
+
 The trigger core takes a mail arrival in the same write transaction as the rest of a batch, and
-drops it when the dedupe key is held. Then it reads the live rules and matches the mail:
+drops a repeat arrival by its dedupe key. Then it reads the live rules and matches the mail:
 
 1. With no match, the core writes nothing.
 2. With a match, it writes one `trigger.mail_arrived` record. Its sender and subject are erasable.
 3. A rule that never woke, or whose last wake is a window ago or more, is ready. For each target
    that has a ready rule, the core writes one `trigger.mail_woke` record to the target's inbox,
-   which wakes it. The record names the rules and holds the arriving mail only.
-4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval
-   and wakes the target of each held match whose rule is ready, with every held mail of that target
-   in one record.
+   which wakes it. The record lists the rules and holds the arriving mail only.
+4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval.
+   It wakes the target of each held match whose rule is ready, with every held mail of that target
+   in one record, whichever mailbox the mail came from. Each mail in the record carries its mailbox,
+   so a forget of one Gmail connection finds the wakes that show its mail.
 
 `trigger.mail_woke` renders for the model as the rules that matched, a mail count, and each sender
 and subject as outside content, with the mail's short ID. A mail forgotten since shows as forgotten.
 The model then opens a mail with `mail.read`.
 
 The wake flush runs inside the write transaction that writes the wakes, so an arrival that wakes a
-rule at the same time cannot let the flush wake it again inside its window. When the task of a rule
-has ended, the flush drops the rule's held matches, a cancelled rule's too.
+rule at the same time cannot let the flush wake it again inside its window. The flush drops the held
+matches of a cancelled rule and of a rule whose task has ended.
 
-The arrival's erasable fields keep their key while a held match names the arrival. Each arrival sits
-in `wake_arrival_cleanup` from its write. The core removes the key of each such arrival that no held
-match names, after each batch that holds a mail and at each flush, and then removes the row. A crash
-between a commit and the removal leaves the row, so a later flush destroys the sender and subject of
-a mail that woke nothing more.
+The arrival's erasable fields keep their key while a held match refers to the arrival. The core adds
+each arrival to `wake_arrival_cleanup` when it writes it. After each batch that holds a mail, and at
+each flush, the core removes the key of each such arrival that no held match refers to, and then
+removes its row. A crash between a commit and the removal leaves the row, so a later flush still
+destroys the arrival's sender and subject.
 
 ## What is not built
 
@@ -221,4 +227,3 @@ The [mail design](../../design/queue/mail/README.md) covers the rest, and
 [the mail issue](https://linear.app/zgeoff/issue/GEO-2816) tracks it.
 
 - A mail host other than the host in memory, so a release build has no mailbox.
-- The Gmail mailbox.

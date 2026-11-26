@@ -9,7 +9,13 @@ const noteCause = z.strictObject({ noteID: z.string() });
 const momentCause = z.strictObject({ momentID: z.string() });
 const itemCause = z.strictObject({ itemID: z.string() });
 const recordCause = z.strictObject({ recordSequence: z.int() });
-const connectionCause = z.strictObject({ connectionID: z.string() });
+
+// `wakeSequences` lists the records of the wakes that show the connection's mail, whose sessions
+// the forget cleans
+const connectionCause = z.strictObject({
+  connectionID: z.string(),
+  wakeSequences: z.array(z.int()).exactOptional(),
+});
 
 const sessionCauseSchema = z.union([
   noteCause,

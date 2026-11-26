@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { answerFakeHistory } from './answer-fake-history';
+import type { FakeHold } from './build-fake-hold';
+import { buildFakeHold } from './build-fake-hold';
+import { buildSeededMail } from './build-seeded-mail';
 import type { FakePart } from './parse-fake-raw';
 import { parseFakeRaw } from './parse-fake-raw';
 
@@ -43,6 +47,7 @@ export interface FakeFailure {
   readonly line: string;
   readonly status: number;
   readonly body?: string;
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 export interface FakeGmail {
@@ -56,6 +61,21 @@ export interface FakeGmail {
   readonly requests: string[];
   readonly sendOutcomes: FakeSendOutcome[];
   readonly failures: FakeFailure[];
+
+  // each message the account added, as history.list reports it; the ID is the history ID
+  readonly history: { readonly id: number; readonly messageID: string }[];
+
+  // the most items that a page of a list or of history.list holds; a request may ask for fewer
+  maxPage: number;
+
+  // the requests that wait for a release
+  readonly holds: FakeHold[];
+
+  // stops the next request whose line starts with `line` before it answers
+  readonly hold: (line: string) => FakeHold;
+
+  // makes every history ID so far unreadable, so history.list answers 404 as Gmail does
+  readonly expireHistory: () => void;
   readonly seed: (mail: FakeMailSeed) => { readonly id: string; readonly threadID: string };
   readonly serve: (request: Request) => Promise<Response | null>;
 }
@@ -68,6 +88,8 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
   const state = {
     counter: 0,
     labelCounter: 0,
+    historyCounter: 1000,
+    historyFloor: 0,
   };
 
   const gmail: FakeGmail = {
@@ -79,18 +101,33 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
     requests: [],
     sendOutcomes: [],
     failures: [],
+    history: [],
+    maxPage: Number.POSITIVE_INFINITY,
+    holds: [],
+    hold: (line) => {
+      const hold = buildFakeHold(line);
+
+      gmail.holds.push(hold);
+
+      return hold;
+    },
+    expireHistory: () => {
+      state.historyFloor = state.historyCounter + 1;
+    },
     seed: (mail) => {
       const stored = buildSeededMail(mail, () => nextID(state, 'm'));
 
       gmail.messages.set(stored.id, stored);
 
+      addHistory(gmail, state, stored.id);
+
       return { id: stored.id, threadID: stored.threadID };
     },
-    serve: (request) => {
+    serve: async (request) => {
       const url = new URL(request.url);
 
       if (!url.pathname.startsWith(prefix)) {
-        return Promise.resolve(null);
+        return null;
       }
 
       const path = url.pathname.slice(prefix.length);
@@ -98,16 +135,23 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
 
       gmail.requests.push(line);
 
+      const held = gmail.holds.find((entry) => line.startsWith(entry.line));
+
+      if (held !== undefined) {
+        gmail.holds.splice(gmail.holds.indexOf(held), 1);
+
+        await held.arrive();
+      }
+
       const failure = gmail.failures.find((entry) => line.startsWith(entry.line));
 
       if (failure !== undefined) {
         gmail.failures.splice(gmail.failures.indexOf(failure), 1);
 
-        return Promise.resolve(
-          new Response(failure.body ?? '{"error":{"errors":[{"reason":"backendError"}]}}', {
-            status: failure.status,
-          }),
-        );
+        return new Response(failure.body ?? '{"error":{"errors":[{"reason":"backendError"}]}}', {
+          status: failure.status,
+          ...(failure.headers === undefined ? {} : { headers: failure.headers }),
+        });
       }
 
       return answer(gmail, state, { request, url, path });
@@ -117,89 +161,23 @@ export function createFakeGmail(account = 'me@example.test'): FakeGmail {
   return gmail;
 }
 
-function buildSeededMail(mail: FakeMailSeed, makeID: () => string): StoredMail {
-  const id = mail.id ?? makeID();
-  const sentAtMs = mail.sentAtMs ?? Date.parse('2026-11-12T23:04:00Z');
-
-  const headers: (readonly [string, string])[] = [
-    ['From', mail.from],
-    ['To', (mail.to ?? ['me@example.test']).join(', ')],
-    ...(mail.cc === undefined ? [] : [['Cc', mail.cc.join(', ')] as const]),
-    ...(mail.replyTo === undefined ? [] : [['Reply-To', mail.replyTo] as const]),
-    ['Subject', mail.subject],
-    ['Date', new Date(sentAtMs).toUTCString()],
-    ['Message-ID', `<${mail.messageID ?? `${id}@mail.test`}>`],
-  ];
-
-  return {
-    id,
-    threadID: mail.threadID ?? id,
-    labels: [...(mail.labels ?? ['INBOX', 'UNREAD'])],
-    internalDateMs: sentAtMs,
-    headers,
-    root: buildSeededTree(mail),
-  };
-}
-
-function buildSeededTree(mail: FakeMailSeed): FakePart {
-  const bodies: FakePart[] = [
-    ...(mail.text === undefined ? [] : [buildTextPart('text/plain', mail.text, '0.0')]),
-    ...(mail.html === undefined ? [] : [buildTextPart('text/html', mail.html, '0.1')]),
-  ];
-
-  const attachments = (mail.attachments ?? []).map((file, index): FakePart => ({
-    partID: String(index + 1),
-    mimeType: file.type,
-    filename: file.name,
-    headers: [['Content-Type', file.type]],
-    bytes: file.bytes,
-    parts: [],
-  }));
-
-  const readable: FakePart =
-    bodies.length === 1 && bodies[0] !== undefined
-      ? { ...bodies[0], partID: '0' }
-      : {
-          partID: '0',
-          mimeType: 'multipart/alternative',
-          filename: '',
-          headers: [],
-          bytes: new Uint8Array(0),
-          parts: bodies,
-        };
-
-  return attachments.length === 0
-    ? { ...readable, partID: '' }
-    : {
-        partID: '',
-        mimeType: 'multipart/mixed',
-        filename: '',
-        headers: [],
-        bytes: new Uint8Array(0),
-        parts: [readable, ...attachments],
-      };
-}
-
-function buildTextPart(type: string, text: string, partID: string): FakePart {
-  return {
-    partID,
-    mimeType: type,
-    filename: '',
-    headers: [['Content-Type', `${type}; charset=UTF-8`]],
-    bytes: new TextEncoder().encode(text),
-    parts: [],
-  };
-}
-
 interface Counters {
   counter: number;
   labelCounter: number;
+  historyCounter: number;
+  historyFloor: number;
 }
 
 function nextID(state: Counters, kind: string): string {
   state.counter += 1;
 
   return `${kind}${String(state.counter).padStart(4, '0')}`;
+}
+
+function addHistory(gmail: FakeGmail, state: Counters, messageID: string): void {
+  state.historyCounter += 1;
+
+  gmail.history.push({ id: state.historyCounter, messageID });
 }
 
 interface Call {
@@ -214,6 +192,15 @@ async function answer(gmail: FakeGmail, state: Counters, call: Call): Promise<Re
   const path = call.path;
   const segments = path.split('/').filter((segment) => segment !== '');
   const [kind, id, action] = segments;
+
+  if ((kind === 'profile' || kind === 'history') && request.method === 'GET') {
+    return answerFakeHistory(
+      kind,
+      gmail,
+      { counter: state.historyCounter, floor: state.historyFloor, maxPage: gmail.maxPage },
+      url,
+    );
+  }
 
   if (kind === 'messages' && request.method === 'GET' && id === undefined) {
     return listMessages(gmail, url);
@@ -266,7 +253,7 @@ function listMessages(gmail: FakeGmail, url: URL): Response {
   const query = url.searchParams.get('q') ?? '';
   const labelIDs = url.searchParams.getAll('labelIds');
   const includeSpamTrash = url.searchParams.get('includeSpamTrash') === 'true';
-  const limit = Number(url.searchParams.get('maxResults') ?? 100);
+  const limit = Math.min(Number(url.searchParams.get('maxResults') ?? 100), gmail.maxPage);
   const offset = Number(url.searchParams.get('pageToken') ?? 0);
 
   const matching = [...gmail.messages.values()]
@@ -364,6 +351,8 @@ function sendMessage(gmail: FakeGmail, state: Counters, body: Record<string, unk
 
   gmail.messages.set(id, stored);
   gmail.sent.push(stored);
+
+  addHistory(gmail, state, id);
 
   return outcome === 'error_after_send'
     ? new Response('{"error":{"errors":[{"reason":"backendError"}]}}', { status: 503 })

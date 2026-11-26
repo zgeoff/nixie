@@ -25,6 +25,7 @@ export function buildGmailSendFields(
       ['inReplyTo', card['inReplyTo']],
       ['text', card['text']],
       ['files', card['files']],
+      ['replyWake', card['replyWake']],
     ].filter((entry): entry is [string, string] => entry[1] !== undefined && entry[1] !== ''),
   );
 
