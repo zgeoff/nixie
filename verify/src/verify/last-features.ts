@@ -10,8 +10,13 @@ export const lastFeatures = [
   },
   {
     name: 'device-in-browser',
-    summary: 'Make a signed-in browser a device',
+    summary: "Open the browser's own device full screen",
     paths: featurePaths['device-in-browser'],
+  },
+  {
+    name: 'device-view',
+    summary: "Open the browser's own device",
+    paths: featurePaths['device-view'],
   },
   {
     name: 'device-screen',
@@ -35,12 +40,12 @@ export const lastFeatures = [
   },
   {
     name: 'gmail-tools',
-    summary: 'Search and read a mail, and approve the reply the assistant writes',
+    summary: 'Search and read a mail, and approve a reply',
     paths: featurePaths['gmail-tools'],
   },
   {
     name: 'gmail-wake',
-    summary: 'A Gmail mail wakes the chat when a rule matches',
+    summary: 'A matching Gmail mail wakes the chat',
     paths: featurePaths['gmail-wake'],
   },
   {

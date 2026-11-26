@@ -49,7 +49,7 @@ A device is a browser that shows what the model puts on its screen. You enrol it
    ```bash
    bun verify browser click --role button --name 'Switch on screen'
    bun verify browser snapshot
-   bun verify db query "select name, capabilities from devices"
+   bun verify db query "select name, capabilities from devices where name = 'hall display'"
    ```
 
    Expect: no button "Switch on screen", and none of the buttons "Switch off screen", "Full screen"
@@ -75,7 +75,7 @@ A device is a browser that shows what the model puts on its screen. You enrol it
    bun verify browser click --role img --name Picture
    bun verify browser snapshot
    bun verify browser screenshot
-   bun verify db query "select shown_sequence from devices"
+   bun verify db query "select shown_sequence from devices where name = 'hall display'"
    ```
 
    The click is a touch, which shows the buttons for 4 seconds. Run the snapshot straight after it.

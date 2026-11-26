@@ -21,6 +21,7 @@ async function setupTest() {
     definitions: ctx.definitions,
     clock: ctx.clock,
     streams: ctx.streams,
+    readCallSession: ctx.readCallSession,
     fetching: ctx.site.fetching,
   };
 
@@ -145,6 +146,7 @@ test('it declares the install_package effect, queued', async () => {
     definitions: ctx.definitions,
     clock: ctx.clock,
     streams: ctx.streams,
+    readCallSession: ctx.readCallSession,
   }).find((candidate) => candidate.name === 'device.addPackage');
 
   expect([tool?.declaration.effects, tool?.execution]).toStrictEqual([

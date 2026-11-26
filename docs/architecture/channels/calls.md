@@ -225,7 +225,12 @@ with these differences:
 - The task holds one sandbox, as any task that keeps sandboxes does.
 - The turn runs on the profile that `models.roles.call` names. When the role is unset, it runs on
   the conversation's profile. The turn-input log can capture the `call` role.
-- The session's prompt is the conversation's prompt followed by the voice-call prompt.
+- The session's prompt is the conversation's prompt followed by the voice-call prompt, which adds a
+  rule for the call's turn: keep a spoken reply to about 3 sentences, put a longer answer on a
+  device with the device tools, and say where it is. The speech layer's own prompt holds no such
+  rule. A real GPT-Live session summarised or cut short a 2,400-character answer in 3 of 3 tries,
+  and short answers worked every time. [Devices](devices.md#the-calls-device) describes how the turn
+  finds the call's device.
 - A new session opens with two threads: the conversation's summary and recent turns through
   `seedThrough`, then the call's own thread. The call's thread shows the user's speech, the speech
   layer's small talk and the replies.

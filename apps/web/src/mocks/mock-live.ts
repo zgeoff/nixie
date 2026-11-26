@@ -4,12 +4,14 @@ import { liveTopicSchema } from '@heynixie/contract';
 const bus = new EventTarget();
 
 const changedType = 'changed';
+const deviceEndType = 'device-end';
 
 // What the mock API's live streams have done, so a browser suite reads how the page opened them
 const openedThreads: (string | undefined)[] = [];
 
 // a stream that closes after a reset belongs to the generation before it, and counts for nothing
 const streams = { opened: 0, closed: 0, generation: 0, peak: 0 };
+const deviceStreams = { opened: 0, closed: 0 };
 
 export const mockLive = {
   get openCount(): number {
@@ -19,6 +21,17 @@ export const mockLive = {
   // the most streams open at once since the last reset
   get peakOpenCount(): number {
     return streams.peak;
+  },
+
+  get deviceOpenCount(): number {
+    return deviceStreams.opened - deviceStreams.closed;
+  },
+  get deviceOpenedCount(): number {
+    return deviceStreams.opened;
+  },
+
+  restartPeak: (): void => {
+    streams.peak = streams.opened - streams.closed;
   },
   get openedThreads(): readonly (string | undefined)[] {
     return openedThreads;
@@ -38,7 +51,19 @@ export const mockLive = {
       streams.closed += 1;
     }
   },
+  recordDeviceOpen: (): number => {
+    deviceStreams.opened += 1;
+
+    return streams.generation;
+  },
+  recordDeviceClose: (generation: number): void => {
+    if (generation === streams.generation) {
+      deviceStreams.closed += 1;
+    }
+  },
   reset: (): void => {
+    deviceStreams.opened = 0;
+    deviceStreams.closed = 0;
     streams.generation += 1;
     streams.opened = 0;
     streams.closed = 0;
@@ -66,5 +91,22 @@ export function subscribeToMockChanged(
 
   signal?.addEventListener('abort', () => {
     bus.removeEventListener(changedType, listener);
+  });
+}
+
+export function endMockDeviceStreams(): void {
+  bus.dispatchEvent(new Event(deviceEndType));
+}
+
+export function waitForMockDeviceEnd(signal: AbortSignal | undefined): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const finish = (): void => {
+      bus.removeEventListener(deviceEndType, finish);
+
+      resolve();
+    };
+
+    bus.addEventListener(deviceEndType, finish);
+    signal?.addEventListener('abort', finish, { once: true });
   });
 }

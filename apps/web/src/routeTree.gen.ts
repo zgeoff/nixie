@@ -15,6 +15,7 @@ import { Route as CallRouteImport } from './routes/call'
 import { Route as ComputerRouteImport } from './routes/computer'
 import { Route as DefinitionsRouteImport } from './routes/definitions'
 import { Route as DeviceRouteImport } from './routes/device'
+import { Route as DeviceViewRouteImport } from './routes/device-view'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as ImagesRouteImport } from './routes/images'
 import { Route as MandatesRouteImport } from './routes/mandates'
@@ -64,6 +65,11 @@ const DefinitionsRoute = DefinitionsRouteImport.update({
 const DeviceRoute = DeviceRouteImport.update({
   id: '/device',
   path: '/device',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceViewRoute = DeviceViewRouteImport.update({
+  id: '/device-view',
+  path: '/device-view',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilesRoute = FilesRouteImport.update({
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
+  '/device-view': typeof DeviceViewRoute
   '/files': typeof FilesRoute
   '/images': typeof ImagesRoute
   '/mandates': typeof MandatesRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
+  '/device-view': typeof DeviceViewRoute
   '/files': typeof FilesRoute
   '/images': typeof ImagesRoute
   '/mandates': typeof MandatesRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
+  '/device-view': typeof DeviceViewRoute
   '/files': typeof FilesRoute
   '/images': typeof ImagesRoute
   '/mandates': typeof MandatesRoute
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
     | '/computer'
     | '/definitions'
     | '/device'
+    | '/device-view'
     | '/files'
     | '/images'
     | '/mandates'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/computer'
     | '/definitions'
     | '/device'
+    | '/device-view'
     | '/files'
     | '/images'
     | '/mandates'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/computer'
     | '/definitions'
     | '/device'
+    | '/device-view'
     | '/files'
     | '/images'
     | '/mandates'
@@ -346,6 +358,7 @@ export interface RootRouteChildren {
   ComputerRoute: typeof ComputerRoute
   DefinitionsRoute: typeof DefinitionsRoute
   DeviceRoute: typeof DeviceRoute
+  DeviceViewRoute: typeof DeviceViewRoute
   FilesRoute: typeof FilesRoute
   ImagesRoute: typeof ImagesRoute
   MandatesRoute: typeof MandatesRoute
@@ -407,6 +420,13 @@ declare module '@tanstack/react-router' {
       path: '/device'
       fullPath: '/device'
       preLoaderRoute: typeof DeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device-view': {
+      id: '/device-view'
+      path: '/device-view'
+      fullPath: '/device-view'
+      preLoaderRoute: typeof DeviceViewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/files': {
@@ -575,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComputerRoute: ComputerRoute,
   DefinitionsRoute: DefinitionsRoute,
   DeviceRoute: DeviceRoute,
+  DeviceViewRoute: DeviceViewRoute,
   FilesRoute: FilesRoute,
   ImagesRoute: ImagesRoute,
   MandatesRoute: MandatesRoute,

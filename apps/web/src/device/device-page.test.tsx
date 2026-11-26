@@ -1,28 +1,75 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import {
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router';
+import { act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { useSyncExternalStore } from 'react';
+import { CallEnvironmentContext } from '../call/call-environment';
+import { CallProvider } from '../call/call-provider';
+import { CallScreen } from '../call/call-screen';
 import { deviceStore } from '../mocks/device-store';
+import { endMockDeviceStreams, mockLive } from '../mocks/mock-live';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
+import { buildStubCallEnvironment } from '../test-utils/build-stub-call-environment';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { createFullSession } from '../test-utils/create-full-session';
+import { createScreenSession } from '../test-utils/create-screen-session';
 import { render } from '../test-utils/render';
 import { DevicePage } from './device-page';
+import { useDeviceFeed } from './use-device-feed';
 
-function setupTest() {
-  globalThis.localStorage.clear();
+function setupTest(path = '/device') {
+  const stub = buildStubCallEnvironment({ microphoneError: null });
 
-  onTestFinished(() => {
-    globalThis.localStorage.clear();
+  // The root also reads the tab's one device feed, beside the device page, and shows what the feed
+  // holds for every other part of the tab.
+  const rootRoute = createRootRoute({
+    component: () => {
+      const feed = useDeviceFeed();
+      const events = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
+
+      return (
+        <CallEnvironmentContext value={stub.environment}>
+          <CallProvider isOn>
+            <output aria-label="Feed reader">
+              {JSON.stringify({ event: events.event, connection: events.connection })}
+            </output>
+            <Outlet />
+          </CallProvider>
+        </CallEnvironmentContext>
+      );
+    },
   });
 
-  return { user: userEvent.setup() };
+  const routeTree = rootRoute.addChildren([
+    createRoute({ getParentRoute: () => rootRoute, path: '/call', component: CallScreen }),
+    createRoute({ getParentRoute: () => rootRoute, path: '/device', component: DevicePage }),
+  ]);
+
+  const router = createRouter({
+    history: createMemoryHistory({ initialEntries: [path] }),
+    routeTree,
+  });
+
+  return {
+    stub,
+    user: userEvent.setup(),
+    mount: () => render(<RouterProvider router={router} />),
+    openDevicePage: () => act(() => router.navigate({ to: '/device' })),
+  };
 }
 
 test('it shows the enrolment form to a browser with no device session', async () => {
-  setupTest();
-
-  const rendered = render(<DevicePage />);
+  const ctx = setupTest();
+  const rendered = ctx.mount();
 
   const heading = await rendered.findByRole('heading', { name: 'Enrol this browser' });
 
@@ -32,9 +79,9 @@ test('it shows the enrolment form to a browser with no device session', async ()
 test('it starts an enrolled device with its screen off, and lets the device switch it on', async () => {
   const ctx = setupTest();
 
-  await createDeviceSession();
+  await createScreenSession();
 
-  const rendered = render(<DevicePage />);
+  const rendered = ctx.mount();
 
   const button = await rendered.findByRole('button', { name: 'Switch on screen' });
 
@@ -45,26 +92,113 @@ test('it starts an enrolled device with its screen off, and lets the device swit
   expect(heading).toBeVisible();
 });
 
-test('it keeps the screen on for a device that left it on', async () => {
-  setupTest();
+test('it keeps the screen on for a device whose screen the server holds on', async () => {
+  const ctx = setupTest();
 
-  await createDeviceSession();
+  const session = await createScreenSession();
 
-  globalThis.localStorage.setItem('nixie.device.screen', 'on');
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: true });
 
-  const rendered = render(<DevicePage />);
+  const rendered = ctx.mount();
 
   const heading = await rendered.findByRole('heading', { name: 'Saturday' });
 
   expect(heading).toBeVisible();
 });
 
-test('it signs the device out and shows the enrolment form', async () => {
+test('it leaves a screen that is off alone, whatever the browser stored before', async () => {
+  const ctx = setupTest();
+
+  await createScreenSession();
+
+  globalThis.localStorage.setItem('nixie.device.screen', 'on');
+
+  onTestFinished(() => {
+    globalThis.localStorage.clear();
+  });
+
+  const rendered = ctx.mount();
+
+  const button = await rendered.findByRole('button', { name: 'Switch on screen' });
+
+  expect(button).toBeVisible();
+  expect(deviceStore.screenSwitches.findMany()).toStrictEqual([]);
+});
+
+test('it opens a client device that the server holds off with its screen off, and writes nothing', async () => {
   const ctx = setupTest();
 
   const session = await createDeviceSession();
 
-  const rendered = render(<DevicePage />);
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  const rendered = ctx.mount();
+
+  const button = await rendered.findByRole('button', { name: 'Switch on screen' });
+
+  expect(button).toBeVisible();
+
+  expect(deviceStore.screenSwitches.findMany()).toStrictEqual([
+    expect.objectContaining({ sessionID: session.sessionID, isOn: false }),
+  ]);
+});
+
+test('it keeps the stream of a client device open while its screen is off', async () => {
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  const rendered = ctx.mount();
+
+  await rendered.findByRole('button', { name: 'Switch on screen' });
+
+  await waitFor(() => {
+    expect(mockLive.deviceOpenCount).toBe(1);
+  });
+});
+
+test('it drops what the full-screen device showed once its session is revoked', async () => {
+  const ctx = setupTest();
+
+  const session = await createScreenSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: true });
+
+  const rendered = ctx.mount();
+
+  await rendered.findByRole('heading', { name: 'Saturday' });
+
+  await store.sessions.update(session, {
+    data(draft) {
+      draft.revokedAt = new Date();
+    },
+  });
+
+  endMockDeviceStreams();
+
+  await waitFor(
+    () => {
+      expect(rendered.queryByRole('heading', { name: 'Saturday' })).toBeNull();
+    },
+    { timeout: 10_000 },
+  );
+
+  // the screen still stands, so the shared feed dropped the content, and no unmount did
+  expect(rendered.queryByText('Sign out')).not.toBeNull();
+
+  expect(rendered.getByRole('status', { name: 'Feed reader' }).textContent).toBe(
+    JSON.stringify({ event: null, connection: 'refused' }),
+  );
+});
+
+test('it signs the device out and shows the enrolment form', async () => {
+  const ctx = setupTest();
+
+  const session = await createScreenSession();
+
+  const rendered = ctx.mount();
 
   const button = await rendered.findByRole('button', { name: 'Sign out' });
 
@@ -81,14 +215,153 @@ test('it signs the device out and shows the enrolment form', async () => {
   });
 });
 
-test('it keeps the device signed in and says so when the sign out fails', async () => {
-  const ctx = setupTest();
+test('it ends a live call and stops its microphone before it signs the device out', async () => {
+  const ctx = setupTest('/call');
 
   const session = await createDeviceSession();
 
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  server.use(
+    http.post('*/rpc/calls/start', () =>
+      HttpResponse.json({ json: { callID: 'c1', state: 'connecting', thread: 't1' }, meta: [] }),
+    ),
+    http.post('*/rpc/calls/connect', () =>
+      HttpResponse.json({ json: { sdpAnswer: 'answer-1' }, meta: [] }),
+    ),
+    http.post('*/rpc/calls/get', () =>
+      HttpResponse.json({
+        json: { callID: 'c1', state: 'live', endedBy: null, reconnect: null },
+        meta: [],
+      }),
+    ),
+    http.post('*/rpc/calls/hangUp', () =>
+      HttpResponse.json({ json: { callID: 'c1', state: 'ended', endedBy: 'you' }, meta: [] }),
+    ),
+  );
+
+  const rendered = ctx.mount();
+
+  const start = await rendered.findByRole('button', { name: 'Start a call' });
+
+  await ctx.user.click(start);
+  await rendered.findByRole('button', { name: /hang up/iu });
+  await ctx.openDevicePage();
+  await rendered.findByRole('heading', { name: 'Device mode' });
+  await rendered.findByRole('region', { name: 'Call in progress' });
+  await ctx.user.click(rendered.getByRole('button', { name: 'Sign out' }));
+  await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect([
+    ctx.stub.stoppedTracks(),
+    rendered.queryByRole('region', { name: 'Call in progress' }),
+  ]).toStrictEqual([1, null]);
+});
+
+test('it signs the device out when the hang-up request of a live call fails', async () => {
+  const ctx = setupTest('/call');
+
+  const session = await createDeviceSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  server.use(
+    http.post('*/rpc/calls/start', () =>
+      HttpResponse.json({ json: { callID: 'c1', state: 'connecting', thread: 't1' }, meta: [] }),
+    ),
+    http.post('*/rpc/calls/connect', () =>
+      HttpResponse.json({ json: { sdpAnswer: 'answer-1' }, meta: [] }),
+    ),
+    http.post('*/rpc/calls/get', () =>
+      HttpResponse.json({
+        json: { callID: 'c1', state: 'live', endedBy: null, reconnect: null },
+        meta: [],
+      }),
+    ),
+    http.post('*/rpc/calls/hangUp', () => HttpResponse.error()),
+  );
+
+  const rendered = ctx.mount();
+
+  const start = await rendered.findByRole('button', { name: 'Start a call' });
+
+  await ctx.user.click(start);
+  await rendered.findByRole('button', { name: /hang up/iu });
+  await ctx.openDevicePage();
+
+  const signOut = await rendered.findByRole('button', { name: 'Sign out' });
+
+  await ctx.user.click(signOut);
+  await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect(ctx.stub.stoppedTracks()).toBe(1);
+});
+
+test('it ends the call that a pending start opens before it signs the device out', async () => {
+  const ctx = setupTest('/call');
+
+  const session = await createDeviceSession();
+
+  await deviceStore.screenSwitches.create({ sessionID: session.sessionID, isOn: false });
+
+  const held = Promise.withResolvers<void>();
+  const requests: string[] = [];
+
+  server.use(
+    http.post('*/rpc/calls/start', async () => {
+      await held.promise;
+
+      return HttpResponse.json({
+        json: { callID: 'c1', state: 'connecting', thread: 't1' },
+        meta: [],
+      });
+    }),
+    http.post('*/rpc/calls/hangUp', () => {
+      requests.push('hangUp');
+
+      return HttpResponse.json({
+        json: { callID: 'c1', state: 'ended', endedBy: 'you' },
+        meta: [],
+      });
+    }),
+    http.post('*/rpc/sessions/signOut', () => {
+      requests.push('signOut');
+
+      return HttpResponse.json({ json: { signedOutAt: new Date(0) }, meta: [] });
+    }),
+  );
+
+  const rendered = ctx.mount();
+
+  const start = await rendered.findByRole('button', { name: 'Start a call' });
+
+  await ctx.user.click(start);
+
+  await waitFor(() => {
+    expect(ctx.stub.microphoneRequests()).toBe(1);
+  });
+
+  await ctx.openDevicePage();
+
+  const signOut = await rendered.findByRole('button', { name: 'Sign out' });
+
+  await ctx.user.click(signOut);
+
+  held.resolve();
+
+  await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect([requests, ctx.stub.stoppedTracks()]).toStrictEqual([['hangUp', 'signOut'], 1]);
+});
+
+test('it keeps the device signed in and says so when the sign out fails', async () => {
+  const ctx = setupTest();
+
+  const session = await createScreenSession();
+
   server.use(http.post('*/rpc/sessions/signOut', () => HttpResponse.error(), { once: true }));
 
-  const rendered = render(<DevicePage />);
+  const rendered = ctx.mount();
 
   const button = await rendered.findByRole('button', { name: 'Sign out' });
 
@@ -104,11 +377,11 @@ test('it keeps the device signed in and says so when the sign out fails', async 
 });
 
 test('it shows the registration form to a full session that holds no device', async () => {
-  setupTest();
+  const ctx = setupTest();
 
   await createFullSession();
 
-  const rendered = render(<DevicePage />);
+  const rendered = ctx.mount();
 
   const heading = await rendered.findByRole('heading', { name: 'Use this browser as a device' });
 
@@ -116,12 +389,12 @@ test('it shows the registration form to a full session that holds no device', as
   expect(rendered.queryByRole('heading', { name: 'Enrol this browser' })).toBeNull();
 });
 
-test('it registers the named device on the session it holds, then offers the screen switch', async () => {
+test('it registers the named device on the session it holds, then shows the screen the server gave it', async () => {
   const ctx = setupTest();
 
   const session = await createFullSession();
 
-  const rendered = render(<DevicePage />);
+  const rendered = ctx.mount();
 
   const name = await rendered.findByLabelText('Device name');
 
@@ -129,9 +402,9 @@ test('it registers the named device on the session it holds, then offers the scr
   await ctx.user.type(name, 'kitchen tab');
   await ctx.user.click(rendered.getByRole('button', { name: 'Register device' }));
 
-  const button = await rendered.findByRole('button', { name: 'Switch on screen' });
+  const heading = await rendered.findByRole('heading', { name: 'Saturday' });
 
-  expect(button).toBeVisible();
+  expect(heading).toBeVisible();
 
   expect([
     deviceStore.hasDevice(session.sessionID),
@@ -146,7 +419,7 @@ test('it says so when the registration fails', async () => {
 
   server.use(http.post('*/rpc/devices/register', () => HttpResponse.error(), { once: true }));
 
-  const rendered = render(<DevicePage />);
+  const rendered = ctx.mount();
 
   const submit = await rendered.findByRole('button', { name: 'Register device' });
 
@@ -157,21 +430,15 @@ test('it says so when the registration fails', async () => {
   expect(alert).toHaveTextContent('Registration failed');
 });
 
-test('it leaves the screen off after a registration, even when the browser left it on before', async () => {
+test('it shows the client device of a full session full screen', async () => {
   const ctx = setupTest();
 
-  await createFullSession();
+  await createDeviceSession();
 
-  globalThis.localStorage.setItem('nixie.device.screen', 'on');
+  const rendered = ctx.mount();
 
-  const rendered = render(<DevicePage />);
+  const heading = await rendered.findByRole('heading', { name: 'Saturday' });
 
-  const submit = await rendered.findByRole('button', { name: 'Register device' });
-
-  await ctx.user.click(submit);
-
-  const button = await rendered.findByRole('button', { name: 'Switch on screen' });
-
-  expect(button).toBeVisible();
-  expect(rendered.queryByTestId('screen')).toBeNull();
+  expect(heading).toBeVisible();
+  expect(rendered.queryByRole('button', { name: 'Switch on screen' })).toBeNull();
 });

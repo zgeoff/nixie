@@ -1,11 +1,11 @@
 # device-in-browser
 
-- [Journey](#journey): from a signed-in browser, open the device page in a second tab, name the
-  device, switch its screen on, and have the model show a photo.
+- [Journey](#journey): from a signed-in browser, open the device page in a second tab, see the
+  browser's own device full screen with no registration, and have the model show a photo.
 - [End state](#end-state): what the second tab, the chat tab, the device row and the session show.
 
-Register a signed-in browser as a device with a name and no code. Registering keeps the session and
-its cookie, so the chat tab keeps working.
+Every signed-in browser is a client device from its enrolment, so the device page, `/device`, asks
+for no name and no code. It shows that device full screen, with the screen on.
 
 Run this journey on `local` only, before `device-screen`. It needs the scripted model and the
 `show-on-device` action, which the harness that runs nixie on `local` serves. On `preview`, list the
@@ -40,47 +40,37 @@ which needs a browser with no session.
    bun verify browser snapshot
    ```
 
-   Expect: the page `/device` as tab 1 in `browser tabs`, then the heading "Use this browser as a
-   device", the textbox "Device name" and no "Enrolment code" textbox.
+   Expect: the page `/device` as tab 1 in `browser tabs`. The snapshot holds no heading "Use this
+   browser as a device", no "Enrolment code" textbox and no "Switch on screen" button, because the
+   screen is already on. It holds no "Switch off screen" or "Full screen" button either, because the
+   page hides them until a touch.
 
-3. Name the device, and switch its screen on:
-
-   ```bash
-   bun verify browser type --role textbox --name 'Device name' --value 'desk tab'
-   bun verify browser click --role button --name 'Register device'
-   bun verify browser snapshot
-   bun verify browser click --role button --name 'Switch on screen'
-   bun verify browser snapshot
-   ```
-
-   Expect: the first snapshot shows the button "Switch on screen". The second shows no "Switch on
-   screen" button, and no "Switch off screen" or "Full screen" button, because the page hides them
-   until a touch.
-
-4. Read the `devices` table and the sessions:
+3. Read the `devices` table and the sessions:
 
    ```bash
-   bun verify db query "select name, capabilities from devices"
+   bun verify db query "select name, device_kind, capabilities from devices where name = 'hallway tablet'"
    bun verify sessions --device 'hallway tablet'
    ```
 
-   Expect: one `devices` row, "desk tab", whose `capabilities` holds `"screen":true`, and the
-   session `hallway tablet` still listed.
+   Expect: one `devices` row, "hallway tablet", whose `device_kind` is `client` and whose
+   `capabilities` holds `"screen":true`, and the session `hallway tablet` listed.
 
-5. Have the model show the photo, as `device-screen` does. A shown photo proves the device is
-   online, because the model reaches a device only while its page holds a stream:
+4. Have the model show a photo on the browser's device, as `device-screen` does for a device that
+   enrolled with a code. The harness's own session is a client device too, so name the device. A
+   shown photo proves the device is online, because the model reaches a device only while a page of
+   its browser holds a stream:
 
    ```bash
-   bun verify action show-on-device --fit whole --text 'The desk tab shows the photo.'
-   bun verify conversation turn --message 'Show this photo on the screen in the hall.' --reply 'The desk tab shows the photo.'
+   bun verify action show-on-device --device 'hallway tablet' --fit whole --text 'The hallway tablet shows the photo.'
+   bun verify conversation turn --message 'Show this photo on the screen in the hall.' --reply 'The hallway tablet shows the photo.'
    bun verify browser snapshot
-   bun verify db query "select shown_sequence from devices"
+   bun verify db query "select shown_sequence from devices where name = 'hallway tablet'"
    ```
 
    Expect: `data.replies` above 0 from `show-on-device`, an image named "Picture" in the snapshot
    and a number in `shown_sequence`.
 
-6. Go back to the chat tab, which is tab 0 in `browser tabs`, and send another message:
+5. Go back to the chat tab, which is tab 0 in `browser tabs`, and send another message:
 
    ```bash
    bun verify action script-reply --text 'The chat tab still works.'
@@ -95,10 +85,11 @@ which needs a browser with no session.
 
 ## End state
 
-- The second tab showed the registration form and never the enrolment form, and then the screen with
+- The second tab never showed a registration or an enrolment form, and then showed the screen with
   the photo.
-- One `devices` row, "desk tab", has the screen on and a number in `shown_sequence`.
+- One `devices` row, "hallway tablet", of kind `client`, has the screen on and a number in
+  `shown_sequence`.
 - The session `hallway tablet` is still listed, and the chat tab sent a message after the device
-  registered.
+  page opened.
 
 Once the end state matches, run `bun verify done`.

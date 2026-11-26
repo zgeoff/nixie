@@ -384,6 +384,7 @@ test('it keeps an enrolled device through a reset and clears what it showed', as
     definitions: ctx.context.definitions,
     clock: ctx.context.clock,
     streams: ctx.context.clients.devices,
+    readCallSession: () => Promise.resolve(null),
   });
 
   await call('device.setIdle', {

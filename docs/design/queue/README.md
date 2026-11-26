@@ -28,7 +28,7 @@ describe code that has since changed, and a reader could not tell it from one st
 | Connections     | [Google connections](google-connections.md)                                                       |
 | Google tools    | [the Google tool rules and the Gmail tools not built yet](gmail-calendar-drive-tools.md)          |
 | Channels        | [the push notice](push-notice.md)                                                                 |
-| Devices         | [the camera, the speaker and the microphone](devices.md), [client devices](client-devices.md)     |
+| Devices         | [the camera, the speaker and the microphone](devices.md)                                          |
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md) |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives

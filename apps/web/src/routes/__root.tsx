@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from 'react';
 import { CallGate } from '../call/call-gate';
 import { AppShell } from '../components/app-shell';
+import { DeviceFeedProvider } from '../device/device-feed-provider';
 import { LiveProvider } from '../live/live-provider';
 import { css } from '../styled-system/css';
 import styles from '../styles.css?url';
@@ -48,15 +49,17 @@ function RootDocument(): ReactNode {
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
           <LiveProvider>
-            <CallGate>
-              {pathname === '/device' ? (
-                <Outlet />
-              ) : (
-                <AppShell>
+            <DeviceFeedProvider>
+              <CallGate>
+                {pathname === '/device' ? (
                   <Outlet />
-                </AppShell>
-              )}
-            </CallGate>
+                ) : (
+                  <AppShell>
+                    <Outlet />
+                  </AppShell>
+                )}
+              </CallGate>
+            </DeviceFeedProvider>
           </LiveProvider>
         </NixieClientContext>
         <Scripts />

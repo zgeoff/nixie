@@ -4,6 +4,7 @@ export type {
   DeviceCapabilities,
   DeviceCapability,
   Device,
+  DeviceKind,
   LayoutState,
   ScreenPixels,
   ScreenState,
@@ -30,7 +31,7 @@ export { readDeviceByIdentity } from './device/read-device-by-identity';
 export { writeScreenSwitch } from './device/write-screen-switch';
 export type { DeviceImage } from './screen/read-device-image';
 export { readDeviceImage } from './screen/read-device-image';
-export type { DeviceToolOptions } from './tool/device-tool-options';
+export type { DeviceToolOptions, ReadCallSession } from './tool/device-tool-options';
 export type { PageError, PageErrors } from './stream/create-page-errors';
 export type { PageErrorReport } from './preview/record-page-error';
 export { recordPageError } from './preview/record-page-error';

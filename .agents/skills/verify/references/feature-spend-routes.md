@@ -12,12 +12,13 @@ provider at its day limit offers a raise.
 
 Run this journey on `local` only, on an `up` of its own:
 
-- On `local`, `NIXIE_VERIFY_SPEND=1 bun verify up` runs a test build of nixie with a scripted model
-  behind a spending gateway with 2 providers and 2 routes, and a double of the rate source that
-  gives 1.52 Australian dollars for one US dollar. The route `scripted` carries the conversation,
-  with a day limit of 100 dollars and a month limit of 1,000 dollars, on the provider `test`. The
-  route `second` has no limit of its own, and is on the provider `reserve`, which has a day limit of
-  1.50 dollars and a month limit of 50 dollars.
+- On `local`, run `NIXIE_VERIFY_SPEND=1 bun verify up`. It starts a test build of nixie with a
+  scripted model behind a spending gateway that has 2 providers and 2 routes, and a double of the
+  rate source that gives 1.52 Australian dollars for one US dollar. The conversation runs on the
+  route `scripted`, which is on the provider `test`. `scripted` has a day limit of 100 dollars and a
+  month limit of 1,000 dollars, and `test` has a day limit of 10,000 dollars and a month limit of
+  100,000 dollars. The route `second` has no limit of its own and is on the provider `reserve`,
+  which has a day limit of 1.50 dollars and a month limit of 50 dollars.
 - On `preview`, skip this journey, and list the feature as not verified there in your reply.
 
 Before you start:
@@ -100,9 +101,10 @@ Before you start:
 ## End state
 
 - Under the heading "Provider test", the page reads "Today: $0.50 (about A$0.76) of $10,000.00
-  (about A$15,200)". Under it, the heading "scripted" reads "Today: $0.50 (about A$0.76) of $100.00
-  (about A$152)" and "This month: $0.50 (about A$0.76) of $1,000.00 (about A$1,520)". A count of
-  $0.00 means the reply was not counted, so the journey failed.
+  (about A$15,200)" and "This month: $0.50 (about A$0.76) of $100,000.00 (about A$152,000)". Under
+  it, the heading "scripted" reads "Today: $0.50 (about A$0.76) of $100.00 (about A$152)" and "This
+  month: $0.50 (about A$0.76) of $1,000.00 (about A$1,520)". Fail the journey when a count reads
+  $0.00, because the reply was not counted.
 - Under the heading "Provider reserve", the page reads "Today: $2.00 (about A$3.04) of $1.50 (about
   A$2.28) (limit reached)" and "This month: $2.00 (about A$3.04) of $50.00 (about A$76)". Its route
   `second` sits under it, and reads "$2.00 (about A$3.04) no limit of its own" on both lines. Each

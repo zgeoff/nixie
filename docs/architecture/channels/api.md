@@ -29,7 +29,9 @@ An enrolment code turns into a session once. nixie stores only the code's hash, 
 unused after the enrolment code lifetime. The host's code comes from a function the server calls at
 start: it issues a fresh code on each call while no device holds a live session, so the first device
 can sign in, and issues nothing once one does. A host command issues a code at any time. A signed-in
-device issues codes through a checked action.
+device issues codes through a checked action. The transaction that enrols a session also writes the
+session's [device row](devices.md#enrolment-and-the-session-scope): a client device for a full code,
+a screen device for a device code.
 
 A browser receives its token only in a host-only cookie that is `HttpOnly`, `Secure`, `SameSite=Lax`
 and `Path=/`, so no script reads it. The path matters because enrolment sets the cookie from an

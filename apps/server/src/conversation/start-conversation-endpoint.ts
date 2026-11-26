@@ -71,6 +71,7 @@ import type {
 } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { readActionCallSource } from '../action/read-action-call-source';
+import { makeReadCallSession } from '../call/make-read-call-session';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
@@ -335,6 +336,7 @@ export async function startConversationEndpoint(
     definitions: options.context.definitions,
     clock: options.context.clock,
     streams: tools.deviceStreams,
+    readCallSession: makeReadCallSession(options.context.log),
     fetching,
     ...(tools.render === null
       ? {}

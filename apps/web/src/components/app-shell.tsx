@@ -28,6 +28,7 @@ const entries = [
   { exact: false, label: 'Files', to: '/files' },
   { exact: false, label: 'Images', to: '/images', feature: 'images' },
   { exact: false, label: 'Computer', to: '/computer', feature: 'computer' },
+  { exact: false, label: 'Device view', to: '/device-view' },
   { exact: false, label: 'Notebook', to: '/notebook' },
   { exact: false, label: 'Definitions', to: '/definitions' },
   { exact: false, label: 'Reminders', to: '/reminders' },

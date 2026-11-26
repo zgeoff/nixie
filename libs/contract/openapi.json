@@ -31823,8 +31823,7 @@
                   }
                 },
                 "required": [
-                  "capability",
-                  "isOn"
+                  "capability"
                 ]
               }
             }

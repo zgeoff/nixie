@@ -246,12 +246,68 @@ test('it keeps the call live on the device route, which has no app shell, and sh
     8000,
   );
 
+  const recordsBefore = await ctx.nixie.readRecords();
+
+  // The device route holds no page stream, so only the call's own stream can tell this page that
+  // another client ended the call.
+  const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
+
+  await ctx.api.client.calls.hangUp({
+    callID: z.string().parse(started.payload['callID']),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await waitForPage(
+    ctx.view,
+    "location.pathname === '/device' && document.querySelector('[aria-label=\"Call in progress\"]') === null",
+    8000,
+  );
+
   await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/call' })");
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('You hung up.')", 8000);
+
+  expect(recordsBefore.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
+});
+
+test('it keeps the call live on the device view, whose size leaves room for the call bar, and ends it when another client hangs up', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startCall();
   await ctx.waitForConnected();
 
-  const records = await ctx.nixie.readRecords();
+  // the router client-side navigates, which a new page load would not
+  await ctx.view.evaluate("window.__TSR_ROUTER__.navigate({ to: '/device-view' })");
 
-  expect(records.filter((record) => record.kind === 'call.ended')).toStrictEqual([]);
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'[aria-label="Call in progress"]\') !== null && document.querySelector(\'[aria-label="Device view"]\') !== null',
+    8000,
+  );
+
+  await waitForPage(
+    ctx.view,
+    'Math.round(document.querySelector(\'[aria-label="Device view"]\').getBoundingClientRect().bottom) === innerHeight',
+    8000,
+  );
+
+  const requests: unknown = await ctx.view.evaluate('window.microphoneRequests');
+  const started = await ctx.nixie.waitForRecord((record) => record.kind === 'call.started');
+
+  await ctx.api.client.calls.hangUp({
+    callID: z.string().parse(started.payload['callID']),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'[aria-label="Call in progress"]\') === null',
+    8000,
+  );
+
+  expect(requests).toStrictEqual([
+    '{"audio":{"echoCancellation":true,"noiseSuppression":true,"autoGainControl":true}}',
+  ]);
 });
 
 test('it reconnects the call with an ICE-restart offer and a fresh connect within 30 s after a server restart', async () => {

@@ -12,6 +12,7 @@ async function setupTest() {
       definitions: ctx.definitions,
       clock: ctx.clock,
       streams: ctx.streams,
+      readCallSession: ctx.readCallSession,
     }),
   );
 
