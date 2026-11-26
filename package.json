@@ -30,7 +30,7 @@
       "!research/voice-latency"
     ],
     "catalog": {
-      "@anthropic-ai/claude-agent-sdk": "0.3.328",
+      "@anthropic-ai/claude-agent-sdk": "0.3.329",
       "@babel/core": "8.1.2",
       "@faker-js/faker": "10.6.0",
       "@huggingface/tokenizers": "0.2.0",
