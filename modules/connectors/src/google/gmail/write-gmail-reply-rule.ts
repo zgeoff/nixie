@@ -18,8 +18,8 @@ const argumentsSchema = z.object({ replyWake: z.string().exactOptional() });
 const answeredTools: ReadonlySet<string> = new Set([gmailToolNames.send, gmailToolNames.reply]);
 
 // Registers the reply rule of a sent mail: a rule on its Gmail thread that wakes the sender until
-// `replyWake` from the start of the send, and asks the poll to read the mail since then again.
-// Returns the rule's short ID, or null when the send registers none. A write that fails throws.
+// `replyWake` from the start of the send. Returns the rule's short ID, or null when the send
+// registers none. A write that fails throws.
 export async function writeGmailReplyRule(
   deps: GmailDeps,
   context: ConnectorContext,
@@ -64,8 +64,6 @@ export async function writeGmailReplyRule(
   if (rule === null) {
     return null;
   }
-
-  deps.wake.rewinds.request(context.connectionID, sentAt);
 
   return rule.shortID;
 }

@@ -9,7 +9,11 @@ export async function writePollDelivery(
 ): Promise<void> {
   const cursor = {
     ...run.cursor,
-    [connection.connectionID]: { historyID: delivery.historyID, polledAt: delivery.startedAt },
+    [connection.connectionID]: {
+      historyID: delivery.historyID,
+      polledAt: delivery.startedAt,
+      replayed: delivery.replayed,
+    },
   };
 
   await run.trigger.deliver({ cursor: toCursorJSON(cursor), events: delivery.events });

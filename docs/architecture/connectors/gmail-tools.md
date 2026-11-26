@@ -8,19 +8,19 @@ connection; [tool calls](tool-calls.md) covers how a call and its errors reach t
 
 ## The tools
 
-| Tool                    | Effect     | Runs   | Destinations                          | Reconciliation            |
-| ----------------------- | ---------- | ------ | ------------------------------------- | ------------------------- |
-| `gmail.search`          | `read`     | direct | none                                  | none                      |
-| `gmail.read`            | `read`     | direct | none                                  | none                      |
-| `gmail.read_attachment` | `read`     | direct | none                                  | none                      |
-| `gmail.label`           | `write`    | queued | none                                  | check `gmail.find_labels` |
-| `gmail.draft`           | `write`    | queued | none                                  | check `gmail.find_draft`  |
-| `gmail.send`            | `send`     | queued | each address in `to`, `cc` and `bcc`  | check `gmail.find_sent`   |
-| `gmail.reply`           | `send`     | queued | the recipients it reads, in `prepare` | check `gmail.find_sent`   |
-| `gmail.send_draft`      | `send`     | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
-| `gmail.wake_set`        | `schedule` | direct | none                                  | none                      |
-| `gmail.wake_list`       | `read`     | direct | none                                  | none                      |
-| `gmail.wake_cancel`     | `note`     | direct | none                                  | none                      |
+| Tool                    | Effect              | Runs   | Destinations                          | Reconciliation            |
+| ----------------------- | ------------------- | ------ | ------------------------------------- | ------------------------- |
+| `gmail.search`          | `read`              | direct | none                                  | none                      |
+| `gmail.read`            | `read`              | direct | none                                  | none                      |
+| `gmail.read_attachment` | `read`              | direct | none                                  | none                      |
+| `gmail.label`           | `write`             | queued | none                                  | check `gmail.find_labels` |
+| `gmail.draft`           | `write`             | queued | none                                  | check `gmail.find_draft`  |
+| `gmail.send`            | `send`              | queued | each address in `to`, `cc` and `bcc`  | check `gmail.find_sent`   |
+| `gmail.reply`           | `send`              | queued | the recipients it reads, in `prepare` | check `gmail.find_sent`   |
+| `gmail.send_draft`      | `send`              | queued | the draft's recipients, in `prepare`  | check `gmail.find_sent`   |
+| `gmail.wake_set`        | `schedule`, `write` | queued | none                                  | none                      |
+| `gmail.wake_list`       | `read`              | direct | none                                  | none                      |
+| `gmail.wake_cancel`     | `note`              | direct | none                                  | none                      |
 
 Every Gmail tool needs the scope `gmail.modify`. Each tool is one entry of the connector's
 `actions`, so the tool filter and the notice about fewer scopes cover them with no list of their
@@ -183,10 +183,12 @@ that holds `gmail.modify` and is not waiting for a new consent, one at a time, e
   only then lists the mail that arrived since 10 minutes before the last good poll. A mail that
   arrives between the two reads is in the list or after the new cursor. The dedupe keys drop each
   mail already recorded.
-- A reply rule asks the source to read again the mail since its send, through the shared
-  `GmailRewinds` that the tools and the source hold. The next poll of the connection then lists that
-  mail as a resync does, and clears the request once its delivery commits. A reply that arrived
-  before the rule existed was dropped, and this is how the rule still wakes on it.
+- A reply rule asks the source to read again the mail since its send. Each poll reads the live reply
+  rules of the connection from the log, and lists the mail since the earliest start among those
+  whose ID the connection's cursor entry does not hold in `replayed`, as a resync does. The delivery
+  that commits adds the rule IDs to `replayed`. A reply that arrived before the rule existed was
+  dropped, and this is how the rule still wakes on it. The request lives in the log and the cursor,
+  so a restart between the rule and the next poll loses nothing.
 - A failed poll keeps the cursor. The source polls again after 1 minute, doubles the wait after each
   further failure up to 1 hour, and waits for Google's retry time when that is longer. After 3
   failed polls in a row of any polled connection it reports `unhealthy`, and it reports `running`
@@ -205,12 +207,13 @@ that holds `gmail.modify` and is not waiting for a new consent, one at a time, e
 and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with Gmail's thread ID in
 `thread`. A thread ID with the connection's prefix names the connection.
 
-- `gmail.wake_set` declares the effect `schedule`, which no starter rule allows, so a call asks the
-  user unless a rule covers it. It runs direct, as an approved call, because `schedule` alone does
-  not queue. The rule starts when the call runs, and the call fails with `TASK_ENDED` when the
-  target task has ended by then. It answers `BAD_DURATION` for a duration under a minute, and sets
-  no upper limit. It answers `NOT_POLLED` for a connection that the poll does not read, which holds
-  no `gmail.modify` or needs a new consent, because a rule there would never fire.
+- `gmail.wake_set` declares the effects `schedule` and `write`. An allow rule covers a call only
+  when it lists every effect of the call, and no starter rule lists `schedule`, so a call asks the
+  user unless a rule covers it. The effect `write` makes the call queued, so under an allow rule too
+  it runs as an action. The rule starts when the action runs, and the action fails with `TASK_ENDED`
+  when the target task has ended by then. It answers `BAD_DURATION` for a duration under a minute,
+  and sets no upper limit. It answers `NOT_POLLED` for a connection that the poll does not read,
+  which holds no `gmail.modify` or needs a new consent, because a rule there would never fire.
 - A rule write checks in its own write transaction that the connection is still live, so a call that
   read the connection before a forget refuses after it, and no rule outlives the forget.
 - `gmail.wake_list` lists every live rule of the connection, and `gmail.wake_cancel` answers
@@ -221,7 +224,9 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
   A send that `gmail.find_sent` later finds gets the same rule. The result holds the rule's short ID
   as `replyRule`, or null. The send's card shows the expiry. A send whose rule cannot be written
   answers `ambiguous`, so the check finds the mail and writes the rule again, and a check whose rule
-  write fails answers `inconclusive`.
+  write fails answers `inconclusive`. A restart after the rule write and before the action records
+  its outcome leaves the action unsettled, and the same check replaces the rule in place, so one
+  rule stays.
 
 ### Forgetting
 

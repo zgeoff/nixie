@@ -5,7 +5,7 @@ export function toCursorJSON(cursor: GmailSourceCursor): JSONValue {
   return Object.fromEntries(
     Object.entries(cursor).map(([id, entry]) => [
       id,
-      { historyID: entry.historyID, polledAt: entry.polledAt },
+      { historyID: entry.historyID, polledAt: entry.polledAt, replayed: [...entry.replayed] },
     ]),
   );
 }

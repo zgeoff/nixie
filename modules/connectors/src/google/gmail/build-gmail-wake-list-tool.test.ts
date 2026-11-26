@@ -43,7 +43,10 @@ async function setupTest() {
 test('it lists every live rule of the connection, and leaves out a rule of the own mailbox', async () => {
   const ctx = await setupTest();
 
-  await ctx.call('gmail.wake_set', { subject: 'invoice' });
+  await seedWakeRule(ctx.triggers, {
+    mailbox: { kind: 'gmail', connectionID: ctx.site.context.connectionID },
+    match: { subject: 'invoice' },
+  });
 
   await seedWakeRule(ctx.triggers, { match: { subject: 'sign-in' } });
 

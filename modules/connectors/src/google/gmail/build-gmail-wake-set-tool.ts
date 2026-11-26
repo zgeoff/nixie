@@ -2,10 +2,9 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
 import { makeResolveGmailWakeInput } from './make-resolve-gmail-wake-input';
-import { runGmailWakeSet } from './run-gmail-wake-set';
 import type { GmailDeps } from './types';
 
-const durationPattern = '^[1-9][0-9]{0,6}(ms|s|m|h|d)$';
+const durationPattern = '^[1-9][0-9]*(ms|s|m|h|d)$';
 const addressPattern = String.raw`^(@[^@\s]+\.[^@\s]+|[^@\s]+@[^@\s]+\.[^@\s]+)$`;
 
 // gmail.wake_set: a wake rule on a connected Gmail account, as a call under policy that asks by
@@ -50,13 +49,13 @@ export function buildGmailWakeSetTool(deps: GmailDeps): ToolDefinition {
         expiresAt: { type: ['string', 'null'] },
         window: { type: 'string' },
         replaced: { type: 'boolean' },
-        refused: { type: 'object' },
       },
       additionalProperties: false,
     },
     declaration: gmailDeclarations.wakeSet,
-    execution: 'direct',
+    execution: 'queued',
     resolveInput: makeResolveGmailWakeInput(deps),
-    run: (call) => runGmailWakeSet(deps, call.input),
+    run: () =>
+      Promise.resolve({ status: 'error', message: `${gmailToolNames.wakeSet} runs only queued` }),
   };
 }

@@ -1,8 +1,10 @@
 import type { MailArrivalEvent } from '@heynixie/triggers';
 import { buildAbortableContext } from './build-abortable-context';
+import { pickReplayStart } from './pick-replay-start';
 import { readGmailArrival } from './read-gmail-arrival';
 import { readGmailChanges } from './read-gmail-changes';
 import { readGmailProfileHistoryID } from './read-gmail-profile-history-id';
+import { readGmailReplyRules } from './read-gmail-reply-rules';
 import type { GmailConnection, PollRun } from './types';
 import { writePollDelivery } from './write-poll-delivery';
 
@@ -26,12 +28,17 @@ export async function runConnectionPoll(
   if (entry === undefined) {
     const historyID = await readGmailProfileHistoryID(hosts, context);
 
-    await writePollDelivery(run, connection, { historyID, startedAt, events: [] });
+    await writePollDelivery(run, connection, { historyID, startedAt, events: [], replayed: [] });
 
     return;
   }
 
-  const rewindMs = run.input.rewinds.read(connection.connectionID);
+  const replyRules = await readGmailReplyRules(run.input.db, {
+    connectionID: connection.connectionID,
+    at: startedAt,
+  });
+
+  const rewindMs = pickReplayStart(replyRules, entry.replayed);
 
   const changes = await readGmailChanges(hosts, context, { entry, rewindMs });
 
@@ -45,9 +52,10 @@ export async function runConnectionPoll(
     }
   }
 
-  await writePollDelivery(run, connection, { historyID: changes.historyID, startedAt, events });
-
-  if (rewindMs !== null) {
-    run.input.rewinds.clear(connection.connectionID, rewindMs);
-  }
+  await writePollDelivery(run, connection, {
+    historyID: changes.historyID,
+    startedAt,
+    events,
+    replayed: replyRules.map((rule) => rule.ruleID),
+  });
 }

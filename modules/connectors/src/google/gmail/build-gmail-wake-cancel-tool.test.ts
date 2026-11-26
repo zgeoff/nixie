@@ -42,16 +42,18 @@ async function setupTest() {
 
 test('it cancels a rule of a connection by its ID', async () => {
   const ctx = await setupTest();
-  const set = await ctx.call('gmail.wake_set', { subject: 'invoice' });
-  const [rule] = await ctx.readRules();
-  const cancelled = await ctx.call('gmail.wake_cancel', { rule: rule?.shortID ?? '' });
-  const rules = await ctx.readRules();
 
-  expect(set.status).toBe('ok');
+  const rule = await seedWakeRule(ctx.triggers, {
+    mailbox: { kind: 'gmail', connectionID: ctx.site.context.connectionID },
+    match: { subject: 'invoice' },
+  });
+
+  const cancelled = await ctx.call('gmail.wake_cancel', { rule: rule.shortID });
+  const rules = await ctx.readRules();
 
   expect(cancelled).toStrictEqual({
     status: 'ok',
-    result: { rule: rule?.shortID ?? '', ended: true },
+    result: { rule: rule.shortID, ended: true },
   });
 
   expect(rules).toStrictEqual([]);

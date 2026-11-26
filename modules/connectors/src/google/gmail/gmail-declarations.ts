@@ -87,7 +87,7 @@ export const gmailDeclarations = {
     results: { message: 'owner_data', thread: 'owner_data', replyRule: 'owner_data' },
   },
   wakeSet: {
-    effects: ['schedule'],
+    effects: ['schedule', 'write'],
     destinations: [],
     amount: null,
     content: [],
@@ -96,7 +96,6 @@ export const gmailDeclarations = {
       expiresAt: 'owner_data',
       window: 'owner_data',
       replaced: 'owner_data',
-      refused: 'owner_data',
     },
   },
   wakeList: {

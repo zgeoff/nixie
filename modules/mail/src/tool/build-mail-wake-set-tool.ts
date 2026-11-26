@@ -15,7 +15,7 @@ import type { MailToolContext } from '../types';
 import { renderOutsideText } from './render-outside-text';
 
 const recentMs = 10 * 60_000;
-const durationPattern = '^[1-9][0-9]{0,6}(ms|s|m|h|d)$';
+const durationPattern = '^[1-9][0-9]*(ms|s|m|h|d)$';
 const addressPattern = String.raw`^(@[^@\s]+\.[^@\s]+|[^@\s]+@[^@\s]+\.[^@\s]+)$`;
 
 const inputSchema = z.strictObject({

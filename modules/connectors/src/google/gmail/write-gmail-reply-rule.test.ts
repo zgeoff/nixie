@@ -53,7 +53,7 @@ async function setupTest() {
       at: ctx.clock.now(),
     });
 
-  return { ...ctx, triggers, send, check, readRules };
+  return { ...ctx, triggers, send, check, readRules, buildAttempt };
 }
 
 test('it wakes the conversation on a reply to a sent mail, for the default expiry', async () => {
@@ -191,10 +191,16 @@ test('it leaves the check inconclusive when the rule cannot be written, so no se
   expect(checked).toStrictEqual({ kind: 'inconclusive' });
 });
 
-test('it finds the rule of a send whose outcome stayed open after the rule was written, and keeps one rule', async () => {
+test('it finds the rule of a send whose outcome stayed open after a restart, and keeps one rule', async () => {
   const ctx = await setupTest();
   const sent = await ctx.send({});
-  const checked = await ctx.check({});
+  const restarted = await startGmailTools({ triggers: ctx.triggers, site: ctx.site });
+
+  const queued = restarted.findAction('gmail.send').queued;
+
+  invariant(queued?.check, 'gmail.send has a check');
+
+  const checked = await queued.check(ctx.buildAttempt({}));
   const rules = await ctx.readRules();
 
   expect(checked).toMatchObject({
@@ -203,14 +209,6 @@ test('it finds the rule of a send whose outcome stayed open after the rule was w
   });
 
   expect(rules).toHaveLength(1);
-});
-
-test('it asks the poll to read again the mail since the send', async () => {
-  const ctx = await setupTest();
-
-  await ctx.send({});
-
-  expect(ctx.deps.wake.rewinds.read(ctx.site.context.connectionID)).toBe(ctx.clock.now());
 });
 
 test('it writes no rule for a connection that was forgotten after the send read it', async () => {

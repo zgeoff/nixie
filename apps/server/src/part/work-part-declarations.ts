@@ -194,7 +194,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         hosts: reader.get('google_tools').hosts,
         logEvent: parts.log,
         pollIntervalMs: parts.config.gmail.poll_interval,
-        rewinds: reader.get('google_tools').rewinds,
+        db: writer.db,
         listConnections: async () => {
           const states = await connections.readStates();
 

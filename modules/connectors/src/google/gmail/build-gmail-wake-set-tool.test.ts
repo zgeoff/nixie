@@ -4,6 +4,7 @@ import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { eraseGmailMailbox, readWakeRules } from '@heynixie/triggers';
 import { startTestTriggers } from '@heynixie/triggers/test-utils';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
 import { readGmailBodyFields } from './read-gmail-body-fields';
 
@@ -21,13 +22,23 @@ async function setupTest() {
     return tool.resolveInput?.(input, tools.buildContext());
   };
 
-  const attempt = (args: JSONObject) =>
-    tools
-      .findAction('gmail.wake_set')
-      .tool.run(
-        { callID: 'call-1', tool: 'gmail.wake_set', input: args, toolUseID: null },
-        tools.buildContext(),
-      );
+  const attempt = (args: JSONObject) => {
+    const queued = tools.findAction('gmail.wake_set').queued;
+
+    invariant(queued, 'gmail.wake_set runs queued');
+
+    return queued.run({
+      actionID: '5d1e7b2a-93c4-4a0e-8f16-2b7c0d4e9a31',
+      tool: 'gmail.wake_set',
+      arguments: args,
+      attempt: 1,
+      idempotencyKey: 'key-1',
+      destinations: [],
+      attemptStartedAt: tools.clock.now(),
+      actionHash: 'hash-1',
+      deadlineAt: null,
+    });
+  };
 
   // the call as the turn makes it: the host resolves the input, and the run takes the resolved one
   const setRule = async (input: JSONObject) => {
@@ -59,7 +70,7 @@ test('it sets a wake rule on the connection, starting now and expiring from now'
   const [rule] = await ctx.readRules();
 
   expect(response).toStrictEqual({
-    status: 'ok',
+    kind: 'success',
     result: {
       rule: rule?.shortID ?? '',
       expiresAt: new Date(ctx.clock.now() + 3 * 86_400_000).toISOString(),
@@ -81,9 +92,31 @@ test('it takes an expiry past 3650 days', async () => {
   const response = await ctx.setRule({ subject: 'invoice', expires: '3651d' });
 
   expect(response).toMatchObject({
-    status: 'ok',
+    kind: 'success',
     result: { expiresAt: new Date(ctx.clock.now() + 3651 * 86_400_000).toISOString() },
   });
+});
+
+test('it takes an expiry of 8 digits that the tool schema admits', async () => {
+  const ctx = await setupTest();
+
+  const input = ctx.findAction('gmail.wake_set').tool.input;
+  const expires = z.object({ pattern: z.string() });
+  const schema = z.object({ properties: z.object({ expires }) }).parse(input);
+
+  const response = await ctx.setRule({ subject: 'invoice', expires: '10000000m' });
+
+  const pattern = new RegExp(schema.properties.expires.pattern, 'u');
+
+  const isAdmitted = pattern.test('10000000m');
+
+  expect([isAdmitted, response]).toMatchObject([
+    true,
+    {
+      kind: 'success',
+      result: { expiresAt: new Date(ctx.clock.now() + 10_000_000 * 60_000).toISOString() },
+    },
+  ]);
 });
 
 test('it replaces a live rule that has the same match and target, and says so', async () => {
@@ -92,8 +125,8 @@ test('it replaces a live rule that has the same match and target, and says so', 
   const second = await ctx.setRule({ subject: 'invoice', expires: '2d' });
   const rules = await ctx.readRules();
 
-  expect(first).toMatchObject({ status: 'ok', result: { replaced: false } });
-  expect(second).toMatchObject({ status: 'ok', result: { replaced: true } });
+  expect(first).toMatchObject({ kind: 'success', result: { replaced: false } });
+  expect(second).toMatchObject({ kind: 'success', result: { replaced: true } });
   expect(rules).toHaveLength(1);
 });
 
@@ -168,7 +201,10 @@ test('it refuses with TASK_ENDED when the target task ended before the approved 
   const response = await ctx.attempt({ connection: 'k3x9m2p7qa', wake: taskID, setBy: taskID });
   const rules = await ctx.readRules();
 
-  expect([response, rules]).toMatchObject([{ status: 'ok', refusalCode: 'TASK_ENDED' }, []]);
+  expect([response, rules]).toMatchObject([
+    { kind: 'refused', reason: expect.stringContaining('TASK_ENDED') },
+    [],
+  ]);
 });
 
 test('it refuses an account that the poll does not read, and writes no rule', async () => {
@@ -211,8 +247,8 @@ test('it writes no rule for a connection that was forgotten after the call read 
   const response = await attempting;
   const rules = await ctx.readRules();
 
-  expect([response, rules]).toMatchObject([
-    { status: 'error', message: expect.stringContaining('UNKNOWN_CONNECTION') },
+  expect([response, rules]).toStrictEqual([
+    { kind: 'refused', reason: 'connection_forgotten' },
     [],
   ]);
 });

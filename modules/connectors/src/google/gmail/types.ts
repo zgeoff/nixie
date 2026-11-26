@@ -5,7 +5,6 @@ import type { FetchReply } from '@heynixie/wire';
 import type { Transaction } from 'kysely';
 import type { ConnectorContext } from '../../types';
 import type { GoogleHosts } from '../google-hosts';
-import type { GmailRewinds } from './poll/gmail-rewinds';
 
 // How the Gmail tools reach a connection. A short ID names one live connection; none lists them all.
 export interface GmailAccess {
@@ -30,9 +29,6 @@ export interface GmailWakePort {
 
   // the expiry of the rule that a send registers, when the call gives none
   readonly replyExpiryMs: number;
-
-  // where a reply rule asks the poll to read again the mail since its send
-  readonly rewinds: GmailRewinds;
 }
 
 export interface GmailDeps {

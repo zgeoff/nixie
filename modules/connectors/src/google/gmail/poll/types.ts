@@ -1,9 +1,9 @@
 import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
 import type { MailArrivalEvent, TriggerContext } from '@heynixie/triggers';
+import type { Kysely } from 'kysely';
 import type { ConnectorContext } from '../../../types';
 import type { GoogleHosts } from '../../google-hosts';
-import type { GmailRewinds } from './gmail-rewinds';
 import type { GmailSourceCursor } from './gmail-source-cursor';
 
 export interface GmailConnection {
@@ -20,8 +20,9 @@ export interface GmailArrivalSourceInput {
   readonly logEvent: Logger;
   readonly pollIntervalMs: number;
 
-  // the times from which a reply rule asks the poll to read again
-  readonly rewinds: GmailRewinds;
+  // the database that holds the reply rules, which ask the poll to read the mail since their send
+  // again
+  readonly db: Kysely<unknown>;
 
   // each Google connection granted gmail.modify, the scope the Gmail tools already hold; the source
   // asks for no scope of its own
@@ -50,4 +51,7 @@ export interface PollDelivery {
   readonly historyID: string;
   readonly startedAt: number;
   readonly events: readonly MailArrivalEvent[];
+
+  // the ID of each reply rule that the poll read the mail of again, or that it found read already
+  readonly replayed: string[];
 }

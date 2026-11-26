@@ -1,27 +1,29 @@
-import type { JSONObject } from '@heynixie/log';
-import type { ToolOutcome } from '@heynixie/tools';
 import { formatDurationText, pickWakeTiming, resolveWakeTarget } from '@heynixie/triggers';
+import type { ActionAttempt, ProviderResponse } from '../../types';
 import { readCallContext } from './read-call-context';
 import type { GmailDeps } from './types';
 import { wakeSetArgumentsSchema } from './wake-set-arguments-schema';
 import { writeGmailWakeRule } from './write-gmail-wake-rule';
 
-// Writes the rule when the call runs: at once under an allow rule, or once the owner approved it. The
-// rule starts now and its expiry counts from now. A target task that ended since the call refuses
-// with TASK_ENDED. A rule with the same match and target is replaced in place, so a repeat is safe.
-export async function runGmailWakeSet(deps: GmailDeps, input: JSONObject): Promise<ToolOutcome> {
-  const parsed = wakeSetArgumentsSchema.safeParse(input);
+// The attempt of gmail.wake_set, once the owner approved it or an allow rule covered it. The rule
+// starts now and its expiry counts from now. A target task that ended since the call refuses with
+// TASK_ENDED. A rule with the same match and target is replaced in place, so a retry is safe.
+export async function runGmailWakeSet(
+  deps: GmailDeps,
+  attempt: ActionAttempt,
+): Promise<ProviderResponse> {
+  const parsed = wakeSetArgumentsSchema.safeParse(attempt.arguments);
 
   if (!parsed.success) {
-    return { status: 'error', message: 'BAD_RULE: the arguments of the rule are unreadable' };
+    return { kind: 'refused', reason: 'BAD_RULE: the arguments of the rule are unreadable' };
   }
 
   const args = parsed.data;
 
-  const context = await readCallContext(deps.access, input);
+  const context = await readCallContext(deps.access, attempt.arguments);
 
   if (context === null) {
-    return { status: 'error', message: 'UNKNOWN_CONNECTION: no live connection has that ID' };
+    return { kind: 'refused', reason: 'connection_forgotten' };
   }
 
   const timing = pickWakeTiming({
@@ -32,17 +34,16 @@ export async function runGmailWakeSet(deps: GmailDeps, input: JSONObject): Promi
   });
 
   if (timing.status === 'bad') {
-    return { status: 'error', message: 'BAD_DURATION: the expiry or the window is out of range' };
+    return {
+      kind: 'refused',
+      reason: 'BAD_DURATION: the expiry or the window is out of range',
+    };
   }
 
   const target = await resolveWakeTarget(deps.log, args.setBy, args.wake);
 
   if (target.status === 'refused') {
-    return {
-      status: 'ok',
-      result: { refused: { code: 'TASK_ENDED', message: target.message } },
-      refusalCode: 'TASK_ENDED',
-    };
+    return { kind: 'refused', reason: `TASK_ENDED: ${target.message}` };
   }
 
   const rule = await writeGmailWakeRule(deps, {
@@ -60,11 +61,11 @@ export async function runGmailWakeSet(deps: GmailDeps, input: JSONObject): Promi
   });
 
   if (rule === null) {
-    return { status: 'error', message: 'UNKNOWN_CONNECTION: no live connection has that ID' };
+    return { kind: 'refused', reason: 'connection_forgotten' };
   }
 
   return {
-    status: 'ok',
+    kind: 'success',
     result: {
       rule: rule.shortID,
       expiresAt: timing.expiresAt === null ? null : new Date(timing.expiresAt).toISOString(),

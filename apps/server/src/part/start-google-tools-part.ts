@@ -1,10 +1,9 @@
 import type { Clock } from '@heynixie/clock';
 import type { ConnectionContext, ConnectionState } from '@heynixie/connections';
-import type { ConnectorAction, GmailRewinds, GoogleHosts } from '@heynixie/connectors';
+import type { ConnectorAction, GoogleHosts } from '@heynixie/connectors';
 import {
   buildGmailActions,
   collectGmailConnections,
-  createGmailRewinds,
   googleHosts,
   isGmailPolled,
 } from '@heynixie/connectors';
@@ -39,9 +38,6 @@ export interface GoogleToolsPart {
   // the address of each live Google connection, in lowercase NFC; none before the connections run
   readonly readAccounts: () => Promise<readonly string[]>;
 
-  // where a reply rule asks the Gmail poll to read the mail since its send again
-  readonly rewinds: GmailRewinds;
-
   // the live connections, the log and the clock, once they run; a tool finds no connection before
   // that
   readonly bindRuntime: (runtime: GoogleRuntime) => void;
@@ -70,7 +66,6 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
   };
 
   const webFetch = inputs.options.config.web_fetch;
-  const rewinds = createGmailRewinds();
 
   const actions = buildGmailActions({
     hosts,
@@ -107,7 +102,6 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
       },
       defaultWindowMs: inputs.options.config.wake_rules.window,
       replyExpiryMs: inputs.options.config.wake_rules.reply_expiry,
-      rewinds,
     },
     readHTML: (html) => readMailHTML(bound.readHTML, html),
     textBytes: webFetch.limits.textBytes,
@@ -118,7 +112,6 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
   return {
     hosts,
     actions,
-    rewinds,
     readAccounts: async () => {
       const live = bound.runtime === null ? [] : await bound.runtime.readLiveContexts();
 

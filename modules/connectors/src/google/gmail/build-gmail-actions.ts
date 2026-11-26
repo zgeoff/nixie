@@ -16,6 +16,7 @@ import { gmailCheckNames, gmailScope, gmailToolNames } from './gmail-tool-names'
 import type { OutgoingTool } from './plan-outgoing-mail';
 import { runGmailLabel } from './run-gmail-label';
 import { runGmailSend } from './run-gmail-send';
+import { runGmailWakeSet } from './run-gmail-wake-set';
 import type { GmailDeps } from './types';
 
 // A send that may have gone out is checked in the Sent folder no sooner than 5 minutes after its
@@ -39,14 +40,18 @@ const draftReconcile: Reconcile = {
   onNotFound: 'retry',
 };
 
+// A rule that was set again with the same match and target replaces itself, so only the owner can
+// say whether a rule of unknown outcome stands.
+const wakeSetReconcile: Reconcile = { kind: 'none' };
+
 // The Gmail tools as actions of the Google connector, each needing the scope gmail.modify. The
-// reads and the wake tools run in the turn; the label, the draft and the sends run queued.
+// reads and the wake list and cancel run in the turn; the label, the draft, the sends and the wake
+// rule run queued.
 export function buildGmailActions(deps: GmailDeps): ConnectorAction[] {
   const reads = [
     buildGmailSearchTool(deps),
     buildGmailReadTool(deps),
     buildGmailReadAttachmentTool(deps),
-    buildGmailWakeSetTool(deps),
     buildGmailWakeListTool(deps),
     buildGmailWakeCancelTool(deps),
   ].map((tool): ConnectorAction => ({
@@ -90,6 +95,15 @@ export function buildGmailActions(deps: GmailDeps): ConnectorAction[] {
         reconcile: draftReconcile,
         run: (attempt) => runGmailSend(deps, gmailToolNames.draft, attempt),
         check: (attempt) => checkGmailDraft(deps, attempt),
+      },
+    },
+    {
+      tool: buildGmailWakeSetTool(deps),
+      scopes: [gmailScope],
+      reconcile: wakeSetReconcile,
+      queued: {
+        reconcile: wakeSetReconcile,
+        run: (attempt) => runGmailWakeSet(deps, attempt),
       },
     },
     ...sends,

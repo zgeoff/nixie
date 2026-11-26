@@ -53,7 +53,7 @@ test.each([
   },
   {
     tool: 'gmail.wake_set',
-    effects: ['schedule'],
+    effects: ['schedule', 'write'],
     results: { rule: 'owner_data', expiresAt: 'owner_data' },
   },
   { tool: 'gmail.wake_list', effects: ['read'], results: { rules: 'owner_data' } },
@@ -109,7 +109,7 @@ test.each([
   { tool: 'gmail.send', execution: 'queued' },
   { tool: 'gmail.reply', execution: 'queued' },
   { tool: 'gmail.send_draft', execution: 'queued' },
-  { tool: 'gmail.wake_set', execution: 'direct' },
+  { tool: 'gmail.wake_set', execution: 'queued' },
   { tool: 'gmail.wake_list', execution: 'direct' },
   { tool: 'gmail.wake_cancel', execution: 'direct' },
 ])('it runs $tool as $execution', async (row) => {
