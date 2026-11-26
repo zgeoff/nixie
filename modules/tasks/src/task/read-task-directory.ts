@@ -16,17 +16,15 @@ export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'd
     .orderBy('created_sequence')
     .execute();
 
-  const versions = await readDefinitionTaskVersions(context);
+  const versions = await readDefinitionTaskVersions(context, { isInForceOnly: true });
 
-  const definitions = versions
-    .filter((entry) => entry.isInForce)
-    .map((entry): TaskProfile => ({
-      taskID: entry.taskID,
-      name: entry.version.name,
-      brief: entry.version.brief,
-      wakeable: entry.version.wakeable,
-      speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
-    }));
+  const definitions = versions.map((entry): TaskProfile => ({
+    taskID: entry.taskID,
+    name: entry.version.name,
+    brief: entry.version.brief,
+    wakeable: entry.version.wakeable,
+    speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
+  }));
 
   if (rows.length === 0) {
     return { ...messaging, directory: [...messaging.directory, ...definitions] };

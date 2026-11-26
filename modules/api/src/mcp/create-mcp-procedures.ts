@@ -8,6 +8,18 @@ export function createMcpProcedures(context: APIContext) {
   const mcp = apiImplementer.mcp;
 
   return {
+    listServers: mcp.listServers.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const port = context.readMcp?.() ?? null;
+
+      if (port === null) {
+        throw options.errors.MCP_NOT_STARTED();
+      }
+
+      return port.readServerViews();
+    }),
+
     connect: mcp.connect.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 

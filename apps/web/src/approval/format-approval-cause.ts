@@ -16,6 +16,8 @@ const causes: Readonly<Record<string, string>> = {
   skill_write: 'nixie wants to change one of its skills.',
   proposed_rule: 'you approved this kind of action 3 times, so nixie suggests a rule for it.',
   mandate: 'a mandate lets nixie act on its own until it ends.',
+  mcp_config: 'your config adds an MCP server or widens what one may do.',
+  mcp_allow: 'an MCP server lists a tool that you have not allowed in this form.',
   rule_widening: 'the change lets a rule through that it did not before.',
 };
 

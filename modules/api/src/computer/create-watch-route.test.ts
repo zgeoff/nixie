@@ -180,6 +180,7 @@ test('it opens one socket per ticket, and refuses the second use with a 401 and 
   const browser = ctx.connect(url);
 
   await browser.opened;
+  await waitForCondition(() => ctx.watches.length === 1);
 
   const second = await ctx.tryUpgrade(url);
 

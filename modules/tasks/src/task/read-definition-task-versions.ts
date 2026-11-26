@@ -12,11 +12,20 @@ export interface DefinitionTaskVersion {
   readonly isInForce: boolean;
 }
 
+export interface DefinitionTaskVersionQuery {
+  // leaves out each task out of force, whose version takes a read of its task runs
+  readonly isInForceOnly?: boolean;
+
+  // reads only these tasks
+  readonly taskIDs?: readonly string[];
+}
+
 // The version that each definition's task shows: the one in force, or for a task out of force that
 // still has a task run to end, the one its pending or open task run pins. A task whose version is not stored
 // is left out.
 export async function readDefinitionTaskVersions(
   context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
+  query: DefinitionTaskVersionQuery = {},
 ): Promise<readonly DefinitionTaskVersion[]> {
   const db = context.log.writer.db;
 
@@ -25,6 +34,12 @@ export async function readDefinitionTaskVersions(
     .selectFrom('tasks')
     .select(['task_id', 'definition_id', 'definition_hash'])
     .where('definition_id', 'is not', null)
+    .$if(query.isInForceOnly === true, (builder) =>
+      builder.where('definition_hash', 'is not', null),
+    )
+    .$if(query.taskIDs !== undefined, (builder) =>
+      builder.where('task_id', 'in', query.taskIDs ?? []),
+    )
     .orderBy('created_sequence')
     .execute();
 

@@ -138,6 +138,8 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
     facts,
     mcp,
     restart: (changed, store) => {
+      // a restart ends the proxy that ran before it, so only one proxy answers a change of the log
+      void mcp.stop();
       const restarted = makeMcp(changed, store);
 
       holder.mcp = restarted;

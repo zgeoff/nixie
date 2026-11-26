@@ -143,6 +143,12 @@ export const controlRoutes = {
     }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  approveHeldMcp: {
+    method: 'POST',
+    path: '/control/approve-held-mcp',
+    input: z.strictObject({ label: z.enum(['Add the server', 'Allow the tool']) }),
+    output: z.strictObject({ approved: z.int().positive() }),
+  },
   advanceClock: {
     method: 'POST',
     path: '/control/advance-clock',

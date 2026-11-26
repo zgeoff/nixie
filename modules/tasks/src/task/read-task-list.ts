@@ -43,7 +43,9 @@ export async function readTaskList(
   messaging: Pick<TaskMessaging, 'directory'>,
   query: TaskListQuery,
 ): Promise<readonly ListedTask[]> {
-  const definitions = await readDefinitionTaskVersions(context);
+  const versionQuery = query.taskIDs === undefined ? {} : { taskIDs: query.taskIDs };
+
+  const definitions = await readDefinitionTaskVersions(context, versionQuery);
 
   // A definition's task out of force is in no directory, and shows while a task run of it is
   // pending or open, under the name of the version that task run pins.

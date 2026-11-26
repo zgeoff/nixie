@@ -40,7 +40,7 @@ export async function handleMcpReturn(apiURL: string, request: Request): Promise
 
     return new Response(null, {
       status: 303,
-      headers: { ...returnHeaders, location: '/settings/connections' },
+      headers: { ...returnHeaders, location: '/settings/mcp' },
     });
   } catch (error) {
     return error instanceof ORPCError

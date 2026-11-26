@@ -28,6 +28,7 @@ import { Route as MomentsMomentIDRouteImport } from './routes/moments_.$momentID
 import { Route as NotebookIndexRouteImport } from './routes/notebook.index'
 import { Route as NotebookNoteRouteImport } from './routes/notebook.$note'
 import { Route as NotebookCheckRouteImport } from './routes/notebook.check'
+import { Route as SettingsMcpRouteImport } from './routes/settings.mcp'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIDRouteImport } from './routes/tasks.$taskID'
 import { Route as TasksEndedRouteImport } from './routes/tasks.ended'
@@ -129,6 +130,11 @@ const NotebookCheckRoute = NotebookCheckRouteImport.update({
   path: '/check',
   getParentRoute: () => NotebookRoute,
 } as any)
+const SettingsMcpRoute = SettingsMcpRouteImport.update({
+  id: '/settings/mcp',
+  path: '/settings/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasksIndexRoute = TasksIndexRouteImport.update({
   id: '/tasks/',
   path: '/tasks/',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/moments/$momentID': typeof MomentsMomentIDRoute
   '/notebook/$note': typeof NotebookNoteRoute
   '/notebook/check': typeof NotebookCheckRoute
+  '/settings/mcp': typeof SettingsMcpRoute
   '/tasks/$taskID': typeof TasksTaskIDRoute
   '/tasks/ended': typeof TasksEndedRoute
   '/notebook/': typeof NotebookIndexRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/moments/$momentID': typeof MomentsMomentIDRoute
   '/notebook/$note': typeof NotebookNoteRoute
   '/notebook/check': typeof NotebookCheckRoute
+  '/settings/mcp': typeof SettingsMcpRoute
   '/tasks/$taskID': typeof TasksTaskIDRoute
   '/tasks/ended': typeof TasksEndedRoute
   '/notebook': typeof NotebookIndexRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/moments_/$momentID': typeof MomentsMomentIDRoute
   '/notebook/$note': typeof NotebookNoteRoute
   '/notebook/check': typeof NotebookCheckRoute
+  '/settings/mcp': typeof SettingsMcpRoute
   '/tasks/$taskID': typeof TasksTaskIDRoute
   '/tasks/ended': typeof TasksEndedRoute
   '/notebook/': typeof NotebookIndexRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/moments/$momentID'
     | '/notebook/$note'
     | '/notebook/check'
+    | '/settings/mcp'
     | '/tasks/$taskID'
     | '/tasks/ended'
     | '/notebook/'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/moments/$momentID'
     | '/notebook/$note'
     | '/notebook/check'
+    | '/settings/mcp'
     | '/tasks/$taskID'
     | '/tasks/ended'
     | '/notebook'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/moments_/$momentID'
     | '/notebook/$note'
     | '/notebook/check'
+    | '/settings/mcp'
     | '/tasks/$taskID'
     | '/tasks/ended'
     | '/notebook/'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   RemindersRoute: typeof RemindersRoute
   SpendRoute: typeof SpendRoute
   MomentsMomentIDRoute: typeof MomentsMomentIDRoute
+  SettingsMcpRoute: typeof SettingsMcpRoute
   TasksTaskIDRoute: typeof TasksTaskIDRoute
   TasksEndedRoute: typeof TasksEndedRoute
   TasksIndexRoute: typeof TasksIndexRoute
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotebookCheckRouteImport
       parentRoute: typeof NotebookRoute
     }
+    '/settings/mcp': {
+      id: '/settings/mcp'
+      path: '/settings/mcp'
+      fullPath: '/settings/mcp'
+      preLoaderRoute: typeof SettingsMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tasks/': {
       id: '/tasks/'
       path: '/tasks'
@@ -545,6 +565,7 @@ const rootRouteChildren: RootRouteChildren = {
   RemindersRoute: RemindersRoute,
   SpendRoute: SpendRoute,
   MomentsMomentIDRoute: MomentsMomentIDRoute,
+  SettingsMcpRoute: SettingsMcpRoute,
   TasksTaskIDRoute: TasksTaskIDRoute,
   TasksEndedRoute: TasksEndedRoute,
   TasksIndexRoute: TasksIndexRoute,

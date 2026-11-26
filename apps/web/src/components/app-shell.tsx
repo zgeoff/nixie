@@ -21,6 +21,7 @@ const entries = [
   { exact: false, label: 'Spending', to: '/spend' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },
   { exact: false, label: 'Connections', to: '/settings/connections' },
+  { exact: false, label: 'MCP servers', to: '/settings/mcp' },
   { exact: false, label: 'Add a device', to: '/add-device' },
 ] as const;
 

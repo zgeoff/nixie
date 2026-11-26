@@ -1,4 +1,5 @@
 import type { CredentialFetch } from '@heynixie/credentials';
+import { isLoopbackHost } from '@heynixie/egress';
 import { z } from 'zod';
 
 export interface DiscoveredAuthorization {
@@ -121,9 +122,7 @@ async function discoverEndpoints(
   const endpoints = [parsed.data.authorization_endpoint, parsed.data.token_endpoint];
 
   if (
-    !endpoints.every(
-      (endpoint) => URL.canParse(endpoint) && new URL(endpoint).protocol === 'https:',
-    )
+    !endpoints.every((endpoint) => URL.canParse(endpoint) && isSecureEndpoint(new URL(endpoint)))
   ) {
     return { failure: 'an endpoint of the authorization server is not https' };
   }
@@ -134,4 +133,12 @@ async function discoverEndpoints(
     tokenURL: parsed.data.token_endpoint,
     revokeURL: parsed.data.revocation_endpoint ?? null,
   };
+}
+
+// A test build also takes http to a loopback host, for the stand-in server on a loopback port.
+function isSecureEndpoint(url: URL): boolean {
+  return (
+    url.protocol === 'https:' ||
+    (NIXIE_TEST_BUILD && url.protocol === 'http:' && isLoopbackHost(url.hostname))
+  );
 }
