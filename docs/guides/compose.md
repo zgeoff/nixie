@@ -14,7 +14,8 @@ secret reaches the container's configuration or its disk.
 2. Replace every placeholder in `config.yaml`: impd's URL, the host's addresses, and the model
    profiles. Keep `harness: agent-sdk` on each profile, because nixie refuses a profile with no
    harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
-   list.
+   list. Keep `computer: {}` and `code: {}` to give the assistant its computer and its code tool,
+   and delete a section to turn that feature off.
 3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
    `definitions/rules/starter.yaml`. The pinned image reads definitions format 2, which leaves rule
    files unapplied. When you run a release that applies rule files, set `format: 3` in

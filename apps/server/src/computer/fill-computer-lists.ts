@@ -5,7 +5,7 @@ import { inboxKinds } from '@heynixie/tasks';
 
 // A command that a rule reads as a syntax tree, and the screen acts, which share one rule so that an
 // answer on a site covers a click and a type there. The rule pins nothing but the host.
-export const computerToolShapes: readonly ToolShape[] = [
+const computerToolShapes: readonly ToolShape[] = [
   { kind: 'command', tool: 'computer.run', argument: 'command' },
   {
     kind: 'destination',

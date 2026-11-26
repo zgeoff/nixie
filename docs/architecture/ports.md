@@ -99,12 +99,10 @@ module depend on a feature module. Each row comes from the entries in
 
 | Place                 | Names or depends on                                                                             | Work item                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `libs/contract`       | `computer`, `code`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `libs/contract`       | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
 | `libs/contract`       | `devices`, `voice`                                                                              | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `libs/contract`       | `images`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/actions`     | the connectors module                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/api`         | `computer`, `code`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `modules/api`         | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
 | `modules/api`         | `devices`, `voice`; the calls and devices modules                                               | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/api`         | `coding`, `images`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
@@ -113,19 +111,14 @@ module depend on a feature module. Each row comes from the entries in
 | `modules/credentials` | `atc`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/definitions` | `voice`; the calls module                                                                       | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/definitions` | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/log`         | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `modules/log`         | `coding`, `spend`                                                                               | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/models`      | `images`, `openai`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/policy`      | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `modules/policy`      | `coding`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/proposals`   | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/sandbox`     | `code`, `computer`                                                                              | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `modules/sandbox`     | `coding`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/sessions`    | `computer`                                                                                      | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `modules/sessions`    | `voice`; the calls and devices modules                                                          | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/sessions`    | `images`, `mail`, `mcp`, `spend`; the connectors and spend modules                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/skills`      | `github`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/tasks`       | `code`                                                                                          | [GEO-2878](https://linear.app/zgeoff/issue/GEO-2878) |
 | `modules/tasks`       | `mail`, `spend`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/tools`       | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/triggers`    | `mail`                                                                                          | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
@@ -142,6 +135,8 @@ These ordinary words match a feature ID, but none of them means the code feature
 feature. Each one stays, with its reason in the exceptions file:
 
 - `code` for the sign-in and enrolment codes in `libs/contract` and `modules/api`, the OAuth code
-  verifier in `modules/credentials`, and the OAuth authorization code in `modules/connections`;
+  verifier in `modules/credentials`, the OAuth authorization code in `modules/connections`, the code
+  check of a policy decision in `modules/log` and `modules/policy`, and the code-made summary of a
+  run end in `modules/tasks`;
 - `search` for the search mode of the memory view, of memory recall in `modules/memory` and
   `modules/sessions`, and of the note index in `modules/notebook`.

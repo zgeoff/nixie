@@ -71,6 +71,17 @@ test('it needs each image that a declaration names', async () => {
   ]);
 });
 
+test('it needs neither the computer image nor the code image when their sections are absent', async () => {
+  const ctx = await setupTest();
+  const config = await ctx.loadConfig({ isComputerOff: true, isCodeOff: true });
+
+  expect(listImageNeeds(config, serverPartDeclarations)).toStrictEqual([
+    { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
+    { key: 'fetch', neededBy: 'the web_fetch part' },
+    { key: 'render', neededBy: 'the render part', isOptional: true },
+  ]);
+});
+
 test('it needs no image for a declaration that names none', async () => {
   const ctx = await setupTest();
   const config = await ctx.loadConfig({});

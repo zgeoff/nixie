@@ -18,7 +18,7 @@ interface FakeWatch {
 }
 
 async function setupTest() {
-  const api = await startTestAPI(defaultAPISettings);
+  const api = await startTestAPI(defaultAPISettings, { features: ['computer'] });
   const owner = await createDeviceSession(api.context, 'laptop');
 
   const watches: FakeWatch[] = [];
