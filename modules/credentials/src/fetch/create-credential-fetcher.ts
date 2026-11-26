@@ -196,7 +196,15 @@ function refuseOrigin(target: FetcherTarget, url: URL): void {
     throw new CredentialRefusalError(`${url.origin} is not an origin this credential may reach`);
   }
 
-  if (url.protocol !== 'https:' && target.options.deploymentService !== true) {
+  // A test build also takes http to the host that a pairing names, for the stand-in MCP server on a
+  // loopback port.
+  const isHTTP =
+    NIXIE_TEST_BUILD &&
+    url.protocol === 'http:' &&
+    target.options.pairing !== undefined &&
+    toBareHost(url.hostname) === target.options.pairing.host;
+
+  if (url.protocol !== 'https:' && !isHTTP && target.options.deploymentService !== true) {
     throw new CredentialRefusalError(`${url.origin} is not an https origin`);
   }
 

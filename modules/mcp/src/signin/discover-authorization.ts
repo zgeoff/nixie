@@ -122,7 +122,7 @@ async function discoverEndpoints(
 
   if (
     !endpoints.every(
-      (endpoint) => URL.canParse(endpoint) && new URL(endpoint).protocol === 'https:',
+      (endpoint) => URL.canParse(endpoint) && isSecureProtocol(new URL(endpoint).protocol),
     )
   ) {
     return { failure: 'an endpoint of the authorization server is not https' };
@@ -134,4 +134,9 @@ async function discoverEndpoints(
     tokenURL: parsed.data.token_endpoint,
     revokeURL: parsed.data.revocation_endpoint ?? null,
   };
+}
+
+// A test build also takes http, for the stand-in server on a loopback port.
+function isSecureProtocol(protocol: string): boolean {
+  return protocol === 'https:' || (NIXIE_TEST_BUILD && protocol === 'http:');
 }
