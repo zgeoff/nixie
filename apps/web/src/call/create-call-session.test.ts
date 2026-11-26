@@ -22,6 +22,9 @@ interface SetupOptions {
 
   // the answer to the hang-up, held until the test settles it
   readonly heldHangUp?: Promise<void>;
+
+  // who the server says ended the call in its hang-up reply; the default is the hang-up itself
+  readonly hangUpEndedBy?: 'you' | 'budget';
 }
 
 function setupTest(options: SetupOptions = {}) {
@@ -63,6 +66,7 @@ function setupTest(options: SetupOptions = {}) {
       return (options.heldHangUp ?? Promise.resolve()).then(() => ({
         callID: input.callID,
         state: 'ended',
+        endedBy: options.hangUpEndedBy ?? 'you',
       }));
     },
     get: () => Promise.resolve({ callID: 'c1', state: 'live', endedBy: null, reconnect: null }),
@@ -598,4 +602,16 @@ test('#hangUp keeps the reason the server gave for an end that came while the ha
   await hangingUp;
 
   expect(ctx.session.getSnapshot().endedBy).toBe('budget');
+});
+
+test('#hangUp keeps the reason from the hang-up reply when the server ended the call first', async () => {
+  const ctx = setupTest({ hangUpEndedBy: 'budget' });
+
+  await ctx.session.start();
+  await ctx.session.hangUp();
+
+  expect([ctx.session.getSnapshot().phase, ctx.session.getSnapshot().endedBy]).toStrictEqual([
+    'ended',
+    'budget',
+  ]);
 });

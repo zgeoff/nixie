@@ -18,6 +18,7 @@ const startRefusalSchema = z.enum([
 ]);
 
 const callStateSchema = z.enum(['ringing', 'connecting', 'live', 'ended']);
+const endedBySchema = z.enum(['you', 'nixie', 'budget', 'missed', 'declined', 'dropped']);
 
 // Only a signed-in session of the full scope starts, connects or ends a call, because a call spends
 // the deployment's money and speaks as the assistant.
@@ -176,7 +177,9 @@ export function createCallsProcedures(context: APIContext) {
         async () => {
           const result = await hangUpCall(calls, options.input.callID);
 
-          return result.status === 'done' ? { state: result.state } : { refused: result.error };
+          return result.status === 'done'
+            ? { state: result.state, endedBy: result.endedBy }
+            : { refused: result.error };
         },
       );
 
@@ -195,6 +198,7 @@ export function createCallsProcedures(context: APIContext) {
       return {
         callID: options.input.callID,
         state: callStateSchema.parse(run.result['state']),
+        endedBy: endedBySchema.parse(run.result['endedBy']),
       };
     }),
   };

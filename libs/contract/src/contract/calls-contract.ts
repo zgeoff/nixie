@@ -78,9 +78,10 @@ export const callsContract = {
     .input(z.object({ callID: callIDSchema, sdpOffer: z.string().min(1).max(65_536) }))
     .output(z.object({ sdpAnswer: z.string().min(1) })),
 
-  // Ends the call from the device side. A call that has ended answers the same way.
+  // Ends the call from the device side. A call that has ended answers the same way. `endedBy` is
+  // `you` only when this request ended the call; a call the server ended first keeps its reason.
   hangUp: checkedAction
     .errors({ CALL_NOT_FOUND: { message: 'No call has this ID', status: 404 } })
     .input(z.object({ callID: callIDSchema, clientActionID: z.uuid() }))
-    .output(z.object({ callID: callIDSchema, state: callStateSchema })),
+    .output(z.object({ callID: callIDSchema, state: callStateSchema, endedBy: endedBySchema })),
 };

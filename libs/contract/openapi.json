@@ -24933,11 +24933,23 @@
                         "ended"
                       ],
                       "type": "string"
+                    },
+                    "endedBy": {
+                      "enum": [
+                        "you",
+                        "nixie",
+                        "budget",
+                        "missed",
+                        "declined",
+                        "dropped"
+                      ],
+                      "type": "string"
                     }
                   },
                   "required": [
                     "callID",
-                    "state"
+                    "state",
+                    "endedBy"
                   ]
                 }
               }

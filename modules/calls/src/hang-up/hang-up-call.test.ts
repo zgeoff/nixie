@@ -7,6 +7,7 @@ import { connectCall } from '../connect/connect-call';
 import { runCallSweep } from '../meter/run-call-sweep';
 import { startCall } from '../start/start-call';
 import { probeStubbedCaller, startTestCalls } from '../test-utils';
+import { endCall } from '../utils/end-call';
 import { readCall } from '../utils/read-call';
 import { hangUpCall } from './hang-up-call';
 import { markHangUp } from './mark-hang-up';
@@ -34,7 +35,7 @@ test('it ends a live call as you, closes its session and keeps its minutes', asy
   const call = await readCall(ctx.writer.db, ctx.callID);
 
   expect([result, call?.state, call?.endedBy, call?.minutes]).toStrictEqual([
-    { status: 'done', state: 'ended' },
+    { status: 'done', state: 'ended', endedBy: 'you' },
     'ended',
     'you',
     1,
@@ -152,7 +153,7 @@ test('it ends the call as budget when the day budget has no room for the minute 
   const call = await readCall(ctx.writer.db, ctx.callID);
 
   expect([result, call?.endedBy, call?.minutes]).toStrictEqual([
-    { status: 'done', state: 'ended' },
+    { status: 'done', state: 'ended', endedBy: 'budget' },
     'budget',
     1,
   ]);
@@ -203,4 +204,14 @@ test('it drops the hang-up a running turn asked for when the user hangs up first
   await hangUpCall(ctx.context, ctx.callID);
 
   expect(ctx.context.runtime.hangUps.has(ctx.callID)).toBeFalse();
+});
+
+test('it answers a call that the server ended first with the reason the server gave, not you', async () => {
+  const ctx = await setupTest();
+
+  await endCall(ctx.context, ctx.callID, 'budget');
+
+  const result = await hangUpCall(ctx.context, ctx.callID);
+
+  expect(result).toStrictEqual({ status: 'done', state: 'ended', endedBy: 'budget' });
 });

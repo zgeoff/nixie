@@ -233,7 +233,7 @@ test('#calls.hangUp ends the call, and answers a retry the same way', async () =
     clientActionID: crypto.randomUUID(),
   });
 
-  expect(again).toStrictEqual({ callID: started.callID, state: 'ended' });
+  expect(again).toStrictEqual({ callID: started.callID, state: 'ended', endedBy: 'you' });
 });
 
 test('it signals a dropped speech session on the live stream, and a new offer sent after the signal reconnects the call', async () => {

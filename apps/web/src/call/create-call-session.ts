@@ -352,12 +352,20 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
 
     release();
 
+    let endedBy: CallSnapshot['endedBy'] = 'you';
+
     try {
-      await dependencies.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
+      const reply = await dependencies.calls.hangUp({
+        callID,
+        clientActionID: crypto.randomUUID(),
+      });
+
+      // the reply says who ended the call, so a call the server ended first keeps its own reason
+      endedBy = reply.endedBy;
     } finally {
-      // an end that the server reported meanwhile, a budget stop included, keeps its own reason
+      // an end that the live read reported meanwhile keeps its reason too
       if (!hasEnded()) {
-        finish('you');
+        finish(endedBy);
       }
     }
   };
