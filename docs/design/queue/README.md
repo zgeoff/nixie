@@ -9,22 +9,22 @@ Each design is a draft until the owner approves it, and it lists the questions s
 work is built, its lasting facts move to [`docs/architecture/`](../../architecture/), and the design
 is deleted.
 
-| Area            | Designs                                                                                                                                 |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)                                                                                  |
-| Tasks           | [the coding session runner](coding-session-runner/README.md)                                                                            |
-| Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                                                                   |
-| The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md)                                           |
-| Web             | [the hop gate](hop-gate.md)                                                                                                             |
-| Approvals       | [the approval record](../../architecture/policy/approvals.md)                                                                           |
-| Model harnesses | [the turn-input log](turn-input-log.md)                                                                                                 |
-| Policy          | [the decision point cutover](decision-point-cutover.md), [CEL conditions on rules](cel-rules.md), [provider limits](provider-limits.md) |
-| Mail            | [mail and wake rules](mail/README.md)                                                                                                   |
-| Connections     | [Google connections](google-connections.md)                                                                                             |
-| Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)                                            |
-| Channels        | [the push notice](push-notice.md)                                                                                                       |
-| Devices         | [the camera, the speaker and the microphone](devices.md), [client devices](client-devices.md)                                           |
-| Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md)                                       |
+| Area            | Designs                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)                                            |
+| Tasks           | [the coding session runner](coding-session-runner/README.md)                                      |
+| Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                             |
+| The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md)     |
+| Web             | [the hop gate](hop-gate.md)                                                                       |
+| Approvals       | [the approval record](../../architecture/policy/approvals.md)                                     |
+| Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
+| Policy          | [the decision point cutover](decision-point-cutover.md), [CEL conditions on rules](cel-rules.md)  |
+| Mail            | [mail and wake rules](mail/README.md)                                                             |
+| Connections     | [Google connections](google-connections.md)                                                       |
+| Google tools    | [Gmail](gmail-calendar-drive-tools.md), [Calendar and Drive](google-calendar-drive-tools.md)      |
+| Channels        | [the push notice](push-notice.md)                                                                 |
+| Devices         | [the camera, the speaker and the microphone](devices.md), [client devices](client-devices.md)     |
+| Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md) |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone. The decision records these designs follow are in

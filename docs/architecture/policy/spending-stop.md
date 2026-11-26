@@ -1,10 +1,11 @@
 # The spending stop
 
 The spending stop starts no new model spending once the turn limit is reached, and holds the work on
-each route that reached its own dollar limit. It builds on the [model gateway](model-gateway.md),
-which counts each route's dollars, and adds the count of turns, the pause, the raise and the notice.
-A deployment whose config has no `spendStop` has none of it: no spend module context, no watcher and
-no check before a turn. [Budgets](budgets.md) cover the limits on tool calls and purchases.
+each route that reached its own dollar limit, and on each route of a provider that reached its
+limit. It builds on the [model gateway](model-gateway.md), which counts each provider's and each
+route's dollars, and adds the count of turns, the pause, the raise and the notice. A deployment
+whose config has no `spendStop` has none of it: no spend module context, no watcher and no check
+before a turn. [Budgets](budgets.md) cover the limits on tool calls and purchases.
 
 ## What stops
 
@@ -18,9 +19,10 @@ the gateway's `/status` and the turn count:
 | `lost`        | the gateway's count is lost: a count failed to write, or a reply with an input the estimate cannot bound had no usage | when an operator removes the lost mark from the store      |
 | `clear`       | none of the above                                                                                                     |                                                            |
 
-A route that reaches its day or month limit in dollars never stops nixie as a whole.
-[The stop of a route](#the-stop-of-a-route) holds only the work on that route, and every other route
-goes on.
+A route or a provider that reaches its day or month limit in dollars never stops nixie as a whole.
+[The stop of a route](#the-stop-of-a-route) holds only the work on that route, and
+[the stop of a provider](#the-stop-of-a-provider) holds the work on every route of that provider.
+Every route of another provider goes on.
 
 The turn count has its own table, `spend_turns`, in UTC buckets. It adds one turn for each
 `model.turn_ended` and each `worker.turn_ended` record, and no call writes both. A limit is a total:
@@ -60,13 +62,26 @@ route's stop beside the stop of nixie, in the same transaction. A route whose da
 - A gateway that did not answer changes no route's stop. The stop of nixie covers it.
 
 A task that a refusal or a stopped route held has a row in `spend_route_holds`. A step holds its
-task on the route of its profile in 2 places: before its model turn, when the route's stop stands,
-and after a failed step, after it reads the gateway and settles the route stops. The
-[task gate](../core/pause.md#the-task-gate) reports `spend` for a held task while its route's stop
-stands, and the claim filter leaves the task's work unclaimed, so a task on another route runs. A
-held step ends at once with no step commit. A failed step counts no step error when a route's stop
-explains it, or when the gateway recorded a refusal of the step's sandbox on the step's route after
-the step began, which the sandbox's `lastRefusal` holds, though the route has since reset or risen.
+task on the route of its profile in 2 places: before its model turn, when the stop of the route or
+of its provider stands, and after a failed step, after it reads the gateway and settles the stops.
+The [task gate](../core/pause.md#the-task-gate) reports `spend` for a held task while the stop of
+its route or its provider stands, and the claim filter leaves the task's work unclaimed, so a task
+on another route runs. A held step ends at once with no step commit. A failed step counts no step
+error when a route's stop explains it, or when the gateway recorded a refusal of the step's sandbox
+on the step's route, at the route's limit or its provider's, after the step began, which the
+sandbox's `lastRefusal` holds, though the route has since reset or risen.
+
+## The stop of a provider
+
+A provider whose day or month shows `tripped` in the gateway's status has a row in
+`spend_provider_stops`, which lists the provider's routes. The watcher settles it in the same
+transaction as the route stops, and the rules above for a route's stop hold for a provider's: one
+`spend.provider_stopped` notice per trip, `spend.provider_cleared` with the reason `reset`, `raised`
+or `corrected`, and `spend.provider_restated` for a stop that stands at another limit or period. A
+task that a provider's stop or refusal held has a row in `spend_provider_holds`, and a wait notice
+when the provider clears. A task that a standing stop holds is not held a second time, and a task
+whose route hold cleared is held again by a provider stop that still stands. A route's `tripped`
+shows its own limit only, never its provider's.
 
 A clear writes `spend.wait_notice` on the thread of each task that waited, with a short ID from
 `createShortID` in its payload. On its next wake, the model reads about how many minutes the task
@@ -140,38 +155,49 @@ While the stop stands, the API refuses `nixie.resume` and a task's resume, whate
 cause, with the way the stop clears. A pause and a stop of a task work as usual. When the user
 pauses nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
 
-`spend.read` gives the stop of nixie and each route that stands stopped. `spend.raise` takes the
-day's start and either a route with its dollars, the turns, or both, and works for a day trip only.
-It calls the gateway's `POST /raise` with the route and its dollars, then writes
-`spend.limit_raised` with the session as `by`. A total above a cap, the gateway's for a route's
-dollars or the config's for turns, comes back as `above_cap` with the measure, the route and the
-cap, and writes nothing. A route the gateway does not hold comes back as `unknown_route`. A raise
-made while the gateway gives no status comes back as `unreachable` and writes nothing, and one whose
-post to the gateway got no answer comes back as `unanswered`, with its record kept for the watcher
-to send again. The client tells the user that an `unanswered` raise is saved and that an
-`unreachable` one is not. A raise of a route's dollars never pauses nixie. It clears the route's
-stop when the raised limit passes the route's spend, and restates the stop when it does not.
+`spend.read` gives the stop of nixie, each route that stands stopped and each provider that stands
+stopped. `spend.raise` takes the day's start and either a route or a provider with its dollars, the
+turns, or both, and works for a day trip only. It calls the gateway's `POST /raise` with the route
+or provider and its dollars, then writes `spend.limit_raised` with the session as `by`. A total
+above a cap, the gateway's for a route's or a provider's dollars or the config's for turns, comes
+back as `above_cap` with the measure, the route, the provider and the cap, and writes nothing. A
+route or a provider the gateway does not hold comes back as `unknown_route` or `unknown_provider`,
+and a route with no limit of its own as `no_route_limit`, because only its provider's limit binds
+it. A raise made while the gateway gives no status comes back as `unreachable` and writes nothing,
+and one whose post to the gateway got no answer comes back as `unanswered`, with its record kept for
+the watcher to send again. The client tells the user that an `unanswered` raise is saved and that an
+`unreachable` one is not. A raise of dollars never pauses nixie. It clears the stop when the raised
+limit passes the spend, and restates the stop when it does not.
 
 The host command `nixie spend raise --turns <n>` raises the day's turns past the turn cap, and
-writes the host as `by`. A route's dollars pass its cap only through the gateway's own `raise`
-command, and the month's limits move only in the gateway's config.
+writes the host as `by`. A route's or a provider's dollars pass its cap only through the gateway's
+own `raise` command, and the month's limits move only in the gateway's config.
 
-`spend.counts` gives each route's day and month count and limit in US dollars, and the display
-currency with the rate of one US dollar in it. It reads the gateway's status, so a gateway that does
-not answer gives no route. See the [metering doc](metering.md#the-display-currency) for where the
-rate comes from.
+`spend.setCount` takes a route or a provider, a period, the period's start and the new dollars. It
+calls the gateway's `POST /count`, then writes `spend.count_set` with the target, the period, the
+old and the new dollars and the session as `by`, and settles the stops, so a stop that the new count
+leaves room under clears at once with the reason `corrected`. It changes no limit. It answers
+`period_ended`, `unknown_route`, `unknown_provider` or `unreachable` and writes nothing when the
+gateway does not take the change.
+
+`spend.counts` gives each provider's and each route's day and month count, period start and limit in
+US dollars, with each route's provider, and the display currency with the rate of one US dollar in
+it. It reads the gateway's status, so a gateway that does not answer gives none. See the
+[metering doc](metering.md#the-display-currency) for where the rate comes from.
 
 The web client shows the notice under the pause banner. A turn trip of the day offers "Raise today's
 limit" with today's limit plus half, up to the cap, and the amount stays editable until the one
-confirm. Each stopped route shows a line with the route's name, its limit in US dollars with the
-approximate amount in the display currency, and a note that its work waits. A route that tripped its
-day limit, below its cap, also offers "Raise the day limit of" the route, with the day's limit plus
-half in US dollars, up to the route's cap, and the amount in the display currency beside the field,
-and one confirm sends `spend.raise` with the route and the dollars. A month trip, `unreachable` and
-`lost` show no button, and the pause banner offers no resume for the cause `spending`.
+confirm. Each stopped provider shows a line with the provider's name and its routes, and each
+stopped route a line with the route's name, its limit in US dollars with the approximate amount in
+the display currency, and a note that its work waits. A route or provider that tripped its day
+limit, below its cap, also offers "Raise the day limit of" it, with the day's limit plus half in US
+dollars, up to the route's cap, and the amount in the display currency beside the field, and one
+confirm sends `spend.raise` with the route or provider and the dollars. A month trip, `unreachable`
+and `lost` show no button, and the pause banner offers no resume for the cause `spending`.
 
-The spending page, at `/spend`, lists each route with its day and month count against its limit.
-Each figure is in US dollars with the approximate amount in the display currency beside it, such as
-"$12.40 (about A$19)". A route with no limit set says that it refuses requests, and a route at a
-limit says so. The page reads `spend.counts` on a short interval, because the gateway counts each
-reply as it arrives and no live topic reports it.
+The spending page, at `/spend`, lists each provider with its day and month count against its limit
+and its routes beneath it, each with its own counts. Each figure is in US dollars with the
+approximate amount in the display currency beside it, such as "$12.40 (about A$19)". A route with no
+limit of its own says so, and a period at a limit says so. Each count has a Reset button that, after
+one confirm, sends `spend.setCount` with zero dollars. The page reads `spend.counts` on a short
+interval, because the gateway counts each reply as it arrives and no live topic reports it.

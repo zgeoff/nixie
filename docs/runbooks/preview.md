@@ -70,8 +70,9 @@ starts and reports ready, and each turn fails at its model call.
 
 A host that caps each preview's model spend with a
 [model gateway](../architecture/policy/model-gateway.md) of its own sends the model API's host to
-that proxy and names the preview's route in `PREVIEW_MODEL_ROUTE`. nixie then runs on a copy of
-`config.yaml` with the route on the end of each model profile's base URL.
+that proxy and names the preview's route in `PREVIEW_MODEL_ROUTE`. That route sits on a provider
+with day and month limits in the gateway's config. nixie then runs on a copy of `config.yaml` with
+the route on the end of each model profile's base URL.
 
 ## Files
 

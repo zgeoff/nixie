@@ -83,31 +83,36 @@ answer holds no token and no email.
 
    The login command writes `<login_file>` itself, with mode 600.
 
-3. Add the route under `routes` in `<config_file>`:
+3. Add the plan's provider under `providers` and the route under `routes` in `<config_file>`:
 
    ```yaml
+   providers:
+   <provider>:
+     limits: { day: <provider_day_dollars>, month: <provider_month_dollars> }
    routes:
-     <route>:
-       api: openai-responses
-       upstream: https://chatgpt.com/backend-api/codex
-       model: <model>
-       maxOutputTokens: <max_output_tokens>
-       prices:
-         input: <input>
-         cache_write: <cache_write>
-         cache_write_1h: <cache_write_1h>
-         cached_input: <cached_input>
-         output: <output>
-       limits: { day: <day_dollars>, month: <month_dollars> }
-       login:
-         file: <login_file>
-         routeKeyFile: <route_key_file>
+   <route>:
+     provider: <provider>
+     api: openai-responses
+     upstream: https://chatgpt.com/backend-api/codex
+     model: <model>
+     maxOutputTokens: <max_output_tokens>
+     prices:
+       input: <input>
+       cache_write: <cache_write>
+       cache_write_1h: <cache_write_1h>
+       cached_input: <cached_input>
+       output: <output>
+     limits: { day: <day_dollars>, month: <month_dollars> } # optional
+     login:
+       file: <login_file>
+       routeKeyFile: <route_key_file>
    ```
 
    A plan has no price per token, but Codex use past the plan's own limit draws on credits bought
-   for the account. The gateway counts each plan request at these prices against the route's dollar
-   `limits`, so those limits cap that spend. The count therefore shows more than the plan itself
-   costs. A route with no `limits` refuses every request.
+   for the account. The gateway counts each plan request at these prices against the provider's
+   dollar `limits` and the route's own, so those limits cap that spend. The count therefore shows
+   more than the plan itself costs. A route with no `limits` of its own is held by its provider's
+   limits.
 
 4. Print the name that nixie gives the plan profile's model secret:
 
