@@ -10,10 +10,13 @@ import {
   createSpawnedNixie,
   createTestClient,
   readTestBundle,
+  startDeviceTestSite,
   startFakeGoogleSite,
 } from '@heynixie/server/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
+import { approveHeldInstall } from './approve-held-install';
+import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { localMemoryConfig } from './local-memory-config';
 import { readLastModelInput } from './read-last-model-input';
@@ -70,6 +73,12 @@ export async function runVerifyHarness(): Promise<void> {
 
   stack.defer(() => google.stop());
 
+  // the tide page and the package registry that a device page reaches, on a loopback address that
+  // the test build's fetch stand-in reads in place of the web
+  const deviceSite = startDeviceTestSite();
+
+  stack.defer(() => deviceSite.stop());
+
   // the test build answers each image call with a stub, so the key is a placeholder
   // A start with NIXIE_VERIFY_CALLS=1 turns calls on, with the test build's fake speech layer.
   const isCallsOn = process.env['NIXIE_VERIFY_CALLS'] === '1';
@@ -77,6 +86,7 @@ export async function runVerifyHarness(): Promise<void> {
   const nixie = await createSpawnedNixie(stack, {
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     googleURL: google.url,
+    fetchSiteURL: deviceSite.url,
     googleAPI: google.api,
     ...(gateway === null ? {} : { atcURL: gateway.url }),
     memoryConfig: localMemoryConfig,
@@ -110,6 +120,8 @@ export async function runVerifyHarness(): Promise<void> {
       '      model: image-test-1',
       '      credential: deployment:images',
       '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+      'web_fetch:',
+      '  package_registry: https://registry.test',
       ...(gateway === null ? [] : buildCodingConfigLines()),
       ...(hasMail ? buildMailConfigLines() : []),
     ],
@@ -186,7 +198,18 @@ export async function runVerifyHarness(): Promise<void> {
         siteURL: `http://pages.test:${String(site.port)}/`,
       }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
-    layoutOnDevice: (layout) => runDeviceLayout(api.client, nixie.model, layout),
+    layoutOnDevice: (layout) => {
+      // the owner's answers, which the journey's browser holds a device session too narrow to give
+      if (layout.step === 'approve') {
+        return approveHeldRegion(api.client);
+      }
+
+      if (layout.step === 'approve-install') {
+        return approveHeldInstall((operation, args) => server.request(operation, args));
+      }
+
+      return runDeviceLayout(api.client, nixie.model, { ...layout, step: layout.step });
+    },
     runCallStep: (call) =>
       runCallStep(
         {

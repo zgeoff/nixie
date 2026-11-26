@@ -19,5 +19,9 @@ export const deviceRegionShownCodec = defineRecordCodec(
 
     // the record of the content that this one covered, for an `onEnd` of 'previous'
     previous: z.number().int().nullable(),
+
+    // the sequence of the call that showed the content, which the rules are asked about again
+    // when a declared fetch of the page refreshes; a record from before declared fetches holds none
+    call: z.number().int().nullable().default(null),
   }),
 );

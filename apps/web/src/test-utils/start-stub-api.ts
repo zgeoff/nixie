@@ -69,6 +69,8 @@ export function startStubAPI() {
         imageBase: `http://127.0.0.1:${server.port}${devicePagePaths.images}`,
         initialMessages: [],
         isPolicyInline: true,
+        packageBases: [],
+        fetches: { declared: [], replies: null },
       });
 
       frames.set(`${devicePagePaths.frames}${ticket}`, frame.document);

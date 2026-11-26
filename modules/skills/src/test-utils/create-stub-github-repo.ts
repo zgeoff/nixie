@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { FetchReply } from '@heynixie/wire';
+import type { PageReply } from '@heynixie/wire';
 import { $ } from 'bun';
 import type { ReadPage } from '../skill/read-github-skill';
 
@@ -84,7 +84,7 @@ async function readCommit(
   url: string,
   sha: string,
   options: StubGitHubRepoOptions,
-): Promise<FetchReply> {
+): Promise<PageReply> {
   const type = await $`git cat-file -t ${sha}`.cwd(git.directory).env(git.env).quiet().nothrow();
 
   if (type.exitCode !== 0 || type.text().trim() !== 'commit') {
@@ -105,7 +105,7 @@ async function readCommit(
   });
 }
 
-function buildJSONPage(url: string, status: number, body: unknown): FetchReply {
+function buildJSONPage(url: string, status: number, body: unknown): PageReply {
   return {
     kind: 'page',
     retryAfterMs: null,
@@ -125,7 +125,7 @@ async function readTree(
   url: string,
   sha: string,
   isRecursive: boolean,
-): Promise<FetchReply> {
+): Promise<PageReply> {
   const listing = isRecursive
     ? await $`git ls-tree -r -t -l ${sha}`.cwd(git.directory).env(git.env).quiet().nothrow()
     : await $`git ls-tree -l ${sha}`.cwd(git.directory).env(git.env).quiet().nothrow();
@@ -150,7 +150,7 @@ async function readTree(
   return buildJSONPage(url, 200, { sha, tree, truncated: false });
 }
 
-async function readRaw(git: StubGit, url: string, ref: string, path: string): Promise<FetchReply> {
+async function readRaw(git: StubGit, url: string, ref: string, path: string): Promise<PageReply> {
   const blob = await $`git cat-file -p ${`${ref}:${path}`}`
     .cwd(git.directory)
     .env(git.env)

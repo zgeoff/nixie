@@ -5,7 +5,7 @@ description:
   preview, and records the verdict that a feature works. Load it before you check a change in the
   running app, put the verdicts in a PR, or check prod after a release."
 metadata:
-  wringer-template: 'sha256:c276ebe8d896'
+  wringer-template: 'sha256:f81627bb86b8'
   wringer-command: bun verify
 ---
 
@@ -118,7 +118,19 @@ The mistakes that cost the most time:
 ## Read the envelope
 
 Each command prints one JSON envelope as its last line, or text with `--human`. `doctor` and other
-streaming commands print JSON event lines first. Read these fields:
+streaming commands print JSON event lines first.
+
+Add `--brief` to print one short line and no event lines. Use it when you only need to know whether
+the command passed. The line holds:
+
+- `<command> ok=<true|false>`;
+- `error.code` and `error.message` on failure, or `data` on success, each cut at 200 characters;
+- `truncatedPath`, when the data was too large;
+- `evidence=<count>`.
+
+`--brief` leaves out `error.hint`. Run the command again without `--brief` to read the hint.
+
+Read these fields:
 
 - `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure;
 - `evidence`: the files the command kept, under `.wringer/`;

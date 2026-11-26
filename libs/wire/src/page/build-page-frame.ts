@@ -1,5 +1,16 @@
 import { pageBridgeScript } from './page-bridge-script';
 
+// What nixie.data gives for a declared URL in a frame that holds its replies: the response, or the
+// code that its rejection carries.
+export type PageFetchReply =
+  | {
+      readonly status: number;
+      readonly type: string;
+      readonly body: string;
+      readonly fetchedAt: string;
+    }
+  | { readonly error: 'REFUSED' };
+
 export interface PageFrameInput {
   // the page's markup, which goes in the body
   readonly html: string;
@@ -13,6 +24,17 @@ export interface PageFrameInput {
   // messages that wait for the page's first onMessage, such as its retained message
   readonly initialMessages: readonly unknown[];
 
+  // the URL prefix of each package the page names, each ending in a slash, which the frame's policy
+  // opens script, style and font loading to
+  readonly packageBases: readonly string[];
+
+  // The URLs that the page declared as fetches, which nixie.data answers, and for a frame that no
+  // device page serves, the reply held for each. A null reply map asks the device page.
+  readonly fetches: {
+    readonly declared: readonly string[];
+    readonly replies: Readonly<Record<string, PageFetchReply>> | null;
+  };
+
   // true puts the policy in a meta tag, for a frame that a plain file serves
   readonly isPolicyInline: boolean;
 }
@@ -25,14 +47,14 @@ export interface PageFrame {
 }
 
 // The sealed page: the document and its content-security policy. Images open only to the declared
-// URLs and `data:`, because the opaque origin can't use `'self'`. Trusted types route each markup
-// string through the bridge's policy, which keeps out the link elements no directive stops.
+// URLs and `data:`, and code, styles and fonts only to the packages the page names. Trusted types
+// route each markup string through the bridge's policy.
 export function buildPageFrame(input: PageFrameInput): PageFrame {
   const directives = [
     "default-src 'none'",
-    "script-src 'unsafe-inline'",
-    "style-src 'unsafe-inline'",
-    'font-src data:',
+    ['script-src', "'unsafe-inline'", ...input.packageBases].join(' '),
+    ['style-src', "'unsafe-inline'", ...input.packageBases].join(' '),
+    ['font-src', ...input.packageBases, 'data:'].join(' '),
     `img-src ${input.imageBase} data:`,
     "connect-src 'none'",
     "form-action 'none'",
@@ -48,10 +70,11 @@ export function buildPageFrame(input: PageFrameInput): PageFrame {
   const slots = {
     IMAGES: toScriptJSON(Object.fromEntries(input.images)),
     INITIAL: toScriptJSON(input.initialMessages),
+    FETCHES: toScriptJSON(input.fetches),
   };
 
   const bridge = pageBridgeScript.replaceAll(
-    /__(?<slot>IMAGES|INITIAL)__/gu,
+    /__(?<slot>IMAGES|INITIAL|FETCHES)__/gu,
     (_match, slot: keyof typeof slots) => slots[slot],
   );
 

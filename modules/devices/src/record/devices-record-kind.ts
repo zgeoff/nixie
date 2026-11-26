@@ -9,7 +9,8 @@ export type DevicesRecordKind =
   | 'device.layout_removed'
   | 'device.watch_set'
   | 'device.status_changed'
-  | 'device.page_event';
+  | 'device.page_event'
+  | 'device.package_added';
 
 type DevicesErasableRecordKind =
   | 'device.shown'

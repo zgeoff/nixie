@@ -8,7 +8,7 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { readTaskNames } from '@heynixie/tasks';
-import type { FetchReply } from '@heynixie/wire';
+import type { PageReply } from '@heynixie/wire';
 import { buildConversationTools } from '../conversation/build-conversation-tools';
 import type { BuildTestServerTools } from './start-test-server';
 
@@ -18,7 +18,7 @@ export interface TestConversationTools {
   readonly setStore: (store: MemoryToolStore) => void;
 }
 
-export function buildTestConversationTools(reply: FetchReply): TestConversationTools {
+export function buildTestConversationTools(reply: PageReply): TestConversationTools {
   const stores: { current: MemoryToolStore | null } = { current: null };
 
   return {

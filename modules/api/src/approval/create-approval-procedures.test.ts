@@ -20,6 +20,7 @@ import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { seedPackageCard } from '../test-utils/seed-package-card';
 import { seedScreenClickCard } from '../test-utils/seed-screen-click-card';
 import { startTestAPI } from '../test-utils/start-test-api';
 
@@ -1138,4 +1139,31 @@ test('#approvals.readImage refuses a screen picture ID that names no screen clic
   await Promise.allSettled([refused]);
 
   expect(refused).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
+});
+
+test('#approvals.readProposals gives the card of a package install the package and its hash', async () => {
+  const ctx = await setupTest();
+  const card = await seedPackageCard(ctx.api.context);
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [card.shortID] });
+
+  expect(read.proposals.map((entry) => entry.body?.package)).toStrictEqual([
+    {
+      name: 'chart.js',
+      version: '4.4.6',
+      unpackedBytes: 2048,
+      publisher: 'a-publisher',
+      description: 'Charts for pages',
+      integrity: `sha512-${'A'.repeat(86)}==`,
+    },
+  ]);
+});
+
+test('#approvals.readProposals offers a package install no always-allow, and asks for the passkey', async () => {
+  const ctx = await setupTest();
+  const card = await seedPackageCard(ctx.api.context);
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [card.shortID] });
+
+  expect(read.proposals.map((entry) => [entry.choices, entry.passkeyChoices])).toStrictEqual([
+    [['approve', 'defer', 'decline'], ['approve']],
+  ]);
 });

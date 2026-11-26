@@ -192,6 +192,16 @@ export interface NixieTables {
     readonly layout_sequence: number;
     readonly updated_at: number;
   };
+  readonly device_packages: {
+    readonly package_id: string;
+    readonly name: string;
+    readonly version: string;
+    readonly integrity: string;
+    readonly unpacked_bytes: number;
+    readonly publisher: string;
+    readonly files: string;
+    readonly added_sequence: number;
+  };
   readonly device_regions: {
     readonly device_id: string;
     readonly region: string;

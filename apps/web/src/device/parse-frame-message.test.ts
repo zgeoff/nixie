@@ -62,3 +62,23 @@ test('#parseFrameMessage reads a touch message', () => {
     message: { type: 'touch' },
   });
 });
+
+test('#parseFrameMessage reads a data request with its id and URL', () => {
+  expect(
+    parseFrameMessage({ nixie: true, type: 'data', id: 3, url: 'https://tides.example/today' }),
+  ).toStrictEqual({
+    status: 'message',
+    message: { type: 'data', id: 3, url: 'https://tides.example/today' },
+  });
+});
+
+test.each([
+  [
+    'an id that is no whole number',
+    { nixie: true, type: 'data', id: 'x', url: 'https://a.example/' },
+  ],
+  ['an empty URL', { nixie: true, type: 'data', id: 1, url: '' }],
+  ['a URL over 2,000 characters', { nixie: true, type: 'data', id: 1, url: 'x'.repeat(2001) }],
+])('#parseFrameMessage ignores a data request with %s', (_title, raw) => {
+  expect(parseFrameMessage(raw)).toStrictEqual({ status: 'ignored' });
+});

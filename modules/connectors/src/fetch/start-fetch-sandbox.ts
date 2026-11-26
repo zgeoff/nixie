@@ -2,7 +2,14 @@ import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
-import type { FetchLimits, FetchReply } from '@heynixie/wire';
+import type {
+  BodyReply,
+  FetchLimits,
+  FetchMode,
+  FetchReply,
+  PackageReply,
+  PageReply,
+} from '@heynixie/wire';
 import { decodeFetchGuestFrame, encodeFetchMessage, getLinkTargetLimit } from '@heynixie/wire';
 import type { HopScan } from '../page/gate-page-hops';
 import { gatePageHops } from '../page/gate-page-hops';
@@ -35,11 +42,20 @@ interface FetchPageOptions {
 }
 
 export interface FetchSandbox {
-  readonly readPage: (url: string, options?: FetchPageOptions) => Promise<FetchReply>;
+  readonly readPage: (url: string, options?: FetchPageOptions) => Promise<PageReply>;
 
   // Reads the text and the links of an HTML document the caller holds, in a fetch sandbox, and
   // makes no request. The reply is a page, or a failure.
-  readonly readHTML: (html: string) => Promise<FetchReply>;
+  readonly readHTML: (html: string) => Promise<PageReply>;
+
+  // Reads the response as text with no reading of its HTML, or an npm tarball unpacked into its
+  // files after its integrity matches. A reply is a body, a package, or a failure or refusal.
+  readonly readBody: (url: string, options?: FetchPageOptions) => Promise<BodyReply>;
+  readonly readPackage: (
+    url: string,
+    request: Extract<FetchMode, { readonly kind: 'package' }>,
+    options?: FetchPageOptions,
+  ) => Promise<PackageReply>;
 
   readonly stop: () => Promise<void>;
 }
@@ -61,6 +77,8 @@ interface FetchTarget {
 
   // the HTML of a document read in place of a page
   readonly html?: string;
+
+  readonly mode?: FetchMode;
 }
 
 export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
@@ -88,8 +106,17 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
   };
 
   return {
-    readPage: (url, readOptions) => enqueue({ url, scanHop: readOptions?.scanHop }),
-    readHTML: (html) => enqueue({ url: htmlBaseURL, scanHop: undefined, html }),
+    readPage: (url, readOptions) =>
+      readReply(enqueue({ url, scanHop: readOptions?.scanHop }), isPageReply),
+    readHTML: (html) =>
+      readReply(enqueue({ url: htmlBaseURL, scanHop: undefined, html }), isPageReply),
+    readBody: (url, readOptions) =>
+      readReply(
+        enqueue({ url, scanHop: readOptions?.scanHop, mode: { kind: 'body' } }),
+        isBodyReply,
+      ),
+    readPackage: (url, request, readOptions) =>
+      readReply(enqueue({ url, scanHop: readOptions?.scanHop, mode: request }), isPackageReply),
     stop: async () => {
       state.isStopped = true;
 
@@ -252,7 +279,7 @@ async function runFetcher(
   const stream = await waitOrTimeOut(
     sandbox.spawn({
       argv: options.argv,
-      maxMessageBytes: getReplyLimit(options.limits),
+      maxMessageBytes: getReplyLimit(options.limits, target.mode),
     }),
     limit,
   );
@@ -263,6 +290,7 @@ async function runFetcher(
     deniedRanges: options.deniedRanges,
     hops: target.scanHop === undefined ? ('none' as const) : ('ask' as const),
     ...(target.html === undefined ? {} : { html: target.html }),
+    ...(target.mode === undefined ? {} : { mode: target.mode }),
   };
 
   try {
@@ -285,13 +313,20 @@ async function runFetcher(
   }
 }
 
+// the paths and JSON of a package reply, beside the base64 of its files
+const packageReplyExtraBytes = 2 * 1024 * 1024;
+
 // the rest of a reply fits in 64 KiB
 const replyOverheadBytes = 65_536;
 
 // JSON escapes a byte of text as at most 6 bytes and a byte of a serialized URL as at most 2, and
 // each target's quotes and comma take 3 bytes beside a mark of at least 7 bytes in the text. A reply
 // holds text or an image, never both, and base64 writes 3 bytes of an image as 4.
-function getReplyLimit(limits: FetchLimits): number {
+function getReplyLimit(limits: FetchLimits, mode: FetchMode | undefined): number {
+  if (mode?.kind === 'package') {
+    return Math.ceil(mode.unpackedBytes / 3) * 4 + packageReplyExtraBytes;
+  }
+
   const textReplyBytes =
     limits.textBytes * 6 + getLinkTargetLimit(limits.textBytes) * 2 + limits.textBytes;
 
@@ -343,4 +378,28 @@ async function removeSandbox(
   } finally {
     onRemoved();
   }
+}
+
+// A reply of a kind the call did not ask for is a fault of the fetcher.
+async function readReply<Reply extends FetchReply>(
+  replying: Promise<FetchReply>,
+  isExpected: (reply: FetchReply) => reply is Reply,
+): Promise<Reply | Extract<FetchReply, { readonly kind: 'failed' }>> {
+  const reply = await replying;
+
+  return isExpected(reply)
+    ? reply
+    : { kind: 'failed', reason: 'the fetcher answered with another kind of reply', isGated: false };
+}
+
+function isPageReply(reply: FetchReply): reply is PageReply {
+  return reply.kind !== 'body' && reply.kind !== 'package';
+}
+
+function isBodyReply(reply: FetchReply): reply is BodyReply {
+  return reply.kind === 'body' || reply.kind === 'refused' || reply.kind === 'failed';
+}
+
+function isPackageReply(reply: FetchReply): reply is PackageReply {
+  return reply.kind === 'package' || reply.kind === 'refused' || reply.kind === 'failed';
 }

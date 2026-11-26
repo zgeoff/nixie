@@ -1,9 +1,13 @@
 // The script that opens each page's frame: it defines the one global a page sees, `nixie`, and talks
-// to the device page around the frame by postMessage. `__IMAGES__` and `__INITIAL__` are filled
-// in by the frame builder.
+// to the device page around the frame by postMessage. `__IMAGES__`, `__INITIAL__` and
+// `__FETCHES__` are filled in by the frame builder.
 export const pageBridgeScript = `(function () {
   var images = __IMAGES__;
+  var fetches = __FETCHES__;
   var handlers = [];
+  var dataHandlers = [];
+  var dataRequests = {};
+  var dataRequestCount = 0;
   var buffer = __INITIAL__;
   var parentWindow = window.parent;
 
@@ -174,10 +178,26 @@ export const pageBridgeScript = `(function () {
     parentWindow.postMessage(message, '*');
   }
 
-  function refuse() {
-    var error = new Error('NOT_DECLARED');
-    error.code = 'NOT_DECLARED';
+  function fail(code) {
+    var error = new Error(code);
+    error.code = code;
     return error;
+  }
+
+  function refuse() {
+    return fail('NOT_DECLARED');
+  }
+
+  // what nixie.data answers when the frame holds its replies, as a preview does
+  function readHeld(url) {
+    if (fetches.declared.indexOf(url) === -1) {
+      return Promise.reject(refuse());
+    }
+    if (!Object.prototype.hasOwnProperty.call(fetches.replies, url)) {
+      return Promise.reject(fail('NOT_READY'));
+    }
+    var reply = fetches.replies[url];
+    return reply.error ? Promise.reject(fail(reply.error)) : Promise.resolve(reply);
   }
 
   function receive(data) {
@@ -201,6 +221,24 @@ export const pageBridgeScript = `(function () {
     }
     if (message.type === 'message') {
       receive(message.data);
+    } else if (message.type === 'data-result') {
+      var request = dataRequests[message.id];
+      delete dataRequests[message.id];
+      if (request) {
+        if (message.ok === true) {
+          request.resolve(message.value);
+        } else {
+          request.reject(fail(String(message.code)));
+        }
+      }
+    } else if (message.type === 'data-changed') {
+      dataHandlers.slice().forEach(function (handler) {
+        try {
+          handler(String(message.url));
+        } catch (error) {
+          post({ type: 'error', message: String(error && error.stack ? error.stack : error) });
+        }
+      });
     }
   });
 
@@ -250,10 +288,23 @@ export const pageBridgeScript = `(function () {
         buffer = [];
         waiting.forEach(receive);
       },
-      data: function () {
-        return Promise.reject(refuse());
+      data: function (url) {
+        var key = String(url);
+        if (fetches.declared.indexOf(key) === -1) {
+          return Promise.reject(refuse());
+        }
+        if (fetches.replies) {
+          return readHeld(key);
+        }
+        return new Promise(function (resolve, reject) {
+          dataRequestCount += 1;
+          dataRequests[dataRequestCount] = { resolve: resolve, reject: reject };
+          post({ type: 'data', id: dataRequestCount, url: key });
+        });
       },
-      onData: function () {},
+      onData: function (handler) {
+        dataHandlers.push(handler);
+      },
       size: function () {
         return { width: window.innerWidth, height: window.innerHeight };
       },
