@@ -60,6 +60,15 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   let peer: CallPeer | null = null;
   let isReconnecting = false;
 
+  // true once the current reconnect's new offer has its answer in place
+  let isRestartAnswered = false;
+
+  // true from the first hang-up of the user on, so a second one sends nothing
+  let hasHungUp = false;
+
+  // stops the reconnect's 30 s limit, which holds until the connection is back
+  let stopDeadline: (() => void) | null = null;
+
   // Counts each release of the microphone and the peer, so an answer that arrives after a hang-up,
   // an end or a give-up finds the call changed and does nothing.
   let epoch = 0;
@@ -83,6 +92,9 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     peer?.close();
     peer = null;
     isReconnecting = false;
+    isRestartAnswered = false;
+    stopDeadline?.();
+    stopDeadline = null;
   };
 
   const finish = (endedBy: CallSnapshot['endedBy']): void => {
@@ -109,6 +121,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
       }
 
       change({ connection: state });
+
+      if (state === 'connected' && isRestartAnswered && snapshot.phase === 'reconnecting') {
+        settleReconnect();
+      }
 
       if (state === 'failed') {
         void reconnect();
@@ -137,6 +153,19 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     return openPeer();
   };
 
+  // The call is back once the new offer has its answer and the connection is up.
+  const settleReconnect = (): void => {
+    stopDeadline?.();
+    stopDeadline = null;
+    isRestartAnswered = false;
+
+    change({
+      phase: 'live',
+      connection: peer?.readConnectionState() ?? 'new',
+      reconnectedAtMs: dependencies.now(),
+    });
+  };
+
   // Gives up a call that did not come back in time, and ends it on the server when it still runs.
   const giveUp = async (callID: string): Promise<void> => {
     finish('dropped');
@@ -156,19 +185,18 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     const callID = snapshot.callID;
     const mine = epoch;
 
+    isRestartAnswered = false;
+
     change({ phase: 'reconnecting' });
 
-    const stopDeadline = dependencies.startTimer(() => {
+    // the limit counts from the first loss, so a connection that fails again keeps the same one
+    stopDeadline ??= dependencies.startTimer(() => {
       if (epoch === mine) {
         void giveUp(callID);
       }
     }, reconnectLimitMs);
 
-    try {
-      await retryOffers(callID, mine);
-    } finally {
-      stopDeadline();
-    }
+    await retryOffers(callID, mine);
   };
 
   const retryOffers = async (callID: string, mine: number): Promise<void> => {
@@ -183,6 +211,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
         const sdpOffer = await target.makeOffer({ isRestart: true });
         const answer = await dependencies.calls.connect({ callID, sdpOffer });
 
+        if (epoch !== mine) {
+          return;
+        }
+
         await target.applyAnswer(answer.sdpAnswer);
 
         if (epoch !== mine) {
@@ -190,16 +222,22 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
         }
 
         isReconnecting = false;
+        isRestartAnswered = true;
 
-        change({
-          phase: 'live',
-          connection: target.readConnectionState(),
-          reconnectedAtMs: dependencies.now(),
-        });
+        if (target.readConnectionState() === 'connected') {
+          settleReconnect();
+        }
 
         return;
       } catch (error) {
-        if (epoch !== mine || isCallError(error, ['CALL_NOT_FOUND', 'NOT_CARRYING_SESSION'])) {
+        if (epoch !== mine) {
+          return;
+        }
+
+        // the call is no longer this device's to bring back
+        if (isCallError(error, ['CALL_NOT_FOUND', 'NOT_CARRYING_SESSION'])) {
+          finish('dropped');
+
           return;
         }
 
@@ -269,6 +307,10 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
       const sdpOffer = await target.makeOffer({ isRestart: false });
       const answer = await dependencies.calls.connect({ callID: started.callID, sdpOffer });
 
+      if (epoch !== mine) {
+        return;
+      }
+
       await target.applyAnswer(answer.sdpAnswer);
     } catch (error) {
       // a hang-up or an end while the connect was pending already ended the call
@@ -298,13 +340,21 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
   const hangUp = async (): Promise<void> => {
     const callID = snapshot.callID;
 
-    if (callID === null || snapshot.phase === 'ended') {
+    if (callID === null || snapshot.phase === 'ended' || hasHungUp) {
       return;
     }
 
-    await dependencies.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
+    // Everything pending settles against a released call from here on, so no answer or refusal
+    // that arrives while the request runs changes the call or reaches the closed peer.
+    hasHungUp = true;
 
-    finish('you');
+    release();
+
+    try {
+      await dependencies.calls.hangUp({ callID, clientActionID: crypto.randomUUID() });
+    } finally {
+      finish('you');
+    }
   };
 
   return {
@@ -331,6 +381,7 @@ export function createCallSession(dependencies: CallSessionDependencies): CallSe
     dismiss: () => {
       if (snapshot.phase === 'ended' || snapshot.phase === 'refused') {
         snapshot = idleSnapshot;
+        hasHungUp = false;
 
         change({});
       }

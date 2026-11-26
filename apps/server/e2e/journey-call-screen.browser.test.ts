@@ -73,9 +73,21 @@ async function setupTest(answer: 'allow' | 'block' = 'allow') {
 
       await other.navigate('about:blank');
 
+      // Records each way a push could reach this page, from before the page loads, so a push sent
+      // at any moment of the test shows in the list.
       await other.cdp('Page.addScriptToEvaluateOnNewDocument', {
-        source:
-          'window.shownNotifications = []; window.Notification = class { constructor(title) { window.shownNotifications.push(title); } };',
+        source: `
+          window.pushActivity = [];
+          window.Notification = class { constructor(title) { window.pushActivity.push('notification:' + title); } };
+          const record = (target, name, label) => {
+            const original = target?.[name];
+            if (typeof original !== 'function') return;
+            target[name] = function (...args) { window.pushActivity.push(label); return original.apply(this, args); };
+          };
+          record(ServiceWorkerContainer.prototype, 'register', 'register-service-worker');
+          record(ServiceWorkerRegistration.prototype, 'showNotification', 'show-notification');
+          record(window.PushManager?.prototype, 'subscribe', 'subscribe-to-push');
+        `,
       });
 
       await setupSignedInBrowser(other, { appURL: otherURL.origin, token: second.token ?? '' });
@@ -214,14 +226,14 @@ test('it shows the card of a proposal made during the call on the carrying devic
   const seen: unknown = await other.evaluate(
     `JSON.stringify({
       card: document.querySelector('[aria-label="Proposals from this call"]') !== null,
-      notifications: window.shownNotifications,
+      pushActivity: window.pushActivity,
       workers: (await navigator.serviceWorker?.getRegistrations())?.length ?? 0,
     })`,
   );
 
   expect(JSON.parse(String(seen))).toStrictEqual({
     card: false,
-    notifications: [],
+    pushActivity: [],
     workers: 0,
   });
 });

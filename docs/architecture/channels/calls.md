@@ -143,11 +143,14 @@ with the cause, closes the old session, starts the watch of the new one and has 
 the `reconnect` line.
 
 The old session's hand-offs go with it: the new session never heard them, so the answer to a request
-still in progress is not sent, as after a restart. A connect that fails leaves the call waiting, so
-the device may send another. A device whose connection failed while the module still holds the
-session gets `CALL_CONNECTED` until the speech layer reports `dropped`. The sweep ends a live call
-as `dropped` once it has held no session for the reconnect limit. A call that holds its session
-while it waits for a `session_limit` offer keeps charging its minutes.
+still in progress is not sent, as after a restart. Each hand-off holds the speech session that made
+it, and an answer goes only to that session, so a turn that ends while the sessions swap sends
+nothing to the new one. An answer that finds no hand-off of the current session logs
+`calls.answer_dropped`. A connect that fails leaves the call waiting, so the device may send
+another. A device whose connection failed while the module still holds the session gets
+`CALL_CONNECTED` until the speech layer reports `dropped`. The sweep ends a live call as `dropped`
+once it has held no session for the reconnect limit. A call that holds its session while it waits
+for a `session_limit` offer keeps charging its minutes.
 
 Every end of a call, hang-up included, first charges each started minute that is still unpaid, so a
 hang-up between sweeps costs the minute the call had started. A call whose budget has no room for

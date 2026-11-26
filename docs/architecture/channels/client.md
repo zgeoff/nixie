@@ -106,8 +106,9 @@ speech layer and its state. A change of route never ends the call, and a page lo
   offer once the peer connection has gathered its addresses, sends it with `calls.connect` and
   applies the answer. The screen shows the connection state, the length of the call, a mute button
   that turns the microphone track off, and a hang up button that calls `calls.hangUp`, so the call
-  ends with `endedBy: 'you'`. A refused microphone, or a refused start, shows what the user can do
-  about it, and no call starts.
+  ends with `endedBy: 'you'`. Hang up releases the microphone and the peer at once, and nothing that
+  was pending then changes the call. A refused microphone, or a refused start, shows what the user
+  can do about it, and no call starts.
 - **The call bar.** On every route but the call screen, a bar shows while a call connects, is live
   or reconnects. It holds the state, the time, mute, hang up and a link back to the call screen.
 - **Following the call.** While a call runs, the provider keeps the live stream open and reads
@@ -116,12 +117,13 @@ speech layer and its state. A change of route never ends the call, and a page lo
 - **Reconnect.** When `calls.get` names a `reconnect` cause, or the peer connection fails, the
   client sends an ICE-restart offer on the open peer connection, or on a new one when the old one
   failed, with a fresh `calls.connect`. A refusal, `CALL_CONNECTED` included, gets another try after
-  a pause, and the call is live again only once an answer is applied. A call that is not back within
-  the reconnect limit ends on the screen as `dropped`, and the client releases the microphone and
-  the peer, and hangs up the call on the server. A read of the call from before a reconnect is read
-  again and never taken, so a finished reconnect does not start another. After a server restart the
-  live stream's first open reads every topic again, which is how the client learns that the call
-  waits.
+  a pause. The call is live again only once an answer is applied and the connection is up. A call
+  that is not back within the reconnect limit, counted from the first loss, ends on the screen as
+  `dropped`, and the client releases the microphone and the peer, and hangs up the call on the
+  server. A refusal as `CALL_NOT_FOUND` or `NOT_CARRYING_SESSION` ends it the same way at once. A
+  read of the call from before a reconnect is read again and never taken, so a finished reconnect
+  does not start another. After a server restart the live stream's first open reads every topic
+  again, which is how the client learns that the call waits.
 - **Approvals during a call.** The call screen lists the cards of the proposals on the call's
   thread, read through `approvals.listItems` and `approvals.readProposals`, so a card follows its
   proposal through an answer. Only the device that carries the call has the call's thread, so the

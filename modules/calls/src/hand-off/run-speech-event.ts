@@ -1,5 +1,5 @@
 import { match } from 'ts-pattern';
-import type { Call, CallsContext, HandOff, SpeechEvent } from '../types';
+import type { Call, CallsContext, HandOff, SpeechEvent, SpeechOrigin } from '../types';
 import { startReconnectWait } from '../utils/start-reconnect-wait';
 import { startHoldingLine } from './start-holding-line';
 import { writeHandOff } from './write-hand-off';
@@ -13,7 +13,7 @@ export function runSpeechEvent(
   context: CallsContext,
   call: Call,
   event: SpeechEvent,
-  signal: AbortSignal,
+  origin: SpeechOrigin,
 ): Promise<void> {
   return match(event)
     .with({ kind: 'heard' }, (heard) => writeHeardLine(context, call, heard.text))
@@ -27,7 +27,7 @@ export function runSpeechEvent(
 
       return Promise.resolve();
     })
-    .with({ kind: 'hand_off' }, (handOff) => runHandOff(context, call, handOff, signal))
+    .with({ kind: 'hand_off' }, (handOff) => runHandOff(context, call, handOff, origin))
     .with({ kind: 'cut' }, (cut) => runCut(context, call, cut))
     .with({ kind: 'session_ending' }, () => {
       startReconnectWait(context, call.callID, 'session_limit');
@@ -49,7 +49,7 @@ async function runHandOff(
   context: CallsContext,
   call: Call,
   handOff: Extract<SpeechEvent, { kind: 'hand_off' }>,
-  signal: AbortSignal,
+  origin: SpeechOrigin,
 ): Promise<void> {
   const smallTalk = context.runtime.smallTalk.get(call.callID) ?? [];
 
@@ -59,7 +59,13 @@ async function runHandOff(
 
   const holding = new AbortController();
 
-  handOffs.set(handOff.handOffID, { isAnswered: false, replyRecordID: null, holding });
+  handOffs.set(handOff.handOffID, {
+    sessionID: origin.sessionID,
+    isAnswered: false,
+    replyRecordID: null,
+    holding,
+  });
+
   context.runtime.handOffs.set(call.callID, handOffs);
 
   await writeHandOff(context, call, {
@@ -73,7 +79,7 @@ async function runHandOff(
     context,
     call,
     handOff.handOffID,
-    AbortSignal.any([signal, holding.signal]),
+    AbortSignal.any([origin.signal, holding.signal]),
   );
 }
 

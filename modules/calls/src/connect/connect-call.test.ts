@@ -1,9 +1,10 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readBudgetLedger } from '@heynixie/budgets';
 import { seedBudgetInForce } from '@heynixie/budgets/test-utils';
-import { readRecords } from '@heynixie/log';
+import { readRecords, subscribeToChanged } from '@heynixie/log';
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
+import { sendTurnAnswer } from '../hand-off/send-turn-answer';
 import { hangUpCall } from '../hang-up/hang-up-call';
 import { startCall } from '../start/start-call';
 import { buildTestCallsContext, probeStubbedCaller, startTestCalls } from '../test-utils';
@@ -16,6 +17,21 @@ async function setupTest() {
 
   return {
     ...ctx,
+
+    // Starts to listen as a device does, and settles when the calls topic next changes.
+    listenForCallsChange: () => {
+      const changed = Promise.withResolvers<void>();
+
+      const stop = subscribeToChanged(ctx.writer, (topics) => {
+        if (topics.includes('calls')) {
+          changed.resolve();
+        }
+      });
+
+      onTestFinished(stop);
+
+      return changed.promise;
+    },
     startRingingCall: async () => {
       const started = await startCall(ctx.context, { carryingSession: 'identity-1' });
 
@@ -404,13 +420,15 @@ test('it moves a live call to a new session on a new offer after the speech sess
 
   await connectCall(ctx.context, request);
 
+  const signal = ctx.listenForCallsChange();
+
   ctx.speech.emit('fake-session-1', { kind: 'dropped' });
 
-  await waitFor(async () => {
-    const view = await readCallView(ctx.context, callID);
+  await signal;
 
-    expect(view?.reconnect).toBe('dropped');
-  });
+  const waiting = await readCallView(ctx.context, callID);
+
+  expect(waiting?.reconnect).toBe('dropped');
 
   const result = await connectCall(ctx.context, { ...request, sdpOffer: 'offer-2' });
   const ledger = await readBudgetLedger(ctx.writer.db, ctx.context.budgets, 'call-day');
@@ -469,13 +487,15 @@ test('it closes the old session once a session that is near its limit gets its n
 
   await connectCall(ctx.context, request);
 
+  const signal = ctx.listenForCallsChange();
+
   ctx.speech.emit('fake-session-1', { kind: 'session_ending' });
 
-  await waitFor(async () => {
-    const view = await readCallView(ctx.context, callID);
+  await signal;
 
-    expect(view?.reconnect).toBe('session_limit');
-  });
+  const waiting = await readCallView(ctx.context, callID);
+
+  expect(waiting?.reconnect).toBe('session_limit');
 
   await connectCall(ctx.context, request);
 
@@ -507,4 +527,108 @@ test('it refuses a new offer for a live call that holds its session and waits fo
   const result = await connectCall(ctx.context, request);
 
   expect(result).toStrictEqual({ status: 'refused', error: 'CALL_CONNECTED' });
+});
+
+test('it sends no answer to the new session for a turn of the old session that ends while the sessions swap', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const taskID = ctx.createdTasks[0]?.taskID;
+
+  invariant(taskID !== undefined, 'the call created its task');
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  ctx.speech.emit('fake-session-1', { kind: 'hand_off', handOffID: 'h1', request: 'what is on' });
+
+  await waitFor(async () => {
+    const thread = await readRecords(ctx.log, { afterSequence: 0, thread: taskID });
+
+    expect(thread).toHaveLength(1);
+  });
+
+  ctx.speech.emit('fake-session-1', { kind: 'session_ending' });
+
+  await waitFor(async () => {
+    const waiting = await readCallView(ctx.context, callID);
+
+    expect(waiting?.reconnect).toBe('session_limit');
+  });
+
+  const answering: Promise<void>[] = [];
+
+  // the record write of the swap reads the definitions after the new session is installed
+  const reconnected = await connectCall(
+    {
+      ...ctx.context,
+      definitions: () => {
+        answering.push(
+          sendTurnAnswer(ctx.context, {
+            callID,
+            taskID,
+            handOffID: 'h1',
+            replies: ['You have two things today.'],
+            replyRecordID: '12',
+            isFailed: false,
+          }),
+        );
+
+        return ctx.context.definitions();
+      },
+    },
+    request,
+  );
+
+  await Promise.all(answering);
+
+  expect({
+    status: reconnected.status,
+    answers: ctx.speech.calls.filter((entry) => entry.method === 'answer'),
+    dropped: ctx.logged
+      .map((entry) => entry.event)
+      .filter((event) => event === 'calls.answer_dropped'),
+  }).toStrictEqual({ status: 'connected', answers: [], dropped: ['calls.answer_dropped'] });
+});
+
+test('it sends no answer for a turn that ends after a restart, which no hand-off of this process holds', async () => {
+  const ctx = await setupTest();
+  const callID = await ctx.startRingingCall();
+
+  const taskID = ctx.createdTasks[0]?.taskID;
+
+  invariant(taskID !== undefined, 'the call created its task');
+
+  const request = {
+    callID,
+    session: 'identity-1',
+    sdpOffer: 'offer',
+    probeCaller: probeStubbedCaller,
+  };
+
+  await connectCall(ctx.context, request);
+
+  const restarted = buildTestCallsContext({ log: ctx.log, clock: ctx.clock });
+
+  await connectCall(restarted.context, request);
+
+  await sendTurnAnswer(restarted.context, {
+    callID,
+    taskID,
+    handOffID: 'h1',
+    replies: ['You have two things today.'],
+    replyRecordID: '12',
+    isFailed: false,
+  });
+
+  expect({
+    answers: restarted.speech.calls.filter((entry) => entry.method === 'answer'),
+    logged: restarted.logged.map((entry) => entry.event),
+  }).toStrictEqual({ answers: [], logged: ['calls.answer_dropped'] });
 });

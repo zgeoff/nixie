@@ -19,6 +19,9 @@ interface SetupOptions {
 
   // the answer to one connect, held until the test settles it
   readonly heldConnect?: { readonly call: number; readonly result: Promise<{ sdpAnswer: string }> };
+
+  // the answer to the hang-up, held until the test settles it
+  readonly heldHangUp?: Promise<void>;
 }
 
 function setupTest(options: SetupOptions = {}) {
@@ -57,7 +60,10 @@ function setupTest(options: SetupOptions = {}) {
     hangUp: (input) => {
       record.hangUps.push(input.callID);
 
-      return Promise.resolve({ callID: input.callID, state: 'ended' });
+      return (options.heldHangUp ?? Promise.resolve()).then(() => ({
+        callID: input.callID,
+        state: 'ended',
+      }));
     },
     get: () => Promise.resolve({ callID: 'c1', state: 'live', endedBy: null, reconnect: null }),
   };
@@ -169,8 +175,11 @@ test('#observe sends an ICE-restart offer on the open peer and a fresh connect w
   ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
 
   await waitFor(() => {
-    expect(ctx.session.getSnapshot().phase).toBe('live');
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
   });
+
+  ctx.peers[0]?.emitConnectionState('connected');
+  expect(ctx.session.getSnapshot().phase).toBe('live');
 
   expect({
     peers: ctx.peers.length,
@@ -201,8 +210,11 @@ test('#observe sends the new offer again after the timer when the server refuses
   ctx.timer.advance(2000);
 
   await waitFor(() => {
-    expect(ctx.session.getSnapshot().phase).toBe('live');
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
   });
+
+  ctx.peers[0]?.emitConnectionState('connected');
+  expect(ctx.session.getSnapshot().phase).toBe('live');
 
   expect([waiting, ctx.readCalls().connects]).toStrictEqual([
     'reconnecting',
@@ -312,11 +324,143 @@ test('#hangUp during a pending reconnect keeps the call ended when the reconnect
 
   held.resolve({ sdpAnswer: 'late-answer' });
 
-  await waitFor(() => {
-    expect(ctx.timer.countPending()).toBe(0);
+  // the session awaited the connect first, so it has run on to its next wait when this resumes
+  await held.promise;
+
+  expect({
+    phase: ctx.session.getSnapshot().phase,
+    answers: ctx.peers[0]?.answers,
+    pendingTimers: ctx.timer.countPending(),
+  }).toStrictEqual({ phase: 'ended', answers: ['answer-1'], pendingTimers: 0 });
+});
+
+test('#hangUp keeps the call from refusing or going live while the hang-up request runs', async () => {
+  const held = Promise.withResolvers<{ sdpAnswer: string }>();
+  const heldHangUp = Promise.withResolvers<void>();
+
+  const ctx = setupTest({
+    heldConnect: { call: 1, result: held.promise },
+    heldHangUp: heldHangUp.promise,
   });
 
-  expect(ctx.session.getSnapshot().phase).toBe('ended');
+  const starting = ctx.session.start();
+
+  await waitFor(() => {
+    expect(ctx.readCalls().connects).toHaveLength(1);
+  });
+
+  const hangingUp = ctx.session.hangUp();
+
+  held.reject(Object.assign(new Error('SPEECH_UNAVAILABLE'), { code: 'SPEECH_UNAVAILABLE' }));
+
+  await starting;
+
+  const whileHangingUp = ctx.session.getSnapshot().phase;
+
+  heldHangUp.resolve();
+
+  await hangingUp;
+
+  expect({
+    whileHangingUp,
+    phase: ctx.session.getSnapshot().phase,
+    endedBy: ctx.session.getSnapshot().endedBy,
+    hangUps: ctx.readCalls().hangUps,
+    stoppedTracks: ctx.stoppedTracks(),
+  }).toStrictEqual({
+    whileHangingUp: 'connecting',
+    phase: 'ended',
+    endedBy: 'you',
+    hangUps: ['c1'],
+    stoppedTracks: 1,
+  });
+});
+
+test('#hangUp sends one request when the user hangs up twice', async () => {
+  const heldHangUp = Promise.withResolvers<void>();
+  const ctx = setupTest({ heldHangUp: heldHangUp.promise });
+
+  await ctx.session.start();
+
+  const first = ctx.session.hangUp();
+  const second = ctx.session.hangUp();
+
+  heldHangUp.resolve();
+
+  await Promise.all([first, second]);
+
+  expect(ctx.readCalls().hangUps).toStrictEqual(['c1']);
+});
+
+test.each([['CALL_NOT_FOUND'], ['NOT_CARRYING_SESSION']])(
+  '#observe ends the call, and stops the microphone and the peer, when the server refuses the new offer as %s',
+  async (code) => {
+    const ctx = setupTest({ connectErrors: [null, code] });
+
+    await ctx.session.start();
+
+    ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'dropped' });
+
+    await waitFor(() => {
+      expect(ctx.session.getSnapshot().phase).toBe('ended');
+    });
+
+    ctx.timer.advance(30_000);
+
+    expect({
+      endedBy: ctx.session.getSnapshot().endedBy,
+      isClosed: ctx.peers[0]?.isClosed(),
+      stoppedTracks: ctx.stoppedTracks(),
+      pendingTimers: ctx.timer.countPending(),
+    }).toStrictEqual({ endedBy: 'dropped', isClosed: true, stoppedTracks: 1, pendingTimers: 0 });
+  },
+);
+
+test('#observe gives up a call whose new offer was answered but whose connection did not come back within 30 s', async () => {
+  const ctx = setupTest();
+
+  await ctx.session.start();
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
+
+  await waitFor(() => {
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
+  });
+
+  const waiting = ctx.session.getSnapshot().phase;
+
+  ctx.timer.advance(30_000);
+
+  expect({
+    waiting,
+    phase: ctx.session.getSnapshot().phase,
+    endedBy: ctx.session.getSnapshot().endedBy,
+    isClosed: ctx.peers[0]?.isClosed(),
+    stoppedTracks: ctx.stoppedTracks(),
+  }).toStrictEqual({
+    waiting: 'reconnecting',
+    phase: 'ended',
+    endedBy: 'dropped',
+    isClosed: true,
+    stoppedTracks: 1,
+  });
+});
+
+test('#observe keeps a call that connected after its new offer live past 30 s', async () => {
+  const ctx = setupTest();
+
+  await ctx.session.start();
+
+  ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
+
+  await waitFor(() => {
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
+  });
+
+  ctx.peers[0]?.emitConnectionState('connected');
+  ctx.timer.advance(30_000);
+
+  expect([ctx.session.getSnapshot().phase, ctx.timer.countPending()]).toStrictEqual(['live', 0]);
 });
 
 test('#dispose stops the microphone and the peer of a call that is still open', async () => {
@@ -337,8 +481,11 @@ test('#observe reconnects on a new peer when the connection failed', async () =>
   ctx.peers[0]?.emitConnectionState('failed');
 
   await waitFor(() => {
-    expect(ctx.session.getSnapshot().phase).toBe('live');
+    expect(ctx.peers[1]?.answers).toHaveLength(1);
   });
+
+  ctx.peers[1]?.emitConnectionState('connected');
+  expect(ctx.session.getSnapshot().phase).toBe('live');
 
   expect({ peers: ctx.peers.length, firstClosed: ctx.peers[0]?.isClosed() }).toStrictEqual({
     peers: 2,
@@ -381,8 +528,9 @@ test('#observe notes when the reconnect finished, so a read of the call from bef
   ctx.session.observe({ state: 'live', endedBy: null, reconnect: 'restart' });
 
   await waitFor(() => {
-    expect(ctx.session.getSnapshot().reconnectedAtMs).toBe(1000);
+    expect(ctx.peers[0]?.answers).toHaveLength(2);
   });
 
-  expect(before).toBeNull();
+  ctx.peers[0]?.emitConnectionState('connected');
+  expect([before, ctx.session.getSnapshot().reconnectedAtMs]).toStrictEqual([null, 1000]);
 });

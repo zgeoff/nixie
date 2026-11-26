@@ -126,7 +126,16 @@ export interface ReconnectWait {
   readonly sinceMs: number;
 }
 
+// Where a speech event comes from: the session that made it, and the signal that ends its watch.
+export interface SpeechOrigin {
+  readonly sessionID: string;
+  readonly signal: AbortSignal;
+}
+
 export interface HandOff {
+  // the speech session that made the hand-off, which alone may take its answer
+  readonly sessionID: string;
+
   // set once the module has sent nixie's answer for the hand-off
   isAnswered: boolean;
 
