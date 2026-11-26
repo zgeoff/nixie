@@ -91,6 +91,9 @@ export function writeLeasedRecords(
 export interface QueuedCall {
   readonly arguments: JSONObject;
   readonly snapshotHash: string;
+
+  // epoch ms when the queue recorded the action
+  readonly queuedAtMs: number;
 }
 
 export async function readQueuedCall(
@@ -115,6 +118,7 @@ export async function readQueuedCall(
   return {
     arguments: args,
     snapshotHash: firstAttempt ?? entry.record.definitions.snapshotHash,
+    queuedAtMs: entry.record.recordedAt.getTime(),
   };
 }
 

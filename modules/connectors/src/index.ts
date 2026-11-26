@@ -67,6 +67,10 @@ export { collectHeldBackTools, pickAvailableActions } from './google/pick-availa
 export { ScopeCheckError } from './google/check-google-scopes';
 export type { GmailAccess, GmailDeps } from './google/gmail/types';
 export { buildGmailActions } from './google/gmail/build-gmail-actions';
+export { buildGoogleActions } from './google/build-google-actions';
+export { calendarCheckName, calendarToolNames } from './google/calendar/calendar-tool-names';
+export { driveCheckName, driveToolNames } from './google/drive/drive-tool-names';
+export { readGoogleBodyFields } from './google/read-google-body-fields';
 export { gmailCheckNames, gmailToolNames } from './google/gmail/gmail-tool-names';
 export { gmailDeclarations } from './google/gmail/gmail-declarations';
 export { readGmailBodyFields } from './google/gmail/read-gmail-body-fields';
@@ -173,3 +177,5 @@ export { buildGmailArrivalSource } from './google/gmail/poll/build-gmail-arrival
 export { collectGmailConnections } from './google/gmail/poll/collect-gmail-connections';
 export { isGmailPolled } from './google/gmail/poll/is-gmail-polled';
 export { gmailConfigSchema } from './google/gmail/gmail-config-schema';
+export { readPickedFiles } from './google/drive/read-picked-files';
+export type { PickedFile } from './google/drive/read-picked-files';

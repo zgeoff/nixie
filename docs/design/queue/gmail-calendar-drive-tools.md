@@ -1,9 +1,10 @@
 # Google tools
 
 - **Status:** agreed
-- **Work items:** [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826), which builds on
-  the [Google connection](google-connections.md) and the built
-  [Gmail tools](../../architecture/connectors/gmail-tools.md).
+- **Built on:** the [Google connection](google-connections.md) and the built
+  [Gmail tools](../../architecture/connectors/gmail-tools.md). The Calendar and Drive tools are
+  built, so nothing is left to build for them. The parts of the Gmail tools still to build are under
+  "Not built yet".
 
 nixie reads, searches and labels your Gmail, sends mail, and reads and changes your calendar and the
 Drive files you give it, through one Google connection. Every read asks Google live, inside the
@@ -14,17 +15,18 @@ a send runs as an [action](../../architecture/core/actions.md), and the
 the effects the tool declares and the destinations nixie reads from Google. When an attempt's
 outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.
 
-Below are the rules for every Google tool, and the parts of the Gmail tools not built yet. Find the
-rest in [Calendar and Drive tools](google-calendar-drive-tools.md). The Gmail tools are `gmail.*`.
-The `mail.*` tools belong to the assistant's own mailbox, in the
-[mail design](https://github.com/zgeoff/nixie/pull/1420). That design also holds `gmail.wake_set`,
+Read this when you change a Google tool, add one, or build a part of the Gmail tools that is not
+built yet. For a change or a new tool, keep each rule under "Every Google tool", then take the
+tool's own contract from the architecture doc for its connector. For a missing part of the Gmail
+tools, start from "Not built yet". The
+[Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md) are built and
+follow these rules; their per-tool contracts are in that doc. The Google tools are the `gmail.*`,
+`calendar.*` and `drive.*` tools. The `mail.*` tools belong to the assistant's own mailbox, in the
+[mail design](https://github.com/zgeoff/nixie/pull/1420). That design also defines `gmail.wake_set`,
 `gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
-`gmail.reply`. They are built in the mail polls work item. The tokens, the consent and the scopes
-belong to the [Google connection](google-connections.md). How a call and its errors reach the model
-is in [tool calls](../../architecture/connectors/tool-calls.md).
-
-Build the [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826) work item from this page,
-and leave the open questions in that issue to the owner.
+`gmail.reply`. Build those in the mail polls work item. For the tokens, the consent and the scopes,
+see the [Google connection](google-connections.md). For how a call and its errors reach the model,
+see [tool calls](../../architecture/connectors/tool-calls.md).
 
 ## Shape
 
@@ -46,8 +48,8 @@ flowchart LR
 
 The connector's `actions`, the tool endpoint's `resolveInput` and `prepare`, the reply targets, and
 the item and connection IDs are built; see the
-[Gmail tools](../../architecture/connectors/gmail-tools.md) doc. Build each Calendar or Drive tool
-on the same shapes:
+[Gmail tools](../../architecture/connectors/gmail-tools.md) doc. Use them in every Google tool, as
+the Calendar and Drive tools do, and follow these rules:
 
 - Every event and file ID a Google tool returns starts with its connection's short ID and a dot.
   When a tool takes an item ID, resolve its connection from that prefix. Give every other tool the
@@ -108,8 +110,8 @@ These parts of the Gmail tools are not built yet:
 
 - **The Google tools are `gmail.*`, `calendar.*` and `drive.*`, with the names in
   [the Gmail tools](../../architecture/connectors/gmail-tools.md#the-tools) and
-  [Calendar and Drive tools](google-calendar-drive-tools.md#the-tools).** `mail.*` names only the
-  assistant's own mailbox.
+  [Calendar and Drive tools](../../architecture/connectors/calendar-drive-tools.md#the-tools).** Use
+  `mail.*` only for the assistant's own mailbox.
 - **The card sentences and approve buttons are those in the
   [Gmail card table](../../architecture/connectors/gmail-tools.md#the-card).**
 - **Reads are live.** With no store, nixie has no sync to keep and no new forget path.

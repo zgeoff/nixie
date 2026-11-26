@@ -11,9 +11,10 @@ metadata:
 
 # Verify nixie
 
-Use `bun verify` to start the app, use each feature your change touches the way a user would, and
+Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
-[Check a change](#check-a-change), and hand back the PR link and each feature you could not verify.
+[Check a change](#check-a-change). You are done once the report is published and the run is ended.
+Hand back the PR link and each feature you could not verify, as the **Reply** line at the end says.
 Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
 description.
 
@@ -75,6 +76,8 @@ The mistakes that cost the most time:
 | mail-wake          | Mail wakes the chat                                                       | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
 | gmail-tools        | Search and read a mail, and approve the reply the assistant writes        | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
 | gmail-wake         | A Gmail mail wakes the chat when a rule matches                           | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
+| calendar-tools     | Read the calendar, and approve an invitation the assistant writes         | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
+| drive-tools        | Search the files, and create a text file                                  | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
 
 <!-- /wringer:features -->
 

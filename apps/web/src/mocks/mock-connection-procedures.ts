@@ -20,6 +20,7 @@ export const mockConnectionProcedures = {
           ? null
           : {
               client: client.client,
+              clientID: client.clientID,
               origin: client.origin,
               redirectURI: client.redirectURI,
               fingerprint: client.fingerprint,
@@ -213,6 +214,24 @@ export const mockConnectionProcedures = {
     });
 
     return forget;
+  }),
+
+  checkPicked: mockImplementer.connections.checkPicked.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    const connection = connectionStore.connections.findFirst((query) =>
+      query.where({ connection: options.input.connection }),
+    );
+
+    if (connection === undefined) {
+      throw options.errors.CONNECTION_NOT_FOUND();
+    }
+
+    return options.input.files.map((file) =>
+      file.startsWith('hidden-')
+        ? { file, name: null, isVisible: false }
+        : { file, name: `Picked ${file}`, isVisible: true },
+    );
   }),
 
   readForgetStatus: mockImplementer.connections.readForgetStatus.handler((options) => {

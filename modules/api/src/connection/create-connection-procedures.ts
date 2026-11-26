@@ -392,6 +392,20 @@ export function createConnectionProcedures(context: APIContext) {
       return readContractForgetStatus(context, current?.state ?? forgetSchema.parse(run.result));
     }),
 
+    checkPicked: connections.checkPicked.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      requirePort(options.errors.CONNECTIONS_NOT_STARTED);
+
+      const picked = await context.readPickedFiles?.(options.input.connection, options.input.files);
+
+      if (picked === null || picked === undefined) {
+        throw options.errors.CONNECTION_NOT_FOUND();
+      }
+
+      return [...picked];
+    }),
+
     readForgetStatus: connections.readForgetStatus.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 

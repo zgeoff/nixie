@@ -1,7 +1,12 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
 import type { CallsContext } from '@heynixie/calls';
 import type { ConnectionsPort } from '@heynixie/connections';
-import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/connectors';
+import type {
+  ComputerTakeover,
+  PickedFile,
+  WatchConnection,
+  WatchSocket,
+} from '@heynixie/connectors';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
@@ -143,6 +148,13 @@ export interface APIContext extends TasksContext {
   // The Google connections, which start after the API context. Null before they start, and absent
   // where the server holds none.
   readonly readConnections?: () => ConnectionsPort | null;
+
+  // Reads each file that the owner picked in Drive's picker, with the connection's own token. Null
+  // when the connection is not live, and absent where the server holds none.
+  readonly readPickedFiles?: (
+    connection: string,
+    files: readonly string[],
+  ) => Promise<readonly PickedFile[] | null>;
 
   // The MCP proxy, which starts after the API context. Null before it starts, and absent where the
   // server holds none.

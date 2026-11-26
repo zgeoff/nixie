@@ -34,6 +34,7 @@ const setupStepSchema = z.object({
 
 const registeredClientSchema = z.object({
   client: z.string(),
+  clientID: z.string(),
   origin: z.string(),
   redirectURI: z.string(),
   fingerprint: z.string(),
@@ -70,6 +71,20 @@ const shortIDSchema = z.string().min(1).max(100);
 const shortIDsSchema = z.array(shortIDSchema).min(1).max(50);
 const listedForgetSchema = forgetStatusSchema.extend({ connection: z.string() });
 const pickerKeySchema = z.string().min(1).max(200);
+
+const pickedFileSchema = z.object({
+  file: z.string(),
+
+  // null when nixie cannot see the file
+  name: z.string().nullable(),
+  isVisible: z.boolean(),
+});
+
+const pickedInputSchema = z.object({
+  connection: shortIDSchema,
+  files: z.array(z.string().min(1).max(200)).min(1).max(50),
+});
+
 const projectNumberSchema = z.string().regex(/^\d{4,20}$/u);
 
 export const connectionsContract = {
@@ -186,6 +201,11 @@ export const connectionsContract = {
     .errors({ CONNECTION_NOT_FOUND: connectionNotFound })
     .input(z.object({ clientActionID: z.uuid(), connection: shortIDSchema }))
     .output(forgetStatusSchema),
+
+  checkPicked: connectionsProcedure
+    .errors({ CONNECTION_NOT_FOUND: connectionNotFound })
+    .input(pickedInputSchema)
+    .output(z.array(pickedFileSchema)),
 
   readForgetStatus: connectionsProcedure
     .errors({ CONNECTION_NOT_FOUND: connectionNotFound })
