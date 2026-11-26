@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { PartPlanError } from './part-plan-error';
 import { planParts } from './plan-parts';
 import type { PartPlan } from './plan-parts';
 import { startPartGraph } from './start-part-graph';
@@ -49,6 +50,46 @@ test('it fails naming both features when a part requires a feature that is off',
       ],
     ),
   ).toThrowWithMessage(Error, /google feature requires the mcp feature, which is off/u);
+});
+
+test.each<{ title: string; featuresOn: ('google' | 'mcp')[]; requires: 'mcp'[] }>([
+  { title: 'is not in its requires', featuresOn: ['google', 'mcp'], requires: [] },
+  { title: 'is not in its requires and is off', featuresOn: ['google'], requires: [] },
+  { title: 'is in its requires but is off', featuresOn: ['google'], requires: ['mcp'] },
+])(
+  'it fails naming both features when a feature part needs a part of another feature that $title',
+  (row) => {
+    expect(() =>
+      planParts<Values>(row.featuresOn, [
+        { name: 'extra', feature: 'mcp', needs: [], start: () => Promise.resolve('extra') },
+        {
+          name: 'feat',
+          feature: 'google',
+          requires: row.requires,
+          needs: ['extra'],
+          start: () => Promise.resolve('feat'),
+        },
+      ]),
+    ).toThrowWithMessage(PartPlanError, /google.*mcp/u);
+  },
+);
+
+test('it keeps a feature part that needs a part of a feature it requires and that is on', () => {
+  const plan = planParts<Values>(
+    ['google', 'mcp'],
+    [
+      { name: 'extra', feature: 'mcp', needs: [], start: () => Promise.resolve('extra') },
+      {
+        name: 'feat',
+        feature: 'google',
+        requires: ['mcp'],
+        needs: ['extra'],
+        start: () => Promise.resolve('feat'),
+      },
+    ],
+  );
+
+  expect(plan.parts.map((part) => part.name)).toStrictEqual(['extra', 'feat']);
 });
 
 test('it fails when a core part lists a feature part in needs', () => {

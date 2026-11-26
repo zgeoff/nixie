@@ -11,7 +11,8 @@ export interface PartPlan<Values> {
 }
 
 // Leaves out each part whose feature is off, and throws when a part's declarations break a rule of
-// features: a core part that needs a feature part, or a part that requires a feature that is off.
+// features: a core part that needs a feature part, a feature part that needs another feature's part
+// without requiring that feature, or a part that requires a feature that is off.
 export function planParts<Values>(
   featuresOn: readonly FeatureID[],
   declarations: readonly AnyPartDeclaration<Values>[],
@@ -48,6 +49,21 @@ export function planParts<Values>(
       if (!featuresOn.includes(required)) {
         throw new PartPlanError(
           `part ${String(declaration.name)} of the ${declaration.feature ?? 'core'} feature requires the ${required} feature, which is off. Turn ${required} on in the config, or turn ${declaration.feature ?? 'its feature'} off.`,
+        );
+      }
+    }
+
+    for (const name of declaration.needs) {
+      const needed = featureOf.get(name);
+
+      if (
+        declaration.feature !== undefined &&
+        needed !== undefined &&
+        needed !== declaration.feature &&
+        !(declaration.requires ?? []).includes(needed)
+      ) {
+        throw new PartPlanError(
+          `part ${String(declaration.name)} of the ${declaration.feature} feature lists part ${String(name)} of the ${needed} feature in needs, but does not require the ${needed} feature. Add ${needed} to its requires.`,
         );
       }
     }
