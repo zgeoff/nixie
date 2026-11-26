@@ -306,7 +306,7 @@ export async function runVerifyHarness(): Promise<void> {
         return {
           method: write.method,
           sendUpdates: write.sendUpdates,
-          title: String(event?.['summary'] ?? ''),
+          title: typeof event?.['summary'] === 'string' ? event['summary'] : '',
           guests: collectGuestAddresses(event?.['attendees']),
         };
       }),

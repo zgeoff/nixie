@@ -19,7 +19,10 @@ export function makeResolveCreateInput(
       return resolved;
     }
 
-    const [live] = await deps.access.readLiveContexts(String(resolved.input['connection']));
+    const connection = resolved.input['connection'];
+    const connectionName = typeof connection === 'string' ? connection : '';
+
+    const [live] = await deps.access.readLiveContexts(connectionName);
 
     const guests = resolved.input['guests'];
 

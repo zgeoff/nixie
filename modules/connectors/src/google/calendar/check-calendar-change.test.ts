@@ -75,7 +75,7 @@ test('it finds a created event by the ID that the action gives it', async () => 
   expect(outcome).toStrictEqual({
     kind: 'found',
     result: {
-      event: `k3x9m2p7qa.${'0b9d3c4e7a214f0e8c551e6f2a9d4c03'}`,
+      event: 'k3x9m2p7qa.0b9d3c4e7a214f0e8c551e6f2a9d4c03',
       link: expect.stringContaining('0b9d3c4e7a214f0e8c551e6f2a9d4c03'),
     },
   });
@@ -159,7 +159,7 @@ test('it finds a created event by its marker even when the read by ID fails', as
   ctx.createEvent({ privateProperties: { nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03: '1795165200' } });
 
   ctx.site.calendar.failures.push({
-    line: `GET /calendar/v3/calendars/primary/events/${'0b9d3c4e7a214f0e8c551e6f2a9d4c03'}`,
+    line: 'GET /calendar/v3/calendars/primary/events/0b9d3c4e7a214f0e8c551e6f2a9d4c03',
     status: 500,
   });
 
@@ -172,7 +172,7 @@ test('it answers inconclusive for a created event when the read by ID fails and 
   const ctx = await setupTest();
 
   ctx.site.calendar.failures.push({
-    line: `GET /calendar/v3/calendars/primary/events/${'0b9d3c4e7a214f0e8c551e6f2a9d4c03'}`,
+    line: 'GET /calendar/v3/calendars/primary/events/0b9d3c4e7a214f0e8c551e6f2a9d4c03',
     status: 500,
   });
 

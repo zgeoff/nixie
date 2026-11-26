@@ -220,7 +220,8 @@ test('it reads a text file from its stored bytes in parts, each with the time of
 
   const first = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 1 });
 
-  const version = first.status === 'ok' ? String(first.result['version']) : '';
+  const firstVersion = first.status === 'ok' ? first.result['version'] : undefined;
+  const version = typeof firstVersion === 'string' ? firstVersion : '';
 
   const second = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 2, version });
 
@@ -237,7 +238,8 @@ test('it fails a part that the file does not have', async () => {
 
   const first = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}` });
 
-  const version = first.status === 'ok' ? String(first.result['version']) : '';
+  const firstVersion = first.status === 'ok' ? first.result['version'] : undefined;
+  const version = typeof firstVersion === 'string' ? firstVersion : '';
 
   const outcome = await ctx.runRead({ file: `k3x9m2p7qa.${seeded.id}`, part: 5, version });
 

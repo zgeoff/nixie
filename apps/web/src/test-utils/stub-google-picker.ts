@@ -32,7 +32,9 @@ export function stubGooglePicker(answers: StubAnswers): StubbedGooglePicker {
               const onAnswer = config['callback'];
 
               if (typeof onAnswer === 'function') {
-                onAnswer({ access_token: 'browser-token', scope: answers.scope });
+                Reflect.apply(onAnswer, undefined, [
+                  { access_token: 'browser-token', scope: answers.scope },
+                ]);
               }
             },
           };

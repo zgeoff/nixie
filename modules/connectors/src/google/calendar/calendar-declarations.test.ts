@@ -113,14 +113,15 @@ test('it checks each queued write with calendar.find_change no sooner than 5 min
 
   const reconciles = ctx.calendarActions
     .filter((action) => action.queued !== undefined)
-    .map((action) => action.reconcile);
+    .map((action) => action.reconcile)
+    .map(
+      (reconcile) =>
+        reconcile.kind === 'check' &&
+        reconcile.tool === 'calendar.find_change' &&
+        reconcile.trustNegativeAfterMs === 300_000,
+    );
 
-  expect(reconciles).toSatisfyAll(
-    (reconcile) =>
-      reconcile.kind === 'check' &&
-      reconcile.tool === 'calendar.find_change' &&
-      reconcile.trustNegativeAfterMs === 300_000,
-  );
+  expect(reconciles).not.toContain(false);
 });
 
 test.each([

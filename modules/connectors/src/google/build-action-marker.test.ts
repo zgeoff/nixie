@@ -40,8 +40,10 @@ test('#isMarkerKept keeps a marker that is among the 10 newest', () => {
 });
 
 test('#buildActionMarker keys the marker by the action ID without hyphens and values it by the queued time', () => {
+  const actionHex = '0b9d3c4e7a214f0e8c551e6f2a9d4c03';
+
   expect(buildActionMarker('0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03', 1_794_550_000)).toStrictEqual({
-    key: `nixie${'0b9d3c4e7a214f0e8c551e6f2a9d4c03'}`,
+    key: `nixie${actionHex}`,
     value: '1794550000',
   });
 });
@@ -86,9 +88,9 @@ test('#collectStaleMarkerKeys deletes none while the item holds fewer than 10 ma
 test('#collectStaleMarkerKeys never deletes the marker it keeps', () => {
   const marker = buildActionMarker('0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03', 5);
 
-  const properties = Object.fromEntries([
+  const properties = Object.fromEntries<string>([
     [marker.key, '5'],
-    ...Array.from({ length: 10 }, (_, index) => [
+    ...Array.from({ length: 10 }, (_, index): [string, string] => [
       `nixie${String(index).padStart(32, '0')}`,
       String(100 + index),
     ]),

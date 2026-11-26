@@ -77,7 +77,7 @@ test('it creates an event with the action ID as its ID and asks Google to email 
     {
       kind: 'success',
       result: {
-        event: `k3x9m2p7qa.${'0b9d3c4e7a214f0e8c551e6f2a9d4c03'}`,
+        event: 'k3x9m2p7qa.0b9d3c4e7a214f0e8c551e6f2a9d4c03',
         link: expect.stringContaining('0b9d3c4e7a214f0e8c551e6f2a9d4c03'),
       },
     },
@@ -157,7 +157,7 @@ test('it puts an event of another calendar in that calendar, and names it in the
   expect(response).toMatchObject({
     kind: 'success',
     result: {
-      event: `k3x9m2p7qa.${'0b9d3c4e7a214f0e8c551e6f2a9d4c03'}@team@group.calendar.google.com`,
+      event: 'k3x9m2p7qa.0b9d3c4e7a214f0e8c551e6f2a9d4c03@team@group.calendar.google.com',
     },
   });
 });
