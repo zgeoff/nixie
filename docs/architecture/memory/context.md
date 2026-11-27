@@ -403,14 +403,17 @@ claims work. The aborted turn's step fails and runs again after its retry delay,
 finds the invalidated record and rebuilds the session.
 
 The user may have read a reply that the aborted turn wrote, so the turn keeps it and writes no void
-([conversation turns](../core/conversation-turns.md#records-of-a-turn)). The conversation's rerun
-reads each message before the newest kept reply as answered. It acknowledges those messages without
-a turn, and answers only the messages after that reply.
+([conversation turns](../core/conversation-turns.md#records-of-a-turn)). Each reply names the
+messages that the turn had read when it wrote the reply. The conversation's rerun counts those
+messages as answered and acknowledges them without a turn. It answers every other message, one that
+landed before the reply but that the turn had not read included. A rerun that starts while the
+cleanup still waits holds its lost-reply sweep until the cleanup ends, so the sweep sees the
+invalidated record and leaves the kept reply alone.
 
-A shutdown ends each wait of a cleanup, for a turn to end and for a step to commit. The runners stop
-before the notebook and the memory store, which wait for the cleanups in flight, so the server ends
-those waits as the runners begin to stop. A cleanup that ends this way fails, and the next start
-runs it again.
+A shutdown ends each wait of a cleanup: for a turn to end, for a step to commit and for the guest
+purge to answer. The runners stop before the notebook and the memory store, which wait for the
+cleanups in flight, so the server ends those waits as the runners begin to stop. A cleanup that ends
+this way fails, and the next start runs it again.
 
 Backups and the memory export leave out the SDK transcript, a cache in the sandbox, so the purge in
 step 6 removes every copy of it.

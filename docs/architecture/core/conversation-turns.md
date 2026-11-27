@@ -410,14 +410,14 @@ stands. The context is therefore the last main-chain model call's input, cache-r
 tokens, beside the window nixie compacts within. The step turns these into records on the
 conversation's thread. The host writes a reply record for each message with text as the guest
 reports it, in a transaction of its own that the task's lease guards, so a reader sees the reply
-while the turn still runs. The reply's text is erasable, and its payload names the run that wrote
-it. The step commit writes one turn-ended record with the usage, the end reason, the context and the
-count of thinking tokens and the count of cut calls, which the plain payload holds so that a
-projection reads the count without a key and it outlives a forgotten reply. Each reply keeps the
-model's reasoning from before it: the summaries gathered since the previous reply sit in the reply's
-erasable fields, so a forget removes them with the reply. Each record holds the model ID and the
-profile's ID from the profile nixie gave the turn, never from the guest's frames
-([model profiles](./model-profiles.md#records-of-model-output)).
+while the turn still runs. The reply's text is erasable, and its payload names the run that wrote it
+and the inbox records that the turn had read by then. The step commit writes one turn-ended record
+with the usage, the end reason, the context and the count of thinking tokens and the count of cut
+calls, which the plain payload holds so that a projection reads the count without a key and it
+outlives a forgotten reply. Each reply keeps the model's reasoning from before it: the summaries
+gathered since the previous reply sit in the reply's erasable fields, so a forget removes them with
+the reply. Each record holds the model ID and the profile's ID from the profile nixie gave the turn,
+never from the guest's frames ([model profiles](./model-profiles.md#records-of-model-output)).
 
 A `model.reply_voided` record marks one reply as never sent to the user. Its payload holds the
 reply's sequence, the run's ID and the reason: `attempt_failed`, `attempt_lost`, `turn_dropped` or
@@ -426,9 +426,10 @@ lookup. The reasons mean:
 
 - `attempt_failed`: the attempt threw, and its own runner wrote the void before it rethrew;
 - `attempt_lost`: the runner died, and the next run of the step found the reply after the thread's
-  last step commit with no void, and voided it before it did anything else. A reply that sits before
-  a session-invalidated record is no such reply: a cleanup aborted its turn, and the turn keeps the
-  reply ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session));
+  last step commit with no void, and voided it before it did anything else, once any cleanup in
+  flight had ended. A reply that sits before a session-invalidated record is no such reply: a
+  cleanup aborted its turn, and the turn keeps the reply
+  ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session));
 - `turn_dropped`: the reply came after the last result of the turn, or the turn's session was lost
   or overflowed, so the step starts the turn again from the boundary.
 

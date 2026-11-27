@@ -1,15 +1,14 @@
 import type { LogRecord } from '@heynixie/log';
 import { readThreadNewestFirst } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { collectKeptReplies } from './collect-kept-replies';
+import { collectAnsweredSequences } from './collect-answered-sequences';
 import { keptReplyKinds } from './kept-reply-kinds';
 
-// The sequence of the newest reply that an aborted turn kept, or null for none. Each message before
-// it was read by that turn.
-export async function readAnsweredThrough(
+// The sequences of the inbox records that the replies of an aborted turn answer.
+export async function readAnsweredSequences(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
-): Promise<number | null> {
+): Promise<ReadonlySet<number>> {
   const records: LogRecord[] = [];
 
   for await (const record of readThreadNewestFirst(context, taskID, keptReplyKinds)) {
@@ -20,5 +19,5 @@ export async function readAnsweredThrough(
     }
   }
 
-  return collectKeptReplies(records).at(-1) ?? null;
+  return collectAnsweredSequences(records);
 }

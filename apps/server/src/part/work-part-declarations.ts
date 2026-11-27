@@ -467,12 +467,11 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const harness = reader.get('inputs').options.harness;
 
       if (NIXIE_TEST_BUILD && harness !== undefined) {
-        registerHarnessOperations(
-          harness.link,
-          parts.context,
-          parts.apiContext.calls,
-          reader.get('context').mail?.memory ?? null,
-        );
+        registerHarnessOperations(harness.link, parts.context, {
+          calls: parts.apiContext.calls,
+          mail: reader.get('context').mail?.memory ?? null,
+          notebook: reader.get('notebook'),
+        });
 
         registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));
 

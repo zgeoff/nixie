@@ -8,20 +8,16 @@ export interface AnsweredInbox {
   readonly answered: readonly number[];
 }
 
-// A turn that a cleanup aborted kept the reply it wrote, so each record before that reply was read
-// and answered, and the rerun leaves it alone.
+// A turn that a cleanup aborted kept the replies it wrote, and each one names the records the turn
+// had read. The rerun leaves those records alone, and a record that the turn had not read stays.
 export function pickAnsweredInbox(
   inbox: readonly LogRecord[],
-  answeredThrough: number | null,
+  answeredSequences: ReadonlySet<number>,
 ): AnsweredInbox {
-  if (answeredThrough === null) {
-    return { remaining: inbox, answered: [] };
-  }
-
   return {
-    remaining: inbox.filter((record) => record.sequence > answeredThrough),
+    remaining: inbox.filter((record) => !answeredSequences.has(record.sequence)),
     answered: inbox
-      .filter((record) => record.sequence < answeredThrough)
+      .filter((record) => answeredSequences.has(record.sequence))
       .map((record) => record.sequence),
   };
 }

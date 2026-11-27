@@ -4,6 +4,7 @@ import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
+import type { NotebookStore } from '@heynixie/notebook';
 import { readPendingActionProposals } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
@@ -13,11 +14,16 @@ import invariant from 'tiny-invariant';
 import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
 import { harnessSpeech } from './harness-speech';
 
+export interface HarnessHosts {
+  readonly calls: CallsContext | undefined;
+  readonly mail: MemoryMailHost | null;
+  readonly notebook: NotebookStore;
+}
+
 export function registerHarnessOperations(
   link: HarnessLink,
   context: TasksContext,
-  calls: CallsContext | undefined,
-  mail: MemoryMailHost | null,
+  hosts: HarnessHosts,
 ): void {
   const schemas = buildNixieOperationSchemas();
 
@@ -60,14 +66,14 @@ export function registerHarnessOperations(
     return outcome.status === 'controlled' ? outcome.sequence : null;
   });
 
-  registerCallOperations(link, calls);
+  registerCallOperations(link, hosts.calls);
 
   link.registerOperation('deliverMail', schemas.deliverMail, (incoming) => {
-    if (mail === null) {
+    if (hosts.mail === null) {
       throw new Error('the config sets no mail section, so the test build has no mailbox');
     }
 
-    return mail.deliver(incoming).hostMessageID;
+    return hosts.mail.deliver(incoming).hostMessageID;
   });
 
   // The owner's approval of each pending device.addPackage call, which a journey cannot give with a
@@ -111,6 +117,24 @@ export function registerHarnessOperations(
     }
 
     return answers.approved;
+  });
+
+  link.registerOperation('forgetNoteBeside', schemas.forgetNoteBeside, async () => {
+    const written = await hosts.notebook.write(
+      { writer: 'conversation', model: 'harness' },
+      { title: 'Boiler notes', body: 'The boiler trips after a cold night.' },
+    );
+
+    invariant(written.status === 'written', 'the harness note was not written');
+
+    const begun = await hosts.notebook.forgetBeside(
+      { note: written.shortID },
+      { thread: 'harness' },
+    );
+
+    invariant(begun.status === 'begun', 'the harness note forget did not begin');
+
+    return null;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

@@ -21,8 +21,9 @@ interface CleanupGate {
   pending: number;
 }
 
-// shutdown: aborts when nixie stops. A cleanup then stops waiting for a turn that never ends, and
-// rejects, so a stalled turn never holds the shutdown. The next start runs the cleanup again.
+// shutdown: aborts when nixie stops. A cleanup then stops waiting for a turn that never ends or for
+// its own work, such as a guest purge that never answers, and rejects, so neither holds the
+// shutdown. The next start runs the cleanup again.
 export function makeSessionGuard(
   shutdown: AbortSignal = new AbortController().signal,
 ): SessionGuard {
@@ -80,7 +81,7 @@ async function runAfter(
   cleanup: () => Promise<void>,
 ): Promise<void> {
   await raceStop(Promise.all(before), shutdown);
-  await cleanup();
+  await raceStop(cleanup(), shutdown);
 }
 
 async function waitForCleanup(gate: CleanupGate, cleanup: Promise<void>): Promise<void> {

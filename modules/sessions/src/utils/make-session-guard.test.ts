@@ -234,3 +234,22 @@ test('it lets a turn that waits behind a stalled cleanup go once the shutdown be
 
   await blocker;
 });
+
+test('it rejects a cleanup whose own work never ends once the shutdown begins', async () => {
+  const shutdown = new AbortController();
+
+  const guard = makeSessionGuard(shutdown.signal);
+  const entered = Promise.withResolvers<void>();
+
+  const cleanup = guard.withInvalidation(() => {
+    entered.resolve();
+
+    return Promise.withResolvers<void>().promise;
+  });
+
+  await entered.promise;
+
+  shutdown.abort(new Error('nixie is stopping'));
+
+  await expect(cleanup).rejects.toThrow('nixie is stopping');
+});

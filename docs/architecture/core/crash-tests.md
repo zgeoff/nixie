@@ -81,7 +81,8 @@ inside nixie owns these parts:
   the process.
 - **Operations.** The test build registers operations that the test calls by name, such as sending a
   message to a thread or creating a task. The stale-writer test uses one that closes the process's
-  writer-lock descriptor without stopping it, as a bug would.
+  writer-lock descriptor without stopping it, as a bug would. Another writes a note and starts its
+  forget as a tool call does, so the forget's session cleanup runs beside the test's other work.
 
 A kill sends `SIGKILL` to the process and to every descendant, so a conversation guest dies with the
 nixie process that started it, as it does when a host reboots.

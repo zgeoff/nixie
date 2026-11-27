@@ -5,13 +5,13 @@ import {
   modelSessionInvalidatedCodec,
 } from '@heynixie/models';
 
-// The user may have read the reply of a turn that a cleanup aborted, so the turn keeps it, with no
-// void. Such a reply sits after the thread's last step commit and before the cleanup's
-// session-invalidated record. The records run newest first.
-export function collectKeptReplies(records: Iterable<LogRecord>): readonly number[] {
+// A turn that a cleanup aborted keeps its replies, with no void: they sit after the thread's last
+// step commit and before the cleanup's session-invalidated record. The inbox records each kept
+// reply names are answered. The records run newest first.
+export function collectAnsweredSequences(records: Iterable<LogRecord>): ReadonlySet<number> {
   const voided = new Set<number>();
+  const answered = new Set<number>();
 
-  const kept: number[] = [];
   let isInvalidated = false;
 
   for (const record of records) {
@@ -28,9 +28,11 @@ export function collectKeptReplies(records: Iterable<LogRecord>): readonly numbe
       record.kind === modelReplyCodec.kind &&
       !voided.has(record.sequence)
     ) {
-      kept.push(record.sequence);
+      for (const sequence of modelReplyCodec.decode(record.payload).readSequences ?? []) {
+        answered.add(sequence);
+      }
     }
   }
 
-  return kept.toReversed();
+  return answered;
 }
