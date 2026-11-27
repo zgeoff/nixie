@@ -295,10 +295,10 @@ checks in this order:
 1. The folder: a bad ID or a missing `task.yaml`.
 2. The YAML: text that is not YAML, or not a mapping.
 3. The unknown fields. A key that no schema of `task.yaml` knows, at any depth, skips the
-   definition, except a top-level `target` key, which the `target_removed` fault below refuses: the
-   seed loads no part of it, lists its files as unapplied, and logs a warning that names the
-   definition and the dotted path of the field. A `runner` key, or a trigger that holds only `log`
-   or `poll`, is an unknown field.
+   definition: the seed loads no part of it, lists its files as unapplied, and logs a warning that
+   names the definition and the dotted path of the field. A `runner` key, or a trigger that holds
+   only `log` or `poll`, is an unknown field. The one exception is a top-level `target` key, which
+   the `target_removed` fault below refuses.
 4. Every other fault, which refuses the seed.
 
 A definition may name a tool in `tools` by nixie's own name, such as `web_fetch`, or by the
@@ -410,11 +410,11 @@ reached a limit and that the user has not raised), the first of these that holds
    opens none. The step commits with a hold, the task is `waiting`, and an unread message stays
    unread.
 
-An unread fire comes first for this reason. A fire stays unread at a carry only after the user
-stopped an idle task run, and that task run has no work to carry. A message after a `limit` end
-belongs to the work that the raise carries on. A claim marks read a `trigger.fired` whose kind it
-does not know and opens no task run for it. A task run of a definition has no limit of its own on
-effects: the decision point treats its calls as it treats the conversation's.
+An unread fire comes first because a fire stays unread at a carry only after the user stopped an
+idle task run, and that task run has no work to carry. A message after a `limit` end belongs to the
+work that the raise carries on. A claim marks read a `trigger.fired` whose kind it does not know and
+opens no task run for it. A task run of a definition has no limit of its own on effects: the
+decision point treats its calls as it treats the conversation's.
 
 In the transaction that delivers a fire, the [trigger core](./triggers.md) asks the tasks module
 whether the task takes the fire, before it writes the fire's record. The first answer that holds
@@ -660,10 +660,9 @@ conversation refuses. A change that puts a definition in force, or an undefine, 
 to build its notice from.
 
 An undefine or an undo records the repo version it went on with, so the next seed compares it with
-the repo. A merge that the decision missed then ends as an adoption or a conflict and never as a
-silent overwrite. One definition has at most one runtime change in force, so a second change fails
-the unique index and its transaction. The lists show a definition whose change lost its body as
-unreadable.
+the repo. A merge that the decision missed then ends as an adoption or a conflict. One definition
+has at most one runtime change in force, so a second change fails the unique index and its
+transaction. The lists show a definition whose change lost its body as unreadable.
 
 An undo names a change X, and the first row of this table that fits decides:
 
