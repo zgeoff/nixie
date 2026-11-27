@@ -11,16 +11,15 @@ on it and the questions still open. Start the design with a `Status` line: `draf
 approves it, then `agreed`. Give every design in this folder a row in the table.
 
 When the work is built, move the design's lasting facts to
-[`docs/architecture/`](../../architecture/) then delete the design and its row in the table. A built
-design left here would describe code that has since changed, and a reader could not tell it from one
-still to build. When only part is built, move the built part's facts and trim the design to what is
-still to build.
+[`docs/architecture/`](../../architecture/), then delete the design and its row in the table. A
+built design left here would describe code that has since changed, and a reader could not tell it
+from one still to build. When only part is built, move the built part's facts and trim the design to
+what is still to build.
 
 | Area            | Designs                                                                                       |
 | --------------- | --------------------------------------------------------------------------------------------- |
 | Features        | [feature switches](feature-switches.md)                                                       |
 | Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)                                        |
-| Tasks           | [the coding session start](coding-session-runner.md)                                          |
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                         |
 | The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md) |
 | Web             | [the hop gate](hop-gate.md)                                                                   |
