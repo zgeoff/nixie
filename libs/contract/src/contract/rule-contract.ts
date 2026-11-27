@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { reusedIDErrors } from './reused-id-errors';
+import { ruleConditionSchema } from './rule-condition-schema';
 import { signedIn } from './signed-in';
 
 const ruleIDSchema = z.string().min(1).max(200);
@@ -11,6 +12,7 @@ const ruleSchema = z.object({
   sentence: z.string(),
   outcome: z.enum(['allow', 'ask', 'deny']),
   destinations: z.array(z.string()),
+  condition: ruleConditionSchema.optional(),
 });
 
 const notFound = { NOT_FOUND: { message: 'No rule has this ID', status: 404 } };
@@ -37,7 +39,12 @@ const closedStateSchema = z.object({
 
 const proposalIDSchema = z.string().min(1).max(64);
 const ruleFormSchema = z.record(z.string(), z.unknown());
-const mandateRuleSchema = z.object({ ruleID: z.string(), sentence: z.string() });
+
+const mandateRuleSchema = z.object({
+  ruleID: z.string(),
+  sentence: z.string(),
+  condition: ruleConditionSchema.optional(),
+});
 
 const mandateSchema = z.object({
   mandateID: z.string(),

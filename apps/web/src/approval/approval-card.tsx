@@ -6,6 +6,7 @@ import { toRuleDraft } from '../rule/rule-draft';
 import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import type { ApprovalRead } from '../types';
+import { ApprovalBounds } from './approval-bounds';
 import { ApprovalChanges } from './approval-changes';
 import { ApprovalControls } from './approval-controls';
 import { ApprovalImages } from './approval-images';
@@ -140,7 +141,7 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
               Show the rule's bounds
             </button>
           ) : (
-            <Bounds body={body} />
+            <ApprovalBounds body={body} />
           )}
           {body.images === undefined || body.images.length === 0 ? null : (
             <ApprovalImages imageIDs={body.images} />
@@ -234,64 +235,6 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
       {ruleID === null ? null : <ApprovalRuleNotice ruleID={ruleID} />}
     </section>
   );
-}
-
-const fieldList = css({ fontSize: 'sm', display: 'grid', gap: '1' });
-
-interface BoundsProps {
-  readonly body: NonNullable<ApprovalRead['body']>;
-}
-
-function Bounds(props: BoundsProps): ReactNode {
-  const fields = Object.entries(props.body.fields);
-
-  return (
-    <>
-      {fields.length === 0 ? null : (
-        <dl className={fieldList}>
-          {fields.map(([name, value]) => (
-            <div key={name}>
-              <dt className={css({ fontWeight: 'semibold' })}>{name}</dt>
-              <dd className={css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
-                {renderFieldValue(name, value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {props.body.ruleSentence === null ? null : (
-        <p className={meta}>
-          Always allow adds this rule: <RuleSentence sentence={props.body.ruleSentence} />
-        </p>
-      )}
-    </>
-  );
-}
-
-// A mandate names each of its rules in a field `rule 1`, `rule 2` and on, as a rule sentence.
-const ruleFieldPattern = /^rule \d+$/u;
-
-// A field that lists one entry per line, such as the items of a move, stays folded under its count
-// until the user opens it.
-const foldedLineFields = new Set(['items']);
-
-function renderFieldValue(name: string, value: string): ReactNode {
-  if (foldedLineFields.has(name)) {
-    const lines = value.split('\n');
-
-    return (
-      <details>
-        <summary>{`${String(lines.length)} ${lines.length === 1 ? 'item' : 'items'}`}</summary>
-        <ul className={css({ listStyle: 'none', paddingInlineStart: '0' })}>
-          {lines.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      </details>
-    );
-  }
-
-  return ruleFieldPattern.test(name) ? <RuleSentence sentence={value} /> : value;
 }
 
 interface OutcomeLineProps {

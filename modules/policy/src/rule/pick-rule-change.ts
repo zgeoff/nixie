@@ -39,7 +39,9 @@ function pickMatchChange(before: Rule, after: Rule): RuleChange {
     return 'unchanged';
   }
 
-  if (before.cel !== undefined || after.cel !== undefined) {
+  // adding, removing or changing a condition widens; the same condition leaves the other fields to
+  // decide, because an error acts the same on both sides
+  if (before.cel !== after.cel) {
     return 'widening';
   }
 

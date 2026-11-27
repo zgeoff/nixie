@@ -22,7 +22,19 @@ export const decisionSchema = z.object({
     .exactOptional(),
   ruleOthers: z.string().array().exactOptional(),
   cause: z
-    .enum(['direct_request', 'repeat', 'outside_steering', 'always_ask', 'ask_rule', 'no_rule'])
+    .enum([
+      'direct_request',
+      'repeat',
+      'outside_steering',
+      'always_ask',
+      'ask_rule',
+      'no_rule',
+      'condition_error',
+    ])
+    .exactOptional(),
+  conditionErrors: z
+    .object({ ruleID: z.string(), revision: z.number(), code: z.string() })
+    .array()
     .exactOptional(),
   defect: z.enum(['direct_request', 'repeat']).exactOptional(),
   permissions: permissionSchema.nullable().array().exactOptional(),

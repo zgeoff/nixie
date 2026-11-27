@@ -1375,6 +1375,65 @@ test('it writes one action proposal beside the call of an ask, and tells the mod
   expect(ctx.queue.actions).toStrictEqual([]);
 });
 
+test('it asks with the cause condition_error for a deny whose condition errors, and tells the model the rule and the code', async () => {
+  const ctx = await setupTest({
+    rules: [
+      {
+        id: 'deny-big-sends',
+        revision: 4,
+        rule: {
+          id: 'deny-big-sends',
+          outcome: 'deny',
+          effects: ['send'],
+          cel: 'args.count > 5',
+          note: 'Big sends never go out.',
+        },
+      },
+    ],
+    tools: [
+      buildMockToolDefinition({
+        name: 'gmail_send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'gmail_send', input: { query: 'hello' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['gmail_send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const called = entries.find((entry) => entry.record.kind === 'tool_called');
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(called?.record.decision).toMatchObject({
+    outcome: 'ask',
+    cause: 'condition_error',
+    rule: { id: 'deny-big-sends', revision: 4 },
+    conditionErrors: [{ ruleID: 'deny-big-sends', revision: 4, code: 'no_such_key' }],
+  });
+
+  expect(proposed?.record.payload).toMatchObject({
+    cause: 'condition_error',
+    conditionErrors: [{ ruleID: 'deny-big-sends', revision: 4, code: 'no_such_key' }],
+  });
+
+  expect(result.content.at(-1)).toStrictEqual({
+    type: 'text',
+    text: 'The condition of the rule `deny-big-sends` failed with the error no_such_key.',
+  });
+});
+
 test('it records an ask with the cause, the proposal and a queued result with no action', async () => {
   const ctx = await setupTest({
     tools: [
@@ -2018,6 +2077,103 @@ test('it runs a memory write that an ask rule decides with the ask verdict, and 
     stage: 6,
     cause: 'ask_rule',
     rule: { id: 'ask-memory', revision: 3 },
+  });
+});
+
+test('it runs a memory write that an allow rule with a condition on the subject covers with the allow verdict', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'], content: ['query'] },
+        resolvePolicyFacts: (input) =>
+          Promise.resolve({
+            status: 'ok',
+            sources: ['outside'],
+            args: { ...input, subject: 'owner' },
+          }),
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'allow-owner-facts',
+        revision: 3,
+        rule: {
+          id: 'allow-owner-facts',
+          outcome: 'allow',
+          tools: ['memory.remember'],
+          cel: 'args.subject == "owner"',
+          note: 'Facts about the user only.',
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([
+    { kind: 'rule-allow', rules: [{ id: 'allow-owner-facts', revision: 3, checks: [] }] },
+  ]);
+});
+
+test('it asks on the action card for a memory write whose ask rule errors, and the card names that rule and its code', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+      }),
+    ],
+    rules: [
+      {
+        id: 'ask-big-memory',
+        revision: 3,
+        rule: {
+          id: 'ask-big-memory',
+          outcome: 'ask',
+          effects: ['memory_write'],
+          cel: 'args.count > 5',
+          note: 'Ask about the big memory writes.',
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(proposed?.record.payload).toMatchObject({
+    conditionErrors: [{ ruleID: 'ask-big-memory', revision: 3, code: 'no_such_key' }],
   });
 });
 
@@ -2830,6 +2986,8 @@ test('it gives the proposal of an ask the lapse that the config sets for actions
     proposalConfig: { lapseDays: { ...defaultProposalConfig.lapseDays, action: 1 } },
   });
 
+  const startedAtMs = Date.now();
+
   await runToolCall(
     { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
     {
@@ -2845,10 +3003,12 @@ test('it gives the proposal of an ask the lapse that the config sets for actions
   const entries = await readRecords(ctx.log, { afterSequence: 0, kinds: ['proposals.proposed'] });
 
   const [proposed] = entries;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const lapsesAt = Number(proposed?.record.payload['lapsesAt']);
 
-  expect(proposed?.record.payload['lapsesAt']).toBe(
-    (proposed?.record.recordedAt.getTime() ?? 0) + 24 * 60 * 60 * 1000,
-  );
+  // The proposal reads the clock before the record is written, so it can lapse a millisecond early.
+  expect(lapsesAt).toBeGreaterThanOrEqual(startedAtMs + dayMs);
+  expect(lapsesAt).toBeLessThanOrEqual((proposed?.record.recordedAt.getTime() ?? 0) + dayMs);
 });
 
 test('it returns the error of a deadline that cannot resolve, and never asks the decision point', async () => {

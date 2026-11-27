@@ -237,6 +237,60 @@ test('it asks at stage 4 for a spend call with another always-ask effect', async
   expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4 });
 });
 
+test.each([
+  { title: 'true', cel: 'args.order.total < 15', expected: { outcome: 'allow', stage: 7 } },
+  { title: 'false', cel: 'args.order.total > 15', expected: { outcome: 'ask', stage: 4 } },
+  {
+    title: 'an error',
+    cel: 'args.order.missing < 15',
+    expected: { outcome: 'ask', stage: 4 },
+    conditionErrors: [
+      {
+        ruleID: 'allow-groceries',
+        outcome: 'allow',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'missing',
+      },
+    ],
+  },
+] as const)(
+  'it lifts a purchase at stage 4 only when the condition of the lifting rule is $title',
+  async (row) => {
+    const conditionErrors = 'conditionErrors' in row ? row.conditionErrors : undefined;
+
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({
+        effects: ['spend'],
+        destinations: ['merchant'],
+        amount: 'order.total',
+      }),
+      rules: [
+        buildRuleEntry('allow-groceries', {
+          outcome: 'allow',
+          tools: ['shop.order'],
+          destinations: ['orders@grocer.example'],
+          lift: { perAction: 20, budget: 'shopping-month' },
+          cel: row.cel,
+          note: 'Small orders only.',
+        }),
+      ],
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        tool: 'shop.order',
+        toolList: ['shop.order'],
+        args: { order: { total: 12.5 } },
+        destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+      }),
+    );
+
+    expect(decided.decision).toMatchObject(row.expected);
+    expect(decided.decision.conditionErrors).toStrictEqual(conditionErrors);
+  },
+);
+
 test('it asks at stage 4 when the lifting rule does not match the call', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({
@@ -1000,3 +1054,325 @@ test('it lists no naming rule when a deny rule refuses a call that an allow rule
 
   expect([decided.decision.outcome, decided.namingRules]).toStrictEqual(['deny', undefined]);
 });
+
+test('it allows at stage 7 when the condition of an allow rule is true', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-small-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.count < 5',
+        note: 'Small reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { count: 2 } }));
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'allow-small-reads', revision: 2, others: [] },
+    destinations: [],
+    snapshot: 'snapshot-1',
+  });
+});
+
+test('it asks at stage 9 when the condition of an allow rule is false', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-small-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.count < 5',
+        note: 'Small reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { count: 9 } }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9, cause: 'no_rule' });
+});
+
+test('it asks at stage 9 and lists the error when the condition of an allow rule errors', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-small-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.count < 5',
+        note: 'Small reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 9,
+    rule: null,
+    cause: 'no_rule',
+    destinations: [],
+    snapshot: 'snapshot-1',
+    conditionErrors: [
+      {
+        ruleID: 'allow-small-reads',
+        outcome: 'allow',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'count',
+      },
+    ],
+  });
+});
+
+test('it names a missing key that needs quotes in the condition error', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-cc', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args["cc address"] == "x"',
+        note: 'Reads that copy someone.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision.conditionErrors).toStrictEqual([
+    {
+      ruleID: 'allow-cc',
+      outcome: 'allow',
+      revision: 2,
+      code: 'no_such_key',
+      missing: 'cc address',
+    },
+  ]);
+});
+
+test('it asks with the cause condition_error at stage 6 when the condition of a deny rule errors', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 6,
+    rule: { id: 'deny-big-reads', revision: 2, others: [] },
+    cause: 'condition_error',
+    destinations: [],
+    snapshot: 'snapshot-1',
+    conditionErrors: [
+      {
+        ruleID: 'deny-big-reads',
+        outcome: 'deny',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'count',
+      },
+    ],
+  });
+});
+
+test('it asks with the cause condition_error when an ask rule with an earlier ID also matches', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('a-ask-reads', { outcome: 'ask', effects: ['read'] }),
+      buildRuleEntry('z-deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 6,
+    rule: { id: 'z-deny-big-reads', revision: 2, others: ['a-ask-reads'] },
+    cause: 'condition_error',
+    destinations: [],
+    snapshot: 'snapshot-1',
+    conditionErrors: [
+      {
+        ruleID: 'z-deny-big-reads',
+        outcome: 'deny',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'count',
+      },
+    ],
+  });
+});
+
+test('it lets a deny that matches win over a deny whose condition errored', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('deny-all-reads', { outcome: 'deny', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'deny',
+    stage: 3,
+    rule: { id: 'deny-all-reads' },
+    conditionErrors: [{ ruleID: 'deny-big-reads', code: 'no_such_key' }],
+  });
+});
+
+test('it does not deny when the condition of a deny rule is false', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { count: 1 } }));
+
+  expect(decided.decision.outcome).toBe('allow');
+});
+
+test('it asks with the cause ask_rule and lists the error when the condition of an ask rule errors', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('ask-big-reads', {
+        outcome: 'ask',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 6,
+    cause: 'ask_rule',
+    rule: { id: 'ask-big-reads' },
+    conditionErrors: [{ ruleID: 'ask-big-reads', code: 'no_such_key' }],
+  });
+});
+
+test('it never lets a condition read a content argument of the declaration', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [], content: ['body'] }),
+    rules: [
+      buildRuleEntry('allow-friendly-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.body.contains("please")',
+        note: 'Polite reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { body: 'please read this' } }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', cause: 'no_rule' });
+
+  expect(decided.decision.conditionErrors).toStrictEqual([
+    { ruleID: 'allow-friendly-reads', outcome: 'allow', revision: 2, code: 'no_such_key' },
+  ]);
+});
+
+test.each(['please', 'a different reason', ''])(
+  'it gives the same verdict whatever the reason argument holds: %j',
+  async (reason) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({
+        effects: ['note'],
+        destinations: [],
+        content: ['reason'],
+      }),
+      rules: [
+        buildRuleEntry('allow-polite-notes', {
+          outcome: 'allow',
+          effects: ['note'],
+          cel: 'args.reason.contains("please")',
+          note: 'Polite notes.',
+        }),
+      ],
+    });
+
+    const decided = await ctx.decide(buildPolicyCall({ args: { reason } }));
+
+    expect(decided.decision).toMatchObject({
+      outcome: 'ask',
+      stage: 9,
+      cause: 'no_rule',
+      conditionErrors: [{ ruleID: 'allow-polite-notes', code: 'no_such_key' }],
+    });
+  },
+);
+
+test.each([
+  ['true', 'args.count < 5', 'allow', 7],
+  ['false', 'args.count > 5', 'ask', 5],
+] as const)(
+  'it grants the rule permission to a destination only when the condition of the allow rule is %s',
+  async (_title, cel, outcome, stage) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({ effects: ['send'], destinations: ['to'] }),
+      rules: [
+        buildRuleEntry('allow-small-mail', {
+          outcome: 'allow',
+          effects: ['send'],
+          destinations: ['sam@example.org'],
+          cel,
+          note: 'Small mail.',
+        }),
+      ],
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        args: { count: 2 },
+        destinations: [{ value: 'sam@example.org', replyTarget: false }],
+      }),
+    );
+
+    expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual([outcome, stage]);
+  },
+);

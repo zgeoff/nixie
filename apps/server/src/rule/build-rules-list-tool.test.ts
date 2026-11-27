@@ -121,6 +121,7 @@ test('it gives each mandate its short ID, title, state, expiry and rules in word
           '**Allow** `test.send`, until 2026-11-02T13:00:00.000Z.',
           '**Allow** `test.reply`, until 2026-11-02T13:00:00.000Z.',
         ],
+        conditions: [],
       },
     ],
     rules: [],
@@ -168,6 +169,7 @@ test('it lists a mandate whose proposal a forget removed with no title and no ru
         state: 'active',
         expires: '2026-11-02T13:00:00.000Z',
         rules: [],
+        conditions: [],
       },
     ],
     rules: [],
@@ -211,6 +213,69 @@ test('it lists the standing allow and ask rules for the conversation and no othe
         sentence: '**Allow** `test.send` when it runs in a conversation.',
       },
       { rule: 'ask-shop', sentence: '**Ask** before `shop.buy`.' },
+    ],
+  });
+});
+
+test('it lists the note, the words and the expression of a standing rule with a condition', async () => {
+  const ctx = await setupTest();
+
+  await ctx.addRule('allow-term-mail', {
+    outcome: 'allow',
+    tools: ['test.send'],
+    cel: 'now.getHours("Europe/London") < 17',
+    note: 'Term mail goes out in the working day.',
+  });
+
+  const listed = await ctx.list();
+
+  expect(listed).toStrictEqual({
+    mandates: [],
+    rules: [
+      {
+        rule: 'allow-term-mail',
+        sentence: '**Allow** `test.send`, when its condition holds.',
+        condition: {
+          note: 'Term mail goes out in the working day.',
+          noteBy: 'you',
+          words: 'the hour in Europe/London is before 17',
+          source: 'now.getHours("Europe/London") < 17',
+        },
+      },
+    ],
+  });
+});
+
+test('it lists the condition of a mandate rule with the note as nixie wrote it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.propose({
+    title: 'Term mail',
+    rules: [
+      {
+        outcome: 'allow',
+        tools: ['test.send'],
+        cel: 'args.account == "work"',
+        note: 'Work mail only.',
+      },
+    ],
+  });
+
+  const listed = await ctx.list();
+
+  expect(listed).toMatchObject({
+    mandates: [
+      {
+        conditions: [
+          {
+            rule: 1,
+            note: 'Work mail only.',
+            noteBy: 'nixie',
+            words: '`args.account` is "work"',
+            source: 'args.account == "work"',
+          },
+        ],
+      },
     ],
   });
 });

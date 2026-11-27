@@ -7,43 +7,54 @@ A rule is plain data in nixie's own format: it matches a tool call by its tool, 
 arguments and destinations, and gives one outcome: allow, ask or deny. Rules live in nixie's
 database, seeded from your definitions, and the [decision point](decision-point.md) reads them at 3
 of its stages. Among the rules that match a call, the strictest outcome wins. Each rule keeps one ID
-for its life and a revision per edit, and code tells whether an edit widens access.
+for its life and a revision per edit, and code checks whether an edit widens access.
+
+If you are the owner, approve this design by reading the rule format, the widening check and the
+starter rule set, and object to any **Why** that does not hold. If you are an agent that builds or
+changes rule matching, rule identity, the snapshot hash, the widening check or the starter rule set,
+check your change against it before the change lands. To build, start from the rule format and
+matching, then rule identity, the snapshot hash and the widening check, and follow the links to the
+decision point and the architecture docs for the parts around them.
 
 ## The rule format
 
 Every field except the ID and the outcome is optional, and a missing match field matches every call.
 
-| Field          | Holds                                                           |
-| -------------- | --------------------------------------------------------------- |
-| `id`           | A stable slug, unique in the deployment                         |
-| `outcome`      | `allow`, `ask` or `deny`                                        |
-| `tools`        | Tool names, each exact or a pattern such as `mail.*`            |
-| `effects`      | Declared effects                                                |
-| `contexts`     | `conversation`, `task` or `coding`                              |
-| `definitions`  | Task definition IDs, for a rule that covers only some of them   |
-| `checks`       | Argument checks, each an argument path, an operator and a value |
-| `destinations` | Patterns that the call's destinations must match                |
-| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`    |
-| `lift`         | For a lifting rule: a per-action cap and the budget it draws on |
-| `expires`      | When the rule stops matching, for a mandate                     |
-| `mandate`      | The mandate the rule belongs to                                 |
-| `cel`          | A CEL condition, for a rule the fixed checks cannot express     |
-| `note`         | Your own words about the rule                                   |
+| Field          | Holds                                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | A stable slug, unique in the deployment                                                                                                  |
+| `outcome`      | `allow`, `ask` or `deny`                                                                                                                 |
+| `tools`        | Tool names, each exact or a pattern such as `mail.*`                                                                                     |
+| `effects`      | Declared effects                                                                                                                         |
+| `contexts`     | `conversation`, `task` or `coding`                                                                                                       |
+| `definitions`  | Task definition IDs, for a rule that covers only some of them                                                                            |
+| `checks`       | Argument checks, each an argument path, an operator and a value                                                                          |
+| `destinations` | Patterns that the call's destinations must match                                                                                         |
+| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`                                                                             |
+| `lift`         | For a [lifting rule](budgets.md#lifting-rules), an allow rule that lifts the always-ask set: a per-action cap and the budget it draws on |
+| `expires`      | When the rule stops matching, for a mandate                                                                                              |
+| `mandate`      | The mandate the rule belongs to                                                                                                          |
+| `cel`          | A CEL condition, for a rule the fixed checks cannot express                                                                              |
+| `note`         | Your own words about the rule                                                                                                            |
 
 Rule files in the definitions repo are YAML, checked against a JSON Schema that nixie generates from
-the rule format, both when the repo seeds the database and when nixie exports runtime rules.
+the rule format, both when the repo seeds the database and when nixie exports runtime rules. For the
+published schema file, see the [architecture doc](../../../architecture/policy/rules.md).
 
 The checks are `eq` against one value, `in` against a list, and `matches` against a pattern. Strings
 compare in Unicode NFC on both sides. A pattern uses `*` as its only wildcard and matches the whole
 string, so `*@example.com` matches every address at that domain. **Why:** one kind of wildcard keeps
 the widening check decidable in plain code, and you read the pattern at a glance; a regular
 expression would give the check a problem it cannot solve in general. A saved contact name in the
-consent check matches as literal text between word boundaries, never as a pattern.
+consent check matches as literal text between word boundaries.
 
-A rule with a CEL condition is valid only when the fixed checks cannot express it. The widening
-check cannot analyse CEL, so it treats every edit to such a rule's condition as a widening. No
-starter rule uses CEL. [CEL conditions on rules](../../queue/cel-rules.md) sets the library, the
-subset, the limits and the card.
+A rule with a CEL condition matches only when its fixed fields match and the condition is true. The
+condition is valid only when the fixed checks cannot express the rule, and the policy module checks
+it when the rule is written and refuses a rule that fails. No starter rule uses CEL. Adding or
+changing a condition is a widening and always needs approval. The widening check never compares such
+a rule field by field and treats any edit to it as a widening. A condition that errors never lets a
+deny rule refuse a call unseen: the call asks. For the library, the subset, the limits and the card,
+see [Rule conditions](../../../architecture/policy/rule-conditions.md).
 
 Each rule also carries metadata outside its match: its source (a definitions commit, or the approval
 that created it), who proposed it (you, or nixie from a task), when it was created, and when it last
@@ -62,9 +73,10 @@ content sources read strictly in both directions:
 - **A deny or ask rule catches a call when it catches any part of it.** One shared effect, one
   element that passes a check, one destination that matches, or one shared source is enough.
 
-[Memory writes on rules](../../../architecture/memory/writes.md#rules-on-memory-writes) sets how the
-host resolves a memory write's sources. A write whose sources the host cannot resolve counts as
-`outside`, so no allow rule for trusted content covers it.
+For how the host resolves a memory write's sources, see
+[Memory writes on rules](../../../architecture/memory/writes.md#rules-on-memory-writes). A write
+whose sources the host cannot resolve counts as `outside`, so no allow rule for trusted content
+covers it.
 
 ### Rendering
 
@@ -118,11 +130,12 @@ canonical form of the whole definition set:
 - **Objects** serialise as JSON with sorted keys and no whitespace, and every set-valued field sorts
   and drops duplicates.
 
-In slice 1, the policy part of the form holds [the slice 1 rule](decision-point.md#the-slice-1-rule)
-in canonical form, plus the test rule in a test build, and the complete tool declarations. Slice 1
-has no seeded rules, budgets, contacts or checkers. The snapshot hash therefore changes only with
-the persona or with a release that changes a tool declaration. **Why:** the fixed rule decides by a
-tool's declared effects, so a replay needs the declarations in force.
+In slice 1, the first build, the policy part of the form holds
+[the slice 1 rule](decision-point.md#the-slice-1-rule) in canonical form, plus the test rule in a
+test build, and the complete tool declarations. Slice 1 has no seeded rules, budgets, contacts or
+checkers. The snapshot hash therefore changes only with the persona or with a release that changes a
+tool declaration. **Why:** the fixed rule decides by a tool's declared effects, so a replay needs
+the declarations in force.
 
 The form leaves out state that changes without an edit: when a rule last fired, how much of a budget
 is spent, and rule metadata. **Why:** the hash then changes exactly when the definitions do, and a

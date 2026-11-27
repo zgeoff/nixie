@@ -49,7 +49,8 @@
           ],
           "imp-client": ["adapters/sandbox-imp/**"],
           "db": ["libs/db/**"],
-          "onnx-runtime": ["adapters/encoder-onnx/**"]
+          "onnx-runtime": ["adapters/encoder-onnx/**"],
+          "cel": ["modules/policy/**"]
         },
         "modules": [
           {
@@ -75,6 +76,12 @@
             "modules": ["onnxruntime-node", "@huggingface/tokenizers"],
             "allow": ["onnx-runtime"],
             "reason": "only adapters/encoder-onnx imports the ONNX runtime and its tokenizer"
+          },
+          {
+            "name": "cel",
+            "modules": ["@marcbachmann/cel-js"],
+            "allow": ["cel"],
+            "reason": "only modules/policy imports the CEL library, so a version bump touches one package"
           }
         ],
         "unresolved": [

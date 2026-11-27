@@ -28,6 +28,37 @@ test('it queues the export call before the reply', () => {
   ]);
 });
 
+test('it queues the mandate call with its condition and note before the reply', () => {
+  expect(
+    buildScriptedReplies({
+      text: 'The mandate waits for you.',
+      ruleCondition: {
+        title: 'Memory today',
+        cel: 'args.subject == "owner"',
+        note: 'Owner facts only.',
+      },
+    }),
+  ).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__rules_propose_mandate',
+        input: {
+          title: 'Memory today',
+          rules: [
+            {
+              outcome: 'allow',
+              tools: ['memory.remember'],
+              cel: 'args.subject == "owner"',
+              note: 'Owner facts only.',
+            },
+          ],
+        },
+      },
+    },
+    { text: 'The mandate waits for you.' },
+  ]);
+});
+
 test('it queues the atc start for the conversation before the reply, and no reply for a task', () => {
   const replies = buildScriptedReplies({
     text: 'I asked to start the session.',

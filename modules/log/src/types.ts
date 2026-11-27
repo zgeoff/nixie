@@ -49,6 +49,16 @@ export type PromptCause =
   | 'ask_rule'
   | 'no_rule';
 
+// The record column keeps the six causes above, so an ask with the cause condition_error stores
+// ask_rule there and the full cause in the decision.
+type DecisionCause = PromptCause | 'condition_error';
+
+interface DecisionConditionError {
+  readonly ruleID: string;
+  readonly revision: number;
+  readonly code: string;
+}
+
 export type DestinationPermission = 'owner' | 'reply_target' | 'known_contact' | 'task' | 'rule';
 
 export type CheckerResult = 'yes' | 'no' | 'unsure' | 'unreachable';
@@ -94,8 +104,11 @@ export interface Decision {
   };
 
   readonly ruleOthers?: readonly string[];
-  readonly cause?: PromptCause;
+  readonly cause?: DecisionCause;
   readonly defect?: 'direct_request' | 'repeat';
+
+  // every rule whose condition errored on the call, with the code and never the library's message
+  readonly conditionErrors?: readonly DecisionConditionError[];
 
   // one per destination, in the order of the record's erasable destinations
   readonly permissions?: readonly (DestinationPermission | null)[];

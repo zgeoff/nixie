@@ -42,6 +42,49 @@ test('it lists the rules in force, with the allows of a first seed beside its de
   ]);
 });
 
+test('it lists the note and the words of a rule with a condition, and leaves out the expression', async () => {
+  const nixie = await startInProcessNixie({
+    hasStarterRules: false,
+    beforeStart: async (files) => {
+      const definitions = join(dirname(files.configPath), 'definitions');
+
+      await writeFile(join(definitions, 'nixie.yaml'), 'format: 3\n');
+      await mkdir(join(definitions, 'rules'));
+
+      await writeFile(
+        join(definitions, 'rules', 'start.yaml'),
+        [
+          'allow-term-mail:',
+          '  outcome: allow',
+          '  tools: [web.fetch]',
+          '  cel: now.getHours("Europe/London") < 17',
+          '  note: Fetches in the working day.',
+          '',
+        ].join('\n'),
+      );
+    },
+  });
+
+  await nixie.waitForLogEvent('ready');
+
+  const listed = await runHostCommand(nixie.configPath, ['rules', 'list']);
+
+  const rules = z
+    .array(z.object({ ruleID: z.string(), condition: z.unknown() }))
+    .parse(JSON.parse(listed.stdout));
+
+  expect(rules).toStrictEqual([
+    {
+      ruleID: 'allow-term-mail',
+      condition: {
+        note: 'Fetches in the working day.',
+        noteBy: 'you',
+        words: 'the hour in Europe/London is before 17',
+      },
+    },
+  ]);
+});
+
 test('it lists no pending proposal after a first seed that adds an allow', async () => {
   const ctx = await setupTest();
   const pending = await runHostCommand(ctx.configPath, ['proposals', 'list']);

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { routeDataStaleTimeMs } from '../conversation/read-route-session';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
+import { RuleCondition } from '../rule/rule-condition';
 import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
@@ -54,6 +55,9 @@ export function MandateList(): ReactNode {
               {mandate.rules.map((rule) => (
                 <li key={rule.ruleID}>
                   <RuleSentence sentence={rule.sentence} />
+                  {rule.condition === undefined ? null : (
+                    <RuleCondition condition={rule.condition} />
+                  )}
                 </li>
               ))}
             </ul>

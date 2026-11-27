@@ -1,15 +1,15 @@
 # Upgrade and roll back
 
-An upgrade or a rollback by one release is one merged pull request in your deployment repo that
-moves the 3 pinned images: nixie, web and backup. These steps cover the pull request and the deploy,
-on Compose, on Kubernetes with the reference manifests, and on Kubernetes with the Pulumi component.
-[Upgrades](../design/platform/deployment/upgrades.md) gives the design.
+To upgrade or roll back by one release, merge one pull request in your deployment repo that moves
+the pinned images: nixie, web, and backup when the deployment runs a backup job. Then deploy, on
+Compose, on Kubernetes with the reference manifests, or on Kubernetes with the Pulumi component. See
+[Upgrades](../design/platform/deployment/upgrades.md) for the design.
 
 ## Before an upgrade
 
-1. Read the release notes of the release. They list each migration, and say whether the release
-   before can read the schema the release leaves, as the
-   [release pipeline](../architecture/deployment/release-pipeline.md) describes.
+1. Read the release notes for each migration, and for whether the release before can read the schema
+   this release leaves, as the [release pipeline](../architecture/deployment/release-pipeline.md)
+   describes.
 2. When the deployment skips releases, also follow
    [deploy in milestones](releasing.md#deploy-in-milestones).
 3. When your copy of the starter rules has `ask-coding-sessions` on `task.start/atc` and
@@ -17,11 +17,16 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
    [`starter.yaml`](../../deploy/compose/definitions/rules/starter.yaml): ask on `coding.start`, and
    allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
    call, so a join of a coding session needs no approval.
+4. Open the rules files in your deployment repo's `definitions/rules/` folder. When a rule has a
+   `cel` key and no `note`, add a `note`: one plain sentence on what the condition checks. The next
+   seed refuses the whole rules file when it holds such a rule. Only a rule you write by hand in
+   that folder needs this. A rule that arrives through a proposal carries its own note. See
+   [rule conditions](../architecture/policy/rule-conditions.md) for what a condition reads.
 
 ## Upgrade
 
 Make the change in a pull request in the deployment repo. Take each tag and digest from the release
-notes, and move all 3 pins together.
+notes, and move every pin together.
 
 1. Change the pins:
    - Compose: every `ghcr.io/zgeoff/nixie` image, in the `setup`, `nixie` and `enrol` services, the
@@ -29,13 +34,14 @@ notes, and move all 3 pins together.
      recipe runs no backup job, as [backups](../architecture/deployment/backups.md) says.
    - Kubernetes manifests: the image in `nixie.yaml` and the image in `web.yaml`.
    - Pulumi component: the nixie image and the web image arguments, and the `@heynixie/pulumi-k8s`
-     version. The version carries the release's backup image, unless `backup.image` names one. In
-     that case move `backup.image` too.
+     version. The version brings the release's backup image. When `backup.image` names one, move
+     `backup.image` too.
 2. Merge the pull request.
 3. Deploy in this order: the backup job, then nixie, then web. **Why:** the backup job reads the
    snapshot set format of its own release and of the one before. The web client then only calls an
    API of its own release or a newer one, and a failed nixie step stops the rollout before the web
-   client changes.
+   client changes. The Pulumi component sets its own order, so on Pulumi follow
+   [Deploy with Pulumi](#deploy-with-pulumi) in place of this one.
 
 ### Deploy on Compose
 
@@ -93,12 +99,13 @@ assignments before it.
 
 ### Deploy with Pulumi
 
-1. Run the update. The component already rolls the web Deployment and the backup CronJob after the
-   StatefulSet:
+The component rolls nixie's StatefulSet first, then the web Deployment and the backup CronJob. The
+backup job moves after nixie here, which is safe: it reads the snapshot set format of its own
+release and of the one before. Run the update:
 
-   ```bash
-   pulumi up
-   ```
+```bash
+pulumi up
+```
 
 ## Roll back
 

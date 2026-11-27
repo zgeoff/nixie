@@ -253,6 +253,7 @@ export function makeCallRecorder(
             expectWindow: decided.expectWindow,
             effects: declaration.effects,
             cause,
+            conditionErrors: decided.policy.decision.conditionErrors ?? [],
             input: call.input,
             destinations,
             content: declaration.content,

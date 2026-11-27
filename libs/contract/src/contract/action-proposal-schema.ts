@@ -11,6 +11,7 @@ export const actionProposalSchema = z.object({
     'no_rule',
     'direct_request',
     'repeat',
+    'condition_error',
   ]),
   sentence: z.string(),
   destinations: z.array(z.string()),

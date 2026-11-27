@@ -1,9 +1,11 @@
-import { renderRule } from '@heynixie/policy';
+import { describeCondition, renderRule } from '@heynixie/policy';
+import type { RuleCondition } from '@heynixie/policy';
 import type { RuleInForceEntry } from './read-rules-in-force';
 
 export interface StandingRule {
   readonly ruleID: string;
   readonly sentence: string;
+  readonly condition?: RuleCondition;
 }
 
 // The allow and ask rules that can match a conversation call outside any mandate. A rule limited to
@@ -13,14 +15,24 @@ export function collectStandingRules(
   now: number,
 ): readonly StandingRule[] {
   return inForce
-    .map((entry) => entry.rule.rule)
     .filter(
-      (rule) =>
-        rule.outcome !== 'deny' &&
-        rule.mandate === undefined &&
-        rule.definitions === undefined &&
-        (rule.contexts === undefined || rule.contexts.includes('conversation')) &&
-        (rule.expires === undefined || Date.parse(rule.expires) > now),
+      (entry) =>
+        entry.rule.rule.outcome !== 'deny' &&
+        entry.rule.rule.mandate === undefined &&
+        entry.rule.rule.definitions === undefined &&
+        (entry.rule.rule.contexts === undefined ||
+          entry.rule.rule.contexts.includes('conversation')) &&
+        (entry.rule.rule.expires === undefined || Date.parse(entry.rule.rule.expires) > now),
     )
-    .map((rule) => ({ ruleID: rule.id, sentence: renderRule(rule) }));
+    .map((entry) => toStandingRule(entry));
+}
+
+function toStandingRule(entry: RuleInForceEntry): StandingRule {
+  const condition = describeCondition(entry.rule.rule, 'you');
+
+  return {
+    ruleID: entry.rule.rule.id,
+    sentence: renderRule(entry.rule.rule),
+    ...(condition === undefined ? {} : { condition }),
+  };
 }

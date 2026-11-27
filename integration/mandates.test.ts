@@ -2,7 +2,9 @@ import { expect, test } from 'bun:test';
 import { startTestRules } from '@heynixie/api/test-utils';
 import {
   readActiveMandates,
+  readMandateAuthors,
   readMandateEndReason,
+  readMandateList,
   runMandateEnd,
   runMandateExpiry,
   startMandateTimer,
@@ -469,3 +471,143 @@ test('it shows on the card what each rule of a mandate will not cover in memory'
     'a new fact; a new self-note; a self-note text edit; a self-note label edit; a move of an item into self; a re-file of items into self; a write from a photo',
   );
 });
+
+test('it refuses a mandate whose rule holds a condition that fails the check', async () => {
+  const ctx = await setupTest();
+
+  const refused = await ctx.proposeMandate({
+    title: 'Mail in the working day',
+    rules: [{ outcome: 'allow', tools: ['test.send'], cel: 'args.to.endsWith("x")' }],
+  });
+
+  expect(refused).toStrictEqual({
+    status: 'refused',
+    reason: 'invalid_condition',
+    faults: ['rules.1.cel: condition_note_missing: a rule with a condition needs a note'],
+  });
+});
+
+test('it shows the note as nixie wrote it, and the condition in words, on the card of a mandate it proposed', async () => {
+  const ctx = await setupTest();
+
+  const proposed = await ctx.proposeMandate(
+    {
+      title: 'Mail in the working day',
+      rules: [
+        {
+          outcome: 'allow',
+          tools: ['test.send'],
+          cel: 'now.getHours("Europe/London") < 17',
+          note: 'Only before the end of the working day.',
+        },
+      ],
+    },
+    'nixie',
+  );
+
+  invariant(proposed.status === 'proposed', 'the mandate was proposed');
+
+  const row = await readProposal(ctx.log.writer.db, proposed.proposalID);
+
+  const handler = ctx.deps.handlers.get('rule_change');
+
+  invariant(row, 'the proposal opened a row');
+  invariant(handler, 'the server wires the rule change handler');
+
+  const bodies = await handler.readBodies(ctx.log.writer.db, [row]);
+
+  expect(bodies.get(row.id)?.ruleConditions).toStrictEqual([
+    {
+      rule: 0,
+      note: 'Only before the end of the working day.',
+      noteBy: 'nixie',
+      words: 'the hour in Europe/London is before 17',
+      source: 'now.getHours("Europe/London") < 17',
+    },
+  ]);
+});
+
+test('it matches a call inside the condition of a mandate rule and asks outside it', async () => {
+  const ctx = await setupTest();
+
+  const proposed = await ctx.proposeMandate({
+    title: 'Small sends',
+    rules: [
+      {
+        outcome: 'allow',
+        tools: ['test.send'],
+        destinations: ['sam@example.org'],
+        cel: 'args.account == "work"',
+        note: 'Work mail only.',
+      },
+    ],
+  });
+
+  invariant(proposed.status === 'proposed', 'the mandate was proposed');
+
+  await ctx.answer(proposed.proposalID, 'approve');
+
+  const work = await ctx.decide(ctx.sendCall);
+
+  const other = await ctx.decide({
+    ...ctx.sendCall,
+    args: { ...ctx.sendCall.args, account: 'home' },
+  });
+
+  expect([work.decision.outcome, other.decision.outcome]).toStrictEqual(['allow', 'ask']);
+});
+
+test.each([
+  ['you', 'owner'],
+  ['nixie', 'nixie'],
+] as const)(
+  'it labels the note of a started mandate as the note of %s when %s proposed it',
+  async (noteBy, proposedBy) => {
+    const ctx = await setupTest();
+
+    const proposed = await ctx.proposeMandate(
+      {
+        title: 'Mail in the working day',
+        rules: [
+          { outcome: 'allow', tools: ['test.read'] },
+          {
+            outcome: 'allow',
+            tools: ['test.send'],
+            cel: 'args.account == "work"',
+            note: 'Work mail only.',
+          },
+        ],
+      },
+      proposedBy,
+    );
+
+    invariant(proposed.status === 'proposed', 'the mandate was proposed');
+
+    const row = await readProposal(ctx.log.writer.db, proposed.proposalID);
+
+    const handler = ctx.deps.handlers.get('rule_change');
+
+    invariant(row, 'the proposal opened a row');
+    invariant(handler, 'the server wires the rule change handler');
+
+    const bodies = await handler.readBodies(ctx.log.writer.db, [row]);
+
+    await ctx.answer(proposed.proposalID, 'approve');
+
+    const authors = await readMandateAuthors(ctx.log);
+    const active = await readActiveMandates(ctx.log.writer.db, authors);
+    const listed = await readMandateList(ctx.log, ctx.clock.now());
+
+    expect({
+      card: bodies
+        .get(row.id)
+        ?.ruleConditions?.map((condition) => [condition.rule, condition.noteBy]),
+      active: active.flatMap((mandate) => mandate.rules.map((rule) => rule.condition?.noteBy)),
+      listed: listed.flatMap((mandate) => mandate.conditions.map((condition) => condition.noteBy)),
+    }).toStrictEqual({
+      card: [[1, noteBy]],
+      active: [undefined, noteBy],
+      listed: [noteBy],
+    });
+  },
+);

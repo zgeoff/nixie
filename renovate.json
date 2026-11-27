@@ -21,6 +21,14 @@
       "addLabels": ["agent-sdk"]
     },
     {
+      "description": "A CEL library bump can change what a rule condition returns, and a rule's condition decides a call. The library gets its own labelled pull request, out of the weekly patch group, and Renovate never merges it. Run the conformance cases of the condition tests against the new version before you merge.",
+      "matchPackageNames": ["@marcbachmann/cel-js"],
+      "groupName": "cel",
+      "schedule": ["at any time"],
+      "automerge": false,
+      "addLabels": ["cel"]
+    },
+    {
       "description": "A playwright-core bump changes the Chrome that the computer and render guests run, and the browser tests depend on exact Chrome behaviour. It gets its own labelled pull request, out of the weekly patch group, and Renovate never merges it. The pull request fails the Chrome pin check until the same change moves chrome-pin.json to the Chrome build that the new release installs.",
       "matchPackageNames": ["playwright-core"],
       "groupName": "chrome",

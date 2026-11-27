@@ -18,6 +18,7 @@ test('it picks a deny over an ask and an allow that match the same call', () => 
       args: {},
       destinations: ['stranger@example.net'],
       sources: [],
+      contentArgs: [],
       at: 0,
     },
   );
@@ -39,6 +40,7 @@ test('it picks an ask over an allow that matches the same call', () => {
       args: {},
       destinations: ['pat@example.com'],
       sources: [],
+      contentArgs: [],
       at: 0,
     },
   );
@@ -61,6 +63,7 @@ test('it names the matching rule with the lowest ID and lists the others', () =>
       args: {},
       destinations: ['pat@example.com'],
       sources: [],
+      contentArgs: [],
       at: 0,
     },
   );
@@ -81,6 +84,7 @@ test('it returns null when no rule matches the call', () => {
     args: {},
     destinations: [],
     sources: [],
+    contentArgs: [],
     at: 0,
   });
 
@@ -133,6 +137,7 @@ test('it gives the same verdict for the same rules in any order', () => {
           task: null,
           args: {},
           sources: [],
+          contentArgs: [],
           at: 0,
         };
 

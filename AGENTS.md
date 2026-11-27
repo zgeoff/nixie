@@ -57,7 +57,7 @@ preview/           throwaway test build of one pull request
 docs/
   architecture/    what is built
   decisions/       numbered decision records
-  design/          designs for work not yet built; only the owner opens one
+  design/          designs for work not yet built; only the user opens one
   guides/          steps a user does
   runbooks/        operator and contributor procedures
   reference/       generated reference
@@ -73,10 +73,10 @@ Dependencies:
 - Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
   for an external dependency and `"workspace:*"` for an internal one.
 - The root `package.json` declares only tooling.
-- Pin exact versions, with no `^` or `~` ranges. `bun add` saves exact versions, so the rule covers
-  hand-written edits.
-- One exception: the Pulumi component declares the Pulumi SDKs as peer dependencies with a `>=x <y`
-  range, because the deployment's own program supplies them.
+- Pin exact versions, with no `^` or `~` ranges, in hand-written edits too. `bun add` saves exact
+  versions.
+- The Pulumi component is the one exception. It declares the Pulumi SDKs as peer dependencies with a
+  `>=x <y` range, because the deployment's own program supplies them.
 
 Boundaries:
 
@@ -84,8 +84,8 @@ Boundaries:
 - A lib depends only on libs.
 - A module never imports an adapter and never forms a cycle with another module.
 - A lib tagged `server-only`, such as `libs/db`, is closed to guests and clients.
-- An adapter depends only on the module that owns its interface. The tags allow any module, so
-  review enforces this rule.
+- An adapter depends only on the module that owns its interface. The tags allow any module, so check
+  this rule yourself in review.
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 
@@ -94,23 +94,24 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 - imp's client: `adapters/sandbox-imp`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
 - ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
+- The CEL library: `modules/policy`.
 
 ## Working here
 
-- **Choices that need the owner.** The owner decides architecture, framework, library and technology
-  choices, naming, and anything about how nixie feels to use. Bring each such choice to the owner
-  with its options, a recommendation and the trade-off. A decision record exists only for what the
-  owner agreed. Run spikes, close questions that evidence or an existing decision settles, and set
+- **Choices that need the user.** The user decides architecture, framework, library and technology
+  choices, naming, and anything about how nixie feels to use. Bring each such choice to the user
+  with its options, a recommendation and the trade-off. Write a decision record only for what the
+  user agreed. Run spikes, close questions that evidence or an existing decision settles, and set
   configurable defaults for tuning values without asking.
 - **Repo-sync PRs.** A sync PR that repo-sync opens merges without asking, once CI is green.
 - **Agent SDK bump PRs.** Never merge a PR that changes the `@anthropic-ai/claude-agent-sdk` version
   until it has a comment with the output of the SDK contract suite. The output must show every test
   of the `test:model-api` lane passing at the PR's head commit. No CI job runs the suite, because CI
-  holds no model credential. An agent in an [imp](docs/glossary.md) runs it by hand and posts the
-  comment, with the steps in the [SDK contract suite runbook](docs/runbooks/sdk-contract-suite.md).
-  Renovate labels such a PR `agent-sdk` and never merges it.
-- **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in
-  `docs/`. Planned work, open choices and later stages live in the nixie project in Linear.
+  holds no model credential. Have an agent in an [imp](docs/glossary.md) run it by hand and post the
+  comment, following the [SDK contract suite runbook](docs/runbooks/sdk-contract-suite.md). Renovate
+  labels such a PR `agent-sdk` and never merges it.
+- **Plans.** Put a plan for work about to be built in its Linear issue or its PR, never in `docs/`.
+  Keep planned work, open choices and later stages in the nixie project in Linear.
 
 ## Database
 
@@ -148,11 +149,12 @@ a secret value, and never write one to a file in the repo.
 
 ## Toolchain
 
-- Bun is pinned in `.bun-version`. `bun run format` fixes formatting, and `bun run check` runs every
-  check that CI runs.
+- Bun is pinned in `.bun-version`. `bun run format` fixes formatting.
+- `bun run check` chains every check that CI runs, including `lint:full`. Locally, run the scripts
+  it chains one at a time, and skip `lint:full`.
 - lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
   the host may have little memory.
-- `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass and its type check.
-  oxlint runs both through `tsrs-lint`, which the `tsrs` package ships and oxlint finds on its own,
-  in tsgolint's place, because stock tsgolint runs out of memory under 2 GiB. The script sets
-  `TSRS_FAST=1`, tsrs's fast mode. `lint:full` is CI-only: never run it locally.
+- `bun run lint` runs oxlint on its syntax rules. `bun run lint:full` adds the type-aware pass and
+  its type check. Both call oxlint. oxlint finds `tsrs-lint`, a binary the `tsrs` package ships, and
+  runs it in tsgolint's place, because stock tsgolint runs out of memory under 2 GiB. The script
+  sets `TSRS_FAST=1`, tsrs's fast mode. `lint:full` is CI-only: never run it locally.

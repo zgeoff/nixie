@@ -20,6 +20,7 @@ import type { RuleContext } from '../runtime/write-runtime-rule';
 import type { DefinitionsTables } from '../types';
 import { buildMemorySuggestedRuleFields } from '../utils/build-memory-suggested-rule-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
+import { toConditionFields } from '../utils/to-condition-fields';
 import { describeProposedRule } from './describe-proposed-rule';
 import { ruleAnsweredCodec } from './rule-answered-codec';
 import { ruleProposedCodec } from './rule-proposed-codec';
@@ -102,6 +103,7 @@ function toBody(
       ...buildMemorySuggestedRuleFields([rule]),
     },
     ruleSentence: null,
+    ...toConditionFields([rule], 'you'),
     approveLabel: 'Allow this rule',
     rule,
   };

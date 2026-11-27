@@ -74,6 +74,14 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
 - [Prompts](architecture/core/prompts.md) — the built-in prompts, their parts and templates,
   overrides from the definitions, the operator log line for a dropped safety part, and the checker
   hashes in the policy
+- [Coding tasks](architecture/core/coding-tasks.md) — the bound coding session, starting or joining
+  one, and the steps that move text and events between the task and the session
+- [The assistant's mailbox](architecture/core/mailbox.md) — the mail host, the stored mail, the
+  tools that read it and the wake rules that decide which mail wakes the conversation
+- [Reminders](architecture/core/reminders.md) — what a reminder holds, its tools and how a fire
+  wakes the conversation
+- [Triggers](architecture/core/triggers.md) — what a source hands over, the trigger core that takes
+  each fire once, and which definitions can fire
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
 - [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
@@ -86,6 +94,8 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   rule, effect declarations and the test rule
 - [Rules](architecture/policy/rules.md) — the rule format, matching, evaluation, rendering and the
   widening check
+- [Rule conditions](architecture/policy/rule-conditions.md) — the CEL subset, its check, evaluation
+  and the card
 - [The model gateway](architecture/policy/model-gateway.md) — routes, the count and its store, the
   spending limit and the refusals
 - [Metering](architecture/policy/metering.md) — the one helper for periods, the one source of each
@@ -94,6 +104,11 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   check before a turn, the raise and the notice
 - [The turn-input log](architecture/policy/turn-input-log.md) — the capture of a step, the intake,
   the removals and the reading
+- [Approvals](architecture/policy/approvals.md) — the one proposals table and the one lifecycle
+  every proposal that waits for the user follows
+- [Budgets](architecture/policy/budgets.md) — the budget format, the budgets in force and the check
+  before a paid call goes out
+- [Passkeys](architecture/policy/passkeys.md) — the passkeys table and which answers take a passkey
 
 ### Connectors
 
@@ -313,11 +328,14 @@ The durable layer, the sandbox boundary, the database and compaction.
 - [0019: Possibly-sent actions](decisions/0019-never-retry-a-possibly-sent-action-blindly.md) — an
   action that may have reached its provider is never sent again without a key, a check or the user
 - [0022: A busy task's fires](decisions/0022-a-busy-task-skips-a-fire.md) — a trigger that fires
-  while the task is still busy is skipped, never queued
+  while the task is still busy is skipped
 - [0024: Undoing a definition change](decisions/0024-only-the-user-undoes-a-definition-change.md) —
   only the user undoes one, and the agent has no tool for it
 - [0015: Compaction](decisions/0015-own-compaction.md) — nixie's own compactor with the summary in
   the event log, and the SDK's auto-compaction off
+- [0057: Every optional feature has a switch](decisions/0057-every-optional-feature-has-a-switch.md)
+  — an optional feature is on only when its section is in the deployment config, and off it leaves
+  no trace
 
 ### Policy
 

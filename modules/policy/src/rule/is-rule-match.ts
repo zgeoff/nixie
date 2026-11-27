@@ -1,4 +1,5 @@
 import { match } from 'ts-pattern';
+import { evaluateCondition } from '../condition/evaluate-condition';
 import { pickRuleAliasTool } from '../memory/pick-rule-alias-tool';
 import type { Rule, RuleCall, RuleCheck } from '../types';
 import { toolShapes } from '../utils/tool-shapes';
@@ -6,12 +7,40 @@ import { findArgument } from './find-argument';
 import { isCommandMatch, isCommandMentioned } from './is-command-match';
 import { isPatternMatch } from './is-pattern-match';
 
-export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
-  const isAllow = rule.outcome === 'allow';
+export type RuleMatch =
+  | { readonly kind: 'match' }
+  | { readonly kind: 'miss' }
+  | { readonly kind: 'error'; readonly code: string; readonly missing?: string };
 
-  if (rule.cel !== undefined && isAllow) {
-    return false;
+// A rule matches a call when every fixed field matches and then the condition is true. A condition
+// that errors is no match for an allow, and counts as a match for an ask. A deny whose condition
+// errors is no match here; the decision point sets it aside and asks.
+export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
+  const matched = matchRule(rule, call);
+
+  return matched.kind === 'match' || (matched.kind === 'error' && rule.outcome === 'ask');
+}
+
+export function matchRule(rule: Rule, call: RuleCall): RuleMatch {
+  if (!isFixedMatch(rule, call)) {
+    return { kind: 'miss' };
   }
+
+  if (rule.cel === undefined) {
+    return { kind: 'match' };
+  }
+
+  const result = evaluateCondition(rule, call);
+
+  return match(result)
+    .with({ kind: 'true' }, (): RuleMatch => ({ kind: 'match' }))
+    .with({ kind: 'false' }, (): RuleMatch => ({ kind: 'miss' }))
+    .with({ kind: 'error' }, (failed): RuleMatch => failed)
+    .exhaustive();
+}
+
+function isFixedMatch(rule: Rule, call: RuleCall): boolean {
+  const isAllow = rule.outcome === 'allow';
 
   return (
     (rule.expires === undefined || call.at < Date.parse(rule.expires)) &&
