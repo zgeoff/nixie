@@ -56,7 +56,7 @@ function buildOutcome(
   if (status !== undefined) {
     return {
       kind: 'applied',
-      notice: `Deleted ${formatItemCount(status.deleted.length)} for good.`,
+      notice: `Forgot ${formatItemCount(status.deleted.length)} for good.`,
     };
   }
 
@@ -67,11 +67,11 @@ function buildOutcome(
 
 const refusalNotices: Readonly<Record<string, string>> = {
   MEMORY_ITEM_NOT_FOUND:
-    'An item in the list is gone, so nothing was deleted. Check the retired items, then try again.',
+    'An item in the list is gone, so nothing was forgotten. Check the retired items, then try again.',
   STALE_VERSION:
-    'An item changed after the list loaded, so nothing was deleted. Check the retired items, then try again.',
+    'An item changed after the list loaded, so nothing was forgotten. Check the retired items, then try again.',
   WRONG_STATE:
-    'An item is no longer retired, so nothing was deleted. Check the retired items, then try again.',
+    'An item is no longer retired, so nothing was forgotten. Check the retired items, then try again.',
 };
 
 function findRefusalNotice(error: unknown): string | null {

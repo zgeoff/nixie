@@ -72,13 +72,13 @@ export function MemoryRetiredForgetControl(props: MemoryRetiredForgetControlProp
         }}
         type="button"
       >
-        Delete retired items
+        Forget retired items
       </button>
     );
   }
 
   return (
-    <div aria-label="Finish the deletion" className={confirmation} role="group">
+    <div aria-label="Finish the forget" className={confirmation} role="group">
       {snapshot.matches('failed') ? <ForgetProgress targets={sent.targets} /> : null}
       <button
         disabled={snapshot.matches('sent')}
@@ -89,7 +89,7 @@ export function MemoryRetiredForgetControl(props: MemoryRetiredForgetControlProp
         }}
         type="button"
       >
-        Finish the deletion
+        Finish the forget
       </button>
     </div>
   );
@@ -124,7 +124,7 @@ function RetiredForgetConfirmation(props: RetiredForgetConfirmationProps): React
   const items = props.snapshot.context.items;
 
   return (
-    <div aria-label="Delete retired items" className={confirmation} role="group">
+    <div aria-label="Forget retired items" className={confirmation} role="group">
       {preview.isPending ? <p>Reading the retired items…</p> : null}
       {previewed === undefined && preview.isError ? (
         <p role="alert">The retired items did not load. Try again.</p>
@@ -165,7 +165,7 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
   if (props.items.length === 0) {
     return (
       <>
-        <p>No retired item to delete.</p>
+        <p>No retired item to forget.</p>
         <button
           onClick={() => {
             props.onEvent({ type: 'cancel' });
@@ -181,7 +181,7 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
   return (
     <>
       <p className={css({ fontWeight: 'bold' })}>
-        Delete these retired items for good? You cannot undo it.
+        Forget these retired items for good? You cannot undo it.
       </p>
       <p>
         Each item loses the text of every version, its place in recall, and the conversation
@@ -189,11 +189,11 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
       </p>
       {props.hasMore ? (
         <p>
-          This list shows the oldest 100 retired items. Delete these, then open it again for the
+          This list shows the oldest 100 retired items. Forget these, then open it again for the
           rest.
         </p>
       ) : null}
-      <ul aria-label="Retired items to delete" className={itemList}>
+      <ul aria-label="Retired items to forget" className={itemList}>
         {props.items.map((item) => (
           <li key={item.itemID}>
             <label>
@@ -240,7 +240,7 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
           }}
           type="button"
         >
-          Delete {formatItemCount(props.selected.size)} for good
+          Forget {formatItemCount(props.selected.size)} for good
         </button>
         <button
           onClick={() => {
@@ -283,10 +283,10 @@ function ForgetProgress(props: ForgetProgressProps): ReactNode {
 
   return (
     <div role="alert">
-      <p>The deletion did not finish. Finish it to delete the rest.</p>
+      <p>The forget did not finish. Finish it to forget the rest.</p>
       {status.data === undefined ? null : (
         <p>
-          {formatItemCount(status.data.deleted.length)} deleted,{' '}
+          {formatItemCount(status.data.deleted.length)} forgotten,{' '}
           {formatItemCount(status.data.pending.length)} still pending.
         </p>
       )}
