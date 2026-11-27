@@ -51,7 +51,9 @@ export function makeConditionEnvironment(wrapperRoom = 0): Environment {
       throw new ListReceiverError();
     }
 
-    return value;
+    const items: unknown[] = value;
+
+    return items;
   });
 
   return environment;

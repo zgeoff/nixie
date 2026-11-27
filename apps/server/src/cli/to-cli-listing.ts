@@ -16,9 +16,9 @@ export function toCLIListing(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value).flatMap(([key, item]) => {
       if (key === 'condition' && typeof item === 'object' && item !== null) {
-        return [
-          [key, Object.fromEntries(Object.entries(item).filter(([field]) => field !== 'source'))],
-        ];
+        const fields: [string, unknown][] = Object.entries(item);
+
+        return [[key, Object.fromEntries(fields.filter(([field]) => field !== 'source'))]];
       }
 
       return [[key, toCLIListing(item)]];

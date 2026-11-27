@@ -477,6 +477,7 @@ test.each([
       context: 'conversation',
       task: null,
       args: { line: 'git status && rm notes.txt' },
+      contentArgs: [],
       destinations: [],
       sources: [],
       at: 0,

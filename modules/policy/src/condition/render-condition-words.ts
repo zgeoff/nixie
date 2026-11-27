@@ -94,7 +94,7 @@ function renderTimeValue(part: TimePart, value: Literal): string {
 }
 
 function renderLiteral(value: Literal): string {
-  if (Array.isArray(value)) {
+  if (typeof value === 'object') {
     return `[${value.map((item) => renderLiteral(item)).join(', ')}]`;
   }
 
