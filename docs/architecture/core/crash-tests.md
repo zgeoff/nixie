@@ -193,6 +193,22 @@ is open, and then releases it.
 API. A unit test of the page form of `live.follow` sets a handler that revokes the session there,
 and checks that the stream still ends with `UNAUTHORIZED`.
 
+## The graceful stop
+
+`sigterm.grace` sits behind the test-build flag, in the claim pool's stop, after the stop begins and
+while a step is still running. The graceful-stop suite, `stop-graceful.test.ts`, holds the stop
+there, sends `SIGTERM`, and advances the clock through the grace. It checks that a step which ends
+inside the grace commits once, and that a step still running at the deadline is left to the next
+start's restart sweep. Another test starts the forget of a note while a turn waits at
+`turn.reply.after`, with the harness operation that writes a note and starts its forget, so the
+forget's session cleanup waits on a turn that never ends. It checks that nixie still exits with code
+0 once the grace has passed and that no `model.session_cleanup_completed` record exists. A shutdown
+ends the cleanup's waits, so a stalled turn cannot hold the stop.
+
+The next start runs that cleanup again. [Conversation turns](./conversation-turns.md) explains how
+the rerun of an aborted turn answers only the messages that have no reply. The conversation runner's
+unit tests cover that rerun, and no crash test does.
+
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1

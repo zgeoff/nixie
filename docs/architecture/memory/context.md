@@ -307,7 +307,7 @@ A list clips each entry's text at 2,000 characters and marks the entry `isCut`. 
 `memory.recall`, and the `next` cursor of each page is the offset of the one after it, and a cursor
 inside a character is refused. A read with `record` refuses an entry outside the log thread it
 reads, with the same answer as for an entry that does not exist. The tool reads only the log thread
-of the caller: the caller's own thread, or the conversation's thread for a
+of the caller: a task's own thread, or the conversation's thread for the conversation and for a
 [task with the log grant](../core/started-tasks.md#start-options). Each entry keeps its role, so a
 granted task tells the user's words from a task report. It declares only a read, so the starter rule
 `allow-reads` allows it.

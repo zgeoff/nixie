@@ -428,7 +428,11 @@ lookup. The reasons mean:
 - `attempt_lost`: the runner died, and the next run of the step found the reply after the thread's
   last step commit with no void, and voided it before it did anything else, once any cleanup in
   flight had ended. A reply that sits before a session-invalidated record is no such reply: a
-  cleanup aborted its turn, and the turn keeps the reply
+  cleanup aborted its turn, and the turn keeps the reply. The turn's rerun counts the inbox messages
+  that the kept reply says the turn had read as answered, and acknowledges them without a turn, so
+  the user never gets a second answer. It answers every other message. A shutdown ends each wait of
+  a cleanup, so a cleanup that waits on a stalled turn never holds the shutdown, and the next start
+  runs that cleanup again
   ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session));
 - `turn_dropped`: the reply came after the last result of the turn, or the turn's session was lost
   or overflowed, so the step starts the turn again from the boundary.
@@ -526,8 +530,8 @@ builds the registry when the conversation starts, and each entry's package owns 
 reads.
 
 - **A note forget** reads each `notebook.note_forgotten` record that the user made as a line such as
-  "Sam forgot note n4w8k2c6rd", with the user's name, or with the literal text "the owner" when none
-  is set, as the session prompt does. A record that the assistant made adds no line. The
+  "Sam forgot note n4w8k2c6rd", with the user's name, or with the default name that the session
+  prompt uses when none is set. A record that the assistant made adds no line. The
   [notebook](../memory/notebook.md) owns the entry, and the server registers it only when
   `forget_notices.note` is on.
 - **A memory change** and a merge into one of the conversation's proposals are memory's own kinds. A
@@ -590,4 +594,4 @@ reads.
 
 Each line shows its time in the zone that [the time tool](../connectors/time.md) answers in, which
 is the zone of the user's newest message. Each line names the user by the name in the owner section
-of the deployment configuration, or calls the user "the owner" when the section sets none.
+of the deployment configuration, and uses the same default name when the section sets none.
