@@ -374,13 +374,13 @@ starts, as in
 - `since-your-last-turn` is the time since the model's previous conversation turn ended, whether it
   ended with a reply, silently or in a failure. The log's turn-ended record and step-errored record
   give that time. The attribute is absent on the conversation's first turn.
-- `since-owner-last-wrote` is the time since the user's previous message. On a turn that an owner
+- `since-owner-last-wrote` is the time since the user's previous message. On a turn that a user
   message starts, it runs between that message and the one before it. On any other turn, such as a
-  reminder fire, it runs from the newest owner message to the turn's start. The attribute is absent
+  reminder fire, it runs from the newest user message to the turn's start. The attribute is absent
   while the user has never written.
 
 Each gap shows in at most 2 units, largest first, rounded down: `40 s`, `12 min`, `3 h 12 min`,
-`2 days 4 h`. Only the first element of a turn carries them, and so does an owner message that cuts
+`2 days 4 h`. Only the first element of a turn carries them, and so does a user message that cuts
 into a turn, with values computed when nixie reads it. Both sit in the user message, after the
 cached prefix of the prompt.
 
