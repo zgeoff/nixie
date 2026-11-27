@@ -75,9 +75,11 @@ projection keeps the key of a site or mail domain, and a removal or an act of on
 IDs in its payload. An address, phone number or handle keeps its key and name in the erasable fields
 of `places.added` and `places.changed`, as a contact keeps a new name. A `places.removed` or
 `places.acted` record of an address, phone number or handle holds the entry's IDs in its own
-erasable fields. A fold cannot read erasable fields, so the removal's writer marks the row removed,
-and a rebuild and the start of the server read each removal back. A removed entry keeps its row, so
-a replay of an older call finds its key.
+erasable fields. A fold cannot read erasable fields, so no projection row holds a value that only an
+erasable field gives. A rebuild gives back the rows of the live log. The writer of an address, phone
+number or handle removal records it in `place_removals`, a table outside the projections, and a
+rebuild and each server start read the removals back. A removed entry keeps its row, so a replay of
+an older call finds its key.
 
 A call that an `act` place allowed writes its `places.acted` record on the call's thread once the
 action queue admits the attempt, and a retry of the call reads the act records back and writes none
@@ -99,13 +101,12 @@ key and IDs sit in the payload, where no key can erase them.
 
 - The directory holds at most one entry per key, checked inside the write transaction against the
   keys read back, and contact entries count.
-- Contacts you marked read as entries at `known` with no new records: the projection folds the
-  contact records, the entry's ID is the contact ID, and the key comes from `parsePlace`. A contact
-  that is not an address, phone number or handle, or whose key another entry holds, gets a `raw`
-  key. The projection row holds the kind `contact` until `writeContactKinds` sets it to the key's
-  kind: a rebuild, a new marking and the start of the server run it. The contact list of the host
-  reads every entry at `known`, whoever added it, and the consent check's typed-name match compares
-  the canonical form of both addresses.
+- Each contact you marked reads as an entry at `known`, with no new records. The projection folds
+  the contact records, the entry's ID is the contact ID, and the key comes from `parsePlace`. A
+  contact that is not an address, phone number or handle, or whose key another entry holds, gets a
+  `raw` key. The projection row keeps the kind `contact`, and the directory reads its key from the
+  marking record each time. The host's contact list reads every entry at `known`, whoever added it,
+  and the consent check's typed-name match compares the canonical form of both addresses.
 - The addresses that are you, such as each connected Google account's own, are entries at `self`
   that hold no record. The [connections module](../connectors/google-connections.md) keeps each
   address of a connection under a reference of its own, sealed under the connection's key, and never

@@ -16,9 +16,11 @@ export async function readPlaceRefs(db: Kysely<unknown>): Promise<readonly Place
   const rows = await db
     .$extendTables<PolicyTables>()
     .selectFrom('places')
-    .select(['place_id', 'trust', 'name_sequence'])
-    .where('removed_sequence', 'is', null)
-    .orderBy('place_id')
+    .leftJoin('place_removals', 'place_removals.place_id', 'places.place_id')
+    .select(['places.place_id', 'places.trust', 'places.name_sequence'])
+    .where('places.removed_sequence', 'is', null)
+    .where('place_removals.removed_sequence', 'is', null)
+    .orderBy('places.place_id')
     .execute();
 
   return rows.flatMap((row) => {

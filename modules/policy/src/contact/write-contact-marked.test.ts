@@ -1,10 +1,9 @@
 import { expect, test } from 'bun:test';
 import { readRecords, runProjectionRebuild } from '@heynixie/log';
 import { removeTestRecordKey, startTestLog } from '@heynixie/log/test-utils';
-import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
-import { z } from 'zod';
 import { placesProjection } from '../place/places-projection';
+import { readPlaces } from '../place/read-places';
 import { writePlaceAdded } from '../place/write-place-added';
 import { writePlaceChanged } from '../place/write-place-changed';
 import { knownContactsProjection } from './known-contacts-projection';
@@ -23,15 +22,10 @@ async function setupTest() {
   return {
     log,
     clock: started.clock,
-    readKinds: async () => {
-      const result = await sql`select kind from places order by added_sequence`.execute(
-        log.writer.db,
-      );
+    readKeyKinds: async () => {
+      const places = await readPlaces(log);
 
-      return z
-        .array(z.object({ kind: z.string() }))
-        .parse(result.rows)
-        .map((row) => row.kind);
+      return places.map((place) => place.key.kind);
     },
     context: {
       log,
@@ -211,25 +205,25 @@ test('it changes nothing when the destination is marked again in another case', 
   });
 });
 
-test('it stores the kind of the key in the projection row of a marked contact', async () => {
+test('it reads the key of each marked contact from its destination', async () => {
   const ctx = await setupTest();
 
   await writeContactMarked(ctx.context, { destination: 'sam@example.org', name: null });
   await writeContactMarked(ctx.context, { destination: '+61 420 000 000', name: null });
   await writeContactMarked(ctx.context, { destination: 'front desk', name: null });
 
-  const kinds = await ctx.readKinds();
+  const kinds = await ctx.readKeyKinds();
 
   expect(kinds).toStrictEqual(['address', 'phone', 'raw']);
 });
 
-test('it stores the kind of the key in the projection row of a contact after a rebuild', async () => {
+test('it reads the key of a marked contact from its destination after a rebuild', async () => {
   const ctx = await setupTest();
 
   await writeContactMarked(ctx.context, { destination: 'sam@example.org', name: null });
   await runProjectionRebuild(ctx.log);
 
-  const kinds = await ctx.readKinds();
+  const kinds = await ctx.readKeyKinds();
 
   expect(kinds).toStrictEqual(['address']);
 });

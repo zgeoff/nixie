@@ -25,8 +25,14 @@ export const placesMigration: Migration = {
 
     await sql`create index if not exists places_by_short_id on places (short_id)`.execute(tx);
 
-    // A known contact is a place at known. Its kind comes from its erasable destination, which a
-    // migration cannot read, so the row waits as a contact until the directory reads it.
+    // the removal of each address, phone or handle entry, whose place ID only an erasable field holds
+    await sql`create table if not exists place_removals (
+      place_id text primary key,
+      removed_sequence integer not null
+    ) strict`.execute(tx);
+
+    // A known contact is a place at known. Its key comes from its erasable destination, which the
+    // directory reads from the record, so the row keeps the kind contact.
     const contacts = await readQueryRows(
       sql`select contact_id, marked_sequence, unmarked_sequence from known_contacts`,
       tx,

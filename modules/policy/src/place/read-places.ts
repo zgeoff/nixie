@@ -71,19 +71,23 @@ async function readRows(
   options: ReadPlacesOptions,
 ): Promise<readonly PlaceRow[]> {
   const ids = options.placeIDs;
+  const db = log.writer.db.$extendTables<PolicyTables>();
 
-  const rows = await log.writer.db
-    .$extendTables<PolicyTables>()
+  const rows = await db
     .selectFrom('places')
-    .selectAll()
-    .$if(ids !== undefined, (query) => query.where('place_id', 'in', ids ?? []))
+    .leftJoin('place_removals', 'place_removals.place_id', 'places.place_id')
+    .selectAll('places')
+    .select('place_removals.removed_sequence as personal_removed_sequence')
+    .$if(ids !== undefined, (query) => query.where('places.place_id', 'in', ids ?? []))
     .$if(options.isRemovedIncluded !== true && ids === undefined, (query) =>
-      query.where('removed_sequence', 'is', null),
+      query
+        .where('places.removed_sequence', 'is', null)
+        .where('place_removals.removed_sequence', 'is', null),
     )
-    .orderBy('added_sequence')
+    .orderBy('places.added_sequence')
     .execute();
 
-  const named = rows.map((row) => pinNameSequence(row, options.nameSequences));
+  const named = rows.map((row) => pinNameSequence(toPlaceRow(row), options.nameSequences));
 
   // an added place claims its key before a contact does
   return [
@@ -99,6 +103,16 @@ function pinNameSequence(
   const pinned = pins?.get(row.place_id);
 
   return pinned === undefined ? row : { ...row, name_sequence: pinned };
+}
+
+interface JoinedPlaceRow extends PlaceRow {
+  readonly personal_removed_sequence: number | null;
+}
+
+function toPlaceRow(joined: JoinedPlaceRow): PlaceRow {
+  const { personal_removed_sequence: personalRemovedSequence, ...row } = joined;
+
+  return { ...row, removed_sequence: row.removed_sequence ?? personalRemovedSequence };
 }
 
 async function readErasableFields(

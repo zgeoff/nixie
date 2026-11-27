@@ -7,20 +7,15 @@ import type { PolicyTables } from '../policy/policy-tables';
 import { placesAddedCodec } from './places-added-codec';
 import { placesChangedCodec } from './places-changed-codec';
 import { placesRemovedCodec } from './places-removed-codec';
-import { writeContactKinds } from './write-contact-kinds';
 import { writePersonalRemovals } from './write-personal-removals';
-import { writeRemovedSequence } from './write-removed-sequence';
 
-// The directory of places, with the known contacts as places at known. A fold cannot read erasable
-// fields, so a contact's kind and the removal of an address, phone or handle reach the row through
-// writeContactKinds, writePersonalRemovals and the removal's own writer.
+// A rebuild must give the rows that the live log gave, and a fold cannot read erasable fields, so a
+// contact keeps the kind `contact`, and place_removals holds each removal of an address, phone or
+// handle.
 export const placesProjection: Projection = {
   table: 'places',
   keyColumn: 'place_id',
-  afterRebuild: async (log) => {
-    await writeContactKinds(log);
-    await writePersonalRemovals(log);
-  },
+  afterRebuild: writePersonalRemovals,
   fold: async (tx, record) => {
     const db = tx.$extendTables<PolicyTables>();
 
@@ -39,7 +34,12 @@ export const placesProjection: Projection = {
         return [];
       }
 
-      await writeRemovedSequence(tx, { placeID, sequence: record.sequence });
+      await db
+        .updateTable('places')
+        .set({ removed_sequence: record.sequence })
+        .where('place_id', '=', placeID)
+        .where('removed_sequence', 'is', null)
+        .execute();
 
       return [placeID];
     }

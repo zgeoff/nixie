@@ -1,7 +1,7 @@
 import { readLiveAddressRefs } from '@heynixie/connections';
 import type { SeedResult } from '@heynixie/definitions';
 import { runInForceSeed, runSeed } from '@heynixie/definitions';
-import { writeContactKinds, writeOwnPlaces, writePersonalRemovals } from '@heynixie/policy';
+import { writeOwnPlaces, writePersonalRemovals } from '@heynixie/policy';
 import { readArmedReminders } from '@heynixie/reminders';
 import { listOwnPlaceSources } from '../place/list-own-place-sources';
 import type { SeedParts } from '../seed/run-queued-seed';
@@ -9,7 +9,6 @@ import { runQueuedSeed } from '../seed/run-queued-seed';
 
 export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, async () => {
-    await writeContactKinds(parts.context.log);
     await writePersonalRemovals(parts.context.log);
 
     const result = await runSeed({

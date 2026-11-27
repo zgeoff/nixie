@@ -37,7 +37,6 @@ export type { PlaceKeyFault } from './place/check-place-key';
 export { findPlace } from './place/find-place';
 export { formatPlaceKey } from './place/format-place-key';
 export type { OwnPlace, OwnPlaceSource } from './place/own-place-source';
-export { writeContactKinds } from './place/write-contact-kinds';
 export { writePersonalRemovals } from './place/write-personal-removals';
 export type { PlaceLink } from './place/find-place-link';
 export { findPlaceLink } from './place/find-place-link';

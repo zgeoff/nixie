@@ -593,6 +593,10 @@ export interface NixieTables {
     readonly record_sequence: number;
     readonly updated_sequence: number;
   };
+  readonly place_removals: {
+    readonly place_id: string;
+    readonly removed_sequence: number;
+  };
   readonly places: {
     readonly place_id: string;
     readonly short_id: string;

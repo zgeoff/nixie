@@ -2,7 +2,6 @@ import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { toCanonicalDestination } from '../place/to-canonical-destination';
-import { writeContactKinds } from '../place/write-contact-kinds';
 import { contactMarkedKnownCodec } from './contact-marked-known-codec';
 import type { KnownContactEntry } from './read-known-contacts';
 import { readKnownContacts } from './read-known-contacts';
@@ -53,8 +52,6 @@ export async function writeContactMarked(
       erasable: { name: mark.name?.normalize('NFC') ?? null, destination },
     },
   ]);
-
-  await writeContactKinds(context.log);
 
   const known = await readKnownContacts(context.log);
 

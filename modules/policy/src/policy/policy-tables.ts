@@ -22,5 +22,9 @@ export type PolicyTables = CheckedTables<
       readonly name_sequence: number | null;
       readonly last_used_at: number | null;
     };
+    place_removals: {
+      readonly place_id: string;
+      readonly removed_sequence: number;
+    };
   }>
 >;
