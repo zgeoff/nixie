@@ -1,8 +1,7 @@
 # Agent Guidelines
 
-This repo is nixie, a self-hosted personal assistant platform that works for one person. It is in
-its first build: `docs/design/` holds the locked design baseline, and `docs/architecture/` covers
-the parts built so far.
+This repo is nixie, a self-hosted personal assistant platform that works for one person.
+`docs/architecture/` describes what is built, and `docs/design/` holds the designs for what is not.
 
 ## Required reading
 

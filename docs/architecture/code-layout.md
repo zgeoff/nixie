@@ -177,6 +177,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `connections` | The [credential database](connectors/credential-database.md): the database backend for OAuth tokens and the forget of a connection                  |
 | `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools     |
 | `google`      | [Google](connectors/google-connections.md): the connector, the Gmail, Calendar and Drive tools, the Gmail arrival source and the provider interface |
+| `coding`      | [Coding tasks](core/coding-tasks.md): the runner, its tools, the trigger source on a session's events and the release of a session                  |
 | `memory`      | The [memory store](memory/store.md) and its context                                                                                                 |
 | `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                    |
 | `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                               |
@@ -197,6 +198,8 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
 - `adapters/connector-google` is the google module's provider on Google: its hosts, its OAuth
   consent, its setup steps and its scope check.
+- `adapters/coding-atc` is the coding module's adapter on atc's typed fleet API, and the one package
+  that imports atc's client. [The atc adapter](connectors/coding-atc.md) covers its calls.
 - `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
   and on the Gemini API.
 - `adapters/speech-gpt-live` is the calls module's speech layer on OpenAI's GPT-Live.

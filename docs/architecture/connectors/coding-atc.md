@@ -143,14 +143,14 @@ the queue's ambiguous outcome.
 
 ## Config, token and reach
 
-The deployment config's `coding.atc` block holds the gateway's `https://` URL, without a path, the
-principal's name, the targets nixie lists, joins and starts on, a default target and an optional
-default agent. The composition root resolves `token`, always `deployment:atc_token`, from the
-secrets file and passes the adapter a plain string. The adapter calls `/rpc` under the URL, and
-drops a trailing `/mcp`, so a config written for the gateway's MCP endpoint keeps working. The token
-is a static service token of the gateway, which starts with `atcs_` and never expires. A static
-token needs no token endpoint and no refresh, and the gateway's token file rotates it with no
-outage.
+The deployment config's `coding.atc` block holds the gateway's `https://` URL, the principal's name,
+the targets nixie lists, joins and starts on, a default target and an optional default agent. Write
+the URL with no path. The adapter calls `/rpc` under it, and also accepts a URL that ends in `/mcp`,
+by dropping that suffix, so a config written for the gateway's MCP endpoint keeps working. The
+composition root resolves `token`, always `deployment:atc_token`, from the secrets file and passes
+the adapter a plain string. The token is a static service token of the gateway, which starts with
+`atcs_` and never expires. A static token needs no token endpoint and no refresh, and the gateway's
+token file rotates it with no outage.
 
 - The adapter sends the token only as the bearer of each request, and never logs it. The same token
   and scopes work on `/rpc` and on the gateway's MCP endpoint.
