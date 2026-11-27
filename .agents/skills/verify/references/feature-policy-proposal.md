@@ -125,12 +125,13 @@ Before you start:
 8. Check the turn that the approval started. It reads the call's outcome, and it must commit with no
    step error. Both queries follow the approved call through the `usedBy` action ID of its
    `proposals.settled` record, so a step of another task, or an outcome of an earlier export, never
-   matches. The first query returns only the first `task.step_committed` or `task.step_errored`
-   record after that record, so it shows an error that comes before the outcome, and never a later
-   turn. The turn takes a few seconds:
+   matches. The first query finds the first `task.step_started` of that task after that record, and
+   returns only the first `task.step_committed` or `task.step_errored` record after that start. So
+   it shows an error that comes before the outcome, and never the export turn or a later turn. The
+   turn takes a few seconds:
 
    ```bash
-   bun verify db query "select kind, json_extract(payload, '$.reason') as reason from records where kind in ('task.step_committed', 'task.step_errored') and json_extract(payload, '$.taskID') = (select json_extract(payload, '$.taskID') from records where kind = 'action.queued' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) and sequence > (select sequence from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action') order by sequence limit 1"
+   bun verify db query "select kind, json_extract(payload, '$.reason') as reason from records where kind in ('task.step_committed', 'task.step_errored') and json_extract(payload, '$.taskID') = (select json_extract(payload, '$.taskID') from records where kind = 'action.queued' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) and sequence > (select min(sequence) from records where kind = 'task.step_started' and json_extract(payload, '$.taskID') = (select json_extract(payload, '$.taskID') from records where kind = 'action.queued' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) and sequence > (select sequence from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) order by sequence limit 1"
    bun verify db query "select json_extract(payload, '$.status') as status, json_extract(payload, '$.reason') as reason from records where kind = 'action.outcome' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')"
    ```
 
