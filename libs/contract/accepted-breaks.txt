@@ -112,5 +112,9 @@ GEO-2879: POST /connections/registerClient added `subschema #1` to the response 
 GEO-2879: POST /connections/removeClient added `subschema #1` to the response body `oneOf` list for the response status `409`
 GEO-2879: POST /connections/setPicker added `subschema #1` to the response body `oneOf` list for the response status `409`
 GEO-2879: POST /connections/startConsent added `subschema #1` to the response body `oneOf` list for the response status `409`
-# GEO-2879: a client of the last release reads the provider's detail from `googleError`, which this API no longer sends, so its consent error page still shows the error code but drops what the provider said. The web client comes from the same build as the API, so only a web client of the last release that runs beside this API, as during an upgrade, shows the page without the detail. The field takes a name that holds no provider.
-GEO-2879: POST /connections/finishConsent removed the required property `oneOf[subschema #1]/data/googleError` from the response with the `502` status
+# GEO-2879: a client of the last release reads the provider's detail from `googleError`, which this API no longer sends, so its consent error page still shows the error code but drops what the provider said. The web client comes from the same build as the API, so only a web client of the last release that runs beside this API, as during an upgrade, shows the page without the detail. The field takes a name that holds no provider, and the messages of both 502 errors name no provider.
+GEO-2879: POST /connections/finishConsent added `subschema #1, subschema #2` to the response body `oneOf` list for the response status `502`
+# GEO-2879: a client of the last release still works, because it sends `google`, which the connector property still takes. The property takes any string, and the API refuses a connector it does not run.
+GEO-2879: POST /connections/readSetup the `connector` request property `type` changed from `any` to `string`
+GEO-2879: POST /connections/registerClient the `connector` request property `type` changed from `any` to `string`
+GEO-2879: POST /connections/startConsent the `connector` request property `type` changed from `any` to `string`
