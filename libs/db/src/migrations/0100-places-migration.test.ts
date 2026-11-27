@@ -84,6 +84,13 @@ test('it folds a known contact into a place at known, keeping its marked and unm
     unmarked_sequence integer
   ) strict`.execute(ctx.db);
 
+  await sql`create table projection_changes (
+    sequence integer not null,
+    projection text not null,
+    row_key text not null,
+    row text
+  )`.execute(ctx.db);
+
   await sql`insert into known_contacts values (${contactID}, 7, 9)`.execute(ctx.db);
   await ctx.db.transaction().execute((tx) => placesMigration.up(tx));
 
@@ -99,6 +106,60 @@ test('it folds a known contact into a place at known, keeping its marked and unm
       added_by: 'you',
       added_sequence: 7,
       removed_sequence: 9,
+    },
+  ]);
+});
+
+test('it writes the change of each contact record that the places fold would write', async () => {
+  const ctx = await setupTest();
+
+  const contactID = crypto.randomUUID();
+
+  await sql`create table known_contacts (
+    contact_id text primary key,
+    marked_sequence integer not null,
+    unmarked_sequence integer
+  ) strict`.execute(ctx.db);
+
+  await sql`create table projection_changes (
+    sequence integer not null,
+    projection text not null,
+    row_key text not null,
+    row text
+  )`.execute(ctx.db);
+
+  await sql`insert into known_contacts values (${contactID}, 7, 9)`.execute(ctx.db);
+  await ctx.db.transaction().execute((tx) => placesMigration.up(tx));
+
+  const changes = await readQueryRows(
+    sql`select sequence, row_key, row from projection_changes where projection = 'places'
+      order by sequence`,
+    ctx.db,
+    z.object({ sequence: z.number(), row_key: z.string(), row: z.string() }),
+  );
+
+  const placeRow = {
+    place_id: contactID,
+    short_id: buildShortIDFromUUID(contactID),
+    origin: 'contact',
+    kind: 'contact',
+    trust: 'known',
+    added_by: 'you',
+    name: null,
+    domain: null,
+    subdomains: null,
+    added_sequence: 7,
+    removed_sequence: null,
+    name_sequence: null,
+    last_used_at: null,
+  };
+
+  expect(changes).toStrictEqual([
+    { sequence: 7, row_key: contactID, row: JSON.stringify(placeRow) },
+    {
+      sequence: 9,
+      row_key: contactID,
+      row: JSON.stringify({ ...placeRow, removed_sequence: 9 }),
     },
   ]);
 });

@@ -50,6 +50,54 @@ export const placesMigration: Migration = {
         ${contact.contact_id}, ${buildShortIDFromUUID(contact.contact_id)}, 'contact', 'contact',
         'known', 'you', ${contact.marked_sequence}, ${contact.unmarked_sequence}
       )`.execute(tx);
+
+      for (const change of buildContactChanges(contact)) {
+        await sql`insert into projection_changes (sequence, projection, row_key, row)
+          values (${change.sequence}, 'places', ${contact.contact_id}, ${change.row})`.execute(tx);
+      }
     }
   },
 };
+
+interface ContactRow {
+  readonly contact_id: string;
+  readonly marked_sequence: number;
+  readonly unmarked_sequence: number | null;
+}
+
+interface PlaceChange {
+  readonly sequence: number;
+  readonly row: string;
+}
+
+// The change rows that the places fold writes for a contact's marking and unmarking, in the
+// column order of the table, so a rebuild finds the rows that the migration wrote.
+function buildContactChanges(contact: ContactRow): readonly PlaceChange[] {
+  const marked = {
+    place_id: contact.contact_id,
+    short_id: buildShortIDFromUUID(contact.contact_id),
+    origin: 'contact',
+    kind: 'contact',
+    trust: 'known',
+    added_by: 'you',
+    name: null,
+    domain: null,
+    subdomains: null,
+    added_sequence: contact.marked_sequence,
+    removed_sequence: null,
+    name_sequence: null,
+    last_used_at: null,
+  };
+
+  return [
+    { sequence: contact.marked_sequence, row: JSON.stringify(marked) },
+    ...(contact.unmarked_sequence === null
+      ? []
+      : [
+          {
+            sequence: contact.unmarked_sequence,
+            row: JSON.stringify({ ...marked, removed_sequence: contact.unmarked_sequence }),
+          },
+        ]),
+  ];
+}
