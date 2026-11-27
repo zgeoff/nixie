@@ -78,6 +78,24 @@ export const leakExceptions: LeakExceptions = {
       reason: 'the code check of a policy decision, a check that code runs and no sandbox',
     },
     {
+      where: 'modules/policy/src/condition/build-condition-view.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the part of a condition shown as code on a card, text and no sandbox',
+    },
+    {
+      where: 'modules/policy/src/condition/render-condition-words.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the part of a condition shown as code on a card, text and no sandbox',
+    },
+    {
+      where: 'modules/policy/src/condition/types.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the part of a condition shown as code on a card, text and no sandbox',
+    },
+    {
       where: 'libs/contract/src/contract/passkey-contract.ts',
       names: ['code'],
       removedBy: 'never',
