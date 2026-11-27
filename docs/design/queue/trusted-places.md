@@ -8,10 +8,10 @@
 
 nixie keeps one directory of the places it deals with: websites, email addresses, mail domains,
 phone numbers and chat handles. Each entry carries one trust level, and the decision point reads the
-level for every call that declares the place as a destination. Today `web_fetch` reads a website
-without asking, `computer.browser_open` asks before it opens the same site, and each click asks
-again, because each tool and each Always allow answer has its own list. With the directory, you
-trust a site once, on one page, and every tool sees the same answer.
+level for every call that declares the place as a destination. Today `web_fetch` and
+`computer.browser_open` read a website without asking, and each click asks, because each tool and
+each Always allow answer has its own list. With the directory, you trust a site once, on one page,
+and every tool sees the same answer.
 
 Build each work item above from this design and the [places](../../architecture/policy/places.md)
 and [decision point](../../architecture/policy/decision-point.md) docs, which describe what is
@@ -193,7 +193,6 @@ and when a call last used it. You add, change and remove entries there. The host
 
 - The page's layout and its sort order.
 - Whether `places.narrow` is one tool or two.
-- How the guest reads the clicked element: a new read mode, or a field on the snapshot read.
 - What happens to the Always allow rules that pin only a host: they keep working, and the builder
   may offer a one-time conversion to places on the page.
 

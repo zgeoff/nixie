@@ -15,7 +15,7 @@ parsePlace('https://Docs.Example.org:8443/a?b=1'); // { kind: 'site', domain: 'd
 parsePlace('https://www.example.org/'); // { kind: 'site', domain: 'example.org' }
 parsePlace('Sam@Example.org'); // { kind: 'address', address: 'sam@example.org' }
 parsePlace('+61 420 000 000'); // { kind: 'phone', e164: '+61420000000' }
-parsePlace('telegram:51234'); // { kind: 'handle', channel: 'telegram', id: '51234' }
+parsePlace('telegram:51234'); // a handle while the telegram feature is on, else a host and a port
 parsePlace('0420 000 000'); // null: a phone number needs its country code
 parsePlace('not a place'); // null
 
