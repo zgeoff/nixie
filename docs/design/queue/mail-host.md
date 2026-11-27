@@ -5,8 +5,8 @@
 
 The assistant's mailbox, its `mail.*` tools, its wake rules and its arrival path are built, as
 [the assistant's mailbox](../../architecture/core/mailbox.md) describes. No real mail host exists
-yet, so a release build with a `mail` config section refuses to start. This design holds the host:
-one adapter that implements `MailHost` against a real mail system, and the assistant's own domain.
+yet, so a release build with a `mail` config section refuses to start. Build the host: one adapter
+that implements `MailHost` against a real mail system, and choose the assistant's own domain.
 [Accounts and sign-in](accounts.md) waits on it, because each account takes the mailbox as its
 username.
 
@@ -19,8 +19,8 @@ const host = buildMailHost({ credentials, address }); // address: the `mail.addr
 ```
 
 - The adapter reaches the host through the credential store's `fetcher` or `socket`, under the
-  connector credential `deployment:mail`. The
-  [credential store](../../architecture/connectors/credentials.md) defines both calls.
+  connector credential `deployment:mail`. See the
+  [credential store](../../architecture/connectors/credentials.md) for both calls.
 - A send sets the Message-ID `<actionID>@<the assistant's domain>`, and `findSent` reconciles an
   unknown outcome by that header. The Message-ID carries no other mark of nixie.
 - `watch` is optional. The adapter implements it only when the host pushes a hint.

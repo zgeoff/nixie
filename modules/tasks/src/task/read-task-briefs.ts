@@ -7,7 +7,7 @@ import { readDefinitionBriefs } from './read-definition-briefs';
 
 // The brief of each task among the given IDs: a started task's from its record, and a definition's
 // task's from the version it shows. A task with no startedBy that is no definition's, such as the
-// conversation, the memory tasks and a harness-created task, has none and is left out.
+// conversation and a harness-created task, has none and is left out.
 export async function readTaskBriefs(
   context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   taskIDs: readonly string[],
