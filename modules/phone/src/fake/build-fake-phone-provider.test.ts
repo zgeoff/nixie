@@ -25,15 +25,27 @@ test('it reads the inbound texts at or after a time, oldest first', async () => 
   expect(texts.map((text) => text.body)).toStrictEqual(['middle', 'late']);
 });
 
-test('it reads the recent texts newest first', async () => {
+test('it reads every text of the newest time as the recent texts, however many there are', async () => {
   const ctx = setupTest();
 
   ctx.provider.deliver({ from: 'A', body: 'old', receivedAt: 1000 });
-  ctx.provider.deliver({ from: 'A', body: 'new', receivedAt: 2000 });
+
+  for (let count = 0; count < 25; count += 1) {
+    ctx.provider.deliver({ from: 'A', body: `new ${String(count)}`, receivedAt: 2000 });
+  }
 
   const texts = await ctx.provider.readRecent();
 
-  expect(texts.map((text) => text.body)).toStrictEqual(['new', 'old']);
+  expect(texts).toHaveLength(25);
+  expect(texts.map((text) => text.receivedAt)).toSatisfyAll((receivedAt) => receivedAt === 2000);
+});
+
+test('it reads no recent text from an empty inbox', async () => {
+  const ctx = setupTest();
+
+  const texts = await ctx.provider.readRecent();
+
+  expect(texts).toStrictEqual([]);
 });
 
 test('it sends a text and finds it by number, body and window', async () => {

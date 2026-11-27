@@ -25,6 +25,13 @@ export const phoneDeclarations = {
     content: ['body'],
     results: {},
   },
+  forget: {
+    effects: ['note'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: { text: 'owner_data', status: 'owner_data' },
+  },
   wakeSet: {
     effects: ['note'],
     destinations: [],

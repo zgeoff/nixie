@@ -187,6 +187,9 @@ export interface TextArrival {
   // epoch ms, the provider's receive time
   readonly receivedAt: number;
   readonly body: string;
+
+  // how coarse the provider's clock is, in ms: the text arrived within this long after its time
+  readonly precisionMs: number;
 }
 
 export type TriggerEvent =

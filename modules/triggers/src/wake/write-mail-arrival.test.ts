@@ -6,6 +6,7 @@ import { deliverTriggerBatch } from '../core/deliver-trigger-batch';
 import {
   buildTestMailEvent,
   buildTestTextEvent,
+  buildTestTextSource,
   readTestTriggerRows,
   seedWakeRule,
   startTestTriggers,
@@ -16,13 +17,16 @@ import { textSources } from './text-sources';
 async function setupTest() {
   const triggers = await startTestTriggers();
 
+  const text = buildTestTextSource();
+
   return {
     ...triggers,
+    text,
     taskSeed: buildTaskSeeder({ context: triggers.context }),
     deliverMail: (events: readonly MailArrivalEvent[]) =>
       deliverTriggerBatch(triggers.core, 'mail', { cursor: null, events }),
     deliverTexts: (events: readonly TextArrivalEvent[], sourceID = 'test-texts') => {
-      textSources.set(['test-texts']);
+      textSources.set([text.source]);
 
       onTestFinished(() => {
         textSources.set([]);
@@ -485,6 +489,85 @@ test('it does not take a mail rule for a text of the same words', async () => {
 
   const result = await ctx.deliverTexts([
     buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } }),
+  ]);
+
+  expect(result).toStrictEqual({ delivered: 0 });
+});
+
+test('it writes nothing for a text that its feature forgot after the source read it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'test-texts' }, match: {} });
+
+  ctx.clock.advance(1000);
+  ctx.text.forget();
+
+  const result = await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } }),
+  ]);
+
+  const arrived = await ctx.readKinds('trigger.mail_arrived');
+  const woke = await ctx.readKinds('trigger.mail_woke');
+
+  expect(result).toStrictEqual({ delivered: 0 });
+  expect(arrived).toStrictEqual([]);
+  expect(woke).toStrictEqual([]);
+});
+
+test('it writes the sender and body that the feature holds, never the event copy', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'test-texts' }, match: {} });
+
+  ctx.clock.advance(1000);
+  ctx.text.hold({ from: 'Held', body: 'Held body' });
+
+  await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: ctx.clock.now(), body: 'Raw body' } }),
+  ]);
+
+  const [woke] = await ctx.readKinds('trigger.mail_woke');
+
+  expect(woke?.erasable).toMatchObject({
+    fields: { mails: [{ from: 'Held', body: 'Held body' }] },
+  });
+});
+
+test('it takes a text that arrived within the second of the rule that was set after its time', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  const arrivedAt = ctx.clock.now();
+
+  ctx.clock.advance(100);
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'test-texts' }, match: {} });
+
+  const result = await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: arrivedAt, precisionMs: 1000 } }),
+  ]);
+
+  expect(result).toStrictEqual({ delivered: 1 });
+});
+
+test('it ignores a text that arrived before the second of the rule', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  const arrivedAt = ctx.clock.now();
+
+  ctx.clock.advance(1000);
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'test-texts' }, match: {} });
+
+  const result = await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: arrivedAt, precisionMs: 1000 } }),
   ]);
 
   expect(result).toStrictEqual({ delivered: 0 });

@@ -37,6 +37,7 @@ export const twilioHandlers = [
         (message) =>
           (to === null || message.to === to) &&
           (from === null || message.from === from) &&
+          !(day !== null && message.isQueued) &&
           message.sentAt >= dayMs,
       )
       .toSorted((left, right) => right.sentAt - left.sentAt);
@@ -55,7 +56,7 @@ export const twilioHandlers = [
         to: message.to,
         body: message.body,
         direction: message.direction,
-        date_sent: new Date(message.sentAt).toUTCString(),
+        date_sent: message.isQueued ? null : new Date(message.sentAt).toUTCString(),
         date_created: new Date(message.sentAt).toUTCString(),
       })),
       next_page_uri: hasNext ? `${url.pathname}?${next.toString()}` : null,

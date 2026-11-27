@@ -2,12 +2,14 @@ import { expect, test } from 'bun:test';
 import { makeErasureRunner, readRecords, withWriteTransaction } from '@heynixie/log';
 import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
+import { deliverTriggerBatch } from '@heynixie/triggers';
 import { readTestTriggerRows } from '@heynixie/triggers/test-utils';
 import { waitFor } from '@zgeoff/testing';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { readTextPage } from '../store/read-text-page';
+import { writeReceivedText } from '../store/write-received-text';
 import { startTestPhone, startTestPhoneSource } from '../test-utils';
 import { buildTextErasable } from './build-text-erasable';
 import { phoneTextErasableDescriptor } from './phone-text-erasable-descriptor';
@@ -51,7 +53,7 @@ async function setupTest() {
 
       return rows.rows.map((row) => z.object({ key_id: z.string().nullable() }).parse(row).key_id);
     },
-    readSequences: async (kind: 'trigger.mail_woke') => {
+    readSequences: async (kind: 'trigger.mail_arrived' | 'trigger.mail_woke') => {
       const records = await readRecords(phone.tasks.log, { afterSequence: 0, kinds: [kind] });
 
       return records.map((entry) => entry.record.sequence);
@@ -100,7 +102,7 @@ test('it captures the keys of a text, its wake and its thread, and the wake that
     turnInputs: { threads: ['conversation'], cleaned: false, floor: expect.any(Number) },
   });
 
-  expect(start.target.kind).toBe('phone_text');
+  expect(start.target.kind).toBe('text');
   expect(wakes).toHaveLength(1);
 });
 
@@ -170,4 +172,46 @@ test('it refuses to forget a text that no stored text has the ID of', async () =
   const begun = await ctx.forget.begin({ text: 'txzzzzzzzz' }, { by: 'user' });
 
   expect(begun).toStrictEqual({ status: 'refused', reason: 'not_found' });
+});
+
+test('it writes no wake and no arrival for a text whose forget began before its arrival', async () => {
+  const ctx = await setupTest();
+
+  await ctx.callTool('phone.wake_set', { window: '1m' });
+
+  const shortID = await writeReceivedText(ctx.context, {
+    messageID: 'SMr000001',
+    from: 'Example',
+    body: 'Your code is 5521',
+    receivedAt: ctx.clock.now(),
+    precisionMs: 1,
+  });
+
+  await ctx.forget.begin({ text: shortID }, { by: 'user' });
+
+  const result = await deliverTriggerBatch(ctx.core, 'phone', {
+    cursor: null,
+    events: [
+      {
+        kind: 'text',
+        mailbox: { kind: 'source', sourceID: 'phone' },
+        dedupeKey: 'SMr000001',
+        occurredAt: new Date(ctx.clock.now()).toISOString(),
+        payload: {
+          messageID: shortID,
+          from: 'Example',
+          body: 'Your code is 5521',
+          receivedAt: ctx.clock.now(),
+          precisionMs: 1,
+        },
+      },
+    ],
+  });
+
+  const arrivals = await ctx.readSequences('trigger.mail_arrived');
+  const wakes = await ctx.readSequences('trigger.mail_woke');
+
+  expect(result).toStrictEqual({ delivered: 0 });
+  expect(arrivals).toStrictEqual([]);
+  expect(wakes).toStrictEqual([]);
 });

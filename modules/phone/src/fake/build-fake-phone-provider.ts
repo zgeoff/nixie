@@ -47,8 +47,6 @@ export interface FakePhoneProviderOptions {
   readonly now: () => number;
 }
 
-const recentPageSize = 20;
-
 // A phone provider in memory, the stand-in for a real one. Its message IDs are unique within it,
 // and a text's time is the time of the call unless the test sets one.
 export function buildFakePhoneProvider(options: FakePhoneProviderOptions): FakePhoneProvider {
@@ -90,6 +88,7 @@ export function buildFakePhoneProvider(options: FakePhoneProviderOptions): FakeP
         from: text.from,
         body: text.body,
         receivedAt: text.receivedAt ?? options.now(),
+        precisionMs: 1,
       };
 
       inbox.push(stored);
@@ -105,11 +104,11 @@ export function buildFakePhoneProvider(options: FakePhoneProviderOptions): FakeP
     },
     addSent,
     readRecent: () =>
-      settle(() =>
-        inbox
-          .toSorted((left, right) => right.receivedAt - left.receivedAt)
-          .slice(0, recentPageSize),
-      ),
+      settle(() => {
+        const newest = Math.max(...inbox.map((text) => text.receivedAt));
+
+        return inbox.filter((text) => text.receivedAt === newest);
+      }),
     readInbound: (sinceMs) =>
       settle(() =>
         inbox
@@ -143,7 +142,11 @@ export function buildFakePhoneProvider(options: FakePhoneProviderOptions): FakeP
               text.createdAt >= query.fromMs &&
               text.createdAt <= query.untilMs,
           )
-          .map((text) => ({ messageID: text.messageID })),
+          .map((text) => ({
+            messageID: text.messageID,
+            createdAt: text.createdAt,
+            precisionMs: 1,
+          })),
       ),
   };
 }

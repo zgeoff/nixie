@@ -9,7 +9,7 @@ import { phoneToolNames } from './phone-tool-names';
 // The text that each other send of the assistant's phone has begun and not settled. A send that no
 // attempt has begun sends nothing, so it is left out.
 export async function readOpenSends(
-  log: Log,
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
   excludeActionID: string,
 ): Promise<readonly TextRequest[]> {
   const rows = await log.writer.db

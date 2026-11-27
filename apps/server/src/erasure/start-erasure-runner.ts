@@ -76,8 +76,11 @@ export function startErasureRunner(
   });
 
   // Registered whether or not the phone is on, because a forget of a text that a crash cut short
-  // finishes at the next start, and the entry reads only the log.
-  runner.register({ ...phoneTextErasableDescriptor, ...buildTextErasable() });
+  // finishes at the next start, and the entry reads only the log. The phone's own forget uses the
+  // handle.
+  const forgetText = runner.register({ ...phoneTextErasableDescriptor, ...buildTextErasable() });
+
+  reader.find('phone')?.bindForget(forgetText);
 
   return runner;
 }

@@ -19,14 +19,22 @@ phone tools, polls nothing and accepts no wake rule on a phone. The `phone` feat
 
 The phone module reaches a phone service only through the `PhoneProvider` interface.
 
-| Call                 | Does                                                                                         |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| `readRecent()`       | returns the newest texts the number received, newest first, so a first start knows the state |
-| `readInbound(since)` | returns every text the number received at or after the time, oldest first, across all pages  |
-| `send(request)`      | sends one text and returns the provider's ID for it, or `refused` when it took none          |
-| `readSentTexts(q)`   | returns the texts the number sent to one number with one body in a window, and never sends   |
+| Call                 | Does                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `readRecent()`       | returns every text the number received at its newest time, so a first start knows the state |
+| `readInbound(since)` | returns every text the number received at or after the time, oldest first, across all pages |
+| `send(request)`      | sends one text and returns the provider's ID for it, or `refused` when it took none         |
+| `readSentTexts(q)`   | returns the texts the number sent to one number with one body in a window, and never sends  |
+
+Each text holds the provider's receive time and how coarse its clock is, in milliseconds. A read
+that cannot reach every text it needs, such as one page that fails in a long backlog, throws, so the
+source never moves its cursor past a text it did not read.
 
 A call that fails to reach the provider throws, and a send that throws has an unknown outcome.
+Twilio stamps a text to the second, and nixie takes the time Twilio created the text as its receive
+time, so a rule that the model set after the text arrived cannot take it. Twilio lists a queued text
+with no sent time, so a read for a send looks at the creation time and pages through the list
+without a filter on the sent time.
 
 The adapter calls the provider's Messages API through the credential store's fetcher, bound to the
 provider's API origin. The fetcher adds the API key as HTTP Basic, with the key's SID as the user,
@@ -52,7 +60,10 @@ triggers module's list of text sources before any part starts. The source reads 
   `unhealthy` after 3 failures in a row.
 
 The cursor holds the newest receive time and the message IDs that share it, so two texts in the same
-second are neither lost nor read twice.
+second are neither lost nor read twice. At its first start the source records every text of the
+newest time, however many pages they fill. The arrival that the source delivers holds the text's
+fields, and the core replaces them with the ones the phone's store holds when it writes the arrival,
+so a text forgotten between the store and the arrival wakes nothing.
 
 ## The stored text
 
@@ -71,42 +82,60 @@ The model reads and passes the short ID of a text, never its record's UUID.
 | --------------------------------------------- | ------ | ------ | ----------- |
 | `phone.list`, `phone.read`, `phone.wake_list` | `read` | direct | none        |
 | `phone.wake_set`, `phone.wake_cancel`         | `note` | direct | none        |
+| `phone.forget`                                | `note` | direct | none        |
 | `phone.send`                                  | `send` | queued | the number  |
 
 `phone.list` returns the texts newest first with the assistant's own number, optionally from one
 sender, and pages with `next`. `phone.read` opens one text by its short ID. Every field of a text
 comes back marked as outside content, and a call's record keeps the IDs and times of the texts it
-read, never their sender or body, so a forget leaves no readable copy there.
+read, never their sender or body, so a forget leaves no readable copy there. The record of a call to
+`phone.list` or `phone.wake_set` also leaves out the sender and body that its arguments name.
+
+`phone.forget` takes a text's short ID and starts the forget below. The text hides at once, and the
+rest of the erasure finishes after the calling step ends.
 
 `phone.wake_set`, `phone.wake_list` and `phone.wake_cancel` take the arguments and give the results
 of the mail tools, on the mailbox `{ kind: 'source', sourceID: 'phone' }`, with `body` in place of
 `subject`. A rule matches `from` as a number in E.164 form, or as a sender name without case, and
-`body` as a substring of the text, both sides in NFC and lowercase. Anyone can send a text under any
-sender name, so a name proves nothing about who sent it.
+`body` as a substring of the text, both sides in NFC and lowercase. A `from` entry takes the whole
+sender and never a part of it. Anyone can send a text under any sender name, so a name proves
+nothing about who sent it.
 
 `phone.send` refuses a number that is not in E.164 form (`BAD_NUMBER`) and a body over 640
 characters (`TOO_LONG`). `phone.read` refuses an unknown ID (`UNKNOWN_TEXT`). The always-allow rule
 of `phone.send` pins the number, so an approval for one number never covers another.
 
+A sign-up that asks for a phone number gets the number that `phone.list` returns. The model sets a
+wake rule, reads the text that wakes it and types the code into the page. With the phone off, the
+model has no phone tool, and `computer.handover` hands the step to the user.
+
 ## The send
 
 The queue runs `phone.send` through the phone connector. A send the provider accepts claims the
-message it returns. A refusal ends the action with `SEND_FAILED`.
+message it returns, and its outcome holds the text's short ID and the action's ID. A send that holds
+a claim sends nothing again, and its check answers from the claim before it reads the provider. A
+refusal ends the action with `SEND_FAILED`.
 
 A send of unknown outcome reconciles with a read-only check. The connector looks for texts to the
-same number with the same body, created from a minute before the attempt began. The check settles as
-found only when exactly one such text has no row in `phone_send_claims` and no other open send
-carries the same number and body. It then claims that text in the same write transaction. When the
-check finds no text, finds more than one, or cannot read the provider, the queue asks the user,
+same number with the same body, created from a minute before the attempt began, to allow for the
+provider's clock. In one write transaction the check reads the claims and the other open sends. It
+settles as found only when exactly one such text has no row in `phone_send_claims`, the provider may
+have created it at or after the attempt began, and no other open send carries the same number and
+body. It then claims that text in the same transaction. When the check finds no text, finds more
+than one, finds one from before the attempt, or cannot read the provider, the queue asks the user,
 because a match cannot show which send made the message.
 
 ## Forgetting a text
 
-A forget of a text runs through the erasure runner as the `phone_text` kind. It captures the text's
-record, its arrival and every wake that showed it, then removes their keys, so no readable copy
-stays. The cleanup covers the sessions and the turn inputs that saw a wake. A forget erases nixie's
-copy and leaves the text at the provider. The server registers the kind whether or not the phone is
-on, because a forget that a crash cut short finishes at the next start from the log alone.
+A forget of a text runs through the erasure runner as the `text` kind, which the core log lists as a
+text and not as the phone. It captures the text's record, its arrival and every wake that showed it,
+then removes their keys, so no readable copy stays. The cleanup covers the sessions and the turn
+inputs that saw a wake. A forget erases nixie's copy and leaves the text at the provider. The server
+registers the kind whether or not the phone is on, because a forget that a crash cut short finishes
+at the next start from the log alone.
+
+The core asks the phone's store for a text's fields when the flush writes a wake. The store holds
+none once the forget has begun, so a wake that the flush writes after that leaves the text out.
 
 ## Configuration
 

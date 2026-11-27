@@ -185,10 +185,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       // the held matches of a wake rule wake their target here, once a rule's window is over
       const flush = startWakeFlush(core, {
-        liveSources: [
-          ...(parts.config.google === undefined ? [] : [gmailSourceID]),
-          ...(phone === null ? [] : [phone.source.id]),
-        ],
+        liveSources: parts.config.google === undefined ? [] : [gmailSourceID],
       });
 
       await parts.cleanup.defer(() => flush.stop());

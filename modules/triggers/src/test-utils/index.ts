@@ -9,3 +9,4 @@ export { seedWakeRule } from './seed-wake-rule';
 export { seedDefinitionsInForce } from './seed-definitions-in-force';
 export type { TestTriggers } from './start-test-triggers';
 export { startTestTriggers } from './start-test-triggers';
+export { buildTestTextSource } from './build-test-text-source';

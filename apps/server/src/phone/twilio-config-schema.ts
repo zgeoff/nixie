@@ -18,5 +18,3 @@ export const twilioConfigSchema = z.strictObject({
   credential: deploymentReference,
   api_url: z.url({ protocol: /^https$/u }).default('https://api.twilio.com'),
 });
-
-export type TwilioConfig = z.output<typeof twilioConfigSchema>;

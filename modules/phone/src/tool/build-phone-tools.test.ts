@@ -14,9 +14,17 @@ async function setupTest() {
   return {
     ...phone,
     writeText: (from: string, body: string, receivedAt = phone.clock.now()) =>
-      writeReceivedText(phone.context, { messageID: crypto.randomUUID(), from, body, receivedAt }),
+      writeReceivedText(phone.context, {
+        messageID: crypto.randomUUID(),
+        from,
+        body,
+        receivedAt,
+        precisionMs: 1,
+      }),
     clearSend: (input: object) => {
-      const send = buildPhoneTools(phone.context).find((tool) => tool.name === 'phone.send');
+      const send = buildPhoneTools(phone.context, phone.forgetter).find(
+        (tool) => tool.name === 'phone.send',
+      );
 
       return (
         send?.clear?.(
@@ -25,6 +33,10 @@ async function setupTest() {
         ) ?? Promise.resolve('the send tool has no clear')
       );
     },
+    recordInput: (name: string, input: object) =>
+      buildPhoneTools(phone.context, phone.forgetter)
+        .find((tool) => tool.name === name)
+        ?.recordInput?.(parseJSONObject(JSON.stringify(input))),
     readRules: () =>
       readWakeRules(phone.writer.db, {
         mailbox: { kind: 'source', sourceID: 'phone' },
@@ -230,4 +242,64 @@ test('it offers an always-allow rule for a send that pins the number and leaves 
     checks: [{ arg: 'to', op: 'eq', value: '+61400000000' }],
     destinations: ['+61400000000'],
   });
+});
+
+test.each([
+  ['phone.list', { from: 'Example', limit: 5 }, { limit: 5 }],
+  [
+    'phone.wake_set',
+    { from: ['Example'], body: 'code', expires: '30m', window: '1m' },
+    { expires: '30m', window: '1m' },
+  ],
+])(
+  'it keeps no sender and no body in the record of the arguments of %s',
+  async (name, input, expected) => {
+    const ctx = await setupTest();
+
+    expect(ctx.recordInput(name, input)).toStrictEqual(expected);
+  },
+);
+
+test('it forgets a text for the assistant, so no tool reads it afterwards', async () => {
+  const ctx = await setupTest();
+  const shortID = await ctx.writeText('Example', 'Your code is 5521');
+  const forgotten = await ctx.callTool('phone.forget', { text: shortID });
+
+  await ctx.forgetter.waitForForgets();
+
+  const read = await ctx.callTool('phone.read', { text: shortID });
+  const listed = await ctx.callTool('phone.list', {});
+
+  expect(forgotten).toStrictEqual({
+    status: 'ok',
+    result: { text: shortID, status: 'forgetting' },
+    record: { text: shortID },
+  });
+
+  expect(read).toMatchObject({ status: 'error', message: expect.stringContaining('UNKNOWN_TEXT') });
+  expect(JSON.stringify(listed)).not.toContain('5521');
+});
+
+test('it refuses to forget a text that no stored text has the ID of, with UNKNOWN_TEXT', async () => {
+  const ctx = await setupTest();
+  const outcome = await ctx.callTool('phone.forget', { text: 'txzzzzzzzz' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'UNKNOWN_TEXT: no text has the ID txzzzzzzzz',
+  });
+});
+
+test('it tells the model that its own number goes to a sign-up, and how the code reaches it', async () => {
+  const ctx = await setupTest();
+
+  const list = buildPhoneTools(ctx.context, ctx.forgetter).find(
+    (tool) => tool.name === 'phone.list',
+  );
+
+  expect(list?.description).toContain(
+    'when a sign-up asks for a phone number, give it that number',
+  );
+
+  expect(list?.description).toContain('type its code into the page');
 });

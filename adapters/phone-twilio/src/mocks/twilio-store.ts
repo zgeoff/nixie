@@ -22,6 +22,9 @@ const messages = new Collection({
 
     // epoch ms
     sentAt: z.number().default(() => Date.now()),
+
+    // a queued message has a creation time and no sent time
+    isQueued: z.boolean().default(false),
   }),
 });
 

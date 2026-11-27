@@ -17,6 +17,7 @@ export function buildTestTextEvent(
       receivedAt: Date.parse('2027-03-09T00:00:00Z'),
       from: 'Example',
       body: 'Your code is 5521',
+      precisionMs: 1,
       ...payload,
     },
   };

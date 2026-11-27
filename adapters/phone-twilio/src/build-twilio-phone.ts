@@ -21,12 +21,18 @@ export interface TwilioPhoneOptions {
 
 const requestTimeoutMs = 15_000;
 const pageSize = 100;
-const maxPages = 50;
-const recentPageSize = 20;
 
-// The phone provider over Twilio's Messages API, which nixie polls, so it needs no address that the
-// internet can reach. A call that fails to reach Twilio throws, and so does a send that Twilio
-// answers with a server error, because that send may have gone out.
+// Twilio stamps each message to the second.
+const precisionMs = 1000;
+
+// The list runs newest first by a time that sits a few seconds from a message's creation time, so a
+// read goes on until a page holds a message this much older than the ones it wants.
+const orderSlackMs = 60_000;
+const dayMs = 24 * 60 * 60_000;
+
+// The phone provider over Twilio's Messages API, which nixie polls. A call that fails to reach
+// Twilio throws, and so does a send that Twilio answers with a server error, because that send may
+// have gone out. A read pages until it holds every message it wants.
 export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
   const messagesPath = `/2010-04-01/Accounts/${encodeURIComponent(options.accountSID)}/Messages.json`;
 
@@ -48,11 +54,14 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
     return twilioMessageListSchema.parse(body);
   };
 
-  const readMessages = async (query: URLSearchParams, limit: number): Promise<TwilioMessage[]> => {
+  const readMessages = async (
+    query: URLSearchParams,
+    isDone: (messages: readonly TwilioMessage[]) => boolean,
+  ): Promise<TwilioMessage[]> => {
     const messages: TwilioMessage[] = [];
     let path: string | null = `${messagesPath}?${query.toString()}`;
 
-    for (let pages = 0; path !== null && pages < limit; pages += 1) {
+    while (path !== null && !isDone(messages)) {
       const page = await readPage(path);
 
       messages.push(...page.messages);
@@ -65,22 +74,33 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
 
   return {
     readRecent: async () => {
-      const query = new URLSearchParams({ To: options.number, PageSize: String(recentPageSize) });
+      const query = new URLSearchParams({ To: options.number, PageSize: String(pageSize) });
 
-      const messages = await readMessages(query, 1);
+      const messages = await readMessages(query, (read) => {
+        const times = read
+          .flatMap((message) => toInboundText(message))
+          .map((text) => text.receivedAt);
 
-      return messages
-        .flatMap((message) => toInboundText(message))
-        .toSorted((left, right) => right.receivedAt - left.receivedAt);
+        return times.some((time) => time < Math.max(...times) - orderSlackMs);
+      });
+
+      const texts = messages.flatMap((message) => toInboundText(message));
+      const newest = Math.max(...texts.map((text) => text.receivedAt));
+
+      return texts.filter((text) => text.receivedAt === newest);
     },
     readInbound: async (sinceMs) => {
       const query = new URLSearchParams({
         To: options.number,
         PageSize: String(pageSize),
-        'DateSent>=': new Date(sinceMs).toISOString().slice(0, 10),
+        'DateSent>=': new Date(sinceMs - dayMs).toISOString().slice(0, 10),
       });
 
-      const messages = await readMessages(query, maxPages);
+      const messages = await readMessages(query, (read) =>
+        read
+          .flatMap((message) => toInboundText(message))
+          .some((text) => text.receivedAt < sinceMs - orderSlackMs),
+      );
 
       return messages
         .flatMap((message) => toInboundText(message))
@@ -126,32 +146,46 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
       throw new Error(`Twilio answered ${String(response.status)} to a send`);
     },
     readSentTexts: async (query) => {
+      // A queued message has no sent time yet, so a filter on the sent time would miss it.
       const search = new URLSearchParams({
         From: options.number,
         To: query.to,
         PageSize: String(pageSize),
-        'DateSent>=': new Date(query.fromMs).toISOString().slice(0, 10),
       });
 
-      const messages = await readMessages(search, maxPages);
+      const messages = await readMessages(search, (read) =>
+        read.some((message) => toCreatedAt(message) < query.fromMs - orderSlackMs),
+      );
 
       return messages
         .filter((message) => message.direction.startsWith('outbound'))
         .filter((message) => message.body === query.body)
-        .filter((message) => {
-          const createdAt = Date.parse(message.date_created ?? message.date_sent ?? '');
+        .flatMap((message) => {
+          const createdAt = toCreatedAt(message);
 
-          return createdAt >= query.fromMs && createdAt <= query.untilMs;
-        })
-        .map((message) => ({ messageID: message.sid }));
+          return createdAt + precisionMs > query.fromMs && createdAt <= query.untilMs
+            ? [{ messageID: message.sid, createdAt, precisionMs }]
+            : [];
+        });
     },
   };
 }
 
+// A text's time is the time Twilio created it, which is when a rule that nixie set after it can no
+// longer take it: the sent time is the carrier's, and can fall before the rule while Twilio's own
+// record of the text comes after.
 function toInboundText(message: TwilioMessage): ProviderText[] {
-  const receivedAt = Date.parse(message.date_sent ?? message.date_created ?? '');
+  const receivedAt = Date.parse(message.date_created ?? message.date_sent ?? '');
 
   return message.direction === 'inbound' && Number.isFinite(receivedAt)
-    ? [{ messageID: message.sid, from: message.from, receivedAt, body: message.body }]
+    ? [{ messageID: message.sid, from: message.from, receivedAt, precisionMs, body: message.body }]
     : [];
+}
+
+// The creation time comes first, because it is the one that a queued message has. A message with no
+// time reads as the newest, so a read never stops at it.
+function toCreatedAt(message: TwilioMessage): number {
+  const createdAt = Date.parse(message.date_created ?? message.date_sent ?? '');
+
+  return Number.isFinite(createdAt) ? createdAt : Number.POSITIVE_INFINITY;
 }

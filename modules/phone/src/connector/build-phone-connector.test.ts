@@ -4,6 +4,7 @@ import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { startTestPhone } from '../test-utils';
 import type { PhoneActionAttempt } from '../types';
+import { buildPhoneConnector } from './build-phone-connector';
 import { phoneToolNames } from './phone-tool-names';
 
 async function setupTest() {
@@ -42,7 +43,10 @@ test('it sends the text through the provider, and claims its message for the sen
   const response = await ctx.connector.run(ctx.buildAttempt('action-1'));
   const claims = await ctx.readClaims();
 
-  expect(response).toStrictEqual({ kind: 'success', result: { text: expect.any(String) } });
+  expect(response).toStrictEqual({
+    kind: 'success',
+    result: { text: expect.any(String), action: 'action-1' },
+  });
 
   expect(ctx.provider.readSent()).toStrictEqual([
     {
@@ -111,7 +115,11 @@ test('it finds a send of unknown outcome by the one unclaimed text to the same n
   const again = await ctx.connector.check(attempt);
   const claims = await ctx.readClaims();
 
-  expect(found).toStrictEqual({ kind: 'found', result: { text: expect.any(String) } });
+  expect(found).toStrictEqual({
+    kind: 'found',
+    result: { text: expect.any(String), action: 'action-1' },
+  });
+
   expect(again).toStrictEqual(found);
   expect(claims).toHaveLength(1);
 });
@@ -197,5 +205,95 @@ test('it settles a send on one text even when another send of another body has b
 
   const response = await ctx.connector.check(ctx.buildAttempt('action-2'));
 
-  expect(response).toStrictEqual({ kind: 'found', result: { text: expect.any(String) } });
+  expect(response).toStrictEqual({
+    kind: 'found',
+    result: { text: expect.any(String), action: 'action-2' },
+  });
+});
+
+test('it asks the user about a text that the provider created before the attempt began', async () => {
+  const ctx = await setupTest();
+
+  ctx.provider.addSent({
+    to: '+61400000000',
+    body: 'Running late.',
+    createdAt: ctx.clock.now() - 1000,
+  });
+
+  const response = await ctx.connector.check(ctx.buildAttempt('action-1'));
+  const claims = await ctx.readClaims();
+
+  expect(response).toStrictEqual({ kind: 'inconclusive' });
+  expect(claims).toStrictEqual([]);
+});
+
+test('it never sends again once its claim is written, even after a failed check', async () => {
+  const ctx = await setupTest();
+
+  const attempt = ctx.buildAttempt('action-1');
+
+  await ctx.connector.run(attempt);
+
+  const again = await ctx.connector.run(attempt);
+
+  expect(again).toStrictEqual({
+    kind: 'success',
+    result: { text: expect.any(String), action: 'action-1' },
+  });
+
+  expect(ctx.provider.readSent()).toHaveLength(1);
+});
+
+test('it answers a check from its own claim when the provider cannot be read', async () => {
+  const ctx = await setupTest();
+
+  const attempt = ctx.buildAttempt('action-1');
+
+  await ctx.connector.run(attempt);
+
+  const unreadable = buildPhoneConnector({
+    ...ctx.context,
+    provider: {
+      ...ctx.provider,
+      readSentTexts: () => Promise.reject(new Error('the provider could not be reached')),
+    },
+  }).get(phoneToolNames.send);
+
+  const response = await unreadable?.check(attempt);
+
+  expect(response).toStrictEqual({
+    kind: 'found',
+    result: { text: expect.any(String), action: 'action-1' },
+  });
+});
+
+test('it asks the user when an identical send begins while the provider is read', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.tasks);
+
+  ctx.provider.addSent({ to: '+61400000000', body: 'Running late.' });
+
+  const racing = buildPhoneConnector({
+    ...ctx.context,
+    provider: {
+      ...ctx.provider,
+      readSentTexts: async (query) => {
+        const found = await ctx.provider.readSentTexts(query);
+
+        await ctx.seed.unknownAction({
+          step,
+          tool: phoneToolNames.send,
+          arguments: { to: '+61400000000', body: 'Running late.' },
+        });
+
+        return found;
+      },
+    },
+  }).get(phoneToolNames.send);
+
+  const response = await racing?.check(ctx.buildAttempt('action-2'));
+  const claims = await ctx.readClaims();
+
+  expect(response).toStrictEqual({ kind: 'inconclusive' });
+  expect(claims).toStrictEqual([]);
 });

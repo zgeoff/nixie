@@ -2,7 +2,7 @@ import type { WriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
 import { z } from 'zod';
 
-export interface TextCopy {
+interface TextCopy {
   readonly sequence: number;
 
   // the thread of the record

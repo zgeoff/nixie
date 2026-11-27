@@ -8,6 +8,7 @@ function setupTest() {
       messageID,
       from: 'Example',
       receivedAt,
+      precisionMs: 1,
       body: 'Hello',
     }),
   };

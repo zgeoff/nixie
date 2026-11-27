@@ -1,4 +1,4 @@
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { buildTransactionLog, writeRecordsInTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import {
@@ -21,6 +21,7 @@ import { endRulesOfEndedTasks } from './end-rules-of-ended-tasks';
 import { pickArrivalPlan } from './pick-arrival-plan';
 import { pickMailboxSource } from './pick-mailbox-source';
 import { readLiveWakeRules } from './read-live-wake-rules';
+import type { StoredTextFields } from './text-sources';
 import { textSources } from './text-sources';
 
 // One mail arrival in the deliver transaction. It is dropped when its key is held, its mailbox is not
@@ -60,7 +61,19 @@ export async function writeMailArrival(
   }
 
   const plan = pickArrivalPlan(kept, core.clock.now());
-  const mail = toArrivalFields(event);
+
+  // A text that its feature forgot, or began to forget, since the source read it wakes nothing and
+  // leaves no copy: the arrival takes the sender and body that the feature holds now.
+  const held = event.kind === 'text' ? await readHeldText(tx, core, event) : null;
+
+  if (event.kind === 'text' && held === null) {
+    return false;
+  }
+
+  const mail = {
+    ...toArrivalFields(event),
+    ...(held === null ? {} : { from: held.from, body: held.body }),
+  };
 
   const [arrived] = await writeRecordsInTransaction(tx, core.log, [
     {
@@ -124,6 +137,18 @@ function isMailboxOfSource(event: MailArrivalEvent | TextArrivalEvent, sourceID:
   return event.kind === 'mail'
     ? event.mailbox.kind !== 'source' && pickMailboxSource(event.mailbox) === sourceID
     : event.mailbox.sourceID === sourceID && textSources.has(sourceID);
+}
+
+function readHeldText(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  event: TextArrivalEvent,
+): Promise<StoredTextFields | null> {
+  const source = textSources.findSource(event.mailbox.sourceID);
+
+  return source === null
+    ? Promise.resolve(null)
+    : source.readFields(buildTransactionLog(core.log, tx), event.payload.messageID);
 }
 
 // A text has no thread and no subject, and its body takes their place in the wake.

@@ -83,7 +83,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     credentials,
     wake: loaded.wake_rules,
     isFaked: options.harness !== undefined,
-    now: () => Date.now(),
+    now: () => (options.harness === undefined ? Date.now() : options.harness.link.clock.now()),
   });
 
   const imageSettings = createImageSettings(loaded.images, credentials);

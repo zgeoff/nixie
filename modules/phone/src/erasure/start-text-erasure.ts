@@ -52,7 +52,7 @@ export async function startTextErasure(
   const floor = threads.length === 0 ? null : await readNextSequence(tx);
 
   return {
-    target: { kind: 'phone_text', targetID: row.text_id, version: null },
+    target: { kind: 'text', targetID: row.text_id, version: null },
     shortID: row.short_id,
     capture: {
       keys: {

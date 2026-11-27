@@ -268,3 +268,23 @@ test('it logs a failed read, and reads again once the provider answers', async (
 
   await ctx.waitForCursor(text.receivedAt);
 });
+
+test('it stores no text of a first read when more than a page of texts share the newest time', async () => {
+  const ctx = await setupTest();
+
+  const at = ctx.clock.now() - 60_000;
+
+  for (let count = 0; count < 21; count += 1) {
+    ctx.provider.deliver({ from: 'Example', body: `Old text ${String(count)}`, receivedAt: at });
+  }
+
+  await ctx.startSource();
+  await ctx.waitForCursor(at);
+
+  ctx.poll();
+  ctx.poll();
+
+  const listed = await ctx.readStoredIDs();
+
+  expect(listed).toStrictEqual([]);
+});

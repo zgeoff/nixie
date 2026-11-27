@@ -6,8 +6,8 @@ test('#collectArrivalTexts takes the texts received in the last hour', () => {
 
   const texts = collectArrivalTexts(
     [
-      { messageID: 'a', from: 'X', receivedAt: nowMs - 3_600_000, body: '' },
-      { messageID: 'b', from: 'X', receivedAt: nowMs - 3_600_001, body: '' },
+      { messageID: 'a', from: 'X', receivedAt: nowMs - 3_600_000, precisionMs: 1, body: '' },
+      { messageID: 'b', from: 'X', receivedAt: nowMs - 3_600_001, precisionMs: 1, body: '' },
     ],
     nowMs,
   );

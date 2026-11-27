@@ -1,6 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 
-export const maxBodyLength = 640;
+const maxBodyLength = 640;
 const numberPattern = /^\+[1-9]\d{6,14}$/u;
 
 // The sentence that refuses a send's arguments, or null when the send can go. The code leads the

@@ -233,6 +233,8 @@ async function setupTest(options: SetupOptions) {
       adapter.files.get(old.id)?.set('/home/stub/profile/Cookies', new Uint8Array([1, 2, 3]));
     },
     toolNames: built.tools.map((tool) => tool.name),
+    describeTool: (name: string) =>
+      built.tools.find((candidate) => candidate.name === name)?.description,
     requests,
     decisions,
 
@@ -1255,6 +1257,14 @@ test('it refuses a waiting click after a hold on the desktop came and went', asy
     kind: 'refused',
     reason: expect.stringContaining('screen may have changed'),
   });
+});
+
+test('it tells the model to hand over a sign-up that wants a phone number it cannot answer', async () => {
+  const ctx = await setupTest({});
+
+  expect(ctx.describeTool('computer.handover')).toContain(
+    'a sign-up that asks for a phone number or a code by text when you have no tool that reads texts',
+  );
 });
 
 test('it opens a handover ask with a reason, and refuses a second one while it stands', async () => {

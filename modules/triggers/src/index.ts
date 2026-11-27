@@ -77,6 +77,7 @@ export { endWakeRuleInTransaction } from './wake/end-wake-rule-in-transaction';
 export type { ReadWakeRulesOptions } from './wake/read-wake-rules';
 export { readWakeRules } from './wake/read-wake-rules';
 export { isWakeMatch } from './wake/is-wake-match';
+export type { StoredTextFields, TextSource, TransactionLog } from './wake/text-sources';
 export { textSources } from './wake/text-sources';
 export { runWakeFlush } from './wake/run-wake-flush';
 export { startWakeFlush } from './wake/start-wake-flush';

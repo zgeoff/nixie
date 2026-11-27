@@ -3,9 +3,9 @@ import { buildStartCursor } from './build-start-cursor';
 
 test('#buildStartCursor stands at the newest text and skips each text at that time', () => {
   const cursor = buildStartCursor([
-    { messageID: 'a', from: 'X', receivedAt: 2000, body: '' },
-    { messageID: 'b', from: 'X', receivedAt: 2000, body: '' },
-    { messageID: 'c', from: 'X', receivedAt: 1000, body: '' },
+    { messageID: 'a', from: 'X', receivedAt: 2000, precisionMs: 1, body: '' },
+    { messageID: 'b', from: 'X', receivedAt: 2000, precisionMs: 1, body: '' },
+    { messageID: 'c', from: 'X', receivedAt: 1000, precisionMs: 1, body: '' },
   ]);
 
   expect(cursor).toStrictEqual({ since: 2000, skip: ['a', 'b'] });

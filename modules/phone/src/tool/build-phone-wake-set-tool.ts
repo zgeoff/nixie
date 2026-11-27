@@ -13,6 +13,7 @@ import { phoneToolNames } from '../connector/phone-tool-names';
 import { phoneSourceID } from '../source/phone-source-id';
 import { readTextPage } from '../store/read-text-page';
 import type { PhoneContext } from '../types';
+import { makeInputRecorder } from './make-input-recorder';
 import { renderOutsideText } from './render-outside-text';
 
 const recentMs = 10 * 60_000;
@@ -74,6 +75,7 @@ export function buildPhoneWakeSetTool(context: PhoneContext): ToolDefinition {
       additionalProperties: false,
     },
     declaration: phoneDeclarations.wakeSet,
+    recordInput: makeInputRecorder(['from', 'body']),
     execution: 'direct',
     run: async (call, toolContext) => {
       const parsed = inputSchema.safeParse(call.input);

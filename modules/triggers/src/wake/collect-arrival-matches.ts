@@ -4,10 +4,16 @@ import type { LiveWakeRule } from './read-live-wake-rules';
 
 // The fields of an arrival that a rule reads: a mail's, or a text's with no subject and no thread.
 export type ArrivalFields = Pick<MailArrival, 'from' | 'receivedAt'> &
-  Partial<Pick<MailArrival, 'subject' | 'threadID'>> & { readonly body?: string };
+  Partial<Pick<MailArrival, 'subject' | 'threadID'>> & {
+    readonly body?: string;
+
+    // how coarse the provider's clock is: the arrival happened within `precisionMs` after its time
+    readonly precisionMs?: number;
+  };
 
 // The rules that take an arrival: a rule matches mail that the host received from its creation up
-// to its expiry, whenever the source delivers it.
+// to its expiry, whenever the source delivers it. A provider that stamps time to the second leaves
+// the arrival somewhere in that second, so a rule set within it takes the arrival.
 export function collectArrivalMatches(
   rules: readonly LiveWakeRule[],
   arrival: ArrivalFields,
@@ -19,9 +25,11 @@ export function collectArrivalMatches(
     ...(arrival.body === undefined ? {} : { body: arrival.body }),
   };
 
+  const latestMs = arrival.receivedAt + Math.max(0, (arrival.precisionMs ?? 1) - 1);
+
   return rules.filter(
     (entry) =>
-      entry.rule.createdAt <= arrival.receivedAt &&
+      entry.rule.createdAt <= latestMs &&
       (entry.rule.expiresAt === null || arrival.receivedAt < entry.rule.expiresAt) &&
       isWakeMatch(entry.rule.match, mail),
   );

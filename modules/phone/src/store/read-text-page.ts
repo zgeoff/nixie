@@ -19,7 +19,7 @@ export interface TextQuery {
   readonly before?: string | null;
 }
 
-export interface ListedText {
+interface ListedText {
   readonly text: string;
   readonly from: string;
   readonly body: string;

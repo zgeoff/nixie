@@ -1,8 +1,15 @@
 import { createShortID } from '@heynixie/db';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  buildTransactionLog,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import type { WriteTransaction } from '@heynixie/log';
 import { phoneSendClaimedCodec } from '../record/phone-send-claimed-codec';
-import type { PhoneContext, PhoneTables, TextRequest } from '../types';
+import { readSendClaim } from '../store/read-send-claim';
+import type { PhoneContext, PhoneTables, ProviderSentText, TextRequest } from '../types';
+import { pickSendSettlement } from './pick-send-settlement';
+import { readOpenSends } from './read-open-sends';
 
 export type SendSettlement =
   | { readonly kind: 'claimed'; readonly shortID: string }
@@ -13,59 +20,52 @@ export interface SendLook {
   readonly actionID: string;
   readonly request: TextRequest;
 
-  // the provider's messages that match the send
-  readonly candidates: readonly string[];
+  // epoch ms when the attempt began
+  readonly attemptStartedAt: number;
 
-  // the sends that have begun, which the caller read before the transaction
-  readonly open: readonly TextRequest[];
+  // the provider's messages that match the send
+  readonly candidates: readonly ProviderSentText[];
 }
 
 // Settles a send of unknown outcome on one message, in one write transaction so no 2 sends claim the
-// same message. It claims only when exactly one candidate has no claim and no other begun send
-// carries the same number and body, because a match cannot show which of 2 identical sends made it.
+// same message. The transaction reads the claims and the other begun sends itself, so a send that
+// begins while it runs shows in the read or finds the claim afterwards.
 export function settleSendClaim(context: PhoneContext, look: SendLook): Promise<SendSettlement> {
   return withWriteTransaction(context.log.writer, async (tx) => {
-    const db = tx.$extendTables<PhoneTables>();
+    const log = buildTransactionLog(context.log, tx);
 
-    const own = await db
-      .selectFrom('phone_send_claims')
-      .select('short_id')
-      .where('action_id', '=', look.actionID)
-      .executeTakeFirst();
+    const own = await readSendClaim(log, look.actionID);
 
-    if (own !== undefined) {
-      return { kind: 'claimed', shortID: own.short_id };
+    if (own !== null) {
+      return { kind: 'claimed', shortID: own };
     }
 
-    if (look.candidates.length === 0) {
-      return { kind: 'not_found' };
-    }
-
-    const claimed = await db
+    const claimed = await tx
+      .$extendTables<PhoneTables>()
       .selectFrom('phone_send_claims')
       .select('message_id')
-      .where('message_id', 'in', look.candidates)
+      .where(
+        'message_id',
+        'in',
+        look.candidates.map((candidate) => candidate.messageID),
+      )
       .execute();
 
-    const free = look.candidates.filter(
-      (messageID) => !claimed.some((claim) => claim.message_id === messageID),
-    );
+    const picked = pickSendSettlement({
+      request: look.request,
+      attemptStartedAt: look.attemptStartedAt,
+      candidates: look.candidates,
+      claimedMessageIDs: claimed.map((claim) => claim.message_id),
+      open: await readOpenSends(log, look.actionID),
+    });
 
-    const [messageID] = free;
-
-    if (free.length !== 1 || messageID === undefined) {
-      return { kind: 'inconclusive' };
-    }
-
-    if (
-      look.open.some((other) => other.to === look.request.to && other.body === look.request.body)
-    ) {
-      return { kind: 'inconclusive' };
+    if (picked.kind !== 'claim') {
+      return picked;
     }
 
     return {
       kind: 'claimed',
-      shortID: await writeSendClaim(tx, context, look.actionID, messageID),
+      shortID: await writeSendClaim(tx, context, look.actionID, picked.messageID),
     };
   });
 }
@@ -78,14 +78,9 @@ export function claimSentMessage(
   messageID: string,
 ): Promise<string> {
   return withWriteTransaction(context.log.writer, async (tx) => {
-    const own = await tx
-      .$extendTables<PhoneTables>()
-      .selectFrom('phone_send_claims')
-      .select('short_id')
-      .where('action_id', '=', actionID)
-      .executeTakeFirst();
+    const own = await readSendClaim(buildTransactionLog(context.log, tx), actionID);
 
-    return own?.short_id ?? writeSendClaim(tx, context, actionID, messageID);
+    return own ?? writeSendClaim(tx, context, actionID, messageID);
   });
 }
 

@@ -11,7 +11,7 @@ export interface StoredTextFields {
 // The sender and the body of each stored text by the sequence of its record. A text whose fields
 // were forgotten has none.
 export async function readTextFields(
-  log: Log,
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
   rows: readonly PhoneTables['phone_texts'][],
 ): Promise<ReadonlyMap<number, StoredTextFields>> {
   const fields = new Map<number, StoredTextFields>();

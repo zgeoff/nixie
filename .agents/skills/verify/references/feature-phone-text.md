@@ -80,23 +80,25 @@ Before you start:
    ```
 
    Expect: `data.replies` is 4 for the first command, and `data.requests` is 1 or more for the last.
+   The last command shows only that the wake reached the model, because the wake holds the code.
+   Step 6 checks that the read returned it.
 
-6. Check the wake, the outside content and the held text:
+6. Check the wake, the outside content, the read and the held text:
 
    ```bash
    bun verify db query "select count(*) as wakes from records where kind = 'trigger.mail_woke'"
-   bun verify db query "select kind, json_extract(payload, '$.tool') as tool from records where kind in ('tool_called', 'policy.action_proposed') order by sequence"
-   bun verify db query "select content_source from records where kind = 'tool_result' order by sequence desc limit 3"
+   bun verify db query "select json_extract(called.payload, '$.tool') as tool, json_extract(result.payload, '$.outcome') as outcome, result.content_source from records as called join records as result on result.kind = 'tool_result' and json_extract(result.payload, '$.callID') = json_extract(called.payload, '$.callID') where called.kind = 'tool_called' order by called.sequence"
+   bun verify db query "select json_extract(payload, '$.tool') as tool from records where kind = 'policy.action_proposed' order by sequence"
    ```
 
-   Expect: `wakes` is 1. The calls run in the order `phone.list`, `phone.read`, `phone.send`, and a
-   `policy.action_proposed` row for `phone.send` follows the last one: the text waits for your
-   approval and never reaches a provider. The `content_source` of the list and read results is
-   `untrusted`.
+   Expect: `wakes` is 1. The second query lists `phone.list`, `phone.read` and `phone.send` in that
+   order. The `outcome` of `phone.list` and `phone.read` is `result`, which an unknown text ID would
+   fail, and their `content_source` is `untrusted`. The third query lists `phone.send`: the text
+   waits for your approval and never reaches a provider.
 
 ## End state
 
 - Step 3: the wake rule holds the library's number, with a window of 1 minute.
 - Step 4: the text that no rule matches is stored and wakes nothing.
-- Step 6: the matching text woke the conversation once, the model read it, the results that held it
-  are marked untrusted, and its reply text waits for your approval.
+- Step 6: the matching text woke the conversation once, the model listed and read it with results
+  that succeeded and are marked untrusted, and its reply text waits for your approval.

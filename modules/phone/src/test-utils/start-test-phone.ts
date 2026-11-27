@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { actionsProjection } from '@heynixie/actions';
 import type { Definitions, Log, Writer } from '@heynixie/log';
-import { logProjections, parseJSONObject, startWriter } from '@heynixie/log';
+import { logProjections, makeErasureRunner, parseJSONObject, startWriter } from '@heynixie/log';
+import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
 import {
@@ -20,14 +21,17 @@ import { buildTestTriggerCore } from '@heynixie/triggers/test-utils';
 import type { FakeClock } from '@zgeoff/testing/clock';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildPhoneConnector } from '../connector/build-phone-connector';
+import { buildTextErasable } from '../erasure/build-text-erasable';
+import { phoneTextErasableDescriptor } from '../erasure/phone-text-erasable-descriptor';
+import { startTextForgetter } from '../erasure/start-text-forgetter';
 import type { FakePhoneProvider } from '../fake/build-fake-phone-provider';
 import { buildFakePhoneProvider } from '../fake/build-fake-phone-provider';
 import { buildPhoneSource } from '../source/build-phone-source';
-import { phoneSourceID } from '../source/phone-source-id';
+import { phoneTextSource } from '../source/phone-text-source';
 import { phoneSendClaimsProjection } from '../store/phone-send-claims-projection';
 import { phoneTextsProjection } from '../store/phone-texts-projection';
 import { buildPhoneTools } from '../tool/build-phone-tools';
-import type { PhoneContext } from '../types';
+import type { PhoneContext, TextForgetter } from '../types';
 
 export interface TestPhone {
   readonly writer: Writer;
@@ -37,6 +41,9 @@ export interface TestPhone {
   readonly context: PhoneContext;
   readonly provider: FakePhoneProvider;
   readonly source: TriggerSource;
+
+  // the assistant's forget of a text, on a runner whose effects are stand-ins
+  readonly forgetter: TextForgetter;
 
   // calls a phone tool as the conversation, or as the task whose ID the thread names
   readonly callTool: (tool: string, input: object, thread?: string) => Promise<ToolOutcome>;
@@ -120,13 +127,24 @@ export async function startTestPhone(): Promise<TestPhone> {
     },
   };
 
-  textSources.set([phoneSourceID]);
+  textSources.set([phoneTextSource]);
 
   stack.defer(() => {
     textSources.set([]);
   });
 
-  const toolsByName = new Map(buildPhoneTools(context).map((tool) => [tool.name, tool]));
+  const runner = makeErasureRunner({
+    log,
+    definitions: buildTestDefinitions,
+    effects: buildTestErasureEffects().effects,
+  });
+
+  const handle = runner.register({ ...phoneTextErasableDescriptor, ...buildTextErasable() });
+  const forgetter = startTextForgetter({ context, readHandle: () => handle, retryMs: 10 });
+
+  stack.defer(() => forgetter.stop());
+
+  const toolsByName = new Map(buildPhoneTools(context, forgetter).map((tool) => [tool.name, tool]));
 
   return {
     writer,
@@ -136,6 +154,7 @@ export async function startTestPhone(): Promise<TestPhone> {
     context,
     provider,
     source: buildPhoneSource(context),
+    forgetter,
     callTool: (name, input, thread = 'conversation') => {
       const tool = toolsByName.get(name);
 

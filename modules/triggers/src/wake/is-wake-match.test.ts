@@ -40,6 +40,27 @@ test.each<[string, WakeMatch, boolean]>([
   expect(isWakeMatch(match, text)).toBe(expected);
 });
 
+test.each<[string, WakeMatch]>([
+  ['a domain entry', { from: ['@example.test'] }],
+  ['a part of the number', { from: ['+6142'] }],
+])('#isWakeMatch never takes a text sender by %s', (_name, match) => {
+  const text = { from: 'sender@example.test', subject: '', threadID: '', body: 'Hello' };
+
+  expect(isWakeMatch(match, text)).toBe(false);
+});
+
+test('#isWakeMatch takes a text sender by the whole number', () => {
+  const text = { from: '+61422222222', subject: '', threadID: '', body: 'Hello' };
+
+  expect(isWakeMatch({ from: ['+61422222222'] }, text)).toBe(true);
+});
+
+test('#isWakeMatch refuses an empty body match on a mail, which has no body', () => {
+  const ctx = setupTest();
+
+  expect(isWakeMatch({ body: '' }, ctx.mail)).toBe(false);
+});
+
 test('#isWakeMatch refuses a body match on a mail, which has no body', () => {
   const ctx = setupTest();
 

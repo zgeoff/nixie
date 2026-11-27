@@ -14,7 +14,22 @@ export interface ProviderText {
 
   // epoch ms, the provider's receive time
   readonly receivedAt: number;
+
+  // how coarse the provider's clock is, in ms: the text came within this long after its time
+  readonly precisionMs: number;
   readonly body: string;
+}
+
+// One text that the number sent, as the provider holds it.
+export interface ProviderSentText {
+  readonly messageID: string;
+
+  // epoch ms, the provider's creation time of the text
+  readonly createdAt: number;
+
+  // how coarse the provider's clock is, in ms: the provider created the text within this long
+  // after its time
+  readonly precisionMs: number;
 }
 
 export interface TextRequest {
@@ -38,19 +53,19 @@ export interface SentTextQuery extends TextRequest {
 // implements it; a fake stands in for tests and the test build. A call that fails to reach the
 // provider throws, and a send that throws has an unknown outcome.
 export interface PhoneProvider {
-  // The newest texts that the number received, newest first, at most one page of them. The source
-  // reads it at its first start, to record where the provider stands.
+  // Every text that the number received at the newest time that it holds a text of, however many
+  // pages that takes, and none when it holds no text. The source reads it at its first start, to
+  // record where the provider stands, so a text that shares the newest time never counts as new.
   readonly readRecent: () => Promise<readonly ProviderText[]>;
 
   // The texts that the number received at or after the time, oldest first, however many pages the
-  // provider holds of them.
+  // provider holds of them. A call that cannot read them all throws.
   readonly readInbound: (sinceMs: number) => Promise<readonly ProviderText[]>;
   readonly send: (request: TextRequest) => Promise<ProviderSend>;
 
-  // The texts that the number sent to one number with one body in the window. It never sends.
-  readonly readSentTexts: (
-    query: SentTextQuery,
-  ) => Promise<readonly { readonly messageID: string }[]>;
+  // The texts that the number sent to one number with one body in the window, a text that the
+  // provider has queued among them. It never sends.
+  readonly readSentTexts: (query: SentTextQuery) => Promise<readonly ProviderSentText[]>;
 }
 
 export interface PhoneSettings {
@@ -119,3 +134,28 @@ interface PhoneSendClaimTable {
 export type PhoneTables = CheckedTables<
   Readonly<{ phone_texts: PhoneTextTable; phone_send_claims: PhoneSendClaimTable }>
 >;
+
+export type TextForget =
+  | { readonly status: 'begun'; readonly shortID: string }
+
+  // no stored text has the ID
+  | { readonly status: 'refused' }
+
+  // the erasure runner has not started
+  | { readonly status: 'unavailable' };
+
+// The assistant's way to forget one stored text.
+export interface TextForgetRequest {
+  readonly text: string;
+
+  // the thread of the step that calls the forget
+  readonly thread: string;
+}
+
+export interface TextForgetter {
+  readonly forgetBeside: (request: TextForgetRequest) => Promise<TextForget>;
+
+  // resolves once every erasure that a forget began has finished
+  readonly waitForForgets: () => Promise<void>;
+  readonly stop: () => Promise<void>;
+}

@@ -196,7 +196,16 @@ A rule holds one mailbox: the assistant's own, one Gmail connection, whose
 [the phone](../connectors/phone.md). A text source is `{ kind: 'source', sourceID }`, its mailbox
 key is `source:<sourceID>`, and a feature fills the core list of text sources with its own ID, so
 the core refuses an arrival from a source no feature filled. A rule on a text source matches `body`,
-a substring of the text, in place of `subject`, and a wake renders as a `text` system message.
+a substring of the text, in place of `subject`, and matches `from` only as the whole sender, with no
+`@domain` form. A rule on mail never matches `body`. A wake renders as a `text` system message, and
+a target's held mail and held texts wake it apart.
+
+A text source gives the core two things with its ID: how coarse its provider's clock is, which makes
+a rule set within the same second of a text take it, and a read of the text's sender and body from
+the feature's own store. The core reads it in the transaction that writes an arrival or a wake, and
+drops the text when its feature forgot it or began to forget it, so no wake holds a copy of a
+forgotten text. A held match of a text source that is off stays held, and wakes its target once the
+source is on.
 
 The trigger core takes a mail arrival in the same write transaction as the rest of a batch, and
 drops a repeat arrival by its dedupe key. Then it reads the live rules and matches the mail:

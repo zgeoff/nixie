@@ -139,6 +139,12 @@ function buildArrivalEvent(text: ProviderText, shortID: string, nowMs: number): 
     mailbox: { kind: 'source', sourceID: phoneSourceID },
     dedupeKey: text.messageID,
     occurredAt: new Date(nowMs).toISOString(),
-    payload: { messageID: shortID, from: text.from, receivedAt: text.receivedAt, body: text.body },
+    payload: {
+      messageID: shortID,
+      from: text.from,
+      receivedAt: text.receivedAt,
+      precisionMs: text.precisionMs,
+      body: text.body,
+    },
   };
 }

@@ -21,7 +21,7 @@ async function setupTest() {
   };
 }
 
-test('it reads the newest texts that the number received, newest first, and leaves out the ones it sent', async () => {
+test('it reads the texts that the number received at its newest time, and leaves out the ones it sent', async () => {
   const ctx = await setupTest();
 
   await twilioStore.messages.create({ sid: 'SM1', from: 'Example', body: 'First', sentAt: 1000 });
@@ -45,8 +45,7 @@ test('it reads the newest texts that the number received, newest first, and leav
   const texts = await ctx.provider.readRecent();
 
   expect(texts).toStrictEqual([
-    { messageID: 'SM2', from: '+61422222222', receivedAt: 2000, body: 'Second' },
-    { messageID: 'SM1', from: 'Example', receivedAt: 1000, body: 'First' },
+    { messageID: 'SM2', from: '+61422222222', receivedAt: 2000, precisionMs: 1000, body: 'Second' },
   ]);
 });
 
@@ -162,7 +161,7 @@ test('it finds the texts that it sent to one number with one body in a window', 
     untilMs: 10_000,
   });
 
-  expect(found).toStrictEqual([{ messageID: 'SM1' }]);
+  expect(found).toStrictEqual([{ messageID: 'SM1', createdAt: 5000, precisionMs: 1000 }]);
 });
 
 test('it throws when the API key is wrong', async () => {
@@ -183,5 +182,90 @@ test('it reads the list of the number in one request with the day filter left ou
   const requests = twilioStore.requests.findMany((query) => query.where({}));
 
   expect(requests.map((request) => request.method)).toStrictEqual(['GET']);
-  expect(requests[0]?.search).toBe('?To=%2B61411111111&PageSize=20');
+  expect(requests[0]?.search).toBe('?To=%2B61411111111&PageSize=100');
+});
+
+test('it reads every text of the newest time on a first read, however many pages they fill', async () => {
+  const ctx = await setupTest();
+
+  for (let index = 0; index < 250; index += 1) {
+    await twilioStore.messages.create({
+      sid: `SM${String(index).padStart(3, '0')}`,
+      sentAt: 1_000_000,
+    });
+  }
+
+  await twilioStore.messages.create({ sid: 'SMold', sentAt: 5000 });
+
+  const texts = await ctx.provider.readRecent();
+
+  expect(texts).toHaveLength(250);
+});
+
+test('it reads a backlog of more than 50 pages without leaving the oldest texts behind', async () => {
+  const ctx = await setupTest();
+
+  const startMs = Date.UTC(2027, 2, 9, 0, 0, 0);
+
+  for (let index = 0; index < 5150; index += 1) {
+    await twilioStore.messages.create({
+      sid: `SM${String(index).padStart(4, '0')}`,
+      sentAt: startMs + index * 1000,
+    });
+  }
+
+  const texts = await ctx.provider.readInbound(startMs);
+
+  expect(texts).toHaveLength(5150);
+  expect(texts[0]?.messageID).toBe('SM0000');
+});
+
+test('it stamps a text with the time Twilio created it', async () => {
+  const ctx = await setupTest();
+
+  network.use(
+    http.get(`${twilioAPIURL}/2010-04-01/Accounts/ACtest/Messages.json`, () =>
+      HttpResponse.json({
+        messages: [
+          {
+            sid: 'SM1',
+            from: 'Example',
+            to: '+61411111111',
+            body: 'Hi',
+            direction: 'inbound',
+            date_sent: new Date(1_000_000).toUTCString(),
+            date_created: new Date(1_005_000).toUTCString(),
+          },
+        ],
+        next_page_uri: null,
+      }),
+    ),
+  );
+
+  const texts = await ctx.provider.readInbound(0);
+
+  expect(texts.map((text) => text.receivedAt)).toStrictEqual([1_005_000]);
+});
+
+test('it finds a message that Twilio holds queued, with no sent time yet', async () => {
+  const ctx = await setupTest();
+
+  await twilioStore.messages.create({
+    sid: 'SMq',
+    from: '+61411111111',
+    to: '+61400000000',
+    body: 'Hi',
+    direction: 'outbound-api',
+    sentAt: 5000,
+    isQueued: true,
+  });
+
+  const found = await ctx.provider.readSentTexts({
+    to: '+61400000000',
+    body: 'Hi',
+    fromMs: 1000,
+    untilMs: 10_000,
+  });
+
+  expect(found).toStrictEqual([{ messageID: 'SMq', createdAt: 5000, precisionMs: 1000 }]);
 });
