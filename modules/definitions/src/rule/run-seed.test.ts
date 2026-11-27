@@ -2667,6 +2667,34 @@ test('it skips a definition with an unknown field, warns, and loads the rest', a
   });
 });
 
+test('it seeds a manifest that holds retired prompt keys, and reports each one', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 4\nprompts:\n  writer: {}\n  consolidator: {}\n',
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const keys: string[] = [];
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    onRetiredPromptKey: (key) => {
+      keys.push(key);
+    },
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect({ status: result.status, keys }).toStrictEqual({
+    status: 'seeded',
+    keys: ['prompts.writer', 'prompts.consolidator'],
+  });
+});
+
 test('it leaves the seed unchanged when the tasks stay the same', async () => {
   const ctx = await setupTest();
 

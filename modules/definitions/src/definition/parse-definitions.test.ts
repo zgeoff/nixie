@@ -27,6 +27,7 @@ test('it reads the format version and the persona, and lists every other file un
     skills: [],
     conversationSkills: [],
     prompts: {},
+    retiredPromptKeys: [],
     rules: [],
     budgets: [],
     ruleWarnings: [],
@@ -201,6 +202,7 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
     skills: [],
     conversationSkills: [],
     prompts: {},
+    retiredPromptKeys: [],
     rules: [],
     budgets: [],
     ruleWarnings: [],
@@ -275,6 +277,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     ],
     conversationSkills: ['tide-tables'],
     prompts: {},
+    retiredPromptKeys: [],
     rules: [],
     budgets: [],
     ruleWarnings: [],
@@ -433,6 +436,7 @@ test('it reads a part override from its file and a template inline under format 
     },
     rules: [],
     budgets: [],
+    retiredPromptKeys: [],
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
@@ -859,4 +863,49 @@ test('it refuses the definitions when places.yaml holds one bad line', () => {
       buildTestTaskSeed(),
     ),
   ).toThrow(/places\.yaml/u);
+});
+
+test.each([
+  { keys: ['writer'], manifest: 'writer:\n    safety: prompts/old.md\n' },
+  { keys: ['consolidator'], manifest: 'consolidator: {}\n' },
+  {
+    keys: ['writer', 'consolidator'],
+    manifest: 'writer: {}\n  consolidator:\n    safety: prompts/old.md\n',
+  },
+])('it drops the retired prompt keys $keys, keeps the other prompts and names each', (row) => {
+  const files = new Map([
+    [
+      'nixie.yaml',
+      new TextEncoder().encode(
+        `format: 3\nprompts:\n  ${row.manifest}  task:\n    safety: prompts/safety.md\n`,
+      ),
+    ],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['prompts/safety.md', new TextEncoder().encode('Quote every fact.\n')],
+    ['prompts/old.md', new TextEncoder().encode('Old text.\n')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect({ keys: parsed.retiredPromptKeys, prompts: parsed.prompts }).toStrictEqual({
+    keys: row.keys.map((key) => `prompts.${key}`),
+    prompts: { task: { parts: { safety: 'Quote every fact.' }, template: null } },
+  });
+});
+
+test('it still refuses an unknown prompt key beside a retired one', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 3\nprompts:\n  writer: {}\n  greeter: {}\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+  ]);
+
+  expect(() =>
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
+  ).toThrow(/greeter/u);
 });

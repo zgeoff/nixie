@@ -16,7 +16,7 @@ import type { ParseProblem } from '../utils/definitions-parse-error';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
 import { formatManifestIssue } from '../utils/format-manifest-issue';
 import { manifestPath } from '../utils/manifest-path';
-import { manifestPromptsSchema } from '../utils/manifest-prompts-schema';
+import { manifestPromptsSchema, retiredPromptIDs } from '../utils/manifest-prompts-schema';
 import type { ManifestPrompts } from '../utils/parse-prompt-overrides';
 import { parsePromptOverrides } from '../utils/parse-prompt-overrides';
 import { parseBudgetDefinitions } from './parse-budget-definitions';
@@ -141,6 +141,7 @@ export function parseDefinitions(
     rules: rules.rules,
     budgets: budgets.budgets.map((entry) => toDefinitionBudget(entry.budget)),
     ruleWarnings: rules.warnings,
+    retiredPromptKeys: manifest.retiredPromptKeys,
     effects: effects.effects,
     places,
     mcp: mcp.overrides,
@@ -201,6 +202,9 @@ function toNotTextProblem(path: string): ParseProblem {
 interface Manifest {
   readonly format: number;
   readonly prompts: ManifestPrompts | undefined;
+
+  // the dotted path of each retired prompt key the manifest holds, which the parse drops
+  readonly retiredPromptKeys: readonly string[];
 }
 
 function parseManifest(text: string | undefined): Manifest {
@@ -216,11 +220,16 @@ function parseManifest(text: string | undefined): Manifest {
   if (result.success) {
     const hasPrompts = result.data.format >= definitionsFormats.prompts;
 
+    const prompts = hasPrompts
+      ? manifestPromptsSchema.optional().parse(findManifestField(manifest, 'prompts'))
+      : undefined;
+
     return {
       format: result.data.format,
-      prompts: hasPrompts
-        ? manifestPromptsSchema.optional().parse(findManifestField(manifest, 'prompts'))
-        : undefined,
+      prompts,
+      retiredPromptKeys: retiredPromptIDs
+        .filter((id) => prompts !== undefined && id in prompts)
+        .map((id) => `prompts.${id}`),
     };
   }
 

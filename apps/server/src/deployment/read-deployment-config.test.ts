@@ -79,6 +79,43 @@ test('it loads a file with an unknown key inside a module’s section, and names
   });
 });
 
+test.each([
+  { key: 'memory_writer', role: '', section: 'memory_writer: {}' },
+  { key: 'memory_consolidation', role: '', section: 'memory_consolidation: { enabled: false }' },
+  { key: 'models.roles.memory-writer', role: '    memory-writer: {}', section: '' },
+  { key: 'models.roles.memory-consolidator', role: '    memory-consolidator: {}', section: '' },
+])('it loads a file that holds the retired key $key, and names it', async (row) => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      harness: agent-sdk',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+      '  roles:',
+      '    conversation: chat-direct',
+      row.role,
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+      row.section,
+    ].join('\n'),
+  );
+
+  const loaded = await readDeploymentConfig(ctx.path);
+
+  expect(loaded.unknownKeys).toStrictEqual([row.key]);
+});
+
 test.each(['web', 'coding'])(
   'it refuses the server ID %s, the first segment of a tool nixie registers',
   async (id) => {

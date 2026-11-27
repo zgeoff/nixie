@@ -16,6 +16,9 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       onRuleWarning: (warning) => {
         parts.log('definitions.rule_field_unknown', { ...warning }, 'warn');
       },
+      onRetiredPromptKey: (key) => {
+        parts.log('definitions.prompt_key_retired', { key }, 'warn');
+      },
       onTaskWarning: (warning) => {
         const event =
           warning.kind === 'field_unknown'

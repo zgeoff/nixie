@@ -1,8 +1,13 @@
 import { getPromptParts, promptIDs } from '@heynixie/prompts';
 import { z } from 'zod';
 
-export const manifestPromptsSchema = z.strictObject(
-  Object.fromEntries(
+// The prompts of the memory tasks nixie no longer has. A manifest may still name them, and the seed
+// drops each one, whatever it holds.
+export const retiredPromptIDs = ['writer', 'consolidator'] as const;
+
+export const manifestPromptsSchema = z.strictObject({
+  ...Object.fromEntries(retiredPromptIDs.map((id) => [id, z.unknown().optional()])),
+  ...Object.fromEntries(
     promptIDs.map((id) => [
       id,
       z
@@ -13,4 +18,4 @@ export const manifestPromptsSchema = z.strictObject(
         .optional(),
     ]),
   ),
-);
+});

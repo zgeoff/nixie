@@ -42,6 +42,8 @@
         "prompts": {
           "type": "object",
           "properties": {
+            "writer": {},
+            "consolidator": {},
             "content-checker": {
               "type": "object",
               "properties": {

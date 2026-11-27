@@ -109,6 +109,9 @@ export interface ParsedDefinitions {
 
   readonly conversationSkills: readonly string[];
   readonly prompts: PromptOverrides;
+
+  // the dotted path of each retired memory task prompt key the manifest held, which the parse dropped
+  readonly retiredPromptKeys: readonly string[];
   readonly rules: readonly RuleFileEntry[];
   readonly budgets: readonly DefinitionBudget[];
   readonly ruleWarnings: readonly RuleFileWarning[];
