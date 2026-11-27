@@ -70,14 +70,15 @@ as [Exit codes](exit-codes.md) says.
    Expect: the confirmation holds the line "This also stops its coding session.".
 
 5. Confirm the stop, then check the task, its session and the stop's outcome. The stop's outcome
-   arrives after the task stops, so on exit 1 from `task`, or on a query that returns no row, run
-   the `task` and `db query` commands again, and the snapshot once after they pass, up to 5 runs in
-   all, and do not click again. When the fifth run still fails, stop the journey and report the last
-   output of each command, and the last snapshot.
+   arrives after the task stops, so the last record of the stopped task is `action.outcome`, and on
+   exit 1 from `task`, or on a query that returns no row, run the `task` and `db query` commands
+   again, and the snapshot once after they pass, up to 5 runs in all, and do not click again. When
+   the fifth run still fails, stop the journey and report the last output of each command, and the
+   last snapshot.
 
    ```bash
    bun verify browser click --role button --name 'Stop the task'
-   bun verify task --name 'Login fix' --state stopped --record task.stopped
+   bun verify task --name 'Login fix' --state stopped --record action.outcome
    bun verify db query "select unbound_at is not null as released from coding_sessions"
    bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'coding.stop'"
    bun verify browser snapshot
