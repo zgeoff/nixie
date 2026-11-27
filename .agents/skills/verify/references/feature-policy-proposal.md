@@ -16,11 +16,14 @@ the model makes, nixie holds the call until you answer it:
 When you approve the call, its row's `state` becomes `approved`, and nixie adds a
 `proposals.settled` record. nixie starts no model turn for that record and shows the model no
 message. nixie then runs the call, adds an `action.outcome` record, and starts one model turn for
-it. In that turn the model reads the outcome and the time you approved the call. When someone
-declines a call, nixie starts a model turn that shows the model the decline and its reason. The test
-build starts with the [starter rules](../../../../deploy/compose/definitions/rules/starter.yaml),
-the rules file that the Compose recipe ships. Its rule `ask-exports` holds every call whose effect
-is `export`, such as `memory.export`.
+it. In that turn the model reads the outcome and the time you approved the call. The export tool
+never exports: it tells the model that the user exports memory from the memory view, so the call's
+`action.outcome` has the status `failed` and the reason `refused`. That is the outcome this journey
+expects, and the turn after it commits like any other. When someone declines a call, nixie starts a
+model turn that shows the model the decline and its reason. The test build starts with the
+[starter rules](../../../../deploy/compose/definitions/rules/starter.yaml), the rules file that the
+Compose recipe ships. Its rule `ask-exports` holds every call whose effect is `export`, such as
+`memory.export`.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
@@ -119,8 +122,24 @@ Before you start:
    Expect: `proposals` exits 0. The first query returns one row with `state` `approved`. The second
    returns one row with `outcome` `approved` and `family` `action`.
 
+8. Check the turn that the approval started. It reads the call's outcome, and it must commit with no
+   step error. The turn takes a few seconds:
+
+   ```bash
+   bun verify db query "select kind from records where kind in ('task.step_committed', 'task.step_errored') and sequence > (select sequence from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action') order by sequence"
+   bun verify db query "select json_extract(payload, '$.status') as status, json_extract(payload, '$.reason') as reason from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'memory.export'"
+   ```
+
+   Expect: the first query returns one row, with `kind` `task.step_committed`. The second returns
+   one row, with `status` `failed` and `reason` `refused`. When the first query returns no row, run
+   it again, up to 5 runs in all. A row with `task.step_errored` fails the journey: skip `done`, and
+   report the record.
+
 ## End state
 
 - Step 3: nixie held one call of `memory.export`. Its result had the outcome `queued` and no action.
 - Step 7: no call is held. The call's row in `proposals` and its `proposals.settled` record both say
   `approved`.
+- Step 8: the turn after the approval ended in `task.step_committed`, with no `task.step_errored`.
+  The call's `action.outcome` says `failed` with the reason `refused`, because the export tool sends
+  the user to the memory view.
