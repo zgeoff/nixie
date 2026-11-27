@@ -7,8 +7,11 @@ export { buildModelView } from './action/build-model-view';
 export type { ClaimActionOptions } from './action/claim-action';
 export { claimAction } from './action/claim-action';
 export type { ApprovedAction, ApprovedActionContext } from './action/create-approved-action';
+export { buildActionHash } from './action/build-action-hash';
 export { createApprovedAction } from './action/create-approved-action';
 export { failHeldAction } from './action/fail-held-action';
+export type { HeldAction, HeldActionRequest } from './action/read-held-action';
+export { readHeldAction } from './action/read-held-action';
 
 export type {
   UnknownOutcome,

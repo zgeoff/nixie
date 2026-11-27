@@ -20,3 +20,4 @@ export type { WebFetch, WebFetchOptions } from './part/start-web-fetch';
 export { fetchImageArgv, startWebFetch } from './part/start-web-fetch';
 export type { ServerRecordKind } from './part/server-record-kind';
 export { buildMailPorts } from './mail/build-mail-ports';
+export { makeAttemptCheck } from './action/make-attempt-check';

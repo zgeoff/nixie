@@ -5,8 +5,10 @@ import type {
   PasskeyGate,
   PasskeyRefusal,
   ProposalCoreDeps,
+  ProposalRefusal,
 } from '@heynixie/proposals';
 import { answerProposal } from '@heynixie/proposals';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import type { APIContext, Identity } from '../types';
 import { buildInputHash } from '../utils/build-input-hash';
@@ -24,8 +26,6 @@ export type ApprovalRun =
   | { readonly status: 'passkey_refused'; readonly refusal: PasskeyRefusal }
   | { readonly status: 'reused' };
 
-const procedure = 'approvals.answerProposal';
-
 export interface ApprovalAnswerRequest {
   readonly answer: ApprovalAnswer;
   readonly passkey: PasskeyGate | undefined;
@@ -35,6 +35,21 @@ export interface ApprovalAnswerRequest {
 // the same refusal. A passkey refusal is the exception: nothing is stored, so a retry with a fresh
 // assertion runs every check again.
 export async function runApprovalAnswer(
+  context: APIContext,
+  deps: ProposalCoreDeps,
+  caller: Identity,
+  request: ApprovalAnswerRequest,
+): Promise<ApprovalRun> {
+  const run = await runCheckedAnswer(context, deps, caller, request);
+
+  writeRefusalLog(context, request.answer.proposalID, run);
+
+  return run;
+}
+
+const procedure = 'approvals.answerProposal';
+
+async function runCheckedAnswer(
   context: APIContext,
   deps: ProposalCoreDeps,
   caller: Identity,
@@ -151,4 +166,32 @@ function toRun(outcome: AnswerOutcome): ApprovalRun {
   }
 
   return { status: 'settled', settlement: outcome };
+}
+
+// One line when nixie refuses an answer, whatever the path, so a card that says nothing leaves a
+// reason in the log.
+function writeRefusalLog(context: APIContext, proposalID: string, run: ApprovalRun): void {
+  const reason = match(run)
+    .with({ status: 'settled', settlement: { status: 'refused' } }, (refused) =>
+      pickRefusalReason(refused.settlement.refusal),
+    )
+    .with({ status: 'settled' }, () => null)
+    .with({ status: 'unauthorized' }, () => 'unauthorized')
+    .with({ status: 'passkey_refused' }, (refused) => refused.refusal.error.toLowerCase())
+    .with({ status: 'reused' }, () => 'client_action_id_reused')
+    .exhaustive();
+
+  if (reason === null) {
+    return;
+  }
+
+  context.logger?.('approvals.answer_refused', { proposalID, reason }, 'warn');
+}
+
+function pickRefusalReason(refusal: ProposalRefusal): string {
+  if (refusal.error === 'NOT_ALLOWED') {
+    return refusal.reason;
+  }
+
+  return refusal.error === 'CLOSED' ? `closed_${refusal.state}` : refusal.error.toLowerCase();
 }
