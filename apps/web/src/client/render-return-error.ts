@@ -3,10 +3,10 @@
 export function renderReturnError(
   status: number,
   code: string,
-  googleError: string | null,
+  providerError: string | null,
 ): Response {
   const detail =
-    googleError === null ? '' : `<p>Google said: <code>${escapeText(googleError)}</code></p>`;
+    providerError === null ? '' : `<p>Google said: <code>${escapeText(providerError)}</code></p>`;
 
   const page = `<!doctype html>
 <html lang="en">

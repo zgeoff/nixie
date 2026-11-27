@@ -56,28 +56,6 @@ export { removeWebFetchThread } from './web/remove-web-fetch-thread';
 export type { FetchSandbox, FetchSandboxOptions } from './fetch/start-fetch-sandbox';
 export { fetchSandboxOwner, startFetchSandbox } from './fetch/start-fetch-sandbox';
 export { timeConfigSchema } from './time/time-config-schema';
-export type { DefaultLabelOptions } from './web/pick-default-label';
-export { pickDefaultLabel } from './web/pick-default-label';
-export type { GoogleHosts } from './google/google-hosts';
-export { googleHosts } from './google/google-hosts';
-export { buildGoogleOAuthSpec } from './google/build-google-oauth-spec';
-export { createGoogleConnector } from './google/create-google-connector';
-export { fillSetupSteps } from './google/fill-setup-steps';
-export type { SetupPlaceholders } from './google/fill-setup-steps';
-export { googleSetupSteps } from './google/google-setup-steps';
-export { collectHeldBackTools, pickAvailableActions } from './google/pick-available-actions';
-export { ScopeCheckError } from './google/check-google-scopes';
-export type { GmailAccess, GmailDeps } from './google/gmail/types';
-export { buildGmailActions } from './google/gmail/build-gmail-actions';
-export { buildGoogleActions } from './google/build-google-actions';
-export { calendarCheckName, calendarToolNames } from './google/calendar/calendar-tool-names';
-export { driveCheckName, driveToolNames } from './google/drive/drive-tool-names';
-export { readGoogleBodyFields } from './google/read-google-body-fields';
-export { gmailCheckNames, gmailToolNames } from './google/gmail/gmail-tool-names';
-export { gmailDeclarations } from './google/gmail/gmail-declarations';
-export { readGmailBodyFields } from './google/gmail/read-gmail-body-fields';
-export { readAttachmentContent, maxAttachmentBytes } from './google/read-attachment-content';
-export type { AttachmentContent } from './google/read-attachment-content';
 
 export type {
   ActionAttempt,
@@ -174,11 +152,8 @@ export type {
 } from './render/start-render-sandbox';
 
 export { renderSandboxOwner, startRenderSandbox } from './render/start-render-sandbox';
-export type { GmailWakePort } from './google/gmail/types';
-export type { GmailArrivalSourceInput, GmailConnection } from './google/gmail/poll/types';
-export { buildGmailArrivalSource } from './google/gmail/poll/build-gmail-arrival-source';
-export { collectGmailConnections } from './google/gmail/poll/collect-gmail-connections';
-export { isGmailPolled } from './google/gmail/poll/is-gmail-polled';
-export { gmailConfigSchema } from './google/gmail/gmail-config-schema';
-export { readPickedFiles } from './google/drive/read-picked-files';
-export type { PickedFile } from './google/drive/read-picked-files';
+export { collectPageParts } from './page/collect-page-parts';
+export { getPageSession } from './utils/get-page-session';
+export type { LinkedText, TagSpan } from './utils/render-linked-text';
+export { formatLinkTag, renderLinkedText } from './utils/render-linked-text';
+export { writeHitLinks } from './web/write-hit-links';

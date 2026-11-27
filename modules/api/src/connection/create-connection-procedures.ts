@@ -6,11 +6,13 @@ import type {
   StartConsentResult,
 } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
+import { ORPCError } from '@orpc/server';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { requireFeature } from '../utils/require-feature';
 import { runCheckedAction } from '../utils/run-checked-action';
 import { readContractForgetStatus } from './read-contract-forget-status';
 import { readListedConnection } from './read-listed-connection';
@@ -43,6 +45,9 @@ export function createConnectionProcedures(context: APIContext) {
     readSetup: connections.readSetup.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+      requireConnector(options.input.connector);
+
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
 
       const setup = await port.readSetup(options.input.origin);
@@ -64,6 +69,9 @@ export function createConnectionProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+      requireConnector(options.input.connector);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
@@ -130,6 +138,8 @@ export function createConnectionProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
 
@@ -182,6 +192,8 @@ export function createConnectionProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
 
@@ -228,6 +240,9 @@ export function createConnectionProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+      requireConnector(options.input.connector);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
@@ -304,6 +319,8 @@ export function createConnectionProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
 
       const result = await port.finishConsent({
@@ -322,7 +339,9 @@ export function createConnectionProcedures(context: APIContext) {
           throw options.errors.CONSENT_REFUSED();
         })
         .with({ kind: 'token_exchange_failed' }, (failed) => {
-          throw options.errors.TOKEN_EXCHANGE_FAILED({ data: { googleError: failed.googleError } });
+          throw options.errors.TOKEN_EXCHANGE_FAILED({
+            data: { providerError: failed.providerError },
+          });
         })
         .with({ kind: 'no_refresh_token' }, () => {
           throw options.errors.NO_REFRESH_TOKEN();
@@ -342,6 +361,8 @@ export function createConnectionProcedures(context: APIContext) {
     list: connections.list.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
+
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
 
       const listed = await port.list();
@@ -355,6 +376,8 @@ export function createConnectionProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
@@ -395,6 +418,7 @@ export function createConnectionProcedures(context: APIContext) {
     checkPicked: connections.checkPicked.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
       requirePort(options.errors.CONNECTIONS_NOT_STARTED);
 
       const picked = await context.readPickedFiles?.(options.input.connection, options.input.files);
@@ -408,6 +432,8 @@ export function createConnectionProcedures(context: APIContext) {
 
     readForgetStatus: connections.readForgetStatus.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      requireFeature(context, 'google', options.errors.FEATURE_OFF);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
 
@@ -424,6 +450,13 @@ export function createConnectionProcedures(context: APIContext) {
       );
     }),
   };
+}
+
+// The contract takes any connector ID, and Google is the one connector that nixie runs.
+function requireConnector(connector: string): void {
+  if (connector !== 'google') {
+    throw new ORPCError('BAD_REQUEST', { message: 'nixie has no connector of this ID' });
+  }
 }
 
 function toRegisterClientResult(result: RegisterClientResult): JSONObject {

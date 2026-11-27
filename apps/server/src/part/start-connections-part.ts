@@ -1,40 +1,29 @@
 import { startSweep } from '@heynixie/clock';
-import type { Connections } from '@heynixie/connections';
-import {
-  createDatabaseHeldBackend,
-  probeConnectionEnabled,
-  startConnections,
-} from '@heynixie/connections';
-import { createGoogleConnector } from '@heynixie/connectors';
-import { createCredentialRecorder } from '@heynixie/credentials';
+import type { Connections, DatabaseHeldBackend } from '@heynixie/connections';
+import { probeConnectionEnabled, startConnections } from '@heynixie/connections';
+import { createGoogleProvider } from '@heynixie/connector-google';
+import { buildGmailMailbox, buildGoogleConnector } from '@heynixie/google';
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
-import { eraseGmailMailbox, readGmailWakeRecords } from '@heynixie/triggers';
+import { eraseConnectionMailbox, readConnectionWakeRecords } from '@heynixie/triggers';
 import type { ServerParts } from '../types';
 import type { GoogleToolsPart } from './start-google-tools-part';
 
 const sweepIntervalMs = 60 * 60 * 1000;
 const checkIntervalMs = 24 * 60 * 60 * 1000;
 
-// Starts the credential store's database backend and registers the connection's erasable. Each start
-// closes the refreshes a crash lost, sweeps keys and lapsed consents, and records `unknown` for a
-// forget with no revocation outcome. A daily pass checks each connection's scopes.
+// Registers the connection's erasable on the runner and starts the Google connections on the
+// credential store's backend. Each start sweeps lapsed consents, and records `unknown` for a forget
+// with no revocation outcome. A daily pass checks each connection's scopes.
 export async function startConnectionsPart(
   parts: ServerParts,
   erasure: ErasureRegistry,
   google: GoogleToolsPart,
+  backend: DatabaseHeldBackend,
 ): Promise<Connections> {
   const log = parts.context.log;
   const definitions = parts.context.definitions;
   const now = () => parts.context.clock.now();
-
-  const wiring = parts.heldSlot.bind(() => {
-    const recorder = createCredentialRecorder({ log, definitions });
-
-    return { backend: createDatabaseHeldBackend({ log, definitions, recorder, now }), recorder };
-  });
-
-  const backend = wiring.backend;
   const store = parts.credentials.store;
 
   const connections = startConnections({
@@ -44,11 +33,14 @@ export async function startConnectionsPart(
     backend,
     erasure,
     now,
-    connector: createGoogleConnector(google.hosts, [...google.actions]),
+    connector: buildGoogleConnector(createGoogleProvider(google.hosts), [...google.actions]),
     eraseDependents: (connectionID) =>
-      eraseGmailMailbox({ log, clock: parts.context.clock, definitions }, connectionID),
+      eraseConnectionMailbox(
+        { log, clock: parts.context.clock, definitions },
+        buildGmailMailbox(connectionID),
+      ),
     readWakes: async (tx, connectionID) => {
-      const wakes = await readGmailWakeRecords(tx, connectionID);
+      const wakes = await readConnectionWakeRecords(tx, buildGmailMailbox(connectionID));
 
       return wakes.map((wake) => ({ sequence: wake.sequence, thread: wake.thread }));
     },
@@ -63,8 +55,6 @@ export async function startConnectionsPart(
     definitions,
   });
 
-  await store.recover();
-  await backend.sweepKeys();
   await connections.writeLostRevocations();
   await connections.sweepConsents();
 
@@ -72,11 +62,10 @@ export async function startConnectionsPart(
     clock: parts.context.clock,
     intervalMs: sweepIntervalMs,
     run: async () => {
-      await backend.sweepKeys();
       await connections.sweepConsents();
     },
     onError: (error) => {
-      parts.log('connections.key_sweep_failed', toErrorFields(error), 'warn');
+      parts.log('connections.consent_sweep_failed', toErrorFields(error), 'warn');
     },
   });
 

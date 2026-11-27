@@ -29,6 +29,8 @@ export interface ControlHandlers {
     state: z.output<typeof controlRoutes.setSessionState.input>['state'],
   ) => number;
 
+  readonly readGmailRequests: () => z.input<typeof controlRoutes.gmailRequests.output>;
+
   readonly advanceClock: (minutes: number) => Promise<number>;
 
   readonly useComputer: (use: z.output<typeof controlRoutes.useComputer.input>) => Promise<number>;
@@ -125,6 +127,9 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
         POST: makeRouteHandler(controlRoutes.setSessionState, (set) => ({
           sessions: handlers.setSessionState(set.state),
         })),
+      },
+      [controlRoutes.gmailRequests.path]: {
+        GET: makeRouteHandler(controlRoutes.gmailRequests, () => handlers.readGmailRequests()),
       },
       [controlRoutes.useComputer.path]: {
         POST: makeRouteHandler(controlRoutes.useComputer, async (use) => ({

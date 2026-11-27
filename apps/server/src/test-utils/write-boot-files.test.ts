@@ -340,13 +340,23 @@ test.each([
     extras: {},
     computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
     code: {},
+    google: { gmail: { poll_interval: 120_000 } },
     features: ['computer', 'code', 'devices', 'google', 'mcp'],
+  },
+  {
+    title: 'google off',
+    extras: { isGoogleOff: true },
+    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
+    code: {},
+    google: undefined,
+    features: ['computer', 'code', 'devices', 'mcp'],
   },
   {
     title: 'the computer off',
     extras: { isComputerOff: true },
     computer: undefined,
     code: {},
+    google: { gmail: { poll_interval: 120_000 } },
     features: ['code', 'devices', 'google', 'mcp'],
   },
   {
@@ -354,6 +364,7 @@ test.each([
     extras: { isCodeOff: true },
     computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
     code: undefined,
+    google: { gmail: { poll_interval: 120_000 } },
     features: ['computer', 'devices', 'google', 'mcp'],
   },
 ])('it writes a configuration with $title, and these features on: $features', async (row) => {
@@ -370,8 +381,14 @@ test.each([
   expect({
     computer: config.computer,
     code: config.code,
+    google: config.google,
     features: listFeaturesOn(config),
-  }).toStrictEqual({ computer: row.computer, code: row.code, features: row.features });
+  }).toStrictEqual({
+    computer: row.computer,
+    code: row.code,
+    google: row.google,
+    features: row.features,
+  });
 });
 
 test.each([

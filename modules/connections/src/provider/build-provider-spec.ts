@@ -1,5 +1,5 @@
 import type { CredentialSpec } from '@heynixie/credentials';
-import type { ProviderEndpoints } from './google-endpoints';
+import type { ProviderEndpoints } from './provider-endpoints';
 
 export interface ProviderSpecOptions {
   readonly kind: 'oauth_client' | 'oauth_token';
@@ -8,7 +8,7 @@ export interface ProviderSpecOptions {
   readonly clientID: string;
 }
 
-// The spec every binding of Google carries, the client's and each connection's. Its origins are the
+// The spec every binding of the provider carries, the client's and each connection's. Its origins are the
 // token and revoke hosts that a refresh reaches, and the API hosts that a connection's fetcher may
 // reach; the fetcher refuses the token, revoke and authorize hosts to a tool whatever the origins.
 export function buildProviderSpec(
@@ -17,7 +17,7 @@ export function buildProviderSpec(
 ): CredentialSpec {
   return {
     kind: options.kind,
-    label: 'Google connection',
+    label: `${endpoints.name} connection`,
     origins: [...new Set([...endpoints.origins, ...endpoints.apiOrigins])],
     provider: {
       tokenURL: endpoints.tokenURL,

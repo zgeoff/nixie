@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readFile, writeFile } from 'node:fs/promises';
 import { startFakeOAuthProvider } from '@heynixie/credentials/test-utils';
 import { runOracle, startE2ENixie } from '@heynixie/server/test-utils';
 import { waitFor } from '@zgeoff/testing';
@@ -198,4 +199,45 @@ test('it records an unknown outcome and sends nothing more when a crash cut the 
   expect(ctx.countRevokes()).toBe(1);
   expect(revocations.map((record) => record.payload['outcome'])).toStrictEqual(['unknown']);
   expect(status).toBeNull();
+});
+
+test('it starts with google off and leaves a connection forget open until google is on again', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  await first.request('connectCredential', ctx.config);
+  await first.request('arm', { point: 'erasure.revoked' });
+
+  const forgetting = Promise.allSettled([first.request('forgetCredential', ctx.config)]);
+
+  await first.waitForArrival('erasure.revoked');
+  await first.kill();
+
+  await forgetting;
+
+  const config = await readFile(ctx.nixie.configPath, 'utf8');
+
+  await writeFile(ctx.nixie.configPath, config.replace('google: {}\n', ''));
+
+  const second = ctx.nixie.harness.start();
+
+  await second.ready;
+
+  await second.kill();
+
+  const recordsWhileOff = await ctx.nixie.readRecords();
+
+  await writeFile(ctx.nixie.configPath, config);
+
+  const third = ctx.nixie.harness.start();
+
+  await third.ready;
+
+  await ctx.nixie.waitForRecord((record) => record.kind === 'erasure.finished');
+  await third.kill();
+
+  expect(recordsWhileOff.map((record) => record.kind)).not.toContain('erasure.finished');
 });

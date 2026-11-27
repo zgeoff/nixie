@@ -12,7 +12,7 @@ export function pickExchangeFailure(
   if (error instanceof TokenRequestError) {
     return error.code === 'no_refresh_token'
       ? { kind: 'no_refresh_token' }
-      : { kind: 'token_exchange_failed', googleError: error.providerError ?? error.code };
+      : { kind: 'token_exchange_failed', providerError: error.providerError ?? error.code };
   }
 
   if (error instanceof CredentialRemovedError) {

@@ -1,5 +1,5 @@
-import { fillSetupSteps } from '@heynixie/connectors';
 import { readLiveClient } from '../client/read-live-client';
+import { fillSetupSteps } from '../connector/fill-setup-steps';
 import type { ServiceContext } from '../service-context';
 import type { SetupReply } from '../types';
 

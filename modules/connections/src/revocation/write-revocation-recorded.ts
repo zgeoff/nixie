@@ -21,7 +21,7 @@ export async function writeRevocationRecorded(
         connection: connectionID,
         outcome: result.outcome,
         status: result.status,
-        googleError: result.providerError,
+        providerError: result.providerError,
       }),
     },
   ]);

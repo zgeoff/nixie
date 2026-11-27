@@ -17,10 +17,12 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { driveFilesCommand } from './drive-files-command';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
+import { gmailRequestsCommand } from './gmail-requests-command';
 import { gmailSentCommand } from './gmail-sent-command';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
 import { liveOpensCommand } from './live-opens-command';
+import { modelInputCommand } from './model-input-command';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { checkPreviewCommit } from './preview/check-preview-commit';
@@ -45,7 +47,6 @@ import { runHostCLI } from './run-host-cli';
 import { runPauseFromHost } from './run-pause-from-host';
 import { sessionsSchema } from './sessions-schema';
 import { throwRefusal } from './throw-refusal';
-import { waitForModelInput } from './wait-for-model-input';
 import { waitForProposals } from './wait-for-proposals';
 
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
@@ -345,24 +346,10 @@ export function createVerifyRegistry(): Wringer {
         );
       },
     })
-    .command({
-      path: ['model', 'input'],
-      summary:
-        "Check that the model's last input holds the text --contains, waiting up to --wait-ms (10000 by default), and return that input; the outcome of an approved call reaches the model in it",
-      effect: 'read',
-      args: z.strictObject({ contains: z.string().min(1), waitMs: z.int().positive().optional() }),
-      data: controlRoutes.modelInput.output,
-      run: (args, ctx) => {
-        refuseHarnessless(ctx.target, 'model input');
-
-        return waitForModelInput(
-          () => postControl(ctx.drivers.http, controlRoutes.modelInput, {}),
-          args,
-        );
-      },
-    })
+    .command(modelInputCommand)
     .command(calendarWrittenCommand)
     .command(driveFilesCommand)
+    .command(gmailRequestsCommand)
     .command(gmailSentCommand)
     .command(liveOpensCommand)
     .command({
@@ -503,6 +490,11 @@ export function createVerifyRegistry(): Wringer {
         name: 'google-connections',
         summary: 'Connect a Google account and forget it',
         paths: featurePaths['google-connections'],
+      },
+      {
+        name: 'google-off',
+        summary: 'Turn Google off',
+        paths: featurePaths['google-off'],
       },
       {
         name: 'mcp-servers',

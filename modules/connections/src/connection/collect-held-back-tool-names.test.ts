@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import type { ConnectorAction } from '@heynixie/connectors';
 import { buildMockToolDefinition } from '@heynixie/tools/test-utils';
+import type { ConnectorAction } from '../connector/types';
 import { collectHeldBackToolNames } from './collect-held-back-tool-names';
 
 function setupTest() {

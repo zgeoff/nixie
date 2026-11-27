@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { buildForwardHeaders } from './build-forward-headers';
 import { handleMcpReturn } from './handle-mcp-return';
 import { renderReturnError } from './render-return-error';
+import { renderReturnFeatureOff } from './render-return-feature-off';
 
 export const googleReturnPath = '/connections/google/return';
 const returnHeaders = { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } as const;
@@ -31,6 +32,22 @@ export async function handleGoogleReturn(apiURL: string, request: Request): Prom
     }),
   );
 
+  try {
+    const nixie = await client.nixie.read();
+
+    if (!nixie.features.includes('google')) {
+      return renderReturnFeatureOff('google');
+    }
+  } catch (error) {
+    // nixie.read needs a session, so a browser with none cannot learn whether the feature is on. The
+    // page that it gets says so, and a signed-in visit shows the error of the return.
+    if (error instanceof ORPCError && error.code === 'UNAUTHORIZED') {
+      return renderReturnFeatureOff('google');
+    }
+
+    return toReturnErrorResponse(error);
+  }
+
   const state = query.get('state');
 
   if (state === null || state === '') {
@@ -53,15 +70,15 @@ export async function handleGoogleReturn(apiURL: string, request: Request): Prom
   }
 }
 
-const googleErrorSchema = z.object({ googleError: z.string().nullable() });
+const providerErrorSchema = z.object({ providerError: z.string().nullable() });
 
 function toReturnErrorResponse(error: unknown): Response {
   if (!(error instanceof ORPCError)) {
     return renderReturnError(502, 'API_UNREACHABLE', null);
   }
 
-  const googleError = googleErrorSchema.safeParse(error.data);
-  const reported = googleError.success ? googleError.data.googleError : null;
+  const providerError = providerErrorSchema.safeParse(error.data);
+  const reported = providerError.success ? providerError.data.providerError : null;
 
   return renderReturnError(400, String(error.code), reported);
 }

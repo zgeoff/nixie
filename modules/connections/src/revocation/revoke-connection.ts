@@ -1,6 +1,6 @@
 import type { CredentialStore, HeldBackend, RevokeResult } from '@heynixie/credentials';
 import { buildProviderSpec } from '../provider/build-provider-spec';
-import type { ProviderEndpoints } from '../provider/google-endpoints';
+import type { ProviderEndpoints } from '../provider/provider-endpoints';
 import { readConnectionOwner } from './read-connection-owner';
 import { readRecordedRevocations } from './read-recorded-revocations';
 import type { RevocationWriter } from './write-revocation-recorded';

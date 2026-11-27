@@ -20,6 +20,9 @@ Settings → Connections shows the same 6 steps as this guide, from "Create a Go
 - A home page and a privacy policy page on a domain you control. Google asks for both when you
   publish the app.
 - A browser signed in to nixie, open on that address.
+- A `google: {}` section in nixie's config. With no `google` section, nixie has no Google, and
+  Settings → Connections says the feature is off. Set `google.gmail.poll_interval` in that section
+  to change how often nixie polls your mail.
 
 ## Create a Google Cloud project
 

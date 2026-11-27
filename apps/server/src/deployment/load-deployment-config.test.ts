@@ -56,7 +56,6 @@ test('it reads every section, with the default of each setting the file leaves o
       url: 'http://127.0.0.1:7070',
       publicEgress: { hostAddresses: ['192.0.2.10/32'], egressDeny: [] },
     },
-    gmail: { poll_interval: 120_000 },
     wake_rules: { window: 900_000, reply_expiry: 604_800_000 },
     definitions: {
       source: { kind: 'path', path: '/etc/nixie/definitions' },
@@ -587,4 +586,67 @@ test.each([
     computer: row.computer,
     code: row.code,
   });
+});
+
+test.each([
+  {
+    title: 'leaves google off when the file has no google section',
+    sections: [],
+    google: undefined,
+  },
+  {
+    title: 'turns google on with the default gmail poll when its section is empty',
+    sections: ['google: {}'],
+    google: { gmail: { poll_interval: 120_000 } },
+  },
+  {
+    title: 'reads the gmail poll interval from under the google section',
+    sections: ['google: { gmail: { poll_interval: 30s } }'],
+    google: { gmail: { poll_interval: 30_000 } },
+  },
+])('it $title', async (row) => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      ...row.sections,
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect({ google: config.google, gmail: config.gmail }).toStrictEqual({
+    google: row.google,
+    gmail: undefined,
+  });
+});
+
+test('it refuses a gmail section outside the google section, and says where it moved', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'gmail: { poll_interval: 30s }',
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(/under google/u);
 });

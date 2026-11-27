@@ -1,5 +1,5 @@
 import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
-import type { Connections } from '@heynixie/connections';
+import type { Connections, DatabaseHeldBackend } from '@heynixie/connections';
 import type { ActionConnector, ComputerTools, RenderSandbox } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { ErasureRunnerControl } from '@heynixie/log';
@@ -52,6 +52,7 @@ export interface ServerPartValues {
   readonly conversation_imp: ConversationImp;
   readonly checker: CheckerTask;
   readonly erasure: ErasureRunnerControl;
+  readonly held_credentials: DatabaseHeldBackend;
   readonly connections: Connections;
   readonly mcp: Mcp;
   readonly google_tools: GoogleToolsPart;
@@ -70,6 +71,7 @@ export interface ServerPartValues {
   readonly conversation_task: void;
   readonly reminder_moves: void;
   readonly trigger_sources: void;
+  readonly gmail_source: void;
   readonly sandbox_runner: SandboxRunner;
   readonly runners: void;
   readonly coding_sweep: void;

@@ -2276,15 +2276,24 @@
       ],
       "additionalProperties": false
     },
-    "gmail": {
+    "google": {
       "type": "object",
       "properties": {
-        "poll_interval": {
-          "default": "2m",
-          "type": "string"
+        "gmail": {
+          "type": "object",
+          "properties": {
+            "poll_interval": {
+              "default": "2m",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
+    },
+    "gmail": {
+      "not": {}
     },
     "wake_rules": {
       "type": "object",

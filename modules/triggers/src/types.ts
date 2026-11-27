@@ -73,11 +73,13 @@ export interface TaskInputEvent {
   readonly payload: JSONObject;
 }
 
-// A mailbox that a mail source reads: the assistant's own, or one Google connection's Gmail. A
-// mail source takes the kind as its ID.
+// A mailbox that a mail source reads: the assistant's own, or one connection's at the source that
+// the connection belongs to. A mail source takes the mailbox's source as its ID.
 export type Mailbox =
   | { readonly kind: 'mail' }
-  | { readonly kind: 'gmail'; readonly connectionID: string };
+  | { readonly kind: 'connection'; readonly source: string; readonly connectionID: string };
+
+export type ConnectionMailbox = Extract<Mailbox, { readonly kind: 'connection' }>;
 
 // Every field is optional, and every field present must match. An empty match takes every arrival.
 export interface WakeMatch {
@@ -87,7 +89,7 @@ export interface WakeMatch {
   // a substring, both sides in NFC and lowered
   readonly subject?: string;
 
-  // the mailbox's thread ID: a short ID for the assistant's mailbox, Gmail's own for a Gmail one
+  // the mailbox's thread ID: a short ID for the assistant's mailbox, the source's own for a connection's
   readonly thread?: string;
 }
 
@@ -129,7 +131,7 @@ export type WakeRuleEndReason = 'cancelled' | 'task_ended' | 'connection_forgott
 
 // One new mail in one mailbox, as the source read it from the host.
 export interface MailArrival {
-  // the short ID of the stored mail, or the ID a Gmail tool takes for a Gmail mail
+  // the short ID of the stored mail, or the ID that the source's tools take for a connection's mail
   readonly messageID: string;
   readonly threadID: string;
 
@@ -145,13 +147,16 @@ export interface MailArrivalEvent {
   readonly kind: 'mail';
   readonly mailbox: Mailbox;
 
-  // the source's part of the key: the host's message ID, or the connection and Gmail's for Gmail
+  // the source's part of the key: the host's message ID, or the connection and the source's own ID for a connection's
   readonly dedupeKey: string;
 
   // ISO instant: when the source read it
   readonly occurredAt: string;
   readonly payload: MailArrival;
 }
+
+// One new mail in a connection's mailbox, as the source of that connection read it.
+export type ConnectionArrivalEvent = MailArrivalEvent & { readonly mailbox: ConnectionMailbox };
 
 export type TriggerEvent = ScheduleTriggerEvent | TaskInputEvent | MailArrivalEvent;
 

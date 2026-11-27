@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { featureOffErrors } from './feature-off-errors';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-const connectionsProcedure = signedIn.errors({
+const connectionsProcedure = signedIn.errors(featureOffErrors).errors({
   CONNECTIONS_NOT_STARTED: {
     message: 'nixie has not started its connections yet; try again in a moment',
     status: 503,
@@ -11,7 +12,7 @@ const connectionsProcedure = signedIn.errors({
 });
 
 const checkedAction = connectionsProcedure.errors(reusedIDErrors);
-const connectorSchema = z.literal('google');
+const connectorSchema = z.string();
 const clientNotFound = { message: 'No registered client has this ID', status: 404 } as const;
 const connectionNotFound = { message: 'No connection has this ID', status: 404 } as const;
 const erasureSchema = z.enum(['pending', 'done']);
@@ -170,13 +171,13 @@ export const connectionsContract = {
         message: 'This consent is unknown, used, lapsed, or was started by another session',
         status: 404,
       },
-      CONSENT_REFUSED: { message: 'Google did not grant the consent', status: 400 },
+      CONSENT_REFUSED: { message: 'The provider did not grant the consent', status: 400 },
       TOKEN_EXCHANGE_FAILED: {
-        message: 'Google refused the code',
+        message: 'The provider refused the code',
         status: 502,
-        data: z.object({ googleError: z.string().nullable() }),
+        data: z.object({ providerError: z.string().nullable() }),
       },
-      NO_REFRESH_TOKEN: { message: 'Google returned no refresh token', status: 502 },
+      NO_REFRESH_TOKEN: { message: 'The provider returned no refresh token', status: 502 },
       ACCOUNT_MISMATCH: {
         message: 'The account is not the one this connection reaches',
         status: 409,

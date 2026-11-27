@@ -5,6 +5,7 @@ import type { FeatureID } from '@heynixie/contract';
 export interface FeatureConfig {
   readonly computer?: unknown;
   readonly code?: unknown;
+  readonly google?: unknown;
   readonly voice?: unknown;
   readonly images: unknown;
   readonly mail?: unknown;
@@ -20,7 +21,7 @@ export function listFeaturesOn(config: FeatureConfig): readonly FeatureID[] {
     computer: config.computer !== undefined,
     code: config.code !== undefined,
     devices: true,
-    google: true,
+    google: config.google !== undefined,
     mcp: true,
     voice: config.voice !== undefined,
     images: config.images !== null,

@@ -69,7 +69,7 @@ test('#runWakeFlush wakes with every held mail once the window ran out, oldest f
 
   ctx.clock.advance(60_000);
 
-  const written = await runWakeFlush(ctx.core);
+  const written = await runWakeFlush(ctx.core, { liveSources: ['example'] });
   const wakes = await ctx.readWakes();
 
   expect(written).toBe(1);
@@ -99,7 +99,7 @@ test('#runWakeFlush clears the held matches that it showed', async () => {
 
   ctx.clock.advance(60_000);
 
-  await runWakeFlush(ctx.core);
+  await runWakeFlush(ctx.core, { liveSources: ['example'] });
 
   const rows = await readTestTriggerRows(ctx);
 
@@ -123,7 +123,7 @@ test('#runWakeFlush waits while a rule is inside its window', async () => {
 
   ctx.clock.advance(30_000);
 
-  const written = await runWakeFlush(ctx.core);
+  const written = await runWakeFlush(ctx.core, { liveSources: ['example'] });
 
   expect(written).toBe(0);
 });
@@ -149,7 +149,7 @@ test('#runWakeFlush still wakes for the match of a rule that was cancelled', asy
 
   ctx.clock.advance(60_000);
 
-  const awaited1 = await runWakeFlush(ctx.core);
+  const awaited1 = await runWakeFlush(ctx.core, { liveSources: ['example'] });
 
   expect(awaited1).toBe(1);
 });
@@ -178,7 +178,7 @@ test('#runWakeFlush ends the rules of a task that ended and drops its held match
 
   ctx.clock.advance(60_000);
 
-  const written = await runWakeFlush(ctx.core);
+  const written = await runWakeFlush(ctx.core, { liveSources: ['example'] });
   const rows = await readTestTriggerRows(ctx);
 
   expect(written).toBe(0);
@@ -215,7 +215,7 @@ test('#runWakeFlush drops the held matches of a cancelled rule once its task end
 
   await writeTaskControl(ctx.context, { taskID, control: 'close' });
 
-  const written = await runWakeFlush(ctx.core);
+  const written = await runWakeFlush(ctx.core, { liveSources: ['example'] });
   const rows = await readTestTriggerRows(ctx);
   const arrivals = await ctx.readArrivals();
 
@@ -244,7 +244,7 @@ test('#runWakeFlush removes the key of an arrival whose delivery crashed before 
 
   const before = await ctx.readArrivals();
 
-  await runWakeFlush(ctx.core);
+  await runWakeFlush(ctx.core, { liveSources: ['example'] });
 
   const after = await ctx.readArrivals();
 
@@ -288,7 +288,7 @@ test('#runWakeFlush wakes no rule twice inside its window when an arrival wakes 
     },
   };
 
-  const written = await runWakeFlush(flushing);
+  const written = await runWakeFlush(flushing, { liveSources: ['example'] });
 
   await Promise.all(races);
 
@@ -298,4 +298,45 @@ test('#runWakeFlush wakes no rule twice inside its window when an arrival wakes 
   expect(written).toBe(1);
   expect(wakes).toHaveLength(2);
   expect(rows.held).toHaveLength(1);
+});
+
+test('#runWakeFlush leaves a held match of a connection at a source that does not run, and wakes it once the source runs', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
+    windowMs: 60_000,
+  });
+
+  ctx.clock.advance(1000);
+
+  const deliver = (dedupeKey: string) =>
+    deliverTriggerBatch(ctx.core, 'example', {
+      cursor: null,
+      events: [
+        buildTestMailEvent({
+          mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
+          dedupeKey,
+          payload: { receivedAt: ctx.clock.now() },
+        }),
+      ],
+    });
+
+  // the first mail wakes at once, and the second is held until the window ends
+  await deliver('conn-1|m1');
+
+  ctx.clock.advance(1000);
+
+  await deliver('conn-1|m2');
+
+  ctx.clock.advance(60_000);
+
+  const whileOff = await runWakeFlush(ctx.core, { liveSources: [] });
+  const wokeWhileOff = await ctx.readWakes();
+  const whileOn = await runWakeFlush(ctx.core, { liveSources: ['example'] });
+  const wokeWhileOn = await ctx.readWakes();
+
+  expect([whileOff, wokeWhileOff.length, whileOn, wokeWhileOn.length]).toStrictEqual([0, 1, 1, 2]);
 });

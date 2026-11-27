@@ -1,12 +1,12 @@
+import { buildIDToken } from '@heynixie/credentials/test-utils';
+import { createTestCertificate } from '@heynixie/egress/test-utils';
 import {
   createFakeCalendar,
   createFakeDrive,
   createFakeGmail,
   serveFakeGoogle,
-} from '@heynixie/connectors/test-utils';
-import type { FakeCalendar, FakeDrive, FakeGmail } from '@heynixie/connectors/test-utils';
-import { buildIDToken } from '@heynixie/credentials/test-utils';
-import { createTestCertificate } from '@heynixie/egress/test-utils';
+} from '@heynixie/google/test-utils';
+import type { FakeCalendar, FakeDrive, FakeGmail } from '@heynixie/google/test-utils';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
 import type { GoogleAPISite } from '../test/types';
 

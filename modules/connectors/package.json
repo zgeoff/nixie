@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@heynixie/clock": "workspace:*",
+    "@heynixie/connections": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/credentials": "workspace:*",
     "@heynixie/db": "workspace:*",
@@ -23,7 +24,6 @@
     "@heynixie/secret-scan": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
-    "@heynixie/triggers": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
@@ -32,7 +32,6 @@
   },
   "devDependencies": {
     "@heynixie/budgets": "workspace:*",
-    "@heynixie/egress": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",

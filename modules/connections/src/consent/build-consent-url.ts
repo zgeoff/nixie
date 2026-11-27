@@ -1,4 +1,4 @@
-import type { OAuthSpec } from '@heynixie/connectors';
+import type { OAuthSpec } from '../connector/types';
 
 export interface ConsentURLInput {
   readonly clientID: string;

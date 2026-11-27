@@ -8,7 +8,7 @@ import { startTestAPI } from '../test-utils/start-test-api';
 async function setupTest() {
   const origin = 'https://nixie.example.org';
 
-  const api = await startTestAPI();
+  const api = await startTestAPI(undefined, { features: ['google'] });
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   const calls: (readonly unknown[])[] = [];
@@ -565,7 +565,7 @@ test('#connections.finishConsent carries the error code of Google in a failed ex
 
   ctx.setConnections(ctx.port);
 
-  ctx.state.finished = { kind: 'token_exchange_failed', googleError: 'invalid_grant' };
+  ctx.state.finished = { kind: 'token_exchange_failed', providerError: 'invalid_grant' };
 
   const refused = ctx.client.connections.finishConsent({ state: 's1', code: 'c1', error: null });
 
@@ -573,7 +573,7 @@ test('#connections.finishConsent carries the error code of Google in a failed ex
 
   expect(refused).rejects.toMatchObject({
     code: 'TOKEN_EXCHANGE_FAILED',
-    data: { googleError: 'invalid_grant' },
+    data: { providerError: 'invalid_grant' },
   });
 });
 
@@ -738,3 +738,68 @@ test('#connections.registerClient refuses a caller with no session before it rea
 
   expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
+
+test.each(['list', 'readSetup', 'checkPicked'] as const)(
+  'it answers FEATURE_OFF to connections.%s when google is off',
+  async (procedure) => {
+    const api = await startTestAPI();
+    const owner = await createDeviceSession(api.context, 'laptop');
+
+    const client = buildTestClient(api.url, owner.token, 'https://nixie.example.org');
+
+    const answers = {
+      list: () => client.connections.list(),
+      readSetup: () =>
+        client.connections.readSetup({ connector: 'google', origin: 'https://nixie.example.org' }),
+      checkPicked: () =>
+        client.connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['file-1'] }),
+    };
+
+    const answer = answers[procedure]();
+
+    await Promise.allSettled([answer]);
+
+    expect(answer).rejects.toMatchObject({
+      code: 'FEATURE_OFF',
+      data: { feature: 'google' },
+    });
+  },
+);
+
+test.each(['readSetup', 'registerClient', 'startConsent'] as const)(
+  'it refuses a connector that nixie has none of in connections.%s, and calls nothing',
+  async (procedure) => {
+    const ctx = await setupTest();
+
+    ctx.setConnections(ctx.port);
+
+    const answers = {
+      readSetup: () =>
+        ctx.client.connections.readSetup({
+          connector: 'unsupported',
+          origin: ctx.origin,
+        }),
+      registerClient: () =>
+        ctx.client.connections.registerClient({
+          clientActionID: crypto.randomUUID(),
+          connector: 'unsupported',
+          clientID: 'client-1.apps.example',
+          clientSecret: 'secret-value-1',
+          origin: ctx.origin,
+        }),
+      startConsent: () =>
+        ctx.client.connections.startConsent({
+          clientActionID: crypto.randomUUID(),
+          connector: 'unsupported',
+          connection: null,
+        }),
+    };
+
+    const answer = answers[procedure]();
+
+    await Promise.allSettled([answer]);
+
+    expect(answer).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(ctx.calls).toStrictEqual([]);
+  },
+);

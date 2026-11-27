@@ -10,7 +10,7 @@ import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
 import { startConnectionsPart } from './start-connections-part';
-import { startGoogleToolsPart } from './start-google-tools-part';
+import { startHeldCredentialsPart } from './start-held-credentials-part';
 import { startMcpPart } from './start-mcp-part';
 import { startNotebookPart } from './start-notebook-part';
 
@@ -27,23 +27,30 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
   },
   {
-    // The Gmail tools, on late-bound ports for the connections and the fetch sandbox.
-    name: 'google_tools',
-    needs: ['inputs'],
-    start: (reader) => Promise.resolve(startGoogleToolsPart(reader.get('inputs'))),
+    // The credential store's database backend, which the connections and the MCP proxy keep their
+    // credentials in.
+    name: 'held_credentials',
+    needs: ['server_parts'],
+    start: makeRetriedStart('held_credentials', (parts) => startHeldCredentialsPart(parts)),
   },
   {
-    // The credential store's database backend, and the connection's forget on the runner.
+    // The Google connections, and the connection's forget on the runner.
     name: 'connections',
-    needs: ['inputs', 'server_parts', 'erasure', 'google_tools'],
+    feature: 'google',
+    needs: ['inputs', 'server_parts', 'erasure', 'google_tools', 'held_credentials'],
     start: makeRetriedStart('connections', (parts, reader) =>
-      startConnectionsPart(parts, reader.get('erasure'), reader.get('google_tools')),
+      startConnectionsPart(
+        parts,
+        reader.get('erasure'),
+        reader.get('google_tools'),
+        reader.get('held_credentials'),
+      ),
     ),
   },
   {
     // The MCP proxy: the servers of the config, their sign-ins and the tools their pins allow.
     name: 'mcp',
-    needs: ['inputs', 'server_parts', 'connections'],
+    needs: ['inputs', 'server_parts', 'held_credentials'],
     uses: ['tools'],
     start: makeRetriedStart('mcp', (parts, reader) =>
       startMcpPart(
@@ -92,7 +99,8 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     // A forget that a crash cut short finishes before any claim pool or turn-input work can reach
     // what it deletes.
     name: 'erasure_catch_up',
-    needs: ['server_parts', 'session_cleanup', 'memory', 'notebook', 'erasure', 'connections'],
+    needs: ['server_parts', 'session_cleanup', 'memory', 'notebook', 'erasure'],
+    uses: ['connections'],
     start: makeRetriedStart('erasure_catch_up', (_parts, reader) =>
       reader.get('erasure').finishOpen(),
     ),

@@ -287,25 +287,27 @@ test('it keeps the key of an arrival that a held match names', async () => {
   ]);
 });
 
-test('it wakes on a Gmail arrival through the rule of that connection only', async () => {
+test('it wakes on a connection arrival through the rule of that connection only', async () => {
   const ctx = await setupTest();
 
   await ctx.taskSeed.conversationStep();
 
   const own = await seedWakeRule(ctx, {
-    mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
     match: { thread: '18c2f0a9b3d4e5f6' },
   });
 
-  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-2' } });
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-2' },
+  });
 
   ctx.clock.advance(1000);
 
-  const result = await deliverTriggerBatch(ctx.core, 'gmail', {
+  const result = await deliverTriggerBatch(ctx.core, 'example', {
     cursor: null,
     events: [
       buildTestMailEvent({
-        mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+        mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
         dedupeKey: 'conn-1|m1',
         payload: {
           receivedAt: ctx.clock.now(),
@@ -322,16 +324,18 @@ test('it wakes on a Gmail arrival through the rule of that connection only', asy
 
   expect(woke?.payload).toMatchObject({
     rules: [{ ruleID: own.ruleID }],
-    mails: [{ mailbox: 'gmail:conn-1', messageID: 'k3x9m2p7qa.m1' }],
+    mails: [{ mailbox: 'example:conn-1', messageID: 'k3x9m2p7qa.m1' }],
   });
 });
 
-test('it drops a Gmail arrival that names another source than its own', async () => {
+test('it drops a connection arrival that names another source than its own', async () => {
   const ctx = await setupTest();
 
   await ctx.taskSeed.conversationStep();
 
-  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-1' } });
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
+  });
 
   ctx.clock.advance(1000);
 
@@ -339,7 +343,7 @@ test('it drops a Gmail arrival that names another source than its own', async ()
     cursor: null,
     events: [
       buildTestMailEvent({
-        mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+        mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
         payload: { receivedAt: ctx.clock.now() },
       }),
     ],

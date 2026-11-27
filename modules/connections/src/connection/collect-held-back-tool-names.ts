@@ -1,4 +1,4 @@
-import type { ConnectorAction } from '@heynixie/connectors';
+import type { ConnectorAction } from '../connector/types';
 import type { ConnectionMissingScope } from '../types';
 
 // The tools no live connection can run: those that every live connection lacks a scope of. A tool

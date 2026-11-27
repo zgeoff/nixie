@@ -6,14 +6,13 @@ import {
 import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
-  buildGmailArrivalSource,
-  collectGmailConnections,
   endTakeoverCutByRestart,
   makeTakeoverRecords,
   resumeOpenHandover,
 } from '@heynixie/connectors';
-import { checkPromptProposal, makeRetireOneShot, startMandateTimer } from '@heynixie/definitions';
+import { checkPromptProposal, startMandateTimer } from '@heynixie/definitions';
 import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
+import { buildGmailArrivalSource, collectGmailConnections, gmailSourceID } from '@heynixie/google';
 import { toErrorFields } from '@heynixie/logger';
 import { buildMailSource } from '@heynixie/mail';
 import { startSpendWatcher } from '@heynixie/spend';
@@ -23,12 +22,12 @@ import {
   conversationRunner,
   conversationTaskID,
   createConversationTask,
-  readDefinitionTaskInTransaction,
   reviveHeldTasks,
   sandboxRunner,
   writeThreadRecordInTransaction,
 } from '@heynixie/tasks';
 import { buildScheduleSource, startTriggerSources, startWakeFlush } from '@heynixie/triggers';
+import invariant from 'tiny-invariant';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
 import { buildServerMailContext } from '../mail/build-server-mail-context';
@@ -47,6 +46,7 @@ import { runUnknownTaskStep } from '../task/run-unknown-task-step';
 import { startSandboxTaskRunner } from '../task/start-sandbox-task-runner';
 import { registerCredentialOperations } from '../test/register-credential-operations';
 import { runTestTaskStep } from '../test/run-test-task-step';
+import { buildTriggerCore } from '../triggers/build-trigger-core';
 import type { AnyPartDeclaration } from '../types';
 import { writeStartRecord } from '../utils/write-start-record';
 import { makeRetriedStart } from './make-retried-start';
@@ -150,14 +150,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'trigger_sources',
-    needs: [
-      'server_parts',
-      'context',
-      'conversation_task',
-      'reminder_moves',
-      'connections',
-      'google_tools',
-    ],
+    needs: ['server_parts', 'context', 'conversation_task', 'reminder_moves'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const writer = parts.context.log.writer;
@@ -172,36 +165,11 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const coding = reader.get('context').coding;
       const mail = reader.get('context').mail;
       const mailContext = buildServerMailContext(mail, parts.context, parts.log);
-
-      const core = {
-        log: parts.context.log,
-        clock: parts.context.clock,
-        definitions: parts.context.definitions,
-        logEvent: parts.log,
-        readDefinitionTask: readDefinitionTaskInTransaction,
-        retireOneShot: makeRetireOneShot(parts.context),
-      };
-
-      const connections = reader.get('connections');
-
-      const gmailSource = buildGmailArrivalSource({
-        clock: parts.context.clock,
-        hosts: reader.get('google_tools').hosts,
-        logEvent: parts.log,
-        pollIntervalMs: parts.config.gmail.poll_interval,
-        db: writer.db,
-        listConnections: async () => {
-          const states = await connections.readStates();
-
-          return collectGmailConnections(states);
-        },
-        readContext: (connectionID) => connections.readContext(connectionID),
-      });
+      const core = buildTriggerCore(parts);
 
       const sources = await startTriggerSources(
         [
           scheduleSource,
-          gmailSource,
           ...(coding === null ? [] : [buildCodingSource(coding.context, coding.adapter)]),
           ...(mail === null || mailContext === null
             ? []
@@ -213,9 +181,42 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       await parts.cleanup.defer(() => sources.stop());
 
       // the held matches of a wake rule wake their target here, once a rule's window is over
-      const flush = startWakeFlush(core);
+      const flush = startWakeFlush(core, {
+        liveSources: parts.config.google === undefined ? [] : [gmailSourceID],
+      });
 
       await parts.cleanup.defer(() => flush.stop());
+    },
+  },
+  {
+    // Polls each live Google connection for new mail, and wakes the model when some arrives.
+    name: 'gmail_source',
+    feature: 'google',
+    needs: ['server_parts', 'conversation_task', 'reminder_moves', 'connections', 'google_tools'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const connections = reader.get('connections');
+      const google = parts.config.google;
+
+      invariant(google !== undefined, 'the gmail source starts only with a google section');
+
+      const gmailSource = buildGmailArrivalSource({
+        clock: parts.context.clock,
+        hosts: reader.get('google_tools').hosts,
+        logEvent: parts.log,
+        pollIntervalMs: google.gmail.poll_interval,
+        db: parts.context.log.writer.db,
+        listConnections: async () => {
+          const states = await connections.readStates();
+
+          return collectGmailConnections(states);
+        },
+        readContext: (connectionID) => connections.readContext(connectionID),
+      });
+
+      const sources = await startTriggerSources([gmailSource], buildTriggerCore(parts));
+
+      await parts.cleanup.defer(() => sources.stop());
     },
   },
   {
@@ -439,8 +440,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['inputs', 'context', 'server_parts', 'seed_poll', 'notebook', 'connections', 'erasure'],
-    uses: ['takeover_restart'],
+    needs: ['inputs', 'context', 'server_parts', 'seed_poll', 'notebook', 'erasure'],
+    uses: ['takeover_restart', 'connections', 'gmail_source'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 

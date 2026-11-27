@@ -1,5 +1,3 @@
-import type { Connector } from '@heynixie/connectors';
-import { createGoogleConnector } from '@heynixie/connectors';
 import type { FakeOAuthProvider, HeldConnection } from '@heynixie/credentials/test-utils';
 import {
   seedHeldConnection,
@@ -10,6 +8,7 @@ import type { ErasureRunnerControl, KeyStoreTables, Log, RecordKind } from '@hey
 import { makeErasureRunner, readRecords } from '@heynixie/log';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import type { FakeClock } from '@zgeoff/testing/clock';
+import type { Connector } from '../connector/types';
 import type { ReadConnectionWakes } from '../erasure/start-connection-erasure';
 import type { Connections } from '../start-connections';
 import { startConnections } from '../start-connections';
@@ -24,6 +23,7 @@ import type {
 } from '../types';
 import type { HarnessEffects } from './build-harness-effects';
 import { buildHarnessEffects } from './build-harness-effects';
+import { buildTestConnector } from './build-test-connector';
 
 type MutableHooks = {
   -readonly [Name in keyof BackendHooks]: BackendHooks[Name];
@@ -36,7 +36,10 @@ export interface ConnectionsHarnessOptions {
   // how long a consent waits for the Forget of its account, in ms; 200 by default
   readonly forgetWaitMs?: number;
 
-  // the actions that the connector holds; none by default, as Google's connector has none yet
+  // the connector's ID; google by default
+  readonly connectorID?: string;
+
+  // the actions that the connector holds; none by default
   readonly actions?: Connector['actions'];
 
   // a log that another part of the test already runs on, in place of one of the harness's own
@@ -103,19 +106,19 @@ export async function startConnectionsHarness(
 ): Promise<ConnectionsHarness> {
   const provider = await startFakeOAuthProvider({ otherNames: ['accounts.test'] });
 
-  const google = createGoogleConnector({
+  const base = buildTestConnector({
     authorizeURL: `${provider.origin.replace('auth.test', 'accounts.test')}/o/oauth2/v2/auth`,
     tokenURL: provider.tokenURL,
     revokeURL: provider.revokeURL,
     issuer: 'https://issuer.example',
-    gmailOrigin: provider.apiOrigin,
-    apisOrigin: provider.apiOrigin,
+    apiOrigin: provider.apiOrigin,
   });
 
   const connector: Connector = {
-    ...google,
-    actions: options.actions ?? google.actions,
-    check: options.wrapCheck?.(google.check) ?? google.check,
+    ...base,
+    id: options.connectorID ?? base.id,
+    actions: options.actions ?? base.actions,
+    check: options.wrapCheck?.(base.check) ?? base.check,
   };
 
   const clock = createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });

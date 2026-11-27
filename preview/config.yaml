@@ -54,6 +54,8 @@ backup:
 # the assistant's computer and its code tool, which each need their sandbox image
 computer: {}
 code: {}
+# Google's Gmail, Calendar and Drive tools, which need a Google account
+google: {}
 definitions:
   source:
     kind: path

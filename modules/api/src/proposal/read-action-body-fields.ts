@@ -1,8 +1,8 @@
-import { readGoogleBodyFields } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import { readMailBodyFields } from '@heynixie/mail';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import type { APISettings } from '../types';
+import { bodyFieldReaders } from '../utils/body-field-readers';
 import { buildMailFileReader } from './build-mail-file-reader';
 import { readForgetBodyFields } from './read-forget-body-fields';
 import { readImageBodyFields } from './read-image-body-fields';
@@ -27,10 +27,12 @@ export async function readActionBodyFields(
     return sends;
   }
 
-  const google = await readGoogleBodyFields(log, request, defaultZone);
+  for (const readBodyFields of bodyFieldReaders.list()) {
+    const fields = await readBodyFields(log, request, defaultZone);
 
-  if (google.status !== 'none') {
-    return google;
+    if (fields.status !== 'none') {
+      return fields;
+    }
   }
 
   const forget = await readForgetBodyFields(log, request);

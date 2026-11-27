@@ -1,15 +1,24 @@
 import { expect, test } from 'bun:test';
-import { buildGoogleOAuthSpec, googleHosts } from '@heynixie/connectors';
+import { buildTestOAuthSpec } from '../test-utils/build-test-connector';
 import { buildConsentURL } from './build-consent-url';
 
 test('it asks for the identity scopes and every scope with state, PKCE S256 and the connector’s parameters', () => {
   const url = new URL(
-    buildConsentURL(buildGoogleOAuthSpec(googleHosts), {
-      clientID: 'client-123',
-      redirectURI: 'https://nixie.example.org/connections/google/return',
-      state: 'a-state',
-      challenge: 'a-challenge',
-    }),
+    buildConsentURL(
+      buildTestOAuthSpec({
+        authorizeURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenURL: 'https://oauth2.googleapis.com/token',
+        revokeURL: 'https://oauth2.googleapis.com/revoke',
+        issuer: 'https://accounts.google.com',
+        apiOrigin: 'https://www.googleapis.com',
+      }),
+      {
+        clientID: 'client-123',
+        redirectURI: 'https://nixie.example.org/connections/google/return',
+        state: 'a-state',
+        challenge: 'a-challenge',
+      },
+    ),
   );
 
   expect([url.origin + url.pathname, Object.fromEntries(url.searchParams)]).toStrictEqual([

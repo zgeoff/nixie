@@ -43,7 +43,11 @@ export function registerClient(
 
     await context.backend.writeRegisteredClient(
       crypto.randomUUID(),
-      { clientID: input.clientID, clientSecret: input.clientSecret },
+      {
+        clientID: input.clientID,
+        clientSecret: input.clientSecret,
+        connectorID: context.connector.id,
+      },
       {
         shortID,
         origin,

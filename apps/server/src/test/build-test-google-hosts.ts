@@ -1,4 +1,4 @@
-import type { GoogleHosts } from '@heynixie/connectors';
+import type { GoogleHosts } from '@heynixie/google';
 
 export const testGoogleHostSuffix = '.google.test';
 
