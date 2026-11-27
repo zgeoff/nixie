@@ -1,6 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildStubEncoder } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
@@ -17,7 +16,6 @@ async function setupTest() {
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     erasure: buildTestErasureRunner(api.context.log),
-    cleanupSessions: mock<CleanupSessions>(() => Promise.resolve()),
     semanticSearch: {
       encoder: buildStubEncoder([['treats', 'snacks']]),
       onError: mock<(error: unknown) => void>(),

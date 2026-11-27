@@ -1,20 +1,17 @@
-import type { LogTables } from '@heynixie/log';
-import { readRecordAttachments, readRecords, removeRecordKey } from '@heynixie/log';
-import type { StoreParts } from '../types';
+import type { Log, LogTables } from '@heynixie/log';
+import { readRecordAttachments, readRecords } from '@heynixie/log';
 import { readRecordKeyID } from '../utils/read-record-key-id';
 import { parseRetopicCard } from './parse-retopic-card';
 
 const pageSize = 200;
 
 // A held move stores the gist of each item it names under the call's own key, which a forget of the
-// item never reaches. This removes the key of each call whose card names the item, so no copy of
-// the gist outlives the item, and the card then shows no body.
-export async function removeRetopicCards(
-  parts: Pick<StoreParts, 'context'>,
+// item never reaches. This reads the key of each call whose card names the item, so the forget
+// deletes it and no copy of the gist outlives the item.
+export async function readRetopicCardKeyIDs(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
   itemID: string,
-): Promise<void> {
-  const log = parts.context.log;
-
+): Promise<readonly string[]> {
   const rows = await log.writer.db
     .$extendTables<LogTables>()
     .selectFrom('record_attachments')
@@ -23,6 +20,8 @@ export async function removeRetopicCards(
     .distinct()
     .where('records.kind', '=', 'tool_called')
     .execute();
+
+  const keyIDs: string[] = [];
 
   for (let start = 0; start < rows.length; start += pageSize) {
     const sequences = rows.slice(start, start + pageSize).map((row) => row.sequence);
@@ -48,9 +47,11 @@ export async function removeRetopicCards(
         const keyID = await readRecordKeyID(log, sequence);
 
         if (keyID !== null) {
-          await removeRecordKey(log, keyID);
+          keyIDs.push(keyID);
         }
       }
     }
   }
+
+  return keyIDs;
 }

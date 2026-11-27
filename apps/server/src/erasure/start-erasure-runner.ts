@@ -1,4 +1,5 @@
 import { writeBackupFloor } from '@heynixie/backup';
+import type { CodeSandboxLister } from '@heynixie/connectors';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import { localDataStorage, makeErasureRunner } from '@heynixie/log';
@@ -8,12 +9,25 @@ import invariant from 'tiny-invariant';
 import type { ServerPartValues } from '../part/server-part-values';
 import type { PartReader, ServerParts } from '../types';
 
+// What the runner takes of the server's parts and of the started parts, so a test supplies each
+// one for real.
+export type ErasureRunnerParts = Pick<ServerParts, 'context' | 'turnInputs'> & {
+  readonly tools: { readonly adapter: CodeSandboxLister };
+  readonly config: { readonly backup: Pick<ServerParts['config']['backup'], 'isEnabled'> };
+};
+
+export interface ErasureRunnerValues {
+  readonly conversation_imp: Pick<ServerPartValues['conversation_imp'], 'cleanupSessions'>;
+  readonly sandbox_runner: Pick<ServerPartValues['sandbox_runner'], 'cleanupSessions'>;
+  readonly memory: Pick<ServerPartValues['memory'], 'finishEvidencePurges'>;
+}
+
 // The runner takes every forget through the same steps. Only the server reaches the sessions, the
 // turn inputs and the sandboxes at once, so it supplies each as an effect, and the notebook and the
 // memory store register their erasables with the runner it returns.
 export function startErasureRunner(
-  parts: ServerParts,
-  reader: PartReader<ServerPartValues>,
+  parts: ErasureRunnerParts,
+  reader: PartReader<ErasureRunnerValues>,
 ): ErasureRunnerControl {
   const conversation = reader.get('conversation_imp');
   const tasks = reader.get('sandbox_runner');

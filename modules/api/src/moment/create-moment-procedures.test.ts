@@ -22,7 +22,6 @@ async function setupTest() {
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     erasure: runner,
-    cleanupSessions: () => Promise.resolve(),
     gate: {
       check: () =>
         Promise.resolve({

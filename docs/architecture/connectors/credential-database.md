@@ -68,7 +68,7 @@ yet committed. A key that has left that set already has the row that names it.
 ## Forget
 
 Forgetting a connection is an erasure of the kind `credential` on the
-[erasure runner](../core/erasable-fields.md#forgetting-a-record). The start transaction advances the
+[erasure runner](../core/erasable-fields.md#removing-a-key). The start transaction advances the
 removal counter, sets the binding to `removing`, and captures the account key and the token key. The
 store refuses every fetch and refresh from then on, and a fetch in flight is aborted with the
 removal's error.

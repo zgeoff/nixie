@@ -1777,7 +1777,7 @@ test('it pins, unpins and forgets an item by the revision a recall shows, and re
 
   const started = await readRecords(ctx.memory.log, {
     afterSequence: 0,
-    kinds: ['memory.forget_started'],
+    kinds: ['erasure.started'],
   });
 
   expect(pins.map((entry) => entry.record.payload)).toStrictEqual([
@@ -1786,7 +1786,7 @@ test('it pins, unpins and forgets an item by the revision a recall shows, and re
   ]);
 
   expect(started.map((entry) => entry.record.payload)).toMatchObject([
-    { itemID: item.itemID, version: 1 },
+    { targetID: item.itemID, version: 1 },
   ]);
 });
 

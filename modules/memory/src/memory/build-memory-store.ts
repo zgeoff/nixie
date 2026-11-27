@@ -1,4 +1,5 @@
 import { readMemorySubjectCounts } from '@heynixie/db';
+import type { ErasureHandle } from '@heynixie/log';
 import { buildForgetStore } from '../forget/build-forget-store';
 import { readIndex } from '../index-block/read-index';
 import { readTopicCounts } from '../index-block/read-topic-counts';
@@ -12,7 +13,7 @@ import { readPinnedCoreUse } from '../pinned/read-pinned-core-use';
 import { buildRecallStore } from '../recall/build-recall-store';
 import { readRelatedItems } from '../related/read-related-items';
 import { writeRetirement } from '../retirement/write-retirement';
-import type { MemoryStore, StoreParts } from '../types';
+import type { ItemErasureRequest, MemoryStore, StoreParts } from '../types';
 import { readMemoryUsage } from '../usage/read-memory-usage';
 import { readSavedTimes } from '../usage/read-saved-times';
 import { readUsageList } from '../usage/read-usage-list';
@@ -20,10 +21,13 @@ import { writeKeep } from './write-keep';
 import { writeRestoration } from './write-restoration';
 import { writeUndo } from './write-undo';
 
-export function buildMemoryStore(parts: StoreParts): MemoryStore {
+export function buildMemoryStore(
+  parts: StoreParts,
+  erasure: ErasureHandle<ItemErasureRequest> | null,
+): MemoryStore {
   return {
     ...buildRecallStore(parts),
-    ...buildForgetStore(parts),
+    ...buildForgetStore(parts, erasure),
     remember: (request) => writeRememberedItem(parts, request),
     retire: (request) => writeRetirement(parts, request),
     lapse: () => runItemLapses(parts),

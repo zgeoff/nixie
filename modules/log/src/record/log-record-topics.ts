@@ -1,8 +1,11 @@
 import type { RecordTopics } from './register-record-topics';
 
 // The topics of the kinds this module owns. A reset rebuilds the task list, and a pause or a
-// spending stop reaches the pause the client reads.
+// spending stop reaches the pause the client reads. An erasure changes what the memory page and the
+// notebook show, whichever kind it takes.
 export const logRecordTopics = {
+  'erasure.started': ['memory', 'notebook'],
+  'erasure.finished': ['memory', 'notebook'],
   log_reset: ['tasks'],
   'nixie.paused': ['nixie', 'tasks'],
   'nixie.resumed': ['nixie', 'tasks'],

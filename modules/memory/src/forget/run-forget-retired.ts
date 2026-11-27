@@ -1,29 +1,31 @@
+import type { ErasureHandle } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { RetiredForgetRequest, StoreParts, VersionRef } from '../types';
-import { requireItem } from '../utils/item/require-item';
-import { runForgetItems } from './run-forget-items';
+import type { ItemErasureRequest, RetiredForgetRequest, StoreParts } from '../types';
+import { runItemForgets } from './run-item-forgets';
 
+// Runs the forget of each retired item to its end. Every target is checked before any starts, so a
+// stale target leaves the whole request unbegun.
 export async function runForgetRetired(
   parts: StoreParts,
+  erasure: ErasureHandle<ItemErasureRequest>,
   request: RetiredForgetRequest,
 ): Promise<void> {
   const itemIDs = request.targets.map((target) => target.itemID);
 
   invariant(itemIDs.length > 0 && new Set(itemIDs).size === itemIDs.length);
 
-  await runForgetItems(parts, {
+  await runItemForgets(parts, erasure, {
     provenance: request.provenance,
     writeInTransaction: request.writeInTransaction,
-    readTargets: async (db) => {
-      const textTargets: VersionRef[] = [];
-
-      for (const target of request.targets) {
-        const item = await requireItem(db, { target, operation: 'forget', states: ['retired'] });
-
-        textTargets.push({ itemID: target.itemID, version: item.version });
-      }
-
-      return textTargets;
-    },
+    checkInTransaction: request.checkInTransaction,
+    isFinishDeferred: request.isFinishDeferred,
+    readRequests: () =>
+      Promise.resolve(
+        request.targets.map((target) => ({
+          itemID: target.itemID,
+          revision: target.version,
+          states: ['retired'],
+        })),
+      ),
   });
 }

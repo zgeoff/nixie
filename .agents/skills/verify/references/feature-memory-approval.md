@@ -9,12 +9,19 @@ approves it on the approvals page, `/proposals`. An approved item shows on the m
 that table.
 
 Once an item is active, a later call that sets a reminder, starts or defines a task, or writes a
-skill applies at once and its result lists the active items that match its text, as `related`. The
-journey ends with that check for a reminder.
+skill applies at once and its result lists the active items that match its text, as `related`. Check
+`related` for a reminder, then forget the item from the memory page. The erasure runner carries out
+a forget: it writes `erasure.started` with the keys to delete, and writes `erasure.finished` once
+the keys, the indexes and the sessions are clean.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up`, `attach` and `done`, and the `data` field
 of each command's JSON output.
+
+When a command of this journey fails, follow its row in [Exit codes](exit-codes.md). The cases below
+are the ones this journey adds. When a command exits 0 but its Expect line does not hold, follow
+step 5 of [Check a change](../SKILL.md#check-a-change): skip `bun verify done`, and list in your
+reply the end state you expected and the `data` you got.
 
 Before you start:
 
@@ -37,8 +44,9 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify action script-reply --memory 'The user keeps bees on the allotment.' --text 'I will ask you before I remember that.'
    ```
 
-   Expect: `data.replies` is 2: the memory call is one scripted step, and the text reply is the
-   other.
+   `action script-reply` queues the scripted model's next reply. `--memory` is the text of the item
+   the model proposes, and `--text` is its reply to the user. Expect: `data.replies` is 2: the
+   memory call is one scripted step, and the text reply is the other.
 
 2. Send the message. On `preview`, change the step:
    - Type a message that asks nixie to guess a fact about you and remember it, such as "Guess which
@@ -54,7 +62,10 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify conversation turn --message 'I took the bees some sugar water today.' --reply 'I will ask you before I remember that.'
    ```
 
-   Expect: `conversation turn` exits 0.
+   Expect: `conversation turn` exits 0. It checks only the stream records, and exits 1 with
+   `check-failed` when they lack the message or the reply after 10 seconds. Then follow the
+   `check-failed` row of [Exit codes](exit-codes.md), read the error message, which lists the
+   records, and skip step 3.
 
 3. On `preview`, skip this step. On `local`, check that no memory item exists yet:
 
@@ -72,7 +83,7 @@ item's fact would make nixie keep the item at once, with no proposal.
    ```
 
    Expect: the "Memory" list holds one collapsed item, which shows the item's text and no buttons.
-   Note the text.
+   On `local`, that text is the `--memory` text of step 1. Note the text.
 
    On `preview`, the "Memory" list can hold items from earlier passes. Pick the item whose text
    matches the fact you asked for. When the list holds no such item, skip steps 5 and 6, and skip
@@ -121,9 +132,16 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify conversation turn --message 'Remind me to check on the bees.' --reply 'The reminder is set.'
    ```
 
-   Expect: `script-reply` shows `data.replies` of 3, and `conversation turn` exits 0.
+   Expect: `script-reply` shows `data.replies` of 3, and `conversation turn` exits 0. Each
+   `script-reply` reports only the steps it queues, so the count starts again here: the reminder
+   call, the note write and the text reply are 3 steps.
 
-8. Check that the reminder is set and the note names the related memory.
+   When `conversation turn` fails, read the error message, which lists the records. Skip step 8 and
+   `bun verify done`, and say in your reply that the turn lacked its reply. The reminder's result
+   may have listed no `related` item, which `conversation turn` does not check: run the first query
+   of step 6 to see whether the item is still `active`.
+
+8. Check that the reminder is set and the note carries the short ID of the related memory.
 
    ```bash
    bun verify db query "select count(*) as reminders from reminders where state = 'active'"
@@ -134,14 +152,56 @@ item's fact would make nixie keep the item at once, with no proposal.
    Expect: `reminders` is 1, `notes` is 1, and the one row of the third query holds the short ID
    that the note's body carries. Read the body on the notebook page, `/notebook`.
 
+9. On `preview`, skip this step and step 10: the preview keeps its items. Forget the item from the
+   memory page. Take the `ref` of the item's "Forget" button from the first snapshot, and take no
+   other snapshot before the first click.
+
+   ```bash
+   bun verify browser goto /memory
+   bun verify browser snapshot
+   bun verify browser click --ref '<forget_ref>'
+   bun verify browser snapshot --until-text 'Forget for good'
+   bun verify browser click --role button --name 'Forget for good'
+   bun verify browser snapshot --until-text '· forgotten'
+   ```
+
+   Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
+   exit 0. The last snapshot waits until the forgotten item's line shows a "forgotten" date, which
+   appears once `erasure.finished` is written. While the line reads "forgetting", the erasure is
+   still open: start step 10 only after the command exits 0. When the "forgotten" date never shows,
+   the command exits 1 with `check-failed` and keeps the last snapshot in its evidence. Then skip
+   `bun verify done`, run step 10's queries anyway to see where the erasure stopped, and list in
+   your reply the rows you got.
+
+10. Check the erasure states of the forget and the memory page:
+
+    ```bash
+    bun verify db query "select state from memory_items"
+    bun verify db query "select kind, json_extract(payload, '$.kind') as erased, json_extract(payload, '$.by') as by_whom, json_extract(payload, '$.removedKeys') as removed_keys from records where kind in ('erasure.started', 'erasure.finished') order by sequence"
+    bun verify db query "select count(*) as open_forgets from records s where s.kind = 'erasure.started' and not exists (select 1 from records f where f.kind = 'erasure.finished' and json_extract(f.payload, '$.erasureID') = json_extract(s.payload, '$.erasureID'))"
+    bun verify browser goto /memory
+    bun verify browser snapshot
+    ```
+
+    Expect: the first query returns one row with `state` `forgotten`. The second returns 2 rows:
+    `erasure.started`, then `erasure.finished`, each with `erased` `memory_item` and `by_whom`
+    `user`, and `removed_keys` set on the finished row. The third returns `open_forgets` 0. The
+    memory page no longer shows the item's text.
+
 ## End state
 
 - The approvals page of step 4 listed the item.
 - On `local`, the first `db query` of step 6 returns one row, whose `state` is `active`, and the
   second returns one `proposals` row that is `approved` and names its approval.
-- The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
-  allotment.".
+- After step 6, the memory page shows the item's text from step 4: on `local`, "The user keeps bees
+  on the allotment.". Step 10 checks that the text is gone.
 - On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the
-  approved item: the reminder's result listed it as `related`, and the call applied first.
+  approved item: the reminder's result listed it as `related` because the item was already active
+  when the call ran.
+- On `local`, after step 9 the item is `forgotten`, with one finished erasure and no open one, and
+  the memory page shows no item.
 - On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case
   from step 4.
+
+When every fact above holds for your target, record the verdict with `bun verify done`, as
+[Check a change](../SKILL.md#check-a-change) says.

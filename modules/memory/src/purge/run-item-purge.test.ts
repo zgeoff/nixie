@@ -12,11 +12,11 @@ import { readProposal } from '@heynixie/proposals';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
+import { createMemoryItem } from '../test-utils/create-memory-item';
 import type { QuotedProposal } from '../test-utils/create-quoted-proposal';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { readPurgeRows } from '../test-utils/read-purge-rows';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
-import { seedForgettingMemoryItem } from '../test-utils/seed-forgetting-memory-item';
 import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
 import { startKeyStoreReader } from '../test-utils/start-key-store-reader';
 import { startNextTestMemory } from '../test-utils/start-next-test-memory';
@@ -381,20 +381,28 @@ test('it lapses a pending proposal for a new item and deletes its key', async ()
   });
 });
 
-test('it skips an item that is forgetting', async () => {
+test('it waits for the open forget of an item that is forgetting, then marks its purge', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the allotment' });
 
-  const item = await seedForgettingMemoryItem(
-    { store: ctx.memory.store, log: ctx.memory.log, clock: ctx.clock },
-    {},
-  );
+  startFaultPointFailure('erasure.sandboxes_destroyed');
+
+  await ctx.memory.store
+    .forget({ target: item, provenance: buildMockProvenance() })
+    .catch(() => {});
 
   await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [item.itemID] });
 
   const result = await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: item.itemID });
+  const rows = await readPurgeRows(ctx.memory.writer.db);
+  const keys = await readRecordKeys(ctx.memory.log, [item.itemID]);
+  const state = await ctx.memory.store.view.readForgetStatus([item.itemID]);
 
   expect(result).toBe('skipped');
+  expect(rows).toMatchObject([{ item_id: item.itemID, purged_sequence: expect.toBeNumber() }]);
+  expect(keys.has(item.itemID)).toBe(false);
+  expect(state).toMatchObject({ deleted: [item.itemID], pending: [] });
 });
 
 test('it skips an item that no purge set names', async () => {

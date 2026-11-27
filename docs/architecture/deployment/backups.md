@@ -4,9 +4,9 @@ nixie stages a snapshot set of both its databases on the backup interval, and at
 forget. A separate container, the backup job, ships each set to 2 restic repositories and writes a
 receipt into the set, and nixie records the receipt on its next pass. nixie holds no backup
 credential, and the job holds no deployment key, so neither container can both reach the backups and
-read them. The [backup and restore design](../../design/platform/deployment/backup-and-restore.md)
-gives the reasons for the 2 repositories, and [0013](../../decisions/0013-host-encrypted-backups.md)
-records the split between the containers.
+read them. For the reasons for the 2 repositories, see the
+[backup and restore design](../../design/platform/deployment/backup-and-restore.md). For the split
+between the containers, see [0013](../../decisions/0013-host-encrypted-backups.md).
 
 ```mermaid
 stateDiagram-v2
@@ -19,7 +19,8 @@ stateDiagram-v2
 ```
 
 nixie keeps each set's state in its own table, and one transition table refuses every move the
-diagram lacks. The job never reads that table: it reads only the files in the staging folder.
+diagram lacks. The job never reads that table. Of nixie's files it reads only those in the staging
+folder, and it also reads and writes the 2 restic repositories.
 
 ## Staging a set
 
@@ -30,28 +31,31 @@ nixie's backup schedule runs a pass on a poll, and early when a record commits. 
 every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
-   published or failed. A forget record is `erasure.finished`, which ends a note forget or a moment
-   destroy, or the end record of a memory forget, a message forget or a reset of the conversations,
-   each of which deletes its keys before it writes that record. The server passes the backup module
-   the old end records from each descriptor, so the module imports no store. nixie's pass withdraws
-   a set that staged before `erasure.finished` and stages a new one, because a stale set holds the
-   deleted keys. The same transaction that writes `erasure.finished` writes `floor.json` into the
-   staging folder, naming the highest set that exists then, and the job ships no set at or below it.
-   The job reads `floor.json` again once a set's key snapshot is in the key repo, and again once its
-   data snapshot is in the data repo. The data retention, the removal of the other key snapshots and
-   the key prune run only after that last read passes. When an erasure finished before one of those
-   reads, the job removes the set's own key and data snapshots, prunes the key repo, keeps the
-   restore note and writes no receipt, so the previous published pair stays whole. A failure of that
-   removal fails the job, and the next publish removes the stale snapshot with the other old ones.
-   An erasure that finishes after the last read lets the set publish, because nothing in the job is
-   atomic with the receipt's rename. Its receipt never covers the erasure, which waits for a set
-   that started after it. The withdrawal waits for the job's staging lock, so it never removes a set
-   that the job is shipping, and a pass that finds the lock held withdraws the set on the next pass.
-   A withdrawal that a failure stopped after the rename finishes on the next pass.
+   published or failed. A forget record is `erasure.finished`, which ends a memory item, note or
+   moment forget, or the end record of a message forget or a reset of the conversations, each of
+   which deletes its keys before it writes that record. The end records of a message forget and a
+   reset predate `erasure.finished`: each erasable's descriptor in the log module lists them as a
+   record kind and an optional field match, and the server passes them to the backup module, so the
+   module imports no store. nixie's pass withdraws a set that staged before `erasure.finished` and
+   stages a new one, because a stale set holds the deleted keys. The same transaction that writes
+   `erasure.finished` writes `floor.json` into the staging folder, naming the highest set that
+   exists then, and the job ships no set at or below it. The job reads `floor.json` again once a
+   set's key snapshot is in the key repo, and again once its data snapshot is in the data repo,
+   whether that data snapshot passed or failed. The data retention, the removal of the other key
+   snapshots and the key prune run only after that last read passes. When an erasure finished before
+   one of those reads, the job removes the set's own key and data snapshots, prunes the key repo,
+   keeps the restore note and writes no receipt, so the previous published pair stays whole. A
+   failure of that removal fails the job, and the next publish removes the stale snapshot with the
+   other old ones. When an erasure finishes after the last read, the set still publishes, because
+   nothing in the job is atomic with the receipt's rename. That receipt does not cover the erasure,
+   which waits for a set that started after it. The withdrawal waits for the job's staging lock, so
+   it never removes a set that the job is shipping, and a pass that finds the lock held withdraws
+   the set on the next pass. A withdrawal that a failure stopped after the rename finishes on the
+   next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
-A set takes the next sequence above every row and every folder in staging, and nixie inserts its row
+nixie gives a set the next sequence above every row and every folder in staging, and inserts its row
 before it creates its folder. nixie copies the pair with the same check that the
 [backup command](host-commands.md#backup-and-restore) runs, so the key store copy holds the key of
 every record that the log copy keeps readable. It then writes the manifest with each copy's size and
@@ -74,11 +78,12 @@ waits until the user has read the recovery and resumed nixie. The check reads th
 transaction that inserts the set's row. A pause with cause `owner` or `spending` stages as on any
 day. See [pausing nixie](../core/pause.md).
 
-A set that fails before its marker exists, in its copy or in the marker's own write, removes its set
-folder and moves its row to abandoned, so the schedule's next try starts from a clean staging
-folder. A restart does the same for every set folder that a crash left without its marker. A marked
-folder whose row never reached staged moves to staged, because its copies passed every check before
-the marker. A crash at any point therefore leaves either a set the job may ship or no set at all.
+When a set fails before its marker exists, in its copy or in the marker's own write, nixie removes
+the set folder and moves the row to abandoned, so the schedule's next try starts from a clean
+staging folder. A restart does the same for every set folder that a crash left without its marker.
+nixie moves the row of a marked folder that never reached staged to staged, because its copies
+passed every check before the marker. A crash at any point therefore leaves either a set the job may
+ship or no set at all.
 
 ## The backup job
 
@@ -94,15 +99,16 @@ receipt. For each set it ships, the job:
    either, or 1 when neither holds one;
 3. backs up the key store copy to the key repository first, with the tags `set-`, `kind-` and
    `publish-`, and the tags `legacy-set-` and `proven-from-` where the
-   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) give them. When a restore
-   note shows the restored keys are not the newest's, or the replaced snapshot has no number while a
+   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) say to. When a restore note
+   shows the restored keys are not the newest's, or the replaced snapshot has no number while a
    repository holds one, the key snapshot takes `proven-from-` with its own number and no
    `legacy-set-`. Otherwise it copies both from the one it replaces, and takes `legacy-set-` when it
    is the first numbered one;
 4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
-   reads `floor.json` again, and applies the data retention once that read passes;
-5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's
-   data once the prune passes, whether the data snapshot passed or failed;
+   and reads `floor.json` again, whether the data snapshot passed or failed. When the read passes
+   and the data snapshot passed, it applies the data retention;
+5. once that read passes, forgets every other key snapshot by its ID, prunes every unused byte, and
+   checks the repository's data after the prune passes, whether the data snapshot passed or failed;
 6. removes the restore note from the staging folder, when one was there;
 7. writes the receipt with an fsync and a rename, so nixie never reads a partial one;
 8. removes the set's copies, unless nixie has removed the set folder first.
@@ -134,20 +140,20 @@ the data snapshots.
 `nixie-backup fetch --to <directory>` copies a backup pair out of the two repositories, so
 `nixie restore` can read it on a new host. It reads the job's own repository and password variables,
 and never the staging folder. It exits 1 for a directory that exists and is not empty, and creates a
-directory that does not exist. Its optional `--data-snapshot <snapshot_id>` names a data snapshot by
-its full ID, which `nixie-backup snapshots` prints. A data snapshot named under a key snapshot with
-no publish number is checked only by its `set-` number.
+directory that does not exist. Pass `--data-snapshot <snapshot_id>` to name a data snapshot by its
+full ID, which `nixie-backup snapshots` prints. A data snapshot named under a key snapshot with no
+publish number is checked only by its `set-` number.
 
 The fetch:
 
 1. writes the unfinished-backup marker into the directory, before anything else;
 2. lists both repositories and picks the pair: the newest key snapshot, and the data snapshot that
-   goes with it. The [pick's rules](backup-pair.md#choosing-the-data-snapshot) give each refusal,
+   goes with it. See the [pick's rules](backup-pair.md#choosing-the-data-snapshot) for each refusal
    and the table that rates a named data snapshot;
 3. restores the key snapshot as `keys.db` and the data snapshot as `nixie.db`, as bytes;
 4. lists the key repository again. When a publish changed the newest key snapshot, it empties the
    directory but for the marker and picks again, at most 3 times, and a fourth change fails the
-   fetch;
+   fetch, so a repository that keeps publishing cannot loop it;
 5. writes `fetched-pair.json`, then removes the marker.
 
 `fetched-pair.json` holds the snapshot ID, publish number, set number and restic time of each copy,

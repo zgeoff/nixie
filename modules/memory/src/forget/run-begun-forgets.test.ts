@@ -17,7 +17,7 @@ test('it completes a forget whose cleanup failed after the key went', async () =
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'The gate code is 4417' });
 
-  startFaultPointFailure('memory.forget.key_removed');
+  startFaultPointFailure('erasure.keys_removed');
 
   const failed = await ctx.memory.store
     .forget({
@@ -35,7 +35,7 @@ test('it completes a forget whose cleanup failed after the key went', async () =
   const status = await ctx.memory.store.finishForgets([item.itemID]);
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
-  expect(failed).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
+  expect(failed).toMatchObject({ message: 'crashed at erasure.keys_removed' });
   expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
 
   expect(status).toStrictEqual({
@@ -47,8 +47,8 @@ test('it completes a forget whose cleanup failed after the key went', async () =
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',
     'memory.version_keyed',
-    'memory.forget_started',
-    'memory.forgotten',
+    'erasure.started',
+    'erasure.finished',
   ]);
 });
 
@@ -82,5 +82,5 @@ test('it runs nothing again for a completed forget', async () => {
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(ctx.cleanupSessions).toHaveBeenCalledOnce();
-  expect(records.filter((entry) => entry.record.kind === 'memory.forgotten')).toHaveLength(1);
+  expect(records.filter((entry) => entry.record.kind === 'erasure.finished')).toHaveLength(1);
 });

@@ -56,23 +56,10 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   },
   {
     name: 'memory',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'checker', 'erasure'],
-    start: makeRetriedStart('memory', (parts, reader) => {
-      const conversation = reader.get('conversation_imp');
-      const tasks = reader.get('sandbox_runner');
-
-      return startMemory(
-        parts,
-        async (cause) => {
-          await conversation.cleanupSessions(cause);
-          await tasks.cleanupSessions(cause);
-
-          await runTurnInputForget(parts, cause);
-        },
-        reader.get('checker').check,
-        reader.get('erasure'),
-      );
-    }),
+    needs: ['server_parts', 'checker', 'erasure'],
+    start: makeRetriedStart('memory', (parts, reader) =>
+      startMemory(parts, reader.get('checker').check, reader.get('erasure')),
+    ),
   },
   {
     name: 'notebook',

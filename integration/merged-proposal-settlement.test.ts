@@ -31,7 +31,6 @@ async function setupTest() {
   const store = await startMemoryStore({
     log,
     definitions: context.definitions,
-    cleanupSessions: () => Promise.resolve(),
     gate: {
       check: () =>
         Promise.resolve({

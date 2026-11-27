@@ -43,11 +43,10 @@ test('it forgets every retired item it was given, with a forgotten record and no
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
   const keys = await readRecordKeys(ctx.memory.log, [first.itemID, second.itemID]);
 
-  expect(
-    records
-      .filter((entry) => entry.record.kind === 'memory.forgotten')
-      .map((entry) => entry.record.payload),
-  ).toStrictEqual([{ itemID: first.itemID }, { itemID: second.itemID }]);
+  expect(records.filter((entry) => entry.record.kind === 'erasure.finished')).toMatchObject([
+    { record: { payload: { targetID: first.itemID } } },
+    { record: { payload: { targetID: second.itemID } } },
+  ]);
 
   expect([...keys.keys()]).toStrictEqual([]);
   expect(ctx.cleanupSessions).toHaveBeenCalledTimes(2);
@@ -164,7 +163,7 @@ test('it refuses a restore of a reserved item while the deletion runs', async ()
     ),
   );
 
-  const hold = startFaultPointHold('memory.forget.key_removed');
+  const hold = startFaultPointHold('erasure.keys_removed');
 
   const forget = ctx.memory.store.forgetRetired({
     targets: retired,
@@ -207,7 +206,7 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
     ),
   );
 
-  startFaultPointFailure('memory.forget.key_removed');
+  startFaultPointFailure('erasure.keys_removed');
 
   const settled = await Promise.allSettled([
     ctx.memory.store.forgetRetired({
@@ -223,7 +222,7 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
   ]);
 
   expect(settled).toMatchObject([
-    { status: 'rejected', reason: { message: 'crashed at memory.forget.key_removed' } },
+    { status: 'rejected', reason: { message: 'crashed at erasure.keys_removed' } },
   ]);
 
   const keysAtCrash = await readRecordKeys(ctx.memory.log, [first.itemID, second.itemID]);
@@ -241,11 +240,10 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
     forgottenSequence: null,
   });
 
-  expect(
-    records
-      .filter((entry) => entry.record.kind === 'memory.forgotten')
-      .map((entry) => entry.record.payload),
-  ).toStrictEqual([{ itemID: first.itemID }, { itemID: second.itemID }]);
+  expect(records.filter((entry) => entry.record.kind === 'erasure.finished')).toMatchObject([
+    { record: { payload: { targetID: first.itemID } } },
+    { record: { payload: { targetID: second.itemID } } },
+  ]);
 
   expect(status).toStrictEqual({
     deleted: [first.itemID, second.itemID],
@@ -276,7 +274,7 @@ test('it reports an item whose forget is still pending apart from a deleted one'
     ),
   );
 
-  startFaultPointFailure('memory.forget.key_removed', second.itemID);
+  startFaultPointFailure('erasure.keys_removed', undefined, 2);
 
   await ctx.memory.store
     .forgetRetired({
@@ -294,7 +292,7 @@ test('it reports an item whose forget is still pending apart from a deleted one'
   const status = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
-  const forgotten = records.find((entry) => entry.record.kind === 'memory.forgotten');
+  const forgotten = records.find((entry) => entry.record.kind === 'erasure.finished');
 
   expect(status).toStrictEqual({
     deleted: [first.itemID],
@@ -323,7 +321,7 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
     ),
   );
 
-  startFaultPointFailure('memory.forget.key_removed', second.itemID);
+  startFaultPointFailure('erasure.keys_removed', undefined, 2);
 
   const settled = await Promise.allSettled([
     ctx.memory.store.forgetRetired({
@@ -339,14 +337,14 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
   ]);
 
   expect(settled).toMatchObject([
-    { status: 'rejected', reason: { message: 'crashed at memory.forget.key_removed' } },
+    { status: 'rejected', reason: { message: 'crashed at erasure.keys_removed' } },
   ]);
 
   const before = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
   const status = await ctx.memory.store.finishForgets([first.itemID, second.itemID]);
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
-  const forgotten = records.filter((entry) => entry.record.kind === 'memory.forgotten');
+  const forgotten = records.filter((entry) => entry.record.kind === 'erasure.finished');
 
   expect(before).toStrictEqual({
     deleted: [first.itemID],
@@ -360,9 +358,127 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
     forgottenSequence: forgotten[1]?.record.sequence ?? null,
   });
 
+  expect(records.filter((entry) => entry.record.kind === 'erasure.finished')).toMatchObject([
+    { record: { payload: { targetID: first.itemID } } },
+    { record: { payload: { targetID: second.itemID } } },
+  ]);
+});
+
+test('it begins the targets that a stop between two starts left unbegun on the retry, and commits the caller hook with the last start only', async () => {
+  const ctx = await setupTest();
+  const first = await createMemoryItem(ctx.memory.store, { text: 'Owns a red canoe' });
+  const second = await createMemoryItem(ctx.memory.store, { text: 'Plays the oboe badly' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const retired = await Promise.all(
+    [first, second].map((target) => ctx.memory.store.retire({ target, provenance })),
+  );
+
+  const writeInTransaction = mock(() => Promise.resolve());
+
+  startFaultPointFailure('erasure.begun');
+
+  const stopped = ctx.memory.store.forgetRetired({
+    targets: retired,
+    provenance,
+    writeInTransaction,
+  });
+
+  await stopped.catch(() => {});
+
+  const hookCallsAtStop = writeInTransaction.mock.calls.length;
+
+  await ctx.memory.store.forgetRetired({ targets: retired, provenance, writeInTransaction });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  expect(stopped).rejects.toMatchObject({ message: 'crashed at erasure.begun' });
+  expect(hookCallsAtStop).toBe(0);
+  expect(writeInTransaction).toHaveBeenCalledTimes(1);
+
   expect(
-    records
-      .filter((entry) => entry.record.kind === 'memory.forgotten')
-      .map((entry) => entry.record.payload),
-  ).toStrictEqual([{ itemID: first.itemID }, { itemID: second.itemID }]);
+    records.map((entry) => [entry.record.kind, entry.record.payload['targetID']]),
+  ).toStrictEqual([
+    ['erasure.started', first.itemID],
+    ['erasure.started', second.itemID],
+    ['erasure.finished', first.itemID],
+    ['erasure.finished', second.itemID],
+  ]);
+});
+
+test('it begins the unbegun targets on the retry when a restart finished the first item between the stop and the retry', async () => {
+  const ctx = await setupTest();
+  const first = await createMemoryItem(ctx.memory.store, { text: 'Owns a red canoe' });
+  const second = await createMemoryItem(ctx.memory.store, { text: 'Plays the oboe badly' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const retired = await Promise.all(
+    [first, second].map((target) => ctx.memory.store.retire({ target, provenance })),
+  );
+
+  startFaultPointFailure('erasure.begun');
+
+  const stopped = ctx.memory.store.forgetRetired({ targets: retired, provenance });
+
+  await stopped.catch(() => {});
+
+  const restarted = await startNextTestMemory(ctx.memory);
+
+  const statusAtRestart = await restarted.store.view.readForgetStatus([
+    first.itemID,
+    second.itemID,
+  ]);
+
+  await restarted.store.forgetRetired({ targets: retired, provenance });
+
+  const status = await restarted.store.view.readForgetStatus([first.itemID, second.itemID]);
+
+  expect(stopped).rejects.toMatchObject({ message: 'crashed at erasure.begun' });
+  expect(statusAtRestart).toMatchObject({ deleted: [first.itemID], pending: [] });
+  expect(status).toMatchObject({ deleted: [first.itemID, second.itemID], pending: [] });
+});
+
+test('it starts no item when the caller check refuses', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Owns a red canoe' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const retired = await ctx.memory.store.retire({ target: item, provenance });
+
+  const forget = ctx.memory.store.forgetRetired({
+    targets: [retired],
+    provenance,
+    checkInTransaction: () => Promise.reject(new Error('the action was used')),
+  });
+
+  await forget.catch(() => {});
+
+  const status = await ctx.memory.store.view.readForgetStatus([item.itemID]);
+
+  expect(forget).rejects.toMatchObject({ message: 'the action was used' });
+  expect(status).toStrictEqual({ deleted: [], pending: [], forgottenSequence: null });
 });

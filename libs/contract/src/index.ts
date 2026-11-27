@@ -4,6 +4,7 @@ export { buildQueryUtils } from './contract/build-query-utils';
 export { buildSpanState } from './span/build-span-state';
 export { clientHeaderName } from './contract/client-header-name';
 export { forgettableKinds } from './contract/forgettable-kinds';
+export { forgetBackupSchema } from './contract/forget-backup-schema';
 export { contract } from './contract/contract';
 export type { DefinitionNotice } from './contract/definition-notice-schema';
 export { hostContract } from './contract/host-contract';

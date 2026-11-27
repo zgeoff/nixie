@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
+import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { buildMemoryChangeKind } from '@heynixie/memory';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
@@ -11,11 +11,7 @@ import { readTurnNotes } from './read-turn-notes';
 
 async function setupTest() {
   const server = await startTestServer();
-
-  const store = await startTestMemoryStore(
-    server.context,
-    mock(() => Promise.resolve()),
-  );
+  const store = await startTestMemoryStore(server.context);
 
   return { log: server.context.log, context: server.context, store };
 }

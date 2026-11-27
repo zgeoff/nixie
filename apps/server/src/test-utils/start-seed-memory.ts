@@ -9,7 +9,6 @@ export function startSeedMemory(context: DataLog['context']): Promise<StartedMem
   return startMemoryStore({
     log: context.log,
     definitions: context.definitions,
-    cleanupSessions: () => Promise.resolve(),
     gate: {
       check: () =>
         Promise.resolve({

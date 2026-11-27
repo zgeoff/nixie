@@ -298,16 +298,16 @@ no entry keeps reading the next 500, up to 5,000 records in one call, so most se
 match in one call. An empty page costs little to return, and the reads stop at the first page that
 holds an entry, so a result stays one page of the usual size. A search that still finds nothing in
 those 5,000 records returns no entries with a cursor and a `note`. The note says the read stopped
-early, so no match is not shown, and gives the time span of the records it read. The model passes
-the cursor as `after` to go on, or narrows the range with `from` and `to`. Only a `null` cursor
-means the thread holds nothing more.
+early, so the empty result does not show that no match exists, and gives the time span of the
+records it read. The model passes the cursor as `after` to go on, or narrows the range with `from`
+and `to`. Only a `null` cursor means the thread holds nothing more.
 
 A list clips each entry's text at 2,000 characters and marks the entry `isCut`. A read with
 `record`, the event ID of one entry, returns that entry whole, in pages under the same byte limit as
 `memory.recall`, and the `next` cursor of each page is the offset of the one after it, and a cursor
 inside a character is refused. A read with `record` refuses an entry outside the log thread it
 reads, with the same answer as for an entry that does not exist. The tool reads only the log thread
-of the calling run: the run's own thread, or the conversation's thread for a
+of the caller: the caller's own thread, or the conversation's thread for a
 [task with the log grant](../core/started-tasks.md#start-options). Each entry keeps its role, so a
 granted task tells the user's words from a task report. It declares only a read, so the starter rule
 `allow-reads` allows it.
@@ -340,7 +340,7 @@ holds it and the image's number in that message, which comes from the message's 
 marker in `log.read`, or from the `images` of a record that
 [`moment.read`](./moments.md#reading-moments-back) returns. The tool returns the image to the model
 as image input beside its media type, through the [tool calls](../connectors/tool-calls.md) path
-that keeps the bytes out of the result record. It reads only the log thread of the calling run, as
+that keeps the bytes out of the result record. It reads only the log thread of the caller, as
 `log.read` does, and it refuses with "image unavailable" once the user forgot the message, or when
 the record is not one of the user's messages or holds no image of that number. The image counts
 against the session's [image caps](../core/conversation-turns.md#inbox-records-as-messages), and the
@@ -359,11 +359,12 @@ searches the task's own thread, so it becomes a proposal with `no_quote`.
 ## Forgetting and the live session
 
 A forgotten item can sit in the conversation's session: in a retrieved block, in the pinned memory
-of a session's opening, or in the model's own words. The store's forget therefore runs the session
-cleanup, and completes only after the cleanup returns ([forgetting](./store.md#forgetting)). A
-[forget of one message or reply](../channels/api.md#forgetting-a-record) runs the same cleanup,
-because the session holds the record's text too, and the cleanup's records name the item or the
-record it ran for. The cleanup runs in order:
+of a session's opening, or in the model's own words. An item forgets through the erasure runner in
+`modules/log`, as [the store's forgetting](./store.md#forgetting) describes. The runner runs this
+session cleanup as one step of that forget, and the forget finishes only after the cleanup returns.
+A [forget of one message or reply](../channels/api.md#forgetting-a-record) runs the same cleanup,
+because the session holds the record's text too. The cleanup's records name the item or the record
+it ran for. The cleanup runs in order:
 
 1. It aborts every turn in flight and waits for each one to end, so it never removes a transcript
    that a live CLI still writes. The assistant's own `notebook.forget` starts the cleanup only after
@@ -386,9 +387,9 @@ record it ran for. The cleanup runs in order:
 The cleanup then runs the same steps on the thread and in the sandbox of each open
 [started task](../core/started-tasks.md) that reads memory, one task at a time. A forget of a record
 also cleans the open task whose thread holds the record, whatever its memory setting, because that
-task's session holds the record's text, and a record on the conversation's thread also cleans each
-open task with the log grant, because its session can hold the record's text from a log read. A task
-that reads no memory never received an item, so a memory item forget or a moment destroy leaves its
+task's session holds the record's text. A record on the conversation's thread also cleans each open
+task with the log grant, because its session can hold the record's text from a log read. A task that
+reads no memory never received an item, so a memory item forget or a moment forget leaves its
 session as it is. A [note forget](./notebook.md#forgetting-a-note) cleans the conversation and each
 open task whose tool list holds a notebook tool, because a note's text reaches a session only
 through those tools.
@@ -396,12 +397,13 @@ through those tools.
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a
 step over after its lease expired must not wait on the turn the stale runner still holds. Every step
-is safe to run twice, so a crash mid-cleanup leaves the item forgetting, and the store's start runs
-the cleanup again before any runner claims work. The aborted turn's step fails and runs again after
-its retry delay, and that rerun finds the invalidated record and rebuilds the session.
+is safe to run twice, so a crash mid-cleanup leaves the item forgetting with its `erasure.started`
+record open, and the erasure catch-up at the server's start runs the cleanup again before any runner
+claims work. The aborted turn's step fails and runs again after its retry delay, and that rerun
+finds the invalidated record and rebuilds the session.
 
-The SDK transcript is a cache in the sandbox, and backups and the memory export leave it out, so the
-purge in step 6 removes every copy of it.
+Backups and the memory export leave out the SDK transcript, a cache in the sandbox, so the purge in
+step 6 removes every copy of it.
 
 A request already sent to the model provider keeps the text it received. The cleanup removes nixie's
 copies and cannot recall that one.

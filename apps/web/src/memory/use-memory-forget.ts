@@ -42,7 +42,11 @@ export function useMemoryForget(
         await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (reply) => {
+      if (reply.pending) {
+        return;
+      }
+
       onSettled(null);
 
       await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
@@ -77,7 +81,7 @@ function findRefusalNotice(error: unknown): string | null {
   return null;
 }
 
-type CallState = Pick<MutationState, 'status' | 'variables' | 'error'>;
+type CallState = Pick<MutationState, 'status' | 'variables' | 'error' | 'data'>;
 
 function toCall(state: CallState): MemoryForgetCall | null {
   const input = state.variables;
@@ -92,7 +96,11 @@ function toCall(state: CallState): MemoryForgetCall | null {
     return notice === null ? { status: 'failed', input } : { status: 'refused', input, notice };
   }
 
-  return { status: state.status === 'success' ? 'applied' : 'pending', input };
+  if (state.status === 'success') {
+    return { status: isPendingReply(state.data) ? 'failed' : 'applied', input };
+  }
+
+  return { status: 'pending', input };
 }
 
 function isForgetInput(value: unknown): value is MemoryForgetInput {
@@ -102,5 +110,11 @@ function isForgetInput(value: unknown): value is MemoryForgetInput {
     'clientActionID' in value &&
     'itemID' in value &&
     'version' in value
+  );
+}
+
+function isPendingReply(value: unknown): boolean {
+  return (
+    typeof value === 'object' && value !== null && 'pending' in value && value.pending === true
   );
 }

@@ -31,21 +31,21 @@ export const mockMemoryForgetProcedures = {
 
     const result = await writeMockMemoryForget(options.input);
 
-    if (result.status === 'cleanup_failed') {
-      throw new Error('the session cleanup failed');
-    }
-
     const refusals = {
       reused: options.errors.CLIENT_ACTION_ID_REUSED,
       not_found: options.errors.MEMORY_ITEM_NOT_FOUND,
       stale: options.errors.STALE_VERSION,
     };
 
-    if (result.status !== 'applied') {
+    if (result.status !== 'applied' && result.status !== 'cleanup_failed') {
       throw refusals[result.status]();
     }
 
-    return { itemID: options.input.itemID, backup: { state: 'off' } as const };
+    return {
+      itemID: options.input.itemID,
+      pending: result.status === 'cleanup_failed',
+      backup: { state: 'off' } as const,
+    };
   }),
 
   previewForgetRetired: memory.previewForgetRetired.handler((options) => {
@@ -59,16 +59,16 @@ export const mockMemoryForgetProcedures = {
 
     const result = await writeMockRetiredForget(options.input);
 
-    if (result.status === 'cleanup_failed') {
-      throw new Error('the session cleanup failed');
-    }
-
     const refusals = {
       reused: options.errors.CLIENT_ACTION_ID_REUSED,
       not_found: options.errors.MEMORY_ITEM_NOT_FOUND,
       stale: options.errors.STALE_VERSION,
       wrong_state: options.errors.WRONG_STATE,
     };
+
+    if (result.status === 'cleanup_failed') {
+      return readMockForgetStatus(options.input.targets.map((target) => target.itemID));
+    }
 
     if (result.status !== 'applied') {
       throw refusals[result.status]();

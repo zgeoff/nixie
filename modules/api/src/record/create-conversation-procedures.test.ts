@@ -1,6 +1,5 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { claimTask, createConversationTask, runTaskStep } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -19,7 +18,6 @@ async function setupTest() {
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     erasure: buildTestErasureRunner(api.context.log),
-    cleanupSessions: mock<CleanupSessions>(() => Promise.resolve()),
     gate: {
       check: () =>
         Promise.resolve({

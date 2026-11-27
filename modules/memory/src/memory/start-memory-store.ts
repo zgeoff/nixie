@@ -1,4 +1,5 @@
 import { buildItemIDStore } from '../item/build-item-id-store';
+import { buildItemErasable } from '../item/erasure/build-item-erasable';
 import { readLabelEntries } from '../label/read-label-entries';
 import { runLabelBackfill } from '../label/run-label-backfill';
 import { buildMomentErasable } from '../moment/erasure/build-moment-erasable';
@@ -7,7 +8,7 @@ import { buildMomentStore } from '../moment/store/build-moment-store';
 import { startStoreIndexes } from '../moment/store/start-store-indexes';
 import type { UpdatedIndexes } from '../moment/store/update-store-indexes';
 import { updateStoreIndexes } from '../moment/store/update-store-indexes';
-import { runPendingForgets } from '../pending/run-pending-forgets';
+import { memoryItemErasableDescriptor } from '../record/memory-item-erasable-descriptor';
 import { momentErasableDescriptor } from '../record/moment-erasable-descriptor';
 import type { ItemIDStore, MemoryContext, MemoryStore, StoreParts } from '../types';
 import { makeDeliveryLock } from '../utils/make-delivery-lock';
@@ -30,8 +31,14 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
 
   const updated = await runStartSteps(parts);
 
+  const erasure =
+    context.erasure?.register({
+      ...memoryItemErasableDescriptor,
+      ...buildItemErasable(parts),
+    }) ?? null;
+
   return {
-    ...buildMemoryStore(parts),
+    ...buildMemoryStore(parts, erasure),
     ...buildItemIDStore(parts),
     ...buildMemoryGate(parts),
     moments: buildMomentStore(
@@ -59,7 +66,6 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
 
 async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
   try {
-    await runPendingForgets(parts);
     await removeLeftKeys(parts);
 
     const entries = await readLabelEntries(parts);

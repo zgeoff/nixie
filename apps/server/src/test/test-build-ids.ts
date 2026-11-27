@@ -30,7 +30,6 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'sigterm.grace': 'sigterm.grace',
   'memory.recall.ranked': 'memory.recall.ranked',
   'memory.recall.checked': 'memory.recall.checked',
-  'memory.forget.key_removed': 'memory.forget.key_removed',
   'memory.lapse.read': 'memory.lapse.read',
   'memory.approval.opened': 'memory.approval.opened',
   'memory.purge.keys_created': 'memory.purge.keys_created',

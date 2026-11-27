@@ -103,7 +103,7 @@ test('it never reads an item that a forget began', async () => {
 
   const item = await ctx.memory.store.remember({ text: 'Goes by Sam', isPinned: true, provenance });
 
-  const hold = startFaultPointHold('memory.forget.key_removed');
+  const hold = startFaultPointHold('erasure.keys_removed');
   const forget = ctx.memory.store.forget({ target: item, provenance });
 
   await hold.reached;

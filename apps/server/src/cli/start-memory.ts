@@ -1,6 +1,6 @@
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
-import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
+import type { StartedMemoryStore } from '@heynixie/memory';
 import { startLapseSweep, startMemoryStore } from '@heynixie/memory';
 import { buildItemLinkCounts } from '@heynixie/notebook';
 import type { RunCheck } from '@heynixie/sessions';
@@ -10,14 +10,12 @@ const dayMs = 24 * 60 * 60 * 1000;
 
 export async function startMemory(
   parts: ServerParts,
-  cleanupSessions: CleanupSessions,
   check: RunCheck,
   erasure: ErasureRegistry,
 ): Promise<StartedMemoryStore> {
   const store = await startMemoryStore({
     log: parts.context.log,
     definitions: parts.context.definitions,
-    cleanupSessions,
     erasure,
     linkCounts: buildItemLinkCounts(parts.context.log),
     pinnedCoreTokens: parts.config.memory.pinnedCoreTokens,

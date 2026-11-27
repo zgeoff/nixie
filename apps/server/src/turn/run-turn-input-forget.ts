@@ -1,16 +1,11 @@
-import { readForgetFloor } from '@heynixie/memory';
 import type { SessionCleanupCause } from '@heynixie/sessions';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
-import { conversationTaskID } from '@heynixie/tasks';
-import type { ForgetScope, TurnInputs } from '@heynixie/turn-inputs';
+import type { TurnInputs } from '@heynixie/turn-inputs';
 
-// A note, a moment and a connection forget on the erasure runner, which removes their turn inputs
-// itself.
-type TurnInputForgetCause = Exclude<
-  SessionCleanupCause,
-  { readonly noteID: string } | { readonly connectionID: string }
->;
+// A note, a memory item, a moment and a connection forget on the erasure runner, which removes
+// their turn inputs itself. Only a record forget is left.
+type TurnInputForgetCause = Extract<SessionCleanupCause, { readonly recordSequence: number }>;
 
 export interface TurnInputForgetOptions {
   readonly context: TasksContext;
@@ -28,34 +23,8 @@ export async function runTurnInputForget(
 
   await options.turnInputs.closeCaptures({ cause: 'forget' });
 
-  const threads = pickForgetThreads(cause, cleaned);
-
-  const scope = await readForgetScope(options.context, cause, threads);
-
-  await options.turnInputs.removeForgotten(scope);
-}
-
-// A record forget covers the threads of the sessions it cleaned, and any other forget the
-// conversation too.
-function pickForgetThreads(
-  cause: TurnInputForgetCause,
-  cleaned: readonly string[],
-): readonly string[] {
-  return 'recordSequence' in cause ? cleaned : [conversationTaskID, ...cleaned];
-}
-
-// From the first record that can hold the forgotten text on, every request is covered. A forget
-// that names no floor covers every request.
-async function readForgetScope(
-  context: TasksContext,
-  cause: TurnInputForgetCause,
-  threads: readonly string[],
-): Promise<ForgetScope> {
-  if ('recordSequence' in cause) {
-    return { threads, fromSequence: cause.recordSequence };
-  }
-
-  const floor = await readForgetFloor(context.log, cause);
-
-  return { threads, fromSequence: floor };
+  await options.turnInputs.removeForgotten({
+    threads: cleaned,
+    fromSequence: cause.recordSequence,
+  });
 }

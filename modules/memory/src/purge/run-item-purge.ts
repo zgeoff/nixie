@@ -1,8 +1,9 @@
+import type { ErasureHandle } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
-import { runForgetCleanup } from '../forget/run-forget-cleanup';
-import type { PurgeRequest, StoreParts } from '../types';
+import { runOpenItemForget } from '../forget/run-open-item-forget';
+import type { ItemErasureRequest, PurgeRequest, StoreParts } from '../types';
 import { pickPurgePlan } from './pick-purge-plan';
 import { readClosedKeyIDs } from './read-closed-key-ids';
 import { readPurgeFacts } from './read-purge-facts';
@@ -15,17 +16,21 @@ export type PurgeResult = 'purged' | 'skipped';
 // Purges one item of a purge set: the closing commit under the delivery lock, then the key deletes
 // and the last mark. Each step finds its own record, or a missing key, and writes nothing more when
 // it runs again.
-export async function runItemPurge(parts: StoreParts, request: PurgeRequest): Promise<PurgeResult> {
+export async function runItemPurge(
+  parts: StoreParts,
+  erasure: ErasureHandle<ItemErasureRequest>,
+  request: PurgeRequest,
+): Promise<PurgeResult> {
   const keyIDs = await parts.lock(() => runItemClose(parts, request));
 
   if (keyIDs === 'skip') {
     return 'skipped';
   }
 
-  // The item's own forget owns its keys. Its cleanup runs to its end here, so record.forgotten
-  // follows the key delete and checkpoint even when that forget stopped before them.
+  // The item's own forget owns its keys, and the record forget's end must follow the delete of
+  // every key that holds the record's text. So the purge waits for that forget to finish.
   if (keyIDs === 'forget') {
-    await runForgetCleanup(parts, request.itemID);
+    await runOpenItemForget(parts, erasure, request.itemID);
     await writeEvidencePurged(parts, request);
 
     return 'skipped';

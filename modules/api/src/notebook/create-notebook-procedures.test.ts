@@ -29,7 +29,6 @@ async function setupTest() {
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions: () => Promise.resolve(),
     gate: {
       check: () =>
         Promise.resolve({

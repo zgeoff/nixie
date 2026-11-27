@@ -1,22 +1,26 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import type { ErasureSessionCause } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { seedPublishedBackupSet } from '../test-utils/seed-published-backup-set';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
 
 async function setupTest() {
   const api = await startTestAPI();
 
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
 
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions,
+    erasure: buildTestErasureRunner(api.context.log, cleanupSessions),
     gate: {
       check: () =>
         Promise.resolve({
@@ -127,7 +131,12 @@ test('#memory.forget forgets the item at the version its preview showed, so ever
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(forgotten).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
   expect(history).toMatchObject({ state: 'forgotten', versions: [{ status: 'shredded' }] });
 });
 
@@ -174,15 +183,14 @@ test('#memory.forget cleans up the sessions, then records the forget as complete
 
   expect(
     records.map((entry) => entry.record.kind).filter((kind) => kind.startsWith('memory.')),
-  ).toStrictEqual([
-    'memory.version_added',
-    'memory.version_keyed',
-    'memory.forget_started',
-    'memory.forgotten',
-  ]);
+  ).toStrictEqual(['memory.version_added', 'memory.version_keyed']);
+
+  expect(
+    records.map((entry) => entry.record.kind).filter((kind) => kind.startsWith('erasure.')),
+  ).toStrictEqual(['erasure.started', 'erasure.finished']);
 });
 
-test('#memory.forget completes a forget on the retry after its session cleanup failed', async () => {
+test('#memory.forget replies pending when its session cleanup failed, and a retry with the same client action completes it', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
@@ -197,9 +205,12 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
     Promise.reject(new Error('the guest did not answer')),
   );
 
-  const failed = await client.memory
-    .forget({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item })
-    .catch((error: unknown) => error);
+  const pending = await client.memory.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    ...item,
+  });
+
+  const stateAfterFailure = await ctx.memory.view.readForgetStatus([item.itemID]);
 
   const retried = await client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -208,8 +219,63 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
-  expect(retried).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(pending).toStrictEqual({
+    itemID: item.itemID,
+    pending: true,
+    backup: { state: 'pending' },
+  });
+
+  expect(stateAfterFailure).toMatchObject({ deleted: [], pending: [item.itemID] });
+
+  expect(retried).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
+  expect(history?.state).toBe('forgotten');
+});
+
+test('#memory.forget joins the open erasure of an item for a request with a fresh client action', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'The shed padlock code is 2291',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  ctx.cleanupSessions.mockImplementationOnce(() =>
+    Promise.reject(new Error('the guest did not answer')),
+  );
+
+  await client.memory.forget({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item });
+
+  const joined = await client.memory.forget({
+    clientActionID: '0b8e4d6a-2c1f-4a7e-9d35-7e1a6c4b8f20',
+    ...item,
+  });
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  const history = await ctx.memory.readHistory(item.itemID);
+
+  expect(joined).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'erasure.started',
+    'erasure.finished',
+  ]);
+
   expect(history?.state).toBe('forgotten');
 });
 
@@ -348,6 +414,131 @@ test('#memory.forget refuses a client action ID that another change used, and fo
   expect(history?.state).toBe('active');
 });
 
+test('#memory.forget replies with the same result when a completed request repeats with its client action ID and input', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'Keeps a spare key under the blue pot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item };
+
+  const first = await client.memory.forget(input);
+  const replay = await client.memory.forget(input);
+
+  expect(replay).toStrictEqual(first);
+});
+
+test('#memory.forget replays the reply it saved when a backup set was published after it', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'Keeps a spare key under the blue pot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item };
+
+  const first = await client.memory.forget(input);
+
+  await seedPublishedBackupSet(ctx.writer, { sequence: 1, logHead: 1_000_000 });
+
+  const replay = await client.memory.forget(input);
+
+  expect(first).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
+  expect(replay).toStrictEqual(first);
+});
+
+test('#memory.forgetRetired replays the reply it saved when a backup set was published after it', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const item = await ctx.memory.remember({ text: 'Owns a red canoe', provenance });
+  const retired = await ctx.memory.retire({ target: item, provenance });
+
+  const input = { clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74', targets: [retired] };
+
+  const first = await client.memory.forgetRetired(input);
+
+  await seedPublishedBackupSet(ctx.writer, { sequence: 1, logHead: 1_000_000 });
+
+  const replay = await client.memory.forgetRetired(input);
+
+  expect(first).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'pending' },
+  });
+
+  expect(replay).toStrictEqual(first);
+});
+
+test('#memory.forgetRetired starts no erasure when its client action ID belongs to another change', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const items = await Promise.all(
+    ['Plays the cello on Thursdays', 'Grows chillies on the balcony'].map((text) =>
+      ctx.memory.remember({ text, provenance }),
+    ),
+  );
+
+  const other = await ctx.memory.remember({ text: 'Owns a red canoe', provenance });
+
+  const retired = await Promise.all(
+    items.map((target) => ctx.memory.retire({ target, provenance })),
+  );
+
+  await client.memory.retire({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    ...other,
+  });
+
+  const forget = client.memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: retired,
+  });
+
+  await forget.catch(() => {});
+
+  const states = await Promise.all(items.map((item) => ctx.memory.readHistory(item.itemID)));
+
+  expect(forget).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+  expect(states.map((history) => history?.state)).toStrictEqual(['retired', 'retired']);
+});
+
 test('#memory.forget refuses a caller with no session', async () => {
   const ctx = await setupTest();
 
@@ -474,9 +665,9 @@ test('#memory.forgetRetired deletes the confirmed set, with a forgotten record f
 
   expect(
     records
-      .filter((entry) => entry.record.kind === 'memory.forgotten')
-      .map((entry) => entry.record.payload),
-  ).toIncludeSameMembers(items.map((item) => ({ itemID: item.itemID })));
+      .filter((entry) => entry.record.kind === 'erasure.finished')
+      .map((entry) => entry.record.payload['targetID']),
+  ).toIncludeSameMembers(items.map((item) => item.itemID));
 });
 
 test('#memory.forgetRetired refuses a confirmation made stale by a restore after the preview, and deletes nothing', async () => {
@@ -604,7 +795,7 @@ test('#memory.forgetRetired refuses a target listed twice', async () => {
   expect(forget).rejects.toMatchObject({ code: 'BAD_REQUEST' });
 });
 
-test('#memory.forgetRetired finishes the pending items on the retry after a cleanup failed', async () => {
+test('#memory.forgetRetired replies with the pending items when a cleanup failed, and finishes them on the retry', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
@@ -647,11 +838,11 @@ test('#memory.forgetRetired finishes the pending items on the retry after a clea
   const input = { clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74', targets: retired };
   const itemIDs = retired.map((target) => target.itemID);
 
-  const failed = await client.memory.forgetRetired(input).catch((error: unknown) => error);
+  const failed = await client.memory.forgetRetired(input);
   const pending = await client.memory.readForgetStatus({ itemIDs });
   const retried = await client.memory.forgetRetired(input);
 
-  expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+  expect(failed).toStrictEqual({ deleted: [], pending: itemIDs, backup: { state: 'pending' } });
   expect(pending).toStrictEqual({ deleted: [], pending: itemIDs, backup: { state: 'pending' } });
 
   expect(retried).toStrictEqual({

@@ -143,16 +143,43 @@ export interface ForgetRequest {
   readonly target: VersionRef;
   readonly provenance: Provenance;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // runs before any item starts, and a throw there leaves every item unbegun
+  readonly checkInTransaction?: WriteInTransaction;
+
+  // stops after the start, for a caller that runs the rest through finishForgets and answers a
+  // failure there as pending
+  readonly isFinishDeferred?: boolean;
 }
 
 export interface RetiredForgetRequest {
   readonly targets: readonly VersionRef[];
   readonly provenance: Provenance;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // runs before any item starts, and a throw there leaves every item unbegun
+  readonly checkInTransaction?: WriteInTransaction;
+
+  // stops after the start, for a caller that runs the rest through finishForgets and answers a
+  // failure there as pending
+  readonly isFinishDeferred?: boolean;
 }
 
 export interface AllForgetRequest {
   readonly provenance: Provenance;
+}
+
+export interface ItemErasureRequest {
+  readonly itemID: string;
+
+  // the revision the caller saw; null takes the item as it stands
+  readonly revision: number | null;
+
+  // the states the item may be in, so a retired-only forget refuses an active item
+  readonly states: readonly MemoryState[];
+
+  // starts from an item that an earlier release's forget left in forgetting
+  readonly isResuming?: boolean;
 }
 
 export interface ForgetStatus {
@@ -343,10 +370,6 @@ export interface ItemIDStore {
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
-export interface CleanupCause {
-  readonly itemID: string;
-}
-
 // How many active notes dispute or supersede an item. The notebook module counts them, and memory
 // learns nothing else about a note.
 export interface ItemLinkCount {
@@ -358,10 +381,6 @@ export interface ItemLinkCounts {
   // memory passes item UUIDs, the form links store
   readonly readCounts: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, ItemLinkCount>>;
 }
-
-// The cleanup must be safe to run again, because a forget that a crash cut short runs it again on
-// resume.
-export type CleanupSessions = (cause: CleanupCause) => Promise<void>;
 
 export type EncodeKind = 'query' | 'document';
 
@@ -381,11 +400,10 @@ export interface SemanticSearch {
 export interface MemoryContext {
   readonly log: Log;
   readonly definitions: () => Definitions;
-  readonly cleanupSessions: CleanupSessions;
   readonly gate: GateContext;
 
-  // where the moments register their erasable, which the server's runner takes forgets through;
-  // without it a moment can't be forgotten
+  // where the items and the moments register their erasables, which the server's runner takes
+  // forgets through; without it neither can be forgotten
   readonly erasure?: ErasureRegistry;
 
   readonly pinnedCoreTokens?: number;

@@ -38,6 +38,7 @@ export { readStoppedProposal } from './read-stopped-proposal';
 export { readSurvivingKeyIDs } from './read-surviving-key-ids';
 export type { BegunPurgeSeed } from './seed-begun-purge';
 export { seedBegunPurge } from './seed-begun-purge';
+export { seedBegunItemForget } from './seed-begun-item-forget';
 export { seedBegunNoteForget } from './seed-begun-note-forget';
 export type { BegunNoteForgetSeed } from './seed-begun-note-forget';
 export { seedBudgetRecords } from './seed-budget-records';

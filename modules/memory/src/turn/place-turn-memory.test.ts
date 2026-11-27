@@ -15,7 +15,6 @@ async function setupTest() {
   const context: MemoryContext = {
     log: memory.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions: () => Promise.resolve(),
     gate: {
       check: () =>
         Promise.resolve({

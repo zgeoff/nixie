@@ -131,7 +131,7 @@ A direct tool can return images beside its typed result, and the model then rece
 in place of structured content: the typed result as JSON in one text block, then one image block for
 each image. The result record holds the typed result alone, so an image's bytes never reach the log.
 Claude Code also saves each image to a file in the session's config directory, which a
-[forget](../core/erasable-fields.md#forgetting-a-record) removes with the rest of the session state.
+[forget](../core/erasable-fields.md#removing-a-key) removes with the rest of the session state.
 
 A typed result whose fields are all `untrusted` gets no structured content either. The model
 receives it as one text block inside `tool-result` markers, then one image block for each image.

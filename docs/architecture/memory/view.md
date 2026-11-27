@@ -13,12 +13,13 @@ does. Each change it makes is the user's own action on the store, bound to the v
 
 The view lists the items of one state a page at a time, newest first, so an item the user approved a
 moment ago heads the first page. A page's cursor holds the creation point of its last item, and the
-next page starts at the item created just before it. A list may ask for facts or for self-notes
-alone, so each pages through its own items. Active and retired items list apart. The forgotten list
+next page starts at the item created just before it. A list can cover facts alone or self-notes
+alone, and each pages through its own items. Active and retired items list apart. The forgotten list
 holds each item a forget began, so an item whose forget a crash cut short still shows. Each listed
 item carries its current version's text while its key exists, the origin and source of that version,
 and when the item was created and last changed. A forgotten item carries no text and the time its
-forget completed, so it shows as a dated gap.
+forget completed, so it shows as a dated gap. An item whose forget has begun and not finished lists
+as forgetting, with no text and no completed time yet.
 
 ## Search
 
@@ -30,9 +31,9 @@ log as a list does. An item that left the active state between the ranking and t
 ## The pinned core
 
 The view reads the pinned core in the order the user pinned its items, with its size counted as a
-pin counts it: each item as a session's opening renders it, with the owner's name and the widest
-date ([the pinned core](./context.md#the-pinned-core)). The budget beside the size is the one a pin
-must fit. A pinned item whose text fails to open still shows, so the user can unpin it, and it adds
+pin counts it: each item as a session's opening renders it, with the user's name and the widest date
+([the pinned core](./context.md#the-pinned-core)). The budget beside the size is the one a pin must
+fit. A pinned item whose text fails to open still shows, so the user can unpin it, and it adds
 nothing to the size, because a session's opening leaves it out.
 
 ## An item's history
@@ -73,8 +74,8 @@ with the reason the message is missing.
 
 A retire, a restore, a pin and an unpin from the view each go through the store with the user as
 origin and source, as the host commands' changes do. Each binds to the version the view showed: the
-retire and the restore through their target, and the pin through the version it names, so an item
-that moved on since the user looked fails the change as stale and changes nothing.
+retire and the restore through their target, and the pin and the unpin through the version each
+names, so an item that moved on since the user looked fails the change as stale and changes nothing.
 
 Each change from a device is a checked action
 ([checked actions](../channels/api.md#checked-actions)). The store runs a caller's own write inside
@@ -93,7 +94,7 @@ ID it opened with. A list that refreshes under an open confirmation therefore ne
 onto a version the user did not see, and a confirm that fails in transit and goes again changes the
 item once. Every refusal or change reads the lists again, so the row shows the item as it now
 stands. That read can move the item to another list, so the reason for a refusal, such as a stale
-version or a full pinned core, shows at the top of the page and not in the item's row.
+version or a full pinned core, shows at the top of the page.
 
 ## Forgetting an item
 
@@ -105,10 +106,11 @@ forget runs the store's forget ([forgetting](./store.md#forgetting)) with the us
 item that changed after the preview refuses it as stale and nothing is destroyed.
 
 The forget is a checked action like the other changes, and its result commits in the transaction
-that marks the item forgetting. A retry with the same client action ID therefore finds the result
-and runs the forget's cleanup again, so a forget whose session cleanup failed after its start
-completes on the retry instead of waiting for the store's next start. That rerun touches only an
-item that is still forgetting, so it never deletes the key of an item no forget began.
+that writes `erasure.started`, the record that opens the item's erasure and lists every key the
+forget deletes ([forgetting](./store.md#forgetting)). A retry with the same client action ID
+therefore finds the result and finishes the item's open erasure, so a forget whose session cleanup
+failed after its start completes on the retry instead of waiting for the store's next start. The
+retry finishes only an erasure that is open, so it never deletes the key of an item no forget began.
 
 The web page's confirmation shows the history from the preview, what the forget destroys, and what
 it cannot reach. A disk snapshot that the user took by hand of nixie's host or its volumes still
@@ -121,25 +123,27 @@ forget, bound to the version that `memory-show` printed.
 
 A forget whose start committed and whose cleanup failed lists as forgetting, and any refresh of the
 lists, such as a pin of another item, moves it out of the row that held its confirmation. The page
-therefore keeps each forget call in the query client, apart from every row, and the forgetting
-item's row in the forgotten list offers to finish the forget while its last call failed. That retry
-sends the same client action ID, so the server runs the cleanup again.
+therefore keeps each forget call in the query client, apart from every row. When the last call
+failed, the user can finish the forget from the forgetting item's row in the forgotten list. That
+retry sends the same client action ID, so the server finishes the open erasure.
 
-## Deleting retired items
+## Forgetting retired items
 
-The retired list offers one checked action that forgets selected retired items, or all of them, in a
-[bulk forget](./store.md#forgetting-retired-items-in-bulk). Its preview lists the oldest retired
-items up to a cap, each at its version with what its forget destroys, and says when more remain. The
-confirmation starts with every listed item selected, states that the deletion cannot be undone and
-that chat records stay, and sends the selected items with the versions the preview showed.
+From the retired list, the user forgets selected retired items, or all of them, in one checked
+action, a [bulk forget](./store.md#forgetting-retired-items-in-bulk). Its preview lists the oldest
+retired items up to a cap, each at its version with what its forget destroys, and says when more
+remain. The confirmation starts with every listed item selected, states that the forget cannot be
+undone and that chat records stay, and sends the selected items with the versions the preview
+showed.
 
 The page keeps the set it first showed while the confirmation is open, so a refresh of the lists
 never changes what the user confirmed. A stale set closes the confirmation with the reason, and
-nothing is deleted. A run whose cleanup failed keeps the confirmation open with a count of deleted
-and pending items, which the status read returns, and offers to finish the run. That retry sends the
-same client action ID, so the server runs the cleanup of each pending item again. The page keeps
-each bulk call in the query client, as it keeps each single forget, so the retired list still offers
-to finish a failed run after the user leaves the page and comes back.
+nothing is forgotten. When a bulk forget's cleanup fails, the confirmation stays open with the count
+of forgotten and pending items that the status read returns, and the user can finish the bulk forget
+from it. That retry sends the same client action ID, so the server finishes the open erasure of each
+pending item. The page keeps each bulk call in the query client, as it keeps each single forget, so
+the user can still finish a failed bulk forget from the retired list after leaving the page and
+coming back.
 
 ## Proposals
 

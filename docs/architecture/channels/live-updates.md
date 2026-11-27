@@ -14,8 +14,8 @@ ID and a closed stream misses it.
 Two changes happen with no write, so the tab reads again on a timer. A task that comes due changes
 the task list, so the tab reads the list at the `changesAt` time the list returns, as well as on the
 `tasks` topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the stuck
-forgets on a timer alone. Roots such as `sessions` and `devices` have no topic either. See
-[Topics](#topics) for each.
+forgets on a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic either.
+See [Topics](#topics) for each.
 
 ```mermaid
 flowchart LR
@@ -49,8 +49,10 @@ screen state and each change, as [the devices doc](./devices.md#the-streams) des
 A page stream starts after the last event ID when that is a sequence of 1 to 15 digits, and
 otherwise after `afterSequence`, and never past the head, because a start past the head would skip a
 `session.revoked` record that names the caller. A shredded record arrives with `isRemoved`, which
-the server reads from the `record.forget_started` record that names it. A `record` event reads the
-record as a page read does, as [the API doc](./api.md#reading-and-the-live-stream) describes.
+the server reads from the `record.forget_started` record that names it. That record belongs to the
+forget of a log record, and is a separate family from the `erasure.started` and `erasure.finished`
+records that [Topics](#topics) covers. A `record` event reads the record as a page read does, as
+[the API doc](./api.md#reading-and-the-live-stream) describes.
 
 The API reads the head of the log, then checks the session, and refuses a missing or revoked session
 with a plain 401. The head comes first, so a revoke that commits after the check lies past the head,
@@ -72,30 +74,32 @@ sends the topics that wait between records, so a long replay never holds a topic
 
 The API writes a keepalive into a quiet stream at a fixed interval. oRPC's event iterator swallows
 the keepalive comment, so the web client watches the bytes of the response and treats a stream that
-sends no byte within its idle limit as dead. `liveStreamTiming` in the contract package holds the
+sends no byte within its idle limit as dead. `liveStreamTiming`, in
+[live-stream-timing.ts](../../../libs/contract/src/contract/live-stream-timing.ts), holds the
 interval and the idle limit, and a test asserts that 3 keepalive intervals fit in the idle limit.
 
 ## Topics
 
 A topic is the name of one root of the web client's query keys, and no two topics share a root. The
-contract's `liveTopicSchema` holds the list. A root can lack a topic, and the contract test keeps a
-list of those unfollowed roots, `erasure` among them. The test fails when a topic matches no root,
-or when a root has neither a topic nor a place on that list.
+topics are the entries of `liveTopicSchema` in the contract, in
+[live-topic-schema.ts](../../../libs/contract/src/contract/live-topic-schema.ts). A root can lack a
+topic, and the contract test keeps a list of those unfollowed roots, `erasure` among them. The test
+fails when a topic matches no root, or when a root has neither a topic nor a place on that list.
 
-| Topic         | Reads under the root                             |
-| ------------- | ------------------------------------------------ |
-| `nixie`       | `nixie.read`, which holds the pause              |
-| `spend`       | `spend.read`                                     |
-| `backups`     | `backups.readNotice`                             |
-| `approvals`   | `approvals.listItems`, `approvals.readProposals` |
-| `calls`       | `calls.get`                                      |
-| `computer`    | `computer.readHandover`                          |
-| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`    |
-| `triggers`    | `triggers.report`                                |
-| `definitions` | `definitions.listTasks`                          |
-| `memory`      | the memory page's reads                          |
-| `notebook`    | the notebook's reads                             |
-| `images`      | `images.list`                                    |
+| Topic         | Reads under the root                                           |
+| ------------- | -------------------------------------------------------------- |
+| `nixie`       | `nixie.read`, which holds the pause                            |
+| `spend`       | `spend.read`                                                   |
+| `backups`     | `backups.readNotice`                                           |
+| `approvals`   | `approvals.listItems`, `approvals.readProposals`               |
+| `calls`       | `calls.get`                                                    |
+| `computer`    | `computer.readHandover`                                        |
+| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`                  |
+| `triggers`    | `triggers.report`                                              |
+| `definitions` | `definitions.listTasks`                                        |
+| `memory`      | every read under the `memory` root, which the memory page uses |
+| `notebook`    | every read under the `notebook` root, which the notebook uses  |
+| `images`      | `images.list`                                                  |
 
 Each module that owns record kinds declares the topics each kind changes, and the server registers
 them with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry,
@@ -104,7 +108,10 @@ none. The log marks the topics of every record a transaction appends. A write th
 marks `tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or
 skip marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run
 of a definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same
-reason.
+reason. The log module owns the topics of the erasure records. `erasure.started` and
+`erasure.finished` mark `memory` and `notebook`, because a forget of a memory item, a moment or a
+note changes what those pages show. The topic map reads no payload to tell the kinds apart, so all
+three kinds of forget mark both topics.
 
 Two other marks cover a change with no record. `markChanged(tx, topics)` adds topics to the commit
 of a transaction, and a transaction that rolls back drops them. `publishChanged(writer, topics)`
@@ -126,8 +133,10 @@ A task that comes due on a schedule changes the task list with no write, so the 
 fires for it. `tasks.list` returns `changesAt`, the earliest next run of a listed task, and the
 client reads the list again at that time, besides reading it on the `tasks` topic.
 
-A forget turns stuck once it stays open long enough, with no write. The `erasure` root has no topic,
-and the web client reads `erasure.readStuck` again on a timer.
+A forget of any kind, whether of a memory item, a moment or a note, turns stuck once it stays open
+long enough, with no write. The `erasure` root has no topic, and the web client reads
+`erasure.readStuck` again on a timer. That timer covers only the stuck state. The erasure records
+still mark `memory` and `notebook`.
 
 ## The client registry
 

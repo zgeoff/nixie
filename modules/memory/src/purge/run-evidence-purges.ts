@@ -1,19 +1,29 @@
-import type { LogTables } from '@heynixie/log';
+import type { ErasureHandle, LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { readAllRemovedSequences } from '../record/read-all-removed-sequences';
 import { recordForgottenCodec } from '../record/record-forgotten-codec';
-import type { MemoryTables, PurgeRequest, PurgeScope, StoreParts } from '../types';
+import type {
+  ItemErasureRequest,
+  MemoryTables,
+  PurgeRequest,
+  PurgeScope,
+  StoreParts,
+} from '../types';
 import { runItemPurge } from './run-item-purge';
 
 // Finishes every item of the scope that still owes a purge. A record forget calls it for its own
 // record. The server start calls it for the purges that no open record forget owns.
-export async function runEvidencePurges(parts: StoreParts, scope: PurgeScope): Promise<void> {
+export async function runEvidencePurges(
+  parts: StoreParts,
+  erasure: ErasureHandle<ItemErasureRequest>,
+  scope: PurgeScope,
+): Promise<void> {
   const owed = await readOwedPurges(parts, scope);
 
   for (const purge of owed) {
-    await runItemPurge(parts, purge);
+    await runItemPurge(parts, erasure, purge);
   }
 }
 
