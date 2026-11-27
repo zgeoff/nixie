@@ -63,7 +63,7 @@ These cost the most time:
 | images-page        | Browse and forget images                                          | [references/feature-images-page.md](references/feature-images-page.md)               |
 | notebook-pages     | Browse notes, open a private one, forget one                      | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |
 | google-connections | Connect a Google account and forget it                            | [references/feature-google-connections.md](references/feature-google-connections.md) |
-| google-off         | See that a nixie with no google section offers none               | [references/feature-google-off.md](references/feature-google-off.md)                 |
+| google-off         | Turn Google off                                                   | [references/feature-google-off.md](references/feature-google-off.md)                 |
 | mcp-servers        | Connect an MCP server, and approve a tool                         | [references/feature-mcp-servers.md](references/feature-mcp-servers.md)               |
 | computer-shell     | Write and read back a shell file                                  | [references/feature-computer-shell.md](references/feature-computer-shell.md)         |
 | computer-browser   | Open a page in the assistant's browser                            | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
@@ -149,7 +149,7 @@ neither runs on the registry's first target.
 
 <!-- repo: targets -->
 
-See the [targets table](references/targets.md) for each target's start commands and access.
+[Targets](references/targets.md) lists each target's start commands and access.
 
 <!-- /repo -->
 
@@ -166,7 +166,7 @@ target refuses each `[write]` command except `publish`, which writes no app data
 <!-- repo: commands -->
 
 - Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
-  `browser snapshot`.
+  snapshot.
 
 <!-- /repo -->
 
@@ -175,7 +175,7 @@ target refuses each `[write]` command except `publish`, which writes no app data
 <!-- repo: registry -->
 
 Declare targets, actions, commands, checks and features in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). Edit its globs
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts), and their globs
 in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 <!-- /repo -->

@@ -493,7 +493,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'google-off',
-        summary: 'See that a nixie with no google section offers none',
+        summary: 'Turn Google off',
         paths: featurePaths['google-off'],
       },
       {
