@@ -217,14 +217,13 @@ clears it. A turn that the model API refused for its credential, or with a refus
 the user, such as a quota, turns the part unready at once, because no retry passes until the user
 changes something outside nixie. The reason names the model API's kind of refusal. The start
 sequence reads the conversation's stored errors in a row once the database passes its check at
-start, so a restart while turns fail keeps the part unready instead of reporting turns that nixie
-has not checked. The read also finds a conversation that waits for a retry, which keeps the part
-unready, because no retry runs until the user acts. That read counts errors and never their cause,
-so a restart after a credential failure under the error limit reports the part ready until the
-retried turn fails again. A database that fails its check leaves the part unready, because the start
-reads nothing from it. A turn that fails because an imp cannot wake therefore leaves nixie in its
-Service, and the API, the web UI and the health endpoint keep answering while the conversation
-retries.
+start. Without that read, a restart while turns fail would report the part ready before nixie checks
+a turn. The read also finds a conversation that waits for a retry, which keeps the part unready,
+because no retry runs until the user acts. That read counts errors and never their cause, so a
+restart after a credential failure under the error limit reports the part ready until the retried
+turn fails again. A database that fails its check leaves the part unready, because the start reads
+nothing from it. A turn that fails because an imp cannot wake leaves nixie in its Service, and the
+API, the web UI and the health endpoint keep answering while the conversation retries.
 
 ## Logs
 

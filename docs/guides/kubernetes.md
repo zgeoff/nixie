@@ -16,7 +16,7 @@ cluster. [Kubernetes](../architecture/deployment/kubernetes.md) explains the sha
    tool by config, add `code: {}` there to keep it.
 3. Replace the `nixie-definitions` ConfigMap with your own persona, or with your definitions source.
 4. Create the namespace, the TLS Secret `nixie-tls`, and the `nixie-secrets` Secret from your sops
-   file and your host's age key, as `secret.example.yaml` shows. `kustomization.yaml` leaves that
+   file and your host's age key, following `secret.example.yaml`. `kustomization.yaml` leaves that
    example out, so applying the folder never replaces a real Secret.
 5. Apply the folder as a kustomization with your cluster's client.
 

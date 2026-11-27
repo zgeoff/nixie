@@ -36,7 +36,7 @@ secret reaches the container's configuration or its disk.
    ```
 
    Expect every running service healthy, and `setup` exited 0. The `setup` service copies the sops
-   file and the age key into a volume that only nixie's user reads, so the host's files stay
+   file and the age key into a volume that only nixie's user reads, and the host's files stay
    readable by their owner alone.
 
 6. Print a sign-in code, and enter it on the sign-in page:
