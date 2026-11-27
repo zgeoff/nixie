@@ -6,6 +6,16 @@ import type { LeakExceptions } from '../types';
 export const leakExceptions: LeakExceptions = {
   owned: {
     google: ['modules/api/src/connection'],
+    voice: ['libs/contract/src/contract/calls-contract.ts', 'modules/api/src/calls'],
+    devices: [
+      'libs/contract/src/contract/contract.ts',
+      'libs/contract/src/contract/devices-contract.ts',
+      'modules/api/src/device',
+      'modules/api/src/enrolment/claim-enrolment-code.ts',
+      'modules/api/src/live/create-live-procedures.ts',
+      'modules/api/src/session/create-session-procedures.ts',
+      'modules/api/src/utils/feature-procedures.ts',
+    ],
     computer: [
       'libs/contract/src/contract/computer-contract.ts',
       'libs/contract/src/contract/contract.ts',
@@ -109,11 +119,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'libs/contract',
-      names: ['devices', 'voice'],
-      removedBy: 'GEO-2880',
-    },
-    {
-      where: 'libs/contract',
       names: ['images', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
@@ -155,11 +160,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/api',
-      names: ['devices', 'voice'],
-      removedBy: 'GEO-2880',
-    },
-    {
-      where: 'modules/api',
       names: ['coding', 'images', 'mail', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
@@ -184,11 +184,6 @@ export const leakExceptions: LeakExceptions = {
       where: 'modules/credentials',
       names: ['atc'],
       removedBy: 'GEO-2881',
-    },
-    {
-      where: 'modules/definitions',
-      names: ['voice'],
-      removedBy: 'GEO-2880',
     },
     {
       where: 'modules/definitions',
@@ -234,11 +229,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/sessions',
-      names: ['voice'],
-      removedBy: 'GEO-2880',
-    },
-    {
-      where: 'modules/sessions',
       names: ['images', 'mail', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
@@ -271,17 +261,12 @@ export const leakExceptions: LeakExceptions = {
   ],
   imports: [
     { where: 'modules/actions', imports: ['@heynixie/connectors'], removedBy: 'GEO-2881' },
-    { where: 'modules/api', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' },
     { where: 'modules/api', imports: ['@heynixie/coding'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/connectors'], removedBy: 'GEO-2881' },
-    { where: 'modules/api', imports: ['@heynixie/devices'], removedBy: 'GEO-2880' },
     { where: 'modules/api', imports: ['@heynixie/mail'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/mcp'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/spend'], removedBy: 'GEO-2881' },
-    { where: 'modules/definitions', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' },
-    { where: 'modules/sessions', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' },
     { where: 'modules/sessions', imports: ['@heynixie/connectors'], removedBy: 'GEO-2881' },
-    { where: 'modules/sessions', imports: ['@heynixie/devices'], removedBy: 'GEO-2880' },
     { where: 'modules/sessions', imports: ['@heynixie/spend'], removedBy: 'GEO-2881' },
   ],
 };

@@ -1,6 +1,5 @@
 import { actionsRecordTopics } from '@heynixie/actions';
 import { budgetRecordTopics } from '@heynixie/budgets';
-import { callRecordTopics } from '@heynixie/calls';
 import { codingRecordTopics } from '@heynixie/coding';
 import { imagesRecordTopics } from '@heynixie/connectors';
 import {
@@ -8,7 +7,6 @@ import {
   definitionsSeededRecordTopics,
   rulesRecordTopics,
 } from '@heynixie/definitions';
-import { devicesRecordTopics } from '@heynixie/devices';
 import { mailRecordTopics } from '@heynixie/mail';
 import { mcpRecordTopics } from '@heynixie/mcp';
 import { memoryRecordTopics } from '@heynixie/memory';
@@ -33,11 +31,9 @@ export function collectModuleRecordTopicMaps() {
     actionsRecordTopics,
     apiRecordTopics,
     budgetRecordTopics,
-    callRecordTopics,
     codingRecordTopics,
     definitionTaskRecordTopics,
     definitionsSeededRecordTopics,
-    devicesRecordTopics,
     imagesRecordTopics,
     mcpRecordTopics,
     mailRecordTopics,

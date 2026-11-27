@@ -1,4 +1,3 @@
-import { callHeardCutCodec } from '@heynixie/calls';
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import { readThreadNewestFirst } from '@heynixie/log';
@@ -6,6 +5,7 @@ import { readVoidedReplies } from '@heynixie/models';
 import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { readSentTaskMessages } from '@heynixie/tasks';
 import type { MessageTimeOptions } from '../types';
+import { heardCutFieldsSchema } from './heard-cut-fields-schema';
 import { renderHistoryLine } from './render-history-line';
 
 export interface RecentTurnsQuery {
@@ -80,7 +80,7 @@ async function* readTurnsNewestFirst(
     }
 
     if (record.kind === 'call.heard_cut') {
-      const cut = callHeardCutCodec.decode(record.payload);
+      const cut = heardCutFieldsSchema.parse(record.payload);
 
       cuts.set(cut.replyRecordID, cut.heardChars);
     } else if (record.kind === 'call.spoke') {

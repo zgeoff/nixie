@@ -229,3 +229,12 @@ export type { DefinitionListing } from './runtime-task/read-definition-listings'
 export { definitionTaskRecordTopics } from './runtime-task/definition-task-record-topics';
 export { definitionsSeededRecordTopics } from './skill/definitions-seeded-record-topics';
 export { rulesRecordTopics } from './skill/rules-record-topics';
+
+export type {
+  DefinitionSection,
+  ParsedSection,
+  SectionProblem,
+} from './section/definition-sections';
+
+export { definitionSections } from './section/definition-sections';
+export type { SectionFileProblem, SectionValues } from './types';

@@ -7,7 +7,6 @@ import { renderImageMarkers } from '../utils/render-image-markers';
 import { addTurnGaps } from './add-turn-gaps';
 import { encodeInboxUUID } from './encode-inbox-uuid';
 import type { ActionResultBlock } from './render-action-result';
-import type { HeardCut } from './render-call-thread-line';
 import { renderInboxMessage } from './render-inbox-message';
 import type { ReminderRead } from './render-reminder-notice';
 
@@ -22,11 +21,8 @@ export interface InboxExtras {
   // when the owner approved the action that an outcome settles
   readonly approvedAt?: Date | null;
 
-  // the part of a reply that the user heard, for the record that marks a cut
-  readonly cut?: HeardCut | null;
-
-  // the small talk that came before a hand-off
-  readonly smallTalk?: readonly string[];
+  // what the read of a kind that a feature added fetched
+  readonly kindExtra?: unknown;
 
   // the settlements that read as one note, the record being the first of them
   readonly settled?: readonly [LogRecord, ...LogRecord[]];

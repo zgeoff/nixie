@@ -29,6 +29,7 @@ export interface WebJourneyOptions {
   readonly isComputerOff?: boolean;
   readonly isCodeOff?: boolean;
   readonly isGoogleOff?: boolean;
+  readonly isDevicesOff?: boolean;
 
   // a script that every page runs first, such as a microphone stand-in
   readonly headScript?: string;
@@ -42,6 +43,7 @@ export async function startWebJourney(options: WebJourneyOptions = {}): Promise<
     ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
     ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
     ...(options.isGoogleOff === true ? { isGoogleOff: true } : {}),
+    ...(options.isDevicesOff === true ? { isDevicesOff: true } : {}),
   };
 
   const nixie = await startSpawnedNixie(nixieOptions);

@@ -244,6 +244,9 @@ export interface InboxRenderContext {
   readonly at: string;
   readonly ownerName: string | null;
   readonly mint: () => string;
+
+  // what the kind's read fetched beside the record, or undefined for a kind with no read
+  readonly extra?: unknown;
 }
 
 // A kind of inbox record that a feature adds: whether it wakes the task, and how the inbox shows it.
@@ -251,6 +254,9 @@ export interface InboxRenderContext {
 export interface InboxKind {
   readonly kind: string;
   readonly wakes: (payload: LogRecord['payload']) => boolean;
+
+  // reads what the message shows beside its record, such as an earlier record
+  readonly read?: (context: Pick<TasksContext, 'log'>, record: LogRecord) => Promise<unknown>;
   readonly render: (record: LogRecord, context: InboxRenderContext) => string;
 }
 

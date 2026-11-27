@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
 import { buildProposalCoreDeps } from '@heynixie/api';
-import type { CallsContext } from '@heynixie/calls';
 import type {
   ActionConnector,
   ImageProvider,
@@ -50,7 +49,7 @@ import {
   buildReminderUpdateTool,
   buildRemindersListTool,
 } from '@heynixie/reminders';
-import { buildHangUpTool, buildSilentEndTool } from '@heynixie/sessions';
+import { buildSilentEndTool } from '@heynixie/sessions';
 import type { WorkerTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import type { TaskStartBounds } from '@heynixie/tasks';
@@ -128,8 +127,9 @@ export interface ConversationEndpointTools {
   // absent when the deployment sets no images block
   readonly images: ConversationImages | null;
 
-  // the open streams of each device, which the API's device calls share
-  readonly deviceStreams: DeviceStreams;
+  // the open streams of each device, which the API's device calls share; null while the devices
+  // feature is off
+  readonly deviceStreams: DeviceStreams | null;
 
   // the fetch sandbox, backoff and registry that device pages reach the web through
   readonly deviceFetch: Pick<
@@ -170,8 +170,8 @@ export interface ConversationEndpointTools {
 
   readonly isPromptExported: boolean;
 
-  // the calls module, whose running call the hang-up tool ends
-  readonly calls: CallsContext | undefined;
+  // the tools that only a call's thread holds, which stay out of the conversation's own list
+  readonly callTools: readonly ToolDefinition[];
 }
 
 export interface ConversationEndpoint {
@@ -351,28 +351,36 @@ export async function startConversationEndpoint(
       registryHolder.current === null ? null : findToolDeclaration(registryHolder.current, name),
   });
 
-  const deviceOptions: DeviceToolOptions = {
-    log: options.context.log,
-    definitions: options.context.definitions,
-    clock: options.context.clock,
-    streams: tools.deviceStreams,
-    readCallSession: makeReadCallSession(options.context.log),
-    fetching,
-    ...(tools.render === null
-      ? {}
+  const deviceStreams = tools.deviceStreams;
+
+  const deviceOptions: DeviceToolOptions | null =
+    deviceStreams === null
+      ? null
       : {
-          preview: {
-            draw: tools.render.draw,
-            timeZone: options.config.time.default_zone,
-          },
-        }),
-  };
+          log: options.context.log,
+          definitions: options.context.definitions,
+          clock: options.context.clock,
+          streams: deviceStreams,
+          readCallSession: makeReadCallSession(options.context.log),
+          fetching,
+          ...(tools.render === null
+            ? {}
+            : {
+                preview: {
+                  draw: tools.render.draw,
+                  timeZone: options.config.time.default_zone,
+                },
+              }),
+        };
 
-  const devices = buildDeviceTools(deviceOptions);
+  const devices = deviceOptions === null ? [] : buildDeviceTools(deviceOptions);
 
-  const packageConnector = buildDevicePackageConnector(deviceOptions, (actionID) =>
-    readActionCallSource(options.context.log, actionID),
-  );
+  const packageConnector =
+    deviceOptions === null
+      ? null
+      : buildDevicePackageConnector(deviceOptions, (actionID) =>
+          readActionCallSource(options.context.log, actionID),
+        );
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
 
@@ -420,12 +428,9 @@ export async function startConversationEndpoint(
     buildTaskReportTool(options.context),
   ];
 
-  // Only a call's thread holds the hang-up, so it stays out of the conversation's own list.
-  const hangUp = buildHangUpTool(() => tools.calls, options.context);
-
   const clash = findServerIDClash(
     Object.keys(options.config.mcp.servers),
-    [...definitions, hangUp, ...tools.testTools].map((definition) => definition.name),
+    [...definitions, ...tools.callTools, ...tools.testTools].map((definition) => definition.name),
   );
 
   if (clash !== null) {
@@ -435,7 +440,7 @@ export async function startConversationEndpoint(
   }
 
   const registry = buildToolRegistry(
-    [...definitions, hangUp, ...tools.testTools],
+    [...definitions, ...tools.callTools, ...tools.testTools],
     tools.toolSources,
   );
 
@@ -459,30 +464,35 @@ export async function startConversationEndpoint(
 
   // the fetches that device pages declare run while the tools are up, and an approved package that
   // lost its files comes back from the registry
-  const stopFetches = startPageFetches({
-    log: options.context.log,
-    clock: options.context.clock,
-    streams: tools.deviceStreams,
-    fetching,
-    onFailure: (error) => {
-      options.log('devices.fetch_failed', toErrorFields(error), 'error');
-    },
-  });
+  if (deviceStreams !== null) {
+    const stopFetches = startPageFetches({
+      log: options.context.log,
+      clock: options.context.clock,
+      streams: deviceStreams,
+      fetching,
+      onFailure: (error) => {
+        options.log('devices.fetch_failed', toErrorFields(error), 'error');
+      },
+    });
 
-  await options.cleanup.defer(stopFetches);
+    await options.cleanup.defer(stopFetches);
 
-  void restoreDevicePackages({
-    log: options.context.log,
-    fetching,
-    onFailure: (error) => {
-      options.log('devices.package_restore_failed', toErrorFields(error), 'error');
-    },
-  });
+    void restoreDevicePackages({
+      log: options.context.log,
+      fetching,
+      onFailure: (error) => {
+        options.log('devices.package_restore_failed', toErrorFields(error), 'error');
+      },
+    });
+  }
+
+  const connectorEntries =
+    packageConnector === null ? [] : [['device.addPackage', packageConnector] as const];
 
   return {
     endpoint,
     definitions: [...definitions, ...tools.testTools],
     taskBounds: bounds,
-    connectors: new Map([['device.addPackage', packageConnector]]),
+    connectors: new Map(connectorEntries),
   };
 }

@@ -1,4 +1,3 @@
-import type { VoiceDefinitions, VoiceFileProblem } from '@heynixie/calls';
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import type {
@@ -64,7 +63,9 @@ export interface DefinitionsSnapshot {
   readonly persona: string;
   readonly prompts: PromptOverrides;
   readonly tasks: SnapshotTasks;
-  readonly voice: VoiceDefinitions | null;
+
+  // the value of each section that a feature adds, by key, which the section's definition parses
+  readonly sections: SectionValues;
 
   readonly form: string;
 }
@@ -112,11 +113,11 @@ export interface ParsedDefinitions {
   readonly tasks: readonly TaskDefinition[];
   readonly taskWarnings: readonly TaskDefinitionWarning[];
 
-  // the voice settings of the voice/ files, or null when no file holds one
-  readonly voice: VoiceDefinitions | null;
+  // the value of each section that a feature adds, by key, left out when no file holds one
+  readonly sections: SectionValues;
 
-  // each voice file that the parse left unapplied, with its fault
-  readonly voiceProblems: readonly VoiceFileProblem[];
+  // each file of a section that the parse left unapplied, with its fault
+  readonly sectionProblems: readonly SectionFileProblem[];
   readonly unapplied: readonly string[];
 }
 
@@ -167,8 +168,8 @@ export interface DefinitionsInForce {
 
   readonly tasks: SnapshotTasks;
 
-  // the voice settings in force, or null when the definitions hold none
-  readonly voice: VoiceDefinitions | null;
+  // the value of each section that a feature adds, by key
+  readonly sections: SectionValues;
 }
 
 export type RuleOrigin = 'definitions' | 'nixie';
@@ -568,3 +569,11 @@ export type DefinitionsTables = CheckedTables<
     task_definition_exports: TaskDefinitionExportRow;
   }>
 >;
+
+export type SectionValues = Readonly<Record<string, unknown>>;
+
+export interface SectionFileProblem {
+  readonly event: string;
+  readonly path: string;
+  readonly reason: string;
+}

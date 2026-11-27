@@ -118,3 +118,15 @@ GEO-2879: POST /connections/finishConsent added `subschema #1, subschema #2` to 
 GEO-2879: POST /connections/readSetup the `connector` request property `type` changed from `any` to `string`
 GEO-2879: POST /connections/registerClient the `connector` request property `type` changed from `any` to `string`
 GEO-2879: POST /connections/startConsent the `connector` request property `type` changed from `any` to `string`
+GEO-2880: POST /calls/connect added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /calls/hangUp added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /calls/start added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/pageData added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/pageError added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/pageEvent added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/readImage added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/register added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/resize added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /devices/setCapability added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /live/follow added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2880: POST /sessions/issueCode added `subschema #2` to the response body `oneOf` list for the response status `409`

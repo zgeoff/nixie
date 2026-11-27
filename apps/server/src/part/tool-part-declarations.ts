@@ -1,3 +1,4 @@
+import { buildHangUpTool } from '@heynixie/calls';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { addCodingConnectors } from '../coding/add-coding-connectors';
@@ -162,6 +163,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     name: 'tool_endpoint',
     needs: ['inputs', 'context', 'web_fetch', 'render', 'worker', 'actions', 'decisions'],
     uses: [
+      'calls',
+      'device_streams',
       'computer',
       'google_tools',
       'code_run',
@@ -185,6 +188,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       );
 
       const definitionsExport = options.definitionsExport;
+      const calls = parts.find('calls');
 
       return startConversationEndpoint(
         {
@@ -209,7 +213,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             nowMs: () => parts.get('context').apiContext.clock.now(),
             stuckAfterMs: options.config.erasure.stuckAfterMs,
           }),
-          deviceStreams: parts.get('context').apiContext.clients.devices,
+          deviceStreams: parts.find('device_streams'),
           deviceFetch: {
             fetch: parts.get('web_fetch').deviceFetch,
             registry: parts.get('web_fetch').packageRegistry,
@@ -270,7 +274,10 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                   readReviewer: () => parts.find('checker')?.check ?? null,
                 },
           isPromptExported: definitionsExport !== null,
-          calls: parts.get('context').apiContext.calls,
+          callTools:
+            calls === null
+              ? []
+              : [buildHangUpTool(() => calls.context, parts.get('context').apiContext)],
         },
       );
     },

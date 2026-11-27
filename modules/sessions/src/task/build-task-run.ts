@@ -37,7 +37,7 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
             kind: 'call',
             callID: parts.run.call.callID,
             seedThrough: parts.run.call.seedThrough,
-            voicePrompt: options.calls?.voicePrompt ?? '',
+            prompt: options.calls?.prompt ?? '',
           },
     ...(parts.run.sinceSequence === null ? {} : { sinceSequence: parts.run.sinceSequence }),
     profile: routed.profile,

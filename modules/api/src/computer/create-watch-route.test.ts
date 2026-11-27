@@ -1,6 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { sessionCookieName } from '@heynixie/contract';
-import { readDeviceByIdentity } from '@heynixie/devices';
 import { readRecords } from '@heynixie/log';
 import { nativeWebSocket, waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
@@ -336,14 +335,9 @@ test('it ends the watch and closes the socket when its session is revoked', asyn
   expect(closed.code).toBe(1008);
 });
 
-test('it closes the watch socket and removes the device row when a full session with a device is revoked', async () => {
+test('it closes the watch socket when the session that holds it is revoked', async () => {
   const ctx = await setupTest();
   const other = await createDeviceSession(ctx.context, 'phone');
-
-  const otherClient = buildTestClient(ctx.url, other.token);
-
-  await otherClient.devices.register({ clientActionID: crypto.randomUUID(), name: 'kitchen tab' });
-
   const url = await ctx.mint(other.token);
 
   const browser = ctx.connect(url, other.token);
@@ -359,9 +353,8 @@ test('it closes the watch socket and removes the device row when a full session 
   await waitForCondition(() => ctx.watches[0]?.state.isEnded === true);
 
   const closed = await browser.closed;
-  const device = await readDeviceByIdentity(ctx.context.log.writer.db, other.sessionID);
 
-  expect([closed.code, ctx.watches[0]?.state.isEnded, device]).toStrictEqual([1008, true, null]);
+  expect([closed.code, ctx.watches[0]?.state.isEnded]).toStrictEqual([1008, true]);
 });
 
 test('it ends the watch and closes the socket when its session lapses past the idle limit', async () => {

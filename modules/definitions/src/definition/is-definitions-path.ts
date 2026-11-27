@@ -23,5 +23,5 @@ export function isDefinitionsPath(path: string): boolean {
 
   const extensions = folder === 'tasks' ? taskExtensions : definitionsExtensions;
 
-  return definitionsLayout.folders.has(folder ?? '') && extensions.has(extname(path));
+  return definitionsLayout.isFolder(folder ?? '') && extensions.has(extname(path));
 }

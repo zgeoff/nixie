@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { writeTakeOverRequest } from '../computer/write-take-over-request';
 import type { SessionState } from '../conversation/read-session-state';
 import { DeviceLeaderConnection } from '../device/device-leader-connection';
+import { isFeatureOn } from '../features/is-feature-on';
 import { useFeatures } from '../features/use-features';
 import { LiveConnection } from '../live/live-connection';
 import { BackupNotice } from './backup-notice';
@@ -40,7 +41,7 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
   return (
     <>
       <LiveConnection />
-      <DeviceLeaderConnection />
+      {isFeatureOn(features, 'devices') && <DeviceLeaderConnection />}
       <BackupNotice />
       <ForgetStuckNotice />
       <PauseBanner />

@@ -1,0 +1,60 @@
+import { expect, test } from 'bun:test';
+import { createTestClient, sendClientMessage, startE2ENixie } from '@heynixie/server/test-utils';
+
+async function setupTest() {
+  // a config with no devices section, so the devices feature is off
+  const nixie = await startE2ENixie({ isDevicesOff: true });
+
+  const server = nixie.harness.start();
+
+  const api = await createTestClient(server);
+
+  return { nixie, api };
+}
+
+test('it offers the model no device tool when the config has no devices section', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.model.addReplies({ text: 'Plum-reply-6DV2' });
+
+  await sendClientMessage(ctx.api.client, { text: 'Quince-message-1HT9' }, 'Plum-reply-6DV2', {
+    timeoutMs: 30_000,
+  });
+
+  const request = ctx.nixie.model.requests.find((entry) => entry.path === '/v1/messages');
+  const tools = request?.body?.tools?.map((tool) => tool.name) ?? [];
+
+  expect({
+    hasConversationTool: tools.includes('mcp__nixie__task_start'),
+    offered: tools.filter((name) => /device_/u.test(name)),
+  }).toStrictEqual({ hasConversationTool: true, offered: [] });
+});
+
+test('it leaves devices out of the features that nixie.read reports', async () => {
+  const ctx = await setupTest();
+  const read = await ctx.api.client.nixie.read();
+
+  expect(read.features).not.toContain('devices');
+});
+
+test('it answers a procedure of the devices with FEATURE_OFF', async () => {
+  const ctx = await setupTest();
+
+  const registered = ctx.api.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  expect(registered).rejects.toMatchObject({ code: 'FEATURE_OFF', data: { feature: 'devices' } });
+});
+
+test('it refuses a code for a device session', async () => {
+  const ctx = await setupTest();
+
+  const issued = ctx.api.client.sessions.issueCode({
+    clientActionID: crypto.randomUUID(),
+    scope: 'device',
+  });
+
+  expect(issued).rejects.toMatchObject({ code: 'FEATURE_OFF', data: { feature: 'devices' } });
+});

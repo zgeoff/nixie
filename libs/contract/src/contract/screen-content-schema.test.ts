@@ -43,8 +43,16 @@ test('it declares a missing device session and a missing device row for each own
     contract.devices.resize['~orpc'].errorMap,
     contract.devices.setCapability['~orpc'].errorMap,
   ]).toStrictEqual([
-    { UNAUTHORIZED: expect.anything(), NOT_A_DEVICE: expect.anything() },
-    { UNAUTHORIZED: expect.anything(), NOT_A_DEVICE: expect.anything() },
+    {
+      UNAUTHORIZED: expect.anything(),
+      FEATURE_OFF: expect.anything(),
+      NOT_A_DEVICE: expect.anything(),
+    },
+    {
+      UNAUTHORIZED: expect.anything(),
+      FEATURE_OFF: expect.anything(),
+      NOT_A_DEVICE: expect.anything(),
+    },
   ]);
 });
 

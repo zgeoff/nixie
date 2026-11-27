@@ -216,7 +216,7 @@ interface NameExceptionBase {
 
 // A name that a retrofit removes
 interface RetrofitNameException extends NameExceptionBase {
-  readonly removedBy: 'GEO-2880' | 'GEO-2881';
+  readonly removedBy: 'GEO-2881';
 }
 
 // An ordinary word that has nothing to do with the feature it matches, so no retrofit removes it
@@ -233,7 +233,7 @@ export interface ImportException {
 
   // the feature modules that the package depends on
   readonly imports: readonly string[];
-  readonly removedBy: 'GEO-2880' | 'GEO-2881';
+  readonly removedBy: 'GEO-2881';
 
   // why the retrofit removes it, when the package is no feature's own
   readonly reason?: string;

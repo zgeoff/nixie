@@ -64,3 +64,8 @@ export { restoreDevicePackages } from './package/restore-device-packages';
 export type { PackageCard } from './package/package-card';
 export { readPackageCard, toPackageCardBytes } from './package/package-card';
 export { devicePackageAddedCodec } from './record/device-package-added-codec';
+export { deviceInboxKinds } from './inbox/render-page-event-message';
+export { devicesConfigSchema } from './config/devices-config-schema';
+export { buildDevicesFeatureProcedures } from './api/build-devices-feature-procedures';
+export { buildDeviceSessionHook } from './api/build-device-session-hook';
+export { readPackageBodyFields } from './api/read-package-body-fields';

@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
 import { collectModuleRecordTopicMaps } from '@heynixie/api';
+import { callRecordTopics } from '@heynixie/calls';
 import { connectionRecordTopics } from '@heynixie/connections';
 import { computerTakeoverRecordTopics } from '@heynixie/connectors';
 import { credentialRecordTopics } from '@heynixie/credentials';
+import { devicesRecordTopics } from '@heynixie/devices';
 import { getRecordTopics } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
@@ -16,6 +18,8 @@ async function setupTest() {
     [
       ...collectModuleRecordTopicMaps(),
       computerTakeoverRecordTopics,
+      callRecordTopics,
+      devicesRecordTopics,
       connectionRecordTopics,
       credentialRecordTopics,
       sandboxRecordTopics,

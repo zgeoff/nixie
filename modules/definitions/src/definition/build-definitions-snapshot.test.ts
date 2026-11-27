@@ -33,6 +33,7 @@ test('it builds the canonical form and its hashes', () => {
       "personaVersion": "0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575",
       "policyHash": "b9796c07c2f3ba58000b2aa073ef491a4321f5469944614944478d51b283a435",
       "prompts": {},
+      "sections": {},
       "snapshotHash": "79b25d4e67d465a687fbd835712aaf17ca1c079ec3d2bc8c53a2fbeec387ac00",
       "tasks": [
         {
@@ -46,7 +47,6 @@ test('it builds the canonical form and its hashes', () => {
           "origin": "definitions",
         },
       ],
-      "voice": null,
     }
   `);
 });

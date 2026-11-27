@@ -36,7 +36,7 @@ const entries = [
   { exact: false, label: 'Passkeys', to: '/passkeys' },
   { exact: false, label: 'Connections', to: '/settings/connections', feature: 'google' },
   { exact: false, label: 'MCP servers', to: '/settings/mcp', feature: 'mcp' },
-  { exact: false, label: 'Add a device', to: '/add-device' },
+  { exact: false, label: 'Add a device', to: '/add-device', feature: 'devices' },
 ] as const satisfies readonly NavEntry[];
 
 const wideQuery = '(min-width: 768px)';
