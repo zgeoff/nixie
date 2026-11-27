@@ -60,7 +60,7 @@ function findORPCCode(error: unknown): string | null {
 const unreachableCodes = new Set(['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
 
 function pickNetworkFailure(error: unknown): Failure {
-  const code = error instanceof Error ? Reflect.get(error, 'code') : undefined;
+  const code: unknown = error instanceof Error ? Reflect.get(error, 'code') : undefined;
 
   return typeof code === 'string' && unreachableCodes.has(code)
     ? { status: 'refused', canClear: true, reason: 'unreachable' }
