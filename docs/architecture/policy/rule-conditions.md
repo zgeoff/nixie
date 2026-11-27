@@ -86,8 +86,8 @@ error, as CEL defines.
 
 - The library evaluates synchronously, so the limits bound the work: every list in the input holds
   at most 1,000 elements and the strings total at most 262,144 UTF-16 code units. A larger input
-  makes every condition on the call error with `input_too_large`. A unit test fails when the
-  costliest condition over the largest input takes more than 50 ms.
+  makes every condition on the call error with `input_too_large`. A unit test times the costliest
+  condition over the largest input.
 - A deny that errors never refuses a call unseen. The deny stage sets it aside, and the ask-rule
   stage counts it as an ask rule, so a deny that errors and a missing argument ask where the deny
   meant to refuse. A deny that matches wins over one that errored. To refuse a call that omits an
