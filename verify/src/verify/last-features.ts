@@ -49,6 +49,11 @@ export const lastFeatures = [
     paths: featurePaths['mail-wake'],
   },
   {
+    name: 'phone-text',
+    summary: 'A text wakes the chat',
+    paths: featurePaths['phone-text'],
+  },
+  {
     name: 'gmail-tools',
     summary: 'Search and read a mail, and approve a reply',
     paths: featurePaths['gmail-tools'],

@@ -1,5 +1,5 @@
 export interface DestinationToken {
-  readonly kind: 'account' | 'domain' | 'email' | 'handle' | 'phone' | 'url';
+  readonly kind: 'account' | 'domain' | 'email' | 'handle' | 'telephone' | 'url';
   readonly key: string;
   readonly raw: string;
   readonly part?: string;
@@ -35,7 +35,7 @@ const patterns: readonly TokenPattern[] = [
     pattern:
       /(?<=\b(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?|#))?(?:[\p{Zs}\t]+is|[\p{Zs}\t]*[:#])?[\p{Zs}\t]*)\d(?:[\p{Zs}\t-]?\d){5,16}\b(?![\p{Zs}\t-]?\d)/giu,
   },
-  { kind: 'phone', pattern: /\+?\d[\d\p{Zs}\t().-]{5,}\d/gu },
+  { kind: 'telephone', pattern: /\+?\d[\d\p{Zs}\t().-]{5,}\d/gu },
   { kind: 'domain', pattern: /\b(?:[\p{L}\p{N}-]+\.)+\p{L}{2,63}\b/gu },
 ];
 
@@ -72,7 +72,7 @@ function collectPatternTokens(
 
   const tokens = [...text.matchAll(entry.pattern)].flatMap((match) => {
     const range = { start: match.index, end: match.index + match[0].length };
-    const isShortNumber = entry.kind === 'phone' && match[0].replaceAll(/\D/gu, '').length < 7;
+    const isShortNumber = entry.kind === 'telephone' && match[0].replaceAll(/\D/gu, '').length < 7;
 
     if (hasOverlap(taken, range) || isShortNumber) {
       return [];
@@ -122,7 +122,7 @@ function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
     return cleaned.replaceAll(/\D/gu, '');
   }
 
-  if (kind === 'phone' || kind === 'account') {
+  if (kind === 'telephone' || kind === 'account') {
     return cleaned.replaceAll(/[^\d+A-Z]/gu, '');
   }
 

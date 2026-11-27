@@ -10,6 +10,7 @@ export interface FeatureConfig {
   readonly devices?: unknown;
   readonly images: unknown;
   readonly mail?: unknown;
+  readonly phone?: unknown;
   readonly coding?: { readonly atc?: unknown } | undefined;
   readonly spendStop?: unknown;
   readonly search: { readonly credential: unknown };
@@ -30,6 +31,7 @@ export function listFeaturesOn(config: FeatureConfig): readonly FeatureID[] {
     coding: config.coding?.atc !== undefined,
     spend: config.spendStop !== undefined,
     search: config.search.credential !== null,
+    phone: config.phone !== undefined,
   };
 
   return featureIDs.filter((feature) => isOn[feature]);

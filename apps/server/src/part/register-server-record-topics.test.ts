@@ -7,6 +7,7 @@ import { credentialRecordTopics } from '@heynixie/credentials';
 import { devicesRecordTopics } from '@heynixie/devices';
 import { getRecordTopics } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
+import { phoneRecordTopics } from '@heynixie/phone';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
 import { readDeclaredRecordKinds } from '../test-utils/read-declared-record-kinds';
 import { registerServerRecordTopics } from './register-server-record-topics';
@@ -20,6 +21,7 @@ async function setupTest() {
       computerTakeoverRecordTopics,
       callRecordTopics,
       devicesRecordTopics,
+      phoneRecordTopics,
       connectionRecordTopics,
       credentialRecordTopics,
       sandboxRecordTopics,

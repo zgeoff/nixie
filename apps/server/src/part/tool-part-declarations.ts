@@ -16,6 +16,8 @@ import { addGoogleConnectors } from '../google/add-google-connectors';
 import { addMailConnectors } from '../mail/add-mail-connectors';
 import { buildServerMailContext } from '../mail/build-server-mail-context';
 import { buildServerMailTools } from '../mail/build-server-mail-tools';
+import { addPhoneConnectors } from '../phone/add-phone-connectors';
+import { startPhonePart } from '../phone/start-phone-part';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
 import { buildStubImageProviders } from '../test/build-stub-image-providers';
@@ -97,6 +99,19 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    name: 'phone',
+    feature: 'phone',
+    needs: ['inputs', 'context'],
+    start: (parts) =>
+      Promise.resolve(
+        startPhonePart(
+          parts.get('inputs').options.phone,
+          parts.get('context').apiContext,
+          parts.get('inputs').options.log,
+        ),
+      ),
+  },
+  {
     // The sandbox that draws the preview of a device page.
     name: 'render',
     feature: 'devices',
@@ -138,7 +153,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'actions',
     needs: ['inputs', 'context'],
-    uses: ['computer', 'google_tools'],
+    uses: ['computer', 'google_tools', 'phone'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
@@ -156,9 +171,10 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const mail = parts.get('context').mail;
       const mailContext = buildServerMailContext(mail, apiContext, options.log);
       const withMail = addMailConnectors(withCoding, mail, mailContext);
+      const withPhone = addPhoneConnectors(withMail, parts.find('phone'));
 
       return Promise.resolve(
-        addGoogleConnectors(withMail, parts.find('google_tools')?.actions ?? null),
+        addGoogleConnectors(withPhone, parts.find('google_tools')?.actions ?? null),
       );
     },
   },
@@ -171,6 +187,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'device_streams',
       'computer',
       'google_tools',
+      'phone',
       'code_run',
       'memory',
       'notebook',
@@ -207,6 +224,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           render: parts.find('render') ?? null,
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
+          phone: parts.find('phone')?.tools ?? [],
           google: parts.find('google_tools')?.actions.map((action) => action.tool) ?? [],
 
           buildCodingStart: buildServerCodingStart(parts.get('context')),

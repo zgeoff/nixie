@@ -1,7 +1,14 @@
 import type { Mailbox } from '../types';
 
-// The mailbox that a stored key names, the inverse of buildMailboxKey.
+const sourcePrefix = 'source:';
+
+// The mailbox that a stored key names, the inverse of buildMailboxKey. A text source's key comes
+// first, because no connection's source takes the name `source`.
 export function parseMailboxKey(key: string): Mailbox {
+  if (key.startsWith(sourcePrefix)) {
+    return { kind: 'source', sourceID: key.slice(sourcePrefix.length) };
+  }
+
   const separator = key.indexOf(':');
 
   if (separator === -1) {

@@ -21,4 +21,11 @@ const mailArrivedSchema = z.object({
 // match was held for a later wake. The sender and the subject sit in the erasable fields, and the
 // core deletes the record's key once no held match names it.
 export const triggerMailArrivedCodec = defineRecordCodec('trigger.mail_arrived', mailArrivedSchema);
-export const mailArrivedFieldsSchema = z.object({ from: z.string(), subject: z.string() });
+
+export const mailArrivedFieldsSchema = z.object({
+  from: z.string(),
+  subject: z.string(),
+
+  // a text's body, which a mail's fields lack
+  body: z.string().exactOptional(),
+});

@@ -147,6 +147,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'trigger_sources',
     needs: ['server_parts', 'context', 'conversation_task', 'reminder_moves'],
+    uses: ['phone'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const writer = parts.context.log.writer;
@@ -161,6 +162,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const coding = reader.get('context').coding;
       const mail = reader.get('context').mail;
       const mailContext = buildServerMailContext(mail, parts.context, parts.log);
+      const phone = reader.find('phone') ?? null;
       const core = buildTriggerCore(parts);
 
       const sources = await startTriggerSources(
@@ -170,6 +172,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           ...(mail === null || mailContext === null
             ? []
             : [buildMailSource(mailContext, mail.host)]),
+          ...(phone === null ? [] : [phone.source]),
         ],
         core,
       );
@@ -392,7 +395,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'erasure',
       'tool_endpoint',
     ],
-    uses: ['takeover_restart', 'connections', 'gmail_source', 'calls'],
+    uses: ['takeover_restart', 'connections', 'gmail_source', 'calls', 'phone'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 
@@ -413,6 +416,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         registerHarnessOperations(harness.link, parts.context, {
           calls: reader.find('calls')?.context,
           mail: reader.get('context').mail?.memory ?? null,
+          phone: reader.find('phone')?.fake ?? null,
           notebook: reader.get('notebook'),
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
           readToolNames: reader.get('tool_endpoint').readToolNames,

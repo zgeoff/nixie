@@ -116,6 +116,9 @@ export interface ConversationEndpointTools {
   // the tools on the assistant's own mailbox, none without a mailbox
   readonly mail: readonly ToolDefinition[];
 
+  // the tools on the assistant's own phone, none without a phone
+  readonly phone: readonly ToolDefinition[];
+
   // the tools of the Google connector, which each run leaves out while its scopes are missing
   readonly google: readonly ToolDefinition[];
   readonly codeRun: ToolDefinition | null;
@@ -415,6 +418,7 @@ export async function startConversationEndpoint(
       ? []
       : [tools.buildCodingStart({ messaging, bounds, relatedMemory })]),
     ...tools.mail,
+    ...tools.phone,
     buildMcpServersTool(tools.readMcp),
     ...tools.google,
     ...search,

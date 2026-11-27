@@ -9,6 +9,7 @@ import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
 import type { NotebookStore } from '@heynixie/notebook';
+import type { FakePhoneProvider } from '@heynixie/phone/fake';
 import { readPendingActionProposals } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
@@ -20,7 +21,10 @@ import { harnessSpeech } from './harness-speech';
 
 export interface HarnessParts {
   readonly calls: CallsContext | undefined;
+
+  // the in-memory hosts that a journey puts mail and texts in, each null while its feature is off
   readonly mail: MemoryMailHost | null;
+  readonly phone: FakePhoneProvider | null;
   readonly notebook: NotebookStore;
   readonly runInForceSeed: () => Promise<unknown>;
   readonly readToolNames: () => readonly string[];
@@ -80,6 +84,14 @@ export function registerHarnessOperations(
     }
 
     return parts.mail.deliver(incoming).hostMessageID;
+  });
+
+  link.registerOperation('deliverText', schemas.deliverText, (incoming) => {
+    if (parts.phone === null) {
+      throw new Error('the config sets no phone section, so the test build has no phone');
+    }
+
+    return parts.phone.deliver(incoming).messageID;
   });
 
   // The owner's approval of each pending device.addPackage call, which a journey cannot give with a

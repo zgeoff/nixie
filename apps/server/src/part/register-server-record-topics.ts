@@ -7,6 +7,7 @@ import { credentialRecordTopics } from '@heynixie/credentials';
 import { devicesRecordTopics } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import { registerRecordTopics } from '@heynixie/log';
+import { phoneRecordTopics } from '@heynixie/phone';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
 import { serverRecordTopics } from './server-record-topics';
 
@@ -21,6 +22,7 @@ export function registerServerRecordTopics(
     ...(features.includes('computer') ? [computerTakeoverRecordTopics] : []),
     ...(features.includes('voice') ? [callRecordTopics] : []),
     ...(features.includes('devices') ? [devicesRecordTopics] : []),
+    ...(features.includes('phone') ? [phoneRecordTopics] : []),
     connectionRecordTopics,
     credentialRecordTopics,
     sandboxRecordTopics,

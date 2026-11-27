@@ -30,6 +30,7 @@ import { z } from 'zod';
 import { erasureConfigSchema } from '../config/erasure-config-schema';
 import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
+import { phoneSectionSchema } from '../phone/phone-section-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
 import { displayConfigSchema } from '../spend/display-config-schema';
 import { spendStopSchema } from '../spend/spend-stop-schema';
@@ -70,6 +71,7 @@ export const deploymentConfigSchema = z
     voice: voiceConfigSchema.optional(),
     devices: devicesConfigSchema.optional(),
     mail: mailConfigSchema.optional(),
+    phone: phoneSectionSchema.optional(),
     google: googleConfigSchema.optional(),
     gmail: z
       .never({ error: 'The gmail section moved under google: write google: { gmail: { … } }' })

@@ -85,8 +85,8 @@ test('it finds a sent mail by its Message-ID', async () => {
   invariant(mail !== null, 'the draft is valid');
 
   const sent = await ctx.host.send(mail);
-  const found = await ctx.host.findSent('act1@nixie.example.org');
-  const missing = await ctx.host.findSent('act2@nixie.example.org');
+  const found = await ctx.host.readSentTexts('act1@nixie.example.org');
+  const missing = await ctx.host.readSentTexts('act2@nixie.example.org');
 
   expect([found, missing]).toStrictEqual([sent, null]);
 });
@@ -145,7 +145,7 @@ test('it continues the host of an earlier state, with its unread mail, sent mail
   const continued = buildMemoryMailHost({ ...options, state });
 
   const changes = await continued.readChanges(cursor);
-  const found = await continued.findSent('act1@nixie.example.org');
+  const found = await continued.readSentTexts('act1@nixie.example.org');
 
   const next = continued.deliver({ from: 'b@x.example.org', subject: 'Next', text: 'Next.' });
 

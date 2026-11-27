@@ -47,7 +47,7 @@ test('it keeps the unread mail, the sent mail and the IDs of a host that starts 
   const restarted = createFileMemoryMailHost(ctx.options);
 
   const changes = await restarted.readChanges(cursor);
-  const found = await restarted.findSent('act1@nixie.example.org');
+  const found = await restarted.readSentTexts('act1@nixie.example.org');
 
   const next = restarted.deliver({ from: 'b@x.example.org', subject: 'Next', text: 'Next.' });
 

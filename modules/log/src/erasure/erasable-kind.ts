@@ -8,6 +8,7 @@ export const erasableKindSchema = z.enum([
   'image',
   'conversation',
   'credential',
+  'text',
 ]);
 
 export type ErasableKind = z.infer<typeof erasableKindSchema>;
