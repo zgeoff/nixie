@@ -12,9 +12,7 @@ export function buildCodingStartInput(settings: CodingSettings): JSONObject {
         type: 'string',
         minLength: 1,
         maxLength: 8000,
-        description:
-          'with repo: what the coding agent works from; with session: a note on the task, which ' +
-          'the session never gets',
+        description: 'with repo: the brief for the new session; with session: a note on the task',
       },
       repo: {
         type: 'object',
