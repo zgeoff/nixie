@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.125.0](https://github.com/zgeoff/nixie/compare/v0.124.0...v0.125.0) (2026-11-27)
+
+
+### Features
+
+* **phone:** read the phone number and twilio ids from secrets ([#1546](https://github.com/zgeoff/nixie/issues/1546)) ([4cfacd5](https://github.com/zgeoff/nixie/commit/4cfacd55acbdd93e352fcf93a92600c82c71feed))
+* **policy:** keep one directory of trusted places ([#1539](https://github.com/zgeoff/nixie/issues/1539)) ([1bbd173](https://github.com/zgeoff/nixie/commit/1bbd173bda665d270cbdb9e99a8426e3c3c2a430))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.330 ([#1541](https://github.com/zgeoff/nixie/issues/1541)) ([4f21d33](https://github.com/zgeoff/nixie/commit/4f21d33ae2e0c6af9fb80a9ea6e4e1d5a939427f))
+* **policy:** release a held action when its ask is approved ([#1540](https://github.com/zgeoff/nixie/issues/1540)) ([8abce6e](https://github.com/zgeoff/nixie/commit/8abce6e306a5dee4d55c77f462ed36415b0dd600))
+* **test:** answer atc's fleet api in the model api lane ([#1545](https://github.com/zgeoff/nixie/issues/1545)) ([56a15c5](https://github.com/zgeoff/nixie/commit/56a15c5c838a4a4347148b58eb4319e525718d1f))
+
 ## [0.124.0](https://github.com/zgeoff/nixie/compare/v0.123.0...v0.124.0) (2026-11-27)
 
 
