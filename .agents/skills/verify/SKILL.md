@@ -13,9 +13,9 @@ metadata:
 
 Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
-[Check a change](#check-a-change), stop the app with step 11, and give the **Reply** at the end of
-this file: the PR link and each feature you could not verify. You are done after the Reply. Leave
-`bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its description.
+[Check a change](#check-a-change). You are done once the report is published and the run is ended,
+and you have given the **Reply** at the end. Leave `bun verify gate` to CI: it fails a PR that
+changes a feature with no verdict in its description.
 
 These cost the most time:
 
@@ -52,7 +52,7 @@ These cost the most time:
 | chat-turn          | Send a message, and see the reply after it                        | [references/feature-chat-turn.md](references/feature-chat-turn.md)                   |
 | memory-approval    | Approve a proposed memory                                         | [references/feature-memory-approval.md](references/feature-memory-approval.md)       |
 | policy-proposal    | Approve a call that an ask rule held unrun                        | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
-| rule-condition     | Approve a rule with a condition, and see it match and not match   | [references/feature-rule-condition.md](references/feature-rule-condition.md)         |
+| rule-condition     | Approve a rule with a condition, and see it match                 | [references/feature-rule-condition.md](references/feature-rule-condition.md)         |
 | task-control       | Pause and resume a task                                           | [references/feature-task-control.md](references/feature-task-control.md)             |
 | coding-session     | Start a coding session from chat                                  | [references/feature-coding-session.md](references/feature-coding-session.md)         |
 | coding-supervision | Supervise a coding session from the live view                     | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |
@@ -89,7 +89,7 @@ These cost the most time:
 1. Run `bun verify report`. In `data.report.features`, a feature shows `changed: true` when a file
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
-2. Pick the target you were asked to use, or the first target in the
+2. Pick the target you were asked to use, or the first launch target in the
    [targets table](references/targets.md). Run `bun verify use --target <target>` and the commands
    in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
@@ -114,8 +114,7 @@ These cost the most time:
      `check-failed` until a journey command has succeeded after `doctor`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
    check, in the order of the features table in [References](#references). Run the part of a journey
-   that its feature's file marks as last after every other journey, because that part needs an `up`
-   with different settings and restarts the app.
+   that its feature's file marks as last after every other journey.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Repeat steps 4 to 6 for each `stale` feature.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
@@ -135,8 +134,8 @@ command passed. It holds `<command> ok=<true|false>`, then `error.code` and `err
 
 Read `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure.
 `evidence` lists the files the command kept, under `.wringer/`. `truncatedPath` names the file that
-holds `data` when it was too large to print. When a command fails, follow its row in
-[Exit codes](references/exit-codes.md).
+holds `data` when it was too large to print. When a command fails, do what its row in
+[Exit codes](references/exit-codes.md) says.
 
 ## Targets
 
@@ -189,8 +188,7 @@ files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run
-`bun verify lint` after you change this skill, a feature file or the registry. When `lint` fails,
-read its `error.code` and `error.hint`, fix the file they name, and run `lint` again.
+`bun verify lint` after you change this skill, a feature file or the registry.
 
 **Reply:** the PR link that `bun verify publish` returned in `data.pr.url`, and each feature you
 could not verify, with the command that failed and its `error.code`, or the end state you expected
