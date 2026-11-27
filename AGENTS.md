@@ -92,6 +92,7 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 - The Agent SDK: `guests/conversation`. The SDK contract suite in `evals/` may import it too,
   because it checks the SDK itself.
 - imp's client: `adapters/sandbox-imp`.
+- atc's client: `adapters/coding-atc`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
 - ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
 - The CEL library: `modules/policy`.

@@ -139,6 +139,7 @@ A few imports belong to one package each, and the Agent SDK to two:
 | ----------------------------------- | ---------------------------------- |
 | The Agent SDK                       | `guests/conversation` and `evals/` |
 | imp's client                        | `adapters/sandbox-imp`             |
+| atc's client                        | `adapters/coding-atc`              |
 | `bun:sqlite` and the Kysely dialect | `libs/db`                          |
 | ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`            |
 
