@@ -588,12 +588,12 @@ earlier release wrote.
 
 Every step is safe to run twice. A crash between the 2 parts, or anywhere inside the second, leaves
 the item forgetting with `erasure.started` open, and the catch-up at the server's start finishes it
-before the store builds its index and before any runner claims work. A forget that an earlier
-release left in forgetting, with `memory.forget_started` and no `erasure.started`, gets one at that
-server start, as the actor `user`, because only the user forgot an item then, and finishes the same
-way. A deleted key never returns while a forget waits, and the forget completes only after the
-session cleanup returns. [Memory in context](./context.md#forgetting-and-the-live-session) covers
-what that cleanup removes.
+once the store has started and built its index, and before any runner claims work. A forget that an
+earlier release left in forgetting, with `memory.forget_started` and no `erasure.started`, gets one
+at that server start, as the actor `user`, because only the user forgot an item then, and finishes
+the same way. A deleted key never returns while a forget waits, and the forget completes only after
+the session cleanup returns. [Memory in context](./context.md#forgetting-and-the-live-session)
+covers what that cleanup removes.
 
 The erasure's start record also captures the key of each fold order whose topic no other item holds,
 because a fold order keeps the name of its topic. The last item of a topic takes the name with it,

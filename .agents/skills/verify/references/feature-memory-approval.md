@@ -62,8 +62,10 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify conversation turn --message 'I took the bees some sugar water today.' --reply 'I will ask you before I remember that.'
    ```
 
-   Expect: `conversation turn` exits 0. When it fails, run `bun verify browser snapshot` to see
-   whether the message reached the page, and do not go on to step 3.
+   Expect: `conversation turn` exits 0. It checks only the stream records, and exits 1 with
+   `check-failed` when they lack the message or the reply after 10 seconds. Then follow the
+   `check-failed` row of [Exit codes](exit-codes.md), read the error message, which lists the
+   records, and skip step 3.
 
 3. On `preview`, skip this step. On `local`, check that no memory item exists yet:
 
@@ -134,9 +136,10 @@ item's fact would make nixie keep the item at once, with no proposal.
    `script-reply` reports only the steps it queues, so the count starts again here: the reminder
    call, the note write and the text reply are 3 steps.
 
-   When `conversation turn` fails, run `bun verify browser snapshot` to read the error, skip step 8
-   and `bun verify done`, and say in your reply that the reminder's result listed no `related` item.
-   Run the first query of step 6 to see whether the item is still `active`.
+   When `conversation turn` fails, read the error message, which lists the records. Skip step 8 and
+   `bun verify done`, and say in your reply that the turn lacked its reply. The reminder's result
+   may have listed no `related` item, which `conversation turn` does not check: run the first query
+   of step 6 to see whether the item is still `active`.
 
 8. Check that the reminder is set and the note carries the short ID of the related memory.
 
@@ -165,9 +168,10 @@ item's fact would make nixie keep the item at once, with no proposal.
    Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
    exit 0. The last snapshot waits until the forgotten item's line shows a "forgotten" date, which
    appears once `erasure.finished` is written. While the line reads "forgetting", the erasure is
-   still open: start step 10 only after the command exits 0. When it fails because the "forgotten"
-   date never showed, skip `bun verify done`, run step 10's queries anyway to see where the erasure
-   stopped, and list in your reply the rows you got.
+   still open: start step 10 only after the command exits 0. When the "forgotten" date never shows,
+   the command exits 1 with `check-failed` and keeps the last snapshot in its evidence. Then skip
+   `bun verify done`, run step 10's queries anyway to see where the erasure stopped, and list in
+   your reply the rows you got.
 
 10. Check the erasure states of the forget and the memory page:
 
