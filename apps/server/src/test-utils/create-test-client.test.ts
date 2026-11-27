@@ -25,6 +25,15 @@ test('it gives the device token, which signs in another client as the same devic
   expect(listed.sessions).toMatchObject([{ current: true, deviceName: 'laptop' }]);
 });
 
+test('it signs a client in with a given device token, and enrols no other device', async () => {
+  const ctx = await setupTest();
+  const created = await createTestClient(ctx.nixie);
+  const again = await createTestClient(ctx.nixie, { token: created.token });
+  const listed = await again.client.sessions.list();
+
+  expect(listed.sessions).toMatchObject([{ current: true, deviceName: 'laptop' }]);
+});
+
 test('it gives a signed-out client that the API refuses', async () => {
   const ctx = await setupTest();
   const created = await createTestClient(ctx.nixie);

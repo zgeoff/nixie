@@ -197,7 +197,7 @@ export async function runVerifyHarness(): Promise<void> {
 
     server = nixie.harness.start();
 
-    api = await createTestClient(server);
+    api = await createTestClient(server, { token: api.token });
 
     gmailBaseline.requests = google.gmail.requests.length;
   }

@@ -43,10 +43,11 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
    Expect: both commands exit 0. The snapshot shows the text that the feature is off, and no button
    named "Connect a Google account".
 
-3. Check the tools that nixie gave the model at its start:
+3. Check the tools that nixie gave the model at its last start. Read only the last `server.started`
+   record, because nixie had Google on at the first start of the `up`:
 
    ```bash
-   bun verify db query "select (select count(*) from records r, json_each(r.payload, '$.given.tools') t where r.kind = 'server.started' and (t.value like 'gmail.%' or t.value like 'calendar.%' or t.value like 'drive.%')) as google_tools, (select count(*) from records r, json_each(r.payload, '$.given.tools') t where r.kind = 'server.started' and t.value = 'task.start') as task_start_tools"
+   bun verify db query "with last as (select payload from records where kind = 'server.started' order by sequence desc limit 1) select (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value like 'gmail.%' or t.value like 'calendar.%' or t.value like 'drive.%') as google_tools, (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value = 'task.start') as task_start_tools"
    ```
 
    Expect: one row, with `google_tools` 0 and `task_start_tools` 1. The second count shows that the
