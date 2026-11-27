@@ -184,7 +184,7 @@ test('#memory.forget cleans up the sessions, then records the forget as complete
   ).toStrictEqual(['erasure.started', 'erasure.finished']);
 });
 
-test('#memory.forget completes a forget on the retry after its session cleanup failed', async () => {
+test('#memory.forget replies pending when its session cleanup failed, and a retry with the same client action completes it', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
@@ -199,9 +199,12 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
     Promise.reject(new Error('the guest did not answer')),
   );
 
-  const failed = await client.memory
-    .forget({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item })
-    .catch((error: unknown) => error);
+  const pending = await client.memory.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    ...item,
+  });
+
+  const stateAfterFailure = await ctx.memory.view.readForgetStatus([item.itemID]);
 
   const retried = await client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -210,8 +213,48 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+  expect(pending).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(stateAfterFailure).toMatchObject({ deleted: [], pending: [item.itemID] });
   expect(retried).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(history?.state).toBe('forgotten');
+});
+
+test('#memory.forget joins the open erasure of an item for a request with a fresh client action', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'The shed padlock code is 2291',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  ctx.cleanupSessions.mockImplementationOnce(() =>
+    Promise.reject(new Error('the guest did not answer')),
+  );
+
+  await client.memory.forget({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item });
+
+  const joined = await client.memory.forget({
+    clientActionID: '0b8e4d6a-2c1f-4a7e-9d35-7e1a6c4b8f20',
+    ...item,
+  });
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  const history = await ctx.memory.readHistory(item.itemID);
+
+  expect(joined).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'erasure.started',
+    'erasure.finished',
+  ]);
+
   expect(history?.state).toBe('forgotten');
 });
 
@@ -606,7 +649,7 @@ test('#memory.forgetRetired refuses a target listed twice', async () => {
   expect(forget).rejects.toMatchObject({ code: 'BAD_REQUEST' });
 });
 
-test('#memory.forgetRetired finishes the pending items on the retry after a cleanup failed', async () => {
+test('#memory.forgetRetired replies with the pending items when a cleanup failed, and finishes them on the retry', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
@@ -649,11 +692,11 @@ test('#memory.forgetRetired finishes the pending items on the retry after a clea
   const input = { clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74', targets: retired };
   const itemIDs = retired.map((target) => target.itemID);
 
-  const failed = await client.memory.forgetRetired(input).catch((error: unknown) => error);
+  const failed = await client.memory.forgetRetired(input);
   const pending = await client.memory.readForgetStatus({ itemIDs });
   const retried = await client.memory.forgetRetired(input);
 
-  expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+  expect(failed).toStrictEqual({ deleted: [], pending: itemIDs, backup: { state: 'pending' } });
   expect(pending).toStrictEqual({ deleted: [], pending: itemIDs, backup: { state: 'pending' } });
 
   expect(retried).toStrictEqual({

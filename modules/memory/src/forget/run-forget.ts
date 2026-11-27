@@ -1,6 +1,5 @@
 import type { ErasureHandle } from '@heynixie/log';
-import type { ItemErasureRequest } from '../item/erasure/build-item-erasable';
-import type { ForgetRequest, StoreParts } from '../types';
+import type { ForgetRequest, ItemErasureRequest, StoreParts } from '../types';
 import { runItemForgets } from './run-item-forgets';
 
 // Runs the forget of one item to its end.
@@ -12,6 +11,7 @@ export async function runForget(
   await runItemForgets(parts, erasure, {
     provenance: request.provenance,
     writeInTransaction: request.writeInTransaction,
+    isFinishDeferred: request.isFinishDeferred,
     readRequests: () =>
       Promise.resolve([
         {

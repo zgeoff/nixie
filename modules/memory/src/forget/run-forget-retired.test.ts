@@ -363,3 +363,55 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
     { record: { payload: { targetID: second.itemID } } },
   ]);
 });
+
+test('it begins the targets that a stop between two starts left unbegun on the retry, and commits the caller hook with the last start only', async () => {
+  const ctx = await setupTest();
+  const first = await createMemoryItem(ctx.memory.store, { text: 'Owns a red canoe' });
+  const second = await createMemoryItem(ctx.memory.store, { text: 'Plays the oboe badly' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const retired = await Promise.all(
+    [first, second].map((target) => ctx.memory.store.retire({ target, provenance })),
+  );
+
+  const writeInTransaction = mock(() => Promise.resolve());
+
+  startFaultPointFailure('erasure.begun');
+
+  const stopped = ctx.memory.store.forgetRetired({
+    targets: retired,
+    provenance,
+    writeInTransaction,
+  });
+
+  await stopped.catch(() => {});
+
+  const hookCallsAtStop = writeInTransaction.mock.calls.length;
+
+  await ctx.memory.store.forgetRetired({ targets: retired, provenance, writeInTransaction });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  expect(stopped).rejects.toMatchObject({ message: 'crashed at erasure.begun' });
+  expect(hookCallsAtStop).toBe(0);
+  expect(writeInTransaction).toHaveBeenCalledTimes(1);
+
+  expect(
+    records.map((entry) => [entry.record.kind, entry.record.payload['targetID']]),
+  ).toStrictEqual([
+    ['erasure.started', first.itemID],
+    ['erasure.started', second.itemID],
+    ['erasure.finished', first.itemID],
+    ['erasure.finished', second.itemID],
+  ]);
+});

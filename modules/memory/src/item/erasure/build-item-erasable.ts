@@ -2,29 +2,16 @@ import type { Erasable, ErasureStart, WriteTransaction } from '@heynixie/log';
 import { ErasureRefusedError } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
-import { removeOrphanFoldOrders } from '../../fold/remove-orphan-fold-orders';
+import { readOrphanFoldOrderKeyIDs } from '../../fold/read-orphan-fold-order-key-ids';
 import { readForgetFloor } from '../../forget/read-forget-floor';
 import { readRetopicCardKeyIDs } from '../../retopic/read-retopic-card-key-ids';
-import type { MemoryState, MemoryTables, StoreParts } from '../../types';
+import type { ItemErasureRequest, MemoryTables, StoreParts } from '../../types';
 import { requireItem } from '../../utils/item/require-item';
 import { readLegacyOpenItemForgets } from './read-legacy-open-item-forgets';
 
-export interface ItemErasureRequest {
-  readonly itemID: string;
-
-  // the revision the caller saw; null takes the item as it stands
-  readonly revision: number | null;
-
-  // the states the item may be in, so a retired-only forget refuses an active item
-  readonly states: readonly MemoryState[];
-
-  // starts from an item that an earlier release's forget left in forgetting
-  readonly isResuming?: boolean;
-}
-
-// The memory item's runner methods. A forget captures every key of the item's family and of the
-// retopic cards that name it, takes the item out of search, labels, vectors and triggers, and has
-// no child.
+// The memory item's runner methods. A forget captures every key of the item's family, of the retopic
+// cards that name it and of the fold orders that only it keeps alive. It takes the item out of
+// search, labels, vectors and triggers, and has no child.
 export function buildItemErasable(parts: StoreParts): Erasable<ItemErasureRequest> {
   const hide = async (itemID: string) => {
     await parts.index.remove(itemID);
@@ -44,12 +31,7 @@ export function buildItemErasable(parts: StoreParts): Erasable<ItemErasureReques
       revision: null,
       states: ['active', 'retired'],
     }),
-    cleanIndexes: async (target) => {
-      await hide(target.targetID);
-
-      // a fold order keeps the name of a topic that the forgotten item may have held last
-      await removeOrphanFoldOrders(parts);
-    },
+    cleanIndexes: (target) => hide(target.targetID),
     readLegacyOpen: () => readLegacyOpenItemForgets(parts.context),
   };
 }
@@ -81,7 +63,16 @@ async function startItemErasure(
     shortID: item.short_id,
     capture: {
       keys: { family: item.item_id },
-      cleanupKeys: [...(await readRetopicCardKeyIDs(log, item.item_id))],
+
+      // the retopic cards that name the item, and the fold orders that keep the name of a topic
+      // that the item holds last
+      cleanupKeys: [
+        ...(await readRetopicCardKeyIDs(log, item.item_id)),
+        ...(await readOrphanFoldOrderKeyIDs(
+          { context: { ...parts.context, log }, labels: parts.labels },
+          item.item_id,
+        )),
+      ],
       sandboxCallIDs: [],
       purges: [],
       sessionCause: { itemID: item.item_id },

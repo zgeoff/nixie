@@ -1,6 +1,7 @@
 import { toContractMemoryItem } from '../contract/to-contract-memory-item';
 import { toContractMemoryVersion } from '../contract/to-contract-memory-version';
 import { readForgetStatusReply } from '../forget/read-forget-status-reply';
+import { runForgetFinish } from '../forget/run-forget-finish';
 import { ownerProvenance } from '../owner/owner-provenance';
 import type { APIContext, ReadViewMemory } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -39,10 +40,15 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
         input: target,
         result,
         apply: (writeInTransaction) =>
-          memoryStore.forget({ target, provenance: ownerProvenance, writeInTransaction }),
+          memoryStore.forget({
+            target,
+            provenance: ownerProvenance,
+            writeInTransaction,
+            isFinishDeferred: true,
+          }),
       }));
 
-      const status = await store.finishForgets([target.itemID]);
+      const status = await runForgetFinish(context, store, [target.itemID]);
       const reply = await readForgetStatusReply(context, [target.itemID], status);
 
       return { ...result, backup: reply.backup };
@@ -75,10 +81,15 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
         input: { targets },
         result: { itemIDs },
         apply: (writeInTransaction) =>
-          memoryStore.forgetRetired({ targets, provenance: ownerProvenance, writeInTransaction }),
+          memoryStore.forgetRetired({
+            targets,
+            provenance: ownerProvenance,
+            writeInTransaction,
+            isFinishDeferred: true,
+          }),
       }));
 
-      const status = await store.finishForgets(itemIDs);
+      const status = await runForgetFinish(context, store, itemIDs);
 
       return readForgetStatusReply(context, itemIDs, status);
     }),

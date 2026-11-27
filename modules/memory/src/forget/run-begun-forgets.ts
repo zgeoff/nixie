@@ -1,6 +1,5 @@
 import type { ErasureHandle } from '@heynixie/log';
-import type { ItemErasureRequest } from '../item/erasure/build-item-erasable';
-import type { ForgetStatus, MemoryTables, StoreParts } from '../types';
+import type { ForgetStatus, ItemErasureRequest, MemoryTables, StoreParts } from '../types';
 import { readForgetStatus } from '../utils/read-forget-status';
 
 // Runs every step after the start for each item that has an open erasure, then reports where each

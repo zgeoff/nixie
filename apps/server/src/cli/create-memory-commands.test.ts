@@ -211,13 +211,16 @@ test('it runs the turn after a forget through the memory view on a rebuilt sessi
   );
 
   expect(
-    run.records.filter((record) => /^memory\.forg|^model\.session_/u.test(record.kind)),
+    run.records.filter((record) => /^erasure\.|^model\.session_/u.test(record.kind)),
   ).toMatchObject([
     { kind: 'model.session_opened', payload: { kind: 'first' } },
-    { kind: 'memory.forget_started', payload: { itemID: key.itemID, version: 1 } },
+    {
+      kind: 'erasure.started',
+      payload: { kind: 'memory_item', targetID: key.itemID, version: 1 },
+    },
     { kind: 'model.session_invalidated' },
     { kind: 'model.session_cleanup_completed' },
-    { kind: 'memory.forgotten', payload: { itemID: key.itemID } },
+    { kind: 'erasure.finished', payload: { kind: 'memory_item', targetID: key.itemID } },
     { kind: 'model.session_opened', payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
 });
@@ -281,13 +284,16 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
   );
 
   expect(
-    run.records.filter((record) => /^memory\.forg|^model\.session_/u.test(record.kind)),
+    run.records.filter((record) => /^erasure\.|^model\.session_/u.test(record.kind)),
   ).toMatchObject([
     { kind: 'model.session_opened', payload: { kind: 'first' } },
-    { kind: 'memory.forget_started', payload: { itemID: lock.itemID, version: 1 } },
+    {
+      kind: 'erasure.started',
+      payload: { kind: 'memory_item', targetID: lock.itemID, version: 1 },
+    },
     { kind: 'model.session_invalidated' },
     { kind: 'model.session_cleanup_completed' },
-    { kind: 'memory.forgotten', payload: { itemID: lock.itemID } },
+    { kind: 'erasure.finished', payload: { kind: 'memory_item', targetID: lock.itemID } },
     { kind: 'model.session_opened', payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
 });

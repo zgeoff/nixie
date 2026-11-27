@@ -1,9 +1,8 @@
 import type { ErasureHandle } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { ItemErasureRequest } from '../item/erasure/build-item-erasable';
 import { runEvidencePurges } from '../purge/run-evidence-purges';
 import { runItemPurge } from '../purge/run-item-purge';
-import type { MemoryStore, StoreParts } from '../types';
+import type { ItemErasureRequest, MemoryStore, StoreParts } from '../types';
 import { runBegunForgets } from './run-begun-forgets';
 import { runForget } from './run-forget';
 import { runForgetAll } from './run-forget-all';
@@ -33,7 +32,7 @@ export function buildForgetStore(
     forgetRetired: (request) => runForgetRetired(parts, requireErasure(), request),
     forgetAll: (request) => runForgetAll(parts, requireErasure(), request),
     finishForgets: (itemIDs) => runBegunForgets(parts, requireErasure(), itemIDs),
-    purgeItemEvidence: (request) => runItemPurge(parts, request),
-    finishEvidencePurges: (scope) => runEvidencePurges(parts, scope),
+    purgeItemEvidence: (request) => runItemPurge(parts, requireErasure(), request),
+    finishEvidencePurges: (scope) => runEvidencePurges(parts, requireErasure(), scope),
   };
 }

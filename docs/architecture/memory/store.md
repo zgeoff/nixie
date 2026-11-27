@@ -225,10 +225,11 @@ the purge fails as stale. After the commit the purge deletes the closed keys and
 `memory.evidence_purged`.
 
 An item whose own [forget](#forgetting) has begun gets no closing commit, because that forget
-deletes every key of the item. The purge deletes the item's key family itself and checkpoints the
-key store, then writes `memory.evidence_purged`, and the forget finds no key left to delete. So
-`record.forgotten` always follows the delete of every key that holds the record's text, even when
-the item's own forget has not reached its key delete.
+deletes every key of the item. The purge waits for that forget: it runs the item's open erasure to
+its end, which deletes every key of the item, and then writes `memory.evidence_purged`. A forget
+that an earlier release left in forgetting gets its `erasure.started` first. So `record.forgotten`
+always follows the delete of every key that holds the record's text, even when the item's own forget
+has not reached its key delete.
 
 The memory view's history shows a bridge with its text and "Kept when a message was removed", with
 no change or origin. Recall shows its change as `kept`, with the line "kept when a message it quoted
@@ -592,9 +593,25 @@ deleted key never returns while a forget waits, and the forget completes only af
 cleanup returns. [Memory in context](./context.md#forgetting-and-the-live-session) covers what that
 cleanup removes.
 
-The cleanup also removes the key of each fold order whose topic no remaining item holds, because a
-fold order keeps the name of its topic. It reads the other items after the item left the labels, so
-the last item of a topic takes the name with it.
+The start also captures the key of each fold order whose topic no other item holds, because a fold
+order keeps the name of its topic. The last item of a topic takes the name with it, and
+`removedKeys` counts that key with the rest.
+
+A second forget of an item that is already forgetting, from a request with a new client action,
+joins the open erasure: it starts nothing and finishes the open one. A forget of several items
+checks every revision before it starts any, starts the items in turn, and commits the caller's
+client action with the last start. A stop between two starts leaves the action unsaved, so the retry
+begins the items that never started and joins the ones that did. A route replies pending when a step
+after the starts fails, and the retry finishes the forget.
+
+The model has no tool that forgets an item. The design leaves item forgets to the user, as it leaves
+a record's, and the model's `forget.retry` only finishes a forget that a checked action or the host
+started. The runner still records `by` as `assistant` for a forget whose provenance is not the
+owner's, so a later tool needs no change to the record.
+
+The migration that moved items onto the runner raises the oldest reader. The release before
+registers only moments, so it cannot finish an open `memory_item` erasure, and it refuses to open a
+database that the new release wrote.
 
 The key deletion and its checkpoint are the ones [erasable fields](../core/erasable-fields.md)
 describes, so neither the key store file nor its write-ahead log keeps the wrapped key. The version

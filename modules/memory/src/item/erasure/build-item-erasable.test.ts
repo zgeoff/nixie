@@ -244,7 +244,7 @@ test('it removes the moment links of the item when its forget starts', async () 
   expect(links.size).toBe(0);
 });
 
-test('it refuses a forget of an item that is already forgetting, and starts no second erasure', async () => {
+test('it joins the open erasure of an item that is already forgetting, and starts no second erasure', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
 
@@ -258,5 +258,46 @@ test('it refuses a forget of an item that is already forgetting, and starts no s
 
   await second.catch(() => {});
 
-  expect(second).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  expect(second).resolves.toBeUndefined();
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'erasure.started',
+    'erasure.finished',
+  ]);
+});
+
+test('it counts the fold order that only the item kept alive in the keys of the finish record, and shreds it', async () => {
+  const ctx = await setupTest();
+
+  const item = await createMemoryItem(ctx.memory.store, {
+    text: 'Keeps bees on the roof',
+    labels: { gist: 'bees gist', topic: 'garden', triggers: [] },
+  });
+
+  await ctx.memory.store.writes.writeFoldOrder({
+    subject: 'owner',
+    topic: 'garden',
+    order: 'oldest',
+    caller: buildMockWriteCaller(),
+  });
+
+  await ctx.memory.store.forget({ target: item, provenance: buildMockProvenance() });
+
+  const finished = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['erasure.finished'],
+  });
+
+  const folds = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.fold_ordered'],
+  });
+
+  expect(finished.map((entry) => entry.record.payload)).toMatchObject([{ removedKeys: 3 }]);
+  expect(folds.map((entry) => entry.record.erasable)).toStrictEqual([{ status: 'shredded' }]);
 });

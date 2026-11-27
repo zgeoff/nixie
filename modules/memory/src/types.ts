@@ -143,16 +143,37 @@ export interface ForgetRequest {
   readonly target: VersionRef;
   readonly provenance: Provenance;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // stops after the start, for a caller that runs the rest through finishForgets and answers a
+  // failure there as pending
+  readonly isFinishDeferred?: boolean;
 }
 
 export interface RetiredForgetRequest {
   readonly targets: readonly VersionRef[];
   readonly provenance: Provenance;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // stops after the start, for a caller that runs the rest through finishForgets and answers a
+  // failure there as pending
+  readonly isFinishDeferred?: boolean;
 }
 
 export interface AllForgetRequest {
   readonly provenance: Provenance;
+}
+
+export interface ItemErasureRequest {
+  readonly itemID: string;
+
+  // the revision the caller saw; null takes the item as it stands
+  readonly revision: number | null;
+
+  // the states the item may be in, so a retired-only forget refuses an active item
+  readonly states: readonly MemoryState[];
+
+  // starts from an item that an earlier release's forget left in forgetting
+  readonly isResuming?: boolean;
 }
 
 export interface ForgetStatus {

@@ -381,7 +381,7 @@ test('it lapses a pending proposal for a new item and deletes its key', async ()
   });
 });
 
-test('it deletes every key of an item that is forgetting and marks its purge, leaving the forget its own end', async () => {
+test('it waits for the open forget of an item that is forgetting, then marks its purge', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
   const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the allotment' });
@@ -397,9 +397,6 @@ test('it deletes every key of an item that is forgetting and marks its purge, le
   const result = await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: item.itemID });
   const rows = await readPurgeRows(ctx.memory.writer.db);
   const keys = await readRecordKeys(ctx.memory.log, [item.itemID]);
-
-  await ctx.memory.runner.finishOpen();
-
   const state = await ctx.memory.store.view.readForgetStatus([item.itemID]);
 
   expect(result).toBe('skipped');

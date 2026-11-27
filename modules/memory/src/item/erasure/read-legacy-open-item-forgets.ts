@@ -1,7 +1,6 @@
 import type { ErasureBy, LogTables } from '@heynixie/log';
 import { sql } from 'kysely';
-import type { MemoryContext, MemoryTables } from '../../types';
-import type { ItemErasureRequest } from './build-item-erasable';
+import type { ItemErasureRequest, MemoryContext, MemoryTables } from '../../types';
 
 // An item that an earlier release's forget left in forgetting, with no erasure.started to finish
 // it. Only the owner could forget an item then, and the earlier release recorded no actor.

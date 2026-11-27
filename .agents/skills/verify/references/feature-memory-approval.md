@@ -146,10 +146,13 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify browser click --ref '<forget_ref>'
    bun verify browser snapshot --until-text 'Forget for good'
    bun verify browser click --role button --name 'Forget for good'
+   bun verify browser snapshot --until-text '· forgotten'
    ```
 
    Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
-   exit 0.
+   exit 0. The last snapshot waits for the forgotten item's line to show a "forgotten" date, which
+   the page shows only once `erasure.finished` is written. A line that reads "forgetting" means the
+   erasure is still open, so step 10 never reads an unfinished forget.
 
 10. Check the erasure states of the forget and the memory page:
 

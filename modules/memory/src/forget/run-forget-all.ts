@@ -1,6 +1,5 @@
 import type { ErasureHandle } from '@heynixie/log';
-import type { ItemErasureRequest } from '../item/erasure/build-item-erasable';
-import type { AllForgetRequest, MemoryTables, StoreParts } from '../types';
+import type { AllForgetRequest, ItemErasureRequest, MemoryTables, StoreParts } from '../types';
 import { runItemForgets } from './run-item-forgets';
 
 // Runs the forget of every active and retired item to its end, and returns their IDs.
