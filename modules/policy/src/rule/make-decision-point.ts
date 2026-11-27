@@ -353,6 +353,7 @@ function collectConditionErrors(
         ? [
             {
               ruleID: entry.id,
+              outcome: entry.rule.outcome,
               revision: entry.revision,
               code: matched.code,
               ...(matched.missing === undefined ? {} : { missing: matched.missing }),

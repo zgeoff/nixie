@@ -38,3 +38,15 @@ export function describeCondition(
     source: rule.cel,
   };
 }
+
+// The note of a rule in force reads as nixie's when the rule belongs to a mandate that came from
+// inside nixie, and as yours when it came from the definitions repo or your edit.
+export function describeRuleCondition(
+  rule: Pick<Rule, 'cel' | 'note' | 'mandate'>,
+  origin: 'definitions' | 'nixie' | null,
+): RuleCondition | undefined {
+  const isNixie = rule.mandate !== undefined && origin !== 'definitions';
+  const noteBy = isNixie ? 'nixie' : 'you';
+
+  return describeCondition(rule, noteBy);
+}

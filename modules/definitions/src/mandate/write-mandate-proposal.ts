@@ -3,6 +3,7 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { ProposalConfig, ProposalContext } from '@heynixie/proposals';
 import { buildProposeDeps, proposeInTransaction } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import { collectConditionFaults } from '../utils/collect-condition-faults';
 import { describeMandate } from './describe-mandate';
 import type { MandateInput } from './mandate-input-schema';
 import { mandateProposedCodec } from './mandate-proposed-codec';
@@ -38,6 +39,12 @@ export async function writeMandateProposal(
   options: MandateProposalOptions,
   proposal: MandateProposal,
 ): Promise<MandateProposalResult> {
+  const faults = collectConditionFaults(proposal.input.rules);
+
+  if (faults.length > 0) {
+    return { status: 'refused', reason: 'invalid_condition', faults };
+  }
+
   const mandateID = createShortID().toLowerCase();
 
   const picked = pickMandate(proposal.input, {

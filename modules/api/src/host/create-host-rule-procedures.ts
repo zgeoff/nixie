@@ -5,9 +5,10 @@ import {
   readRulesInForce,
   writeRuleResolution,
 } from '@heynixie/definitions';
-import { renderRule } from '@heynixie/policy';
+import { describeRuleCondition, renderRule } from '@heynixie/policy';
 import { runRuleProposalAnswer } from '../proposal/run-rule-proposal-answer';
 import { buildRuleProposalEntry } from '../utils/build-rule-proposal-entry';
+import { toConditionField } from '../utils/to-condition-field';
 import { hostImplementer } from './host-implementer';
 
 export function createHostRuleProcedures(context: RuleContext) {
@@ -75,6 +76,7 @@ function buildRuleEntry(entry: RuleInForceEntry) {
     revision: entry.revision,
     ruleHash: entry.rule.hash,
     sentence: renderRule(entry.rule.rule),
+    ...toConditionField(describeRuleCondition(entry.rule.rule, entry.origin)),
     origin: entry.origin,
     changeID: entry.changeID,
     lastFiredAt: entry.lastFiredAt === null ? null : new Date(entry.lastFiredAt),
@@ -82,5 +84,11 @@ function buildRuleEntry(entry: RuleInForceEntry) {
 }
 
 function toRuleVersion(stored: StoredRule | null) {
-  return stored === null ? null : { ruleHash: stored.hash, sentence: renderRule(stored.rule) };
+  return stored === null
+    ? null
+    : {
+        ruleHash: stored.hash,
+        sentence: renderRule(stored.rule),
+        ...toConditionField(describeRuleCondition(stored.rule, null)),
+      };
 }

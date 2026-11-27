@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
-import { parseRule, renderRule } from '@heynixie/policy';
+import { describeRuleCondition, parseRule, renderRule } from '@heynixie/policy';
+import type { RuleCondition } from '@heynixie/policy';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 
@@ -16,6 +17,9 @@ export interface ListedMandate {
   // milliseconds since the epoch
   readonly expires: number;
   readonly sentences: readonly string[];
+
+  // the condition of each rule that holds one, by the rule's place among the sentences
+  readonly conditions: readonly (RuleCondition & { readonly rule: number })[];
 }
 
 export type MandateEvent =
@@ -81,7 +85,18 @@ function buildProposedMandate(event: Extract<MandateEvent, { type: 'proposed' }>
     state: 'pending',
     expires: event.proposed.expires,
     sentences: parsed?.rules.map((rule) => renderRule(parseRule(rule))) ?? [],
+    conditions: collectConditions(parsed?.rules ?? []),
   };
+}
+
+function collectConditions(
+  rules: readonly unknown[],
+): readonly (RuleCondition & { readonly rule: number })[] {
+  return rules.flatMap((rule, index) => {
+    const condition = describeRuleCondition(parseRule(rule), 'nixie');
+
+    return condition === undefined ? [] : [{ ...condition, rule: index + 1 }];
+  });
 }
 
 function buildMandateInState(mandate: ListedMandate, state: MandateState): ListedMandate {

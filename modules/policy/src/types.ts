@@ -132,6 +132,7 @@ export type AskCause =
 // never reaches the log.
 export interface ConditionError {
   readonly ruleID: string;
+  readonly outcome: RuleOutcome;
   readonly revision: number;
   readonly code: string;
   readonly missing?: string;

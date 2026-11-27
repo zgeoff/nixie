@@ -259,6 +259,7 @@ function toClosedState(state: string): (typeof closedStates)[number] {
 
 function buildExpiryError(refusal: MandateRefusal) {
   return match(refusal)
+    .with({ reason: 'invalid_condition' }, (invalid) => ({ faults: [...invalid.faults] }))
     .with({ reason: 'expires_past' }, (past) => ({
       faults: [`expires: ${past.reason} (now ${past.now})`],
       expiry: { reason: past.reason, now: past.now },

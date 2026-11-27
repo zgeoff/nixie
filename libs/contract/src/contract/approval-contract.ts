@@ -48,13 +48,16 @@ const proposalPackageSchema = z.object({
   integrity: z.string(),
 });
 
+const cardConditionSchema = ruleConditionSchema.extend({ rule: z.int().nonnegative() });
+
 const bodySchema = z.object({
   sentence: z.string(),
   fields: z.record(z.string(), z.string()),
   ruleSentence: z.string().nullable(),
 
-  // the condition of the rule that the card proposes, with the note and the words
-  ruleCondition: ruleConditionSchema.optional(),
+  // the condition of each rule that the card proposes, with the note and the words; `rule` is the
+  // rule's place among the rules the card shows
+  ruleConditions: z.array(cardConditionSchema).optional(),
 
   // each rule whose condition errored on the call, which a call that asks through one shows
   conditionErrors: z.array(conditionErrorSchema).optional(),

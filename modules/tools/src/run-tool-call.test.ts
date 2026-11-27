@@ -1375,6 +1375,65 @@ test('it writes one action proposal beside the call of an ask, and tells the mod
   expect(ctx.queue.actions).toStrictEqual([]);
 });
 
+test('it asks with the cause condition_error for a deny whose condition errors, and tells the model the rule and the code', async () => {
+  const ctx = await setupTest({
+    rules: [
+      {
+        id: 'deny-big-sends',
+        revision: 4,
+        rule: {
+          id: 'deny-big-sends',
+          outcome: 'deny',
+          effects: ['send'],
+          cel: 'args.count > 5',
+          note: 'Big sends never go out.',
+        },
+      },
+    ],
+    tools: [
+      buildMockToolDefinition({
+        name: 'gmail_send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'gmail_send', input: { query: 'hello' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['gmail_send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const called = entries.find((entry) => entry.record.kind === 'tool_called');
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(called?.record.decision).toMatchObject({
+    outcome: 'ask',
+    cause: 'condition_error',
+    rule: { id: 'deny-big-sends', revision: 4 },
+    conditionErrors: [{ ruleID: 'deny-big-sends', revision: 4, code: 'no_such_key' }],
+  });
+
+  expect(proposed?.record.payload).toMatchObject({
+    cause: 'condition_error',
+    conditionErrors: [{ ruleID: 'deny-big-sends', revision: 4, code: 'no_such_key' }],
+  });
+
+  expect(result.content.at(-1)).toStrictEqual({
+    type: 'text',
+    text: 'The condition of the rule `deny-big-sends` failed with the error no_such_key.',
+  });
+});
+
 test('it records an ask with the cause, the proposal and a queued result with no action', async () => {
   const ctx = await setupTest({
     tools: [

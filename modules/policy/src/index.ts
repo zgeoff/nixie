@@ -154,7 +154,7 @@ export { isNeedMet } from './memory/is-need-met';
 export { listUncoveredMemoryWrites } from './memory/list-uncovered-memory-writes';
 export { policyRecordTopics } from './policy/policy-record-topics';
 export { checkCondition } from './condition/check-condition';
-export { describeCondition } from './condition/describe-condition';
+export { describeCondition, describeRuleCondition } from './condition/describe-condition';
 export type { RuleCondition } from './condition/describe-condition';
 export { evaluateCondition } from './condition/evaluate-condition';
 export { renderConditionWords } from './condition/render-condition-words';

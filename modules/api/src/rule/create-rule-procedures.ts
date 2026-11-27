@@ -1,10 +1,11 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { readCurrentRule } from '@heynixie/definitions';
-import { renderRule } from '@heynixie/policy';
+import { describeRuleCondition, renderRule } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { toConditionField } from '../utils/to-condition-field';
 import type { RuleChange, RuleChangeRun } from './run-rule-change';
 import { runRuleChange } from './run-rule-change';
 
@@ -27,6 +28,7 @@ export function createRuleProcedures(context: RuleProcedureContext) {
         ruleID: options.input.ruleID,
         revision: current.revision,
         sentence: renderRule(current.rule),
+        ...toConditionField(describeRuleCondition(current.rule, current.origin)),
         outcome: current.rule.outcome,
         destinations: current.rule.destinations ?? [],
       };

@@ -36,6 +36,11 @@ export function buildMandateDescription(maxHours: number): string {
     `tool: ${memoryArgumentLines}. ` +
     'Example for memory tidy-up: one rule with tools memory.edit, memory.retire and memory.pin, ' +
     'and one rule with tools memory.remember and memory.edit and a check that subject eq self. ' +
+    'A rule may carry a cel condition and then needs a note that says what the condition means in a sentence. ' +
+    'The condition reads tool, effects, context, definition, args (the call input, without the free-text content arguments), destinations, sources and now, ' +
+    'and may use comparisons, && || !, in, size, has, startsWith, endsWith, contains, lowerAscii, exists and all on a list, and the timestamp methods ' +
+    'getHours, getMinutes, getDayOfWeek, getDate, getMonth and getFullYear with a zone string, such as now.getHours("Europe/London") < 17. ' +
+    'A condition that reads a missing argument errors, and the call then asks. ' +
     'The result lists in memoryGaps the memory writes that each rule will not cover.'
   );
 }
@@ -145,6 +150,11 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
 
 function formatRefusal(refusal: MandateRefusal): string {
   return match(refusal)
+    .with(
+      { reason: 'invalid_condition' },
+      (invalid) =>
+        `The mandate was refused: ${invalid.faults.join('; ')}. Propose again with a condition inside the subset, and a note that says what it means.`,
+    )
     .with(
       { reason: 'expires_past' },
       (past) =>

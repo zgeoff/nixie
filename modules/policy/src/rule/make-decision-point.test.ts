@@ -1066,7 +1066,13 @@ test('it asks at stage 9 and lists the error when the condition of an allow rule
     destinations: [],
     snapshot: 'snapshot-1',
     conditionErrors: [
-      { ruleID: 'allow-small-reads', revision: 2, code: 'no_such_key', missing: 'count' },
+      {
+        ruleID: 'allow-small-reads',
+        outcome: 'allow',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'count',
+      },
     ],
   });
 });
@@ -1095,7 +1101,13 @@ test('it asks with the cause condition_error at stage 6 when the condition of a 
     destinations: [],
     snapshot: 'snapshot-1',
     conditionErrors: [
-      { ruleID: 'deny-big-reads', revision: 2, code: 'no_such_key', missing: 'count' },
+      {
+        ruleID: 'deny-big-reads',
+        outcome: 'deny',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'count',
+      },
     ],
   });
 });

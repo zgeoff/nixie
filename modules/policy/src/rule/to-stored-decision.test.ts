@@ -108,7 +108,13 @@ test('it keeps the rule, revision and code of each condition error and never the
       destinations: [],
       snapshot: 'snapshot-1',
       conditionErrors: [
-        { ruleID: 'deny-big-reads', revision: 3, code: 'no_such_key', missing: 'count' },
+        {
+          ruleID: 'deny-big-reads',
+          outcome: 'deny',
+          revision: 3,
+          code: 'no_such_key',
+          missing: 'count',
+        },
       ],
     },
     buildPolicyCall(),
