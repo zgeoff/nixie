@@ -17,6 +17,7 @@ export async function runForgetRetired(
   await runItemForgets(parts, erasure, {
     provenance: request.provenance,
     writeInTransaction: request.writeInTransaction,
+    checkInTransaction: request.checkInTransaction,
     isFinishDeferred: request.isFinishDeferred,
     readRequests: () =>
       Promise.resolve(

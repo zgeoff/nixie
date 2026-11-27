@@ -39,11 +39,12 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
         procedure: 'memory.forget',
         input: target,
         result,
-        apply: (writeInTransaction) =>
+        apply: (writeInTransaction, checkInTransaction) =>
           memoryStore.forget({
             target,
             provenance: ownerProvenance,
             writeInTransaction,
+            checkInTransaction,
             isFinishDeferred: true,
           }),
       }));
@@ -51,7 +52,7 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
       const status = await runForgetFinish(context, store, [target.itemID]);
       const reply = await readForgetStatusReply(context, [target.itemID], status);
 
-      return { ...result, backup: reply.backup };
+      return { ...result, pending: reply.pending.length > 0, backup: reply.backup };
     }),
 
     previewForgetRetired: memory.previewForgetRetired.handler(async (options) => {
@@ -80,11 +81,12 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
         procedure: 'memory.forgetRetired',
         input: { targets },
         result: { itemIDs },
-        apply: (writeInTransaction) =>
+        apply: (writeInTransaction, checkInTransaction) =>
           memoryStore.forgetRetired({
             targets,
             provenance: ownerProvenance,
             writeInTransaction,
+            checkInTransaction,
             isFinishDeferred: true,
           }),
       }));

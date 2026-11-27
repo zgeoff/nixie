@@ -11524,6 +11524,9 @@
                     "itemID": {
                       "type": "string"
                     },
+                    "pending": {
+                      "type": "boolean"
+                    },
                     "backup": {
                       "anyOf": [
                         {
@@ -11590,6 +11593,7 @@
                   },
                   "required": [
                     "itemID",
+                    "pending",
                     "backup"
                   ]
                 }

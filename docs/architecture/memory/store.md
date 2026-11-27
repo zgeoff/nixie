@@ -598,11 +598,13 @@ order keeps the name of its topic. The last item of a topic takes the name with 
 `removedKeys` counts that key with the rest.
 
 A second forget of an item that is already forgetting, from a request with a new client action,
-joins the open erasure: it starts nothing and finishes the open one. A forget of several items
-checks every revision before it starts any, starts the items in turn, and commits the caller's
-client action with the last start. A stop between two starts leaves the action unsaved, so the retry
-begins the items that never started and joins the ones that did. A route replies pending when a step
-after the starts fails, and the retry finishes the forget.
+joins the open erasure: it starts nothing and finishes the open one. A forget checks the caller's
+client action and every revision before it starts any item, so a refused request starts nothing, and
+a replay of a finished request replies with its saved result. It starts the items in turn, and
+commits the client action with the last start. A stop between two starts leaves the action unsaved,
+so the retry begins the items that never started and joins the ones that did, a forgotten one
+included. A route replies pending when a step after the starts fails, and the retry finishes the
+forget. The page keeps its retry control on a pending reply.
 
 The model has no tool that forgets an item. The design leaves item forgets to the user, as it leaves
 a record's, and the model's `forget.retry` only finishes a forget that a checked action or the host

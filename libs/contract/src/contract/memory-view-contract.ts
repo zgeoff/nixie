@@ -281,7 +281,7 @@ export const memoryViewContract = {
 
   forget: memoryChange
     .input(versionTargetSchema)
-    .output(z.object({ itemID: z.string(), backup: forgetBackupSchema })),
+    .output(z.object({ itemID: z.string(), pending: z.boolean(), backup: forgetBackupSchema })),
 
   previewForgetRetired: memoryView.output(retiredForgetPreviewSchema),
 

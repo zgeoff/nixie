@@ -606,7 +606,11 @@ test('it reports a client forget as pending on its key backups', async () => {
     version: 1,
   });
 
-  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(forgotten).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
 });
 
 test('it reports a host forget as pending on its key backups, as a client forget', async () => {
@@ -651,7 +655,11 @@ test('it reports a client forget as off on its key backups when backups are off'
     version: 1,
   });
 
-  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'off' } });
+  expect(forgotten).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'off' },
+  });
 });
 
 test('it reports a host forget as off on its key backups when backups are off, as a client forget', async () => {

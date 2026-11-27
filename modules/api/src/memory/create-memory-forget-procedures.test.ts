@@ -130,7 +130,12 @@ test('#memory.forget forgets the item at the version its preview showed, so ever
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(forgotten).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
   expect(history).toMatchObject({ state: 'forgotten', versions: [{ status: 'shredded' }] });
 });
 
@@ -213,9 +218,20 @@ test('#memory.forget replies pending when its session cleanup failed, and a retr
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(pending).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(pending).toStrictEqual({
+    itemID: item.itemID,
+    pending: true,
+    backup: { state: 'pending' },
+  });
+
   expect(stateAfterFailure).toMatchObject({ deleted: [], pending: [item.itemID] });
-  expect(retried).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+
+  expect(retried).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
   expect(history?.state).toBe('forgotten');
 });
 
@@ -248,7 +264,11 @@ test('#memory.forget joins the open erasure of an item for a request with a fres
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(joined).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+  expect(joined).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'erasure.started',
@@ -391,6 +411,69 @@ test('#memory.forget refuses a client action ID that another change used, and fo
 
   expect(forget).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
   expect(history?.state).toBe('active');
+});
+
+test('#memory.forget replies with the same result when a completed request repeats with its client action ID and input', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'Keeps a spare key under the blue pot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item };
+
+  const first = await client.memory.forget(input);
+  const replay = await client.memory.forget(input);
+
+  expect(replay).toStrictEqual(first);
+});
+
+test('#memory.forgetRetired starts no erasure when its client action ID belongs to another change', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const items = await Promise.all(
+    ['Plays the cello on Thursdays', 'Grows chillies on the balcony'].map((text) =>
+      ctx.memory.remember({ text, provenance }),
+    ),
+  );
+
+  const other = await ctx.memory.remember({ text: 'Owns a red canoe', provenance });
+
+  const retired = await Promise.all(
+    items.map((target) => ctx.memory.retire({ target, provenance })),
+  );
+
+  await client.memory.retire({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    ...other,
+  });
+
+  const forget = client.memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: retired,
+  });
+
+  await forget.catch(() => {});
+
+  const states = await Promise.all(items.map((item) => ctx.memory.readHistory(item.itemID)));
+
+  expect(forget).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+  expect(states.map((history) => history?.state)).toStrictEqual(['retired', 'retired']);
 });
 
 test('#memory.forget refuses a caller with no session', async () => {

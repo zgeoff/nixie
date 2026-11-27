@@ -50,9 +50,13 @@ export function useRetiredForget(
 }
 
 function buildOutcome(
-  status: { readonly deleted: readonly string[] } | undefined,
+  status: { readonly deleted: readonly string[]; readonly pending: readonly string[] } | undefined,
   error: unknown,
 ): RetiredForgetOutcome {
+  if (status !== undefined && status.pending.length > 0) {
+    return { kind: 'failed' };
+  }
+
   if (status !== undefined) {
     return {
       kind: 'applied',
@@ -82,19 +86,20 @@ function findRefusalNotice(error: unknown): string | null {
   return null;
 }
 
-type CallState = Pick<MutationState, 'status' | 'variables' | 'error'>;
+type CallState = Pick<MutationState, 'status' | 'variables' | 'error' | 'data'>;
 
 function findUnfinishedInput(state: CallState | undefined): RetiredForgetInput | null {
-  if (
-    state === undefined ||
-    state.status !== 'error' ||
-    findRefusalNotice(state.error) !== null ||
-    !isRetiredForgetInput(state.variables)
-  ) {
+  if (state === undefined || !isRetiredForgetInput(state.variables)) {
     return null;
   }
 
-  return state.variables;
+  if (state.status === 'success') {
+    return hasPendingItems(state.data) ? state.variables : null;
+  }
+
+  return state.status === 'error' && findRefusalNotice(state.error) === null
+    ? state.variables
+    : null;
 }
 
 function isRetiredForgetInput(value: unknown): value is RetiredForgetInput {
@@ -104,5 +109,15 @@ function isRetiredForgetInput(value: unknown): value is RetiredForgetInput {
     'clientActionID' in value &&
     'targets' in value &&
     Array.isArray(value.targets)
+  );
+}
+
+function hasPendingItems(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'pending' in value &&
+    Array.isArray(value.pending) &&
+    value.pending.length > 0
   );
 }

@@ -21,13 +21,16 @@ export interface ItemForgets {
   // commits only once every item has begun, and a refusal rolls it back
   readonly writeInTransaction?: WriteInTransaction | undefined;
 
+  // runs before any item starts, so a refused request begins nothing
+  readonly checkInTransaction?: WriteInTransaction | undefined;
+
   // stops after the starts and hides, and leaves every later step to finishForgets
   readonly isFinishDeferred?: boolean | undefined;
 }
 
 // A forget to its end: each item's start transaction and hide under the store lock, then every
-// later step. An item that is already forgetting joins its open erasure. Every revision is checked
-// before any item starts, and the caller's hook rides with the last start.
+// later step. An item that is already forgetting joins its open erasure. The caller's check and
+// every revision run before any item starts, and the caller's hook rides with the last start.
 export async function runItemForgets(
   parts: StoreParts,
   erasure: ErasureHandle<ItemErasureRequest>,
@@ -35,6 +38,13 @@ export async function runItemForgets(
 ): Promise<readonly string[]> {
   const requests = await parts.lock(async () => {
     const wanted = await forget.readRequests();
+
+    if (forget.checkInTransaction !== undefined) {
+      const check = forget.checkInTransaction;
+
+      await withWriteTransaction(parts.context.log.writer, (tx) => check(tx));
+    }
+
     const starting = await readStartingRequests(parts, wanted);
 
     for (const [index, request] of starting.entries()) {
@@ -69,7 +79,8 @@ export async function runItemForgets(
 }
 
 // The requests of items that are not forgetting yet, each checked against the revision its caller
-// saw. A request for an item that is forgetting is left out, because its erasure is open.
+// saw. An item that is forgetting is left out, because its erasure is open. A forgotten item is
+// left out when another has not begun, which is what a stop between two starts and a restart leave.
 async function readStartingRequests(
   parts: StoreParts,
   wanted: readonly ItemErasureRequest[],
@@ -86,11 +97,18 @@ async function readStartingRequests(
     )
     .execute();
 
-  const forgetting = new Set(
-    rows.filter((row) => row.state === 'forgetting').map((row) => row.item_id),
-  );
+  const states = new Map(rows.map((row) => [row.item_id, row.state]));
 
-  const starting = wanted.filter((request) => !forgetting.has(request.itemID));
+  const isBegun = (request: ItemErasureRequest) =>
+    states.get(request.itemID) === 'forgetting' || states.get(request.itemID) === 'forgotten';
+
+  const hasUnbegun = wanted.some((request) => !isBegun(request));
+
+  const starting = wanted.filter(
+    (request) =>
+      states.get(request.itemID) !== 'forgetting' &&
+      !(hasUnbegun && states.get(request.itemID) === 'forgotten'),
+  );
 
   for (const request of starting) {
     if (request.revision !== null) {

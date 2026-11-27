@@ -415,3 +415,62 @@ test('it begins the targets that a stop between two starts left unbegun on the r
     ['erasure.finished', second.itemID],
   ]);
 });
+
+test('it begins the unbegun targets on the retry when a restart finished the first item between the stop and the retry', async () => {
+  const ctx = await setupTest();
+  const first = await createMemoryItem(ctx.memory.store, { text: 'Owns a red canoe' });
+  const second = await createMemoryItem(ctx.memory.store, { text: 'Plays the oboe badly' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const retired = await Promise.all(
+    [first, second].map((target) => ctx.memory.store.retire({ target, provenance })),
+  );
+
+  startFaultPointFailure('erasure.begun');
+
+  const stopped = ctx.memory.store.forgetRetired({ targets: retired, provenance });
+
+  await stopped.catch(() => {});
+  await ctx.memory.store.finishForgets([first.itemID]);
+  await ctx.memory.store.forgetRetired({ targets: retired, provenance });
+
+  const status = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
+
+  expect(stopped).rejects.toMatchObject({ message: 'crashed at erasure.begun' });
+  expect(status).toMatchObject({ deleted: [first.itemID, second.itemID], pending: [] });
+});
+
+test('it starts no item when the caller check refuses', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Owns a red canoe' });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const retired = await ctx.memory.store.retire({ target: item, provenance });
+
+  const forget = ctx.memory.store.forgetRetired({
+    targets: [retired],
+    provenance,
+    checkInTransaction: () => Promise.reject(new Error('the action was used')),
+  });
+
+  await forget.catch(() => {});
+
+  const status = await ctx.memory.store.view.readForgetStatus([item.itemID]);
+
+  expect(forget).rejects.toMatchObject({ message: 'the action was used' });
+  expect(status).toStrictEqual({ deleted: [], pending: [], forgottenSequence: null });
+});

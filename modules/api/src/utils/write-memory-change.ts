@@ -14,7 +14,11 @@ export interface MemoryChangeAction {
   readonly input: JSONObject;
   readonly result: JSONObject;
 
-  readonly apply: (writeInTransaction: WriteInTransaction) => Promise<unknown>;
+  // a change that starts several writes passes the check on, so a refused change starts none
+  readonly apply: (
+    writeInTransaction: WriteInTransaction,
+    checkInTransaction: WriteInTransaction,
+  ) => Promise<unknown>;
 }
 
 export type MemoryChangeOutcome = 'applied' | 'reused' | 'unauthorized';
@@ -26,23 +30,30 @@ export async function writeMemoryChange(
 ): Promise<MemoryChangeOutcome> {
   const inputHash = buildInputHash(action.input);
 
+  const checkSettled = async (tx: Transaction<unknown>) => {
+    const settled = await readSettledOutcome(tx, { context, caller, action, inputHash });
+
+    if (settled !== null) {
+      throw new SettledChangeError(settled);
+    }
+  };
+
   try {
-    await action.apply(async (tx) => {
-      const settled = await readSettledOutcome(tx, { context, caller, action, inputHash });
+    await action.apply(
+      async (tx) => {
+        await checkSettled(tx);
 
-      if (settled !== null) {
-        throw new SettledChangeError(settled);
-      }
-
-      await writeClientAction(tx, {
-        clientActionID: action.clientActionID,
-        procedure: action.procedure,
-        identityID: caller.identityID,
-        inputHash,
-        result: action.result,
-        recordedAt: context.clock.now(),
-      });
-    });
+        await writeClientAction(tx, {
+          clientActionID: action.clientActionID,
+          procedure: action.procedure,
+          identityID: caller.identityID,
+          inputHash,
+          result: action.result,
+          recordedAt: context.clock.now(),
+        });
+      },
+      (tx) => checkSettled(tx),
+    );
   } catch (error) {
     if (error instanceof SettledChangeError) {
       return error.outcome;

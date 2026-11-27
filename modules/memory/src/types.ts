@@ -144,6 +144,9 @@ export interface ForgetRequest {
   readonly provenance: Provenance;
   readonly writeInTransaction?: WriteInTransaction;
 
+  // runs before any item starts, and a throw there leaves every item unbegun
+  readonly checkInTransaction?: WriteInTransaction;
+
   // stops after the start, for a caller that runs the rest through finishForgets and answers a
   // failure there as pending
   readonly isFinishDeferred?: boolean;
@@ -153,6 +156,9 @@ export interface RetiredForgetRequest {
   readonly targets: readonly VersionRef[];
   readonly provenance: Provenance;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // runs before any item starts, and a throw there leaves every item unbegun
+  readonly checkInTransaction?: WriteInTransaction;
 
   // stops after the start, for a caller that runs the rest through finishForgets and answers a
   // failure there as pending
