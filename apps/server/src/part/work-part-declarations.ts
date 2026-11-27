@@ -383,7 +383,15 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['inputs', 'context', 'server_parts', 'seed_poll', 'notebook', 'erasure'],
+    needs: [
+      'inputs',
+      'context',
+      'server_parts',
+      'seed_poll',
+      'notebook',
+      'erasure',
+      'tool_endpoint',
+    ],
     uses: ['takeover_restart', 'connections', 'gmail_source', 'calls'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
@@ -407,6 +415,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           mail: reader.get('context').mail?.memory ?? null,
           notebook: reader.get('notebook'),
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
+          readToolNames: reader.get('tool_endpoint').readToolNames,
         });
 
         registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));

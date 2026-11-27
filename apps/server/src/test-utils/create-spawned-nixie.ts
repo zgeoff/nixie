@@ -191,7 +191,8 @@ export interface SpawnedNixieOptions {
 
   readonly backups?: boolean;
 
-  // turns calls on, with the harness's fake speech layer and this price in dollars per minute
+  // the price of a call in dollars per minute, on the harness's fake speech layer. A test nixie has
+  // calls on at 0.05 a minute unless this says otherwise.
   readonly voicePricePerMinute?: number;
 
   // task definitions that the boot files hold, so the first seed arms their triggers
@@ -202,6 +203,9 @@ export interface SpawnedNixieOptions {
   readonly isCodeOff?: boolean;
   readonly isGoogleOff?: boolean;
   readonly isDevicesOff?: boolean;
+
+  // leaves the voice section out of the config, which turns calls off
+  readonly isVoiceOff?: boolean;
 }
 
 // A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
@@ -328,9 +332,15 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
 }
 
 const checkerTimeoutMs = 60 * 60 * 1000;
+const defaultVoicePricePerMinute = 0.05;
 
 // A test that scripts the checker's answers gives it its own model.
 function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
+  const voicePricePerMinute =
+    options.isVoiceOff === true
+      ? undefined
+      : (options.voicePricePerMinute ?? defaultVoicePricePerMinute);
+
   return {
     config: [
       // The checker's timeout runs on the harness clock, which a suite advances in steps while the
@@ -341,20 +351,20 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       ...Object.entries(options.memoryConfig ?? {}).map(
         ([name, value]) => `  ${name}: ${String(value)}`,
       ),
-      ...(options.voicePricePerMinute === undefined
+      ...(voicePricePerMinute === undefined
         ? []
         : ['voice:', '  provider: gpt-live', '  credential: deployment:speech']),
       ...(options.extraConfig ?? []),
     ],
     secrets: [
-      ...(options.voicePricePerMinute === undefined
+      ...(voicePricePerMinute === undefined
         ? []
         : ['connector_credentials:', '  speech: speech-key-a']),
       ...(options.extraSecrets ?? []),
     ],
-    ...(options.voicePricePerMinute === undefined
+    ...(voicePricePerMinute === undefined
       ? {}
-      : { voiceYaml: `price_per_minute: ${String(options.voicePricePerMinute)}\n` }),
+      : { voiceYaml: `price_per_minute: ${String(voicePricePerMinute)}\n` }),
     definitions: [],
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),

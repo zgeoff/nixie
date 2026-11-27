@@ -85,9 +85,9 @@ feature with no verdict in its description.
 1. Run `bun verify report`. In `data.report.features`, a feature shows `changed: true` when a file
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
-2. Pick the target you were asked to use, or `local`, the registry's first target and the first row
-   of the [targets table](references/targets.md). Run `bun verify use --target <target>` and the
-   commands in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
+2. Pick the target you were asked to use, or `local`, the first row of the
+   [targets table](references/targets.md). Run `bun verify use --target <target>` and the commands
+   in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
 3. Run `bun verify doctor` before any other app command, because each of them exits 3 until `doctor`
    passes. Expect: `data.passed: true`. When a check fails, fix its cause, and run `doctor` again.
@@ -142,8 +142,8 @@ app runs apart from `bun verify`, and `detach` leaves it running. An attach targ
 released code, so check a change you are still editing on a launch target.
 
 `bun verify use --target <target>` points every later command at a target, and saves the choice in
-this worktree's `.wringer/`. `--target` on one command points that command alone. A command with
-neither runs on the registry's first target, `local`.
+this worktree's `.wringer/`. `--target` on one command points that command alone, and a command with
+neither runs on `local`.
 
 <!-- repo: targets -->
 

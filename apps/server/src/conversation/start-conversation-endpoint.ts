@@ -180,6 +180,9 @@ export interface ConversationEndpoint {
   readonly definitions: readonly ToolDefinition[];
   readonly taskBounds: TaskStartBounds;
 
+  // the name of each tool the registry holds, which includes the tools that only a call's thread holds
+  readonly readToolNames: () => readonly string[];
+
   // the action queue's connectors for the queued tools that only the endpoint can build
   readonly connectors: ReadonlyMap<string, ActionConnector>;
 }
@@ -499,6 +502,7 @@ export async function startConversationEndpoint(
     endpoint,
     definitions: [...definitions, ...tools.testTools],
     taskBounds: bounds,
+    readToolNames: () => registry.toolNames,
     connectors: new Map(connectorEntries),
   };
 }

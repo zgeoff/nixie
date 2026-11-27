@@ -45,7 +45,7 @@ Before you start, run that `up` and `bun verify doctor`, then do
 3. Check that nixie gave the model no device tool:
 
    ```bash
-   bun verify db query "with last as (select payload from records where kind = 'server.started' order by sequence desc limit 1) select (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value like 'device.%') as device_tools, (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value = 'task.start') as task_start_tools"
+   bun verify db query "with last as (select payload from records where kind = 'server.started' order by sequence desc limit 1) select (select count(*) from last, json_each(last.payload, '$.given.tools') t where (t.value like 'device.%' or t.value like 'devices.%')) as device_tools, (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value = 'task.start') as task_start_tools"
    ```
 
    Expect: one row, with `device_tools` 0 and `task_start_tools` 1.
@@ -54,15 +54,15 @@ Before you start, run that `up` and `bun verify doctor`, then do
 
 - In step 1, the menu held no device entry.
 - In step 2, the device view said that the feature is off in this nixie.
-- In step 3, the model's tool list held no `device.` tool.
+- In step 3, the model's tool list held no `device.` or `devices.` tool.
 
 Once the end state matches, run `bun verify done`. When a command fails, follow its row in
 [Exit codes](exit-codes.md), and skip `done`. When every command exits 0 but the end state differs,
-such as a menu that still shows a device entry or a tool list that holds a `device.` tool, skip
-`done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md). Fix the app's code when your
-change broke the feature. Otherwise list the feature in your reply with the end state you expected
-and the `data` you got. When `done` itself fails, follow its row in Exit codes and run the journey
-again.
+such as a menu that still shows a device entry or a tool list that holds a `device.` or `devices.`
+tool, skip `done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md). Fix the app's code
+when your change broke the feature. Otherwise list the feature in your reply with the end state you
+expected and the `data` you got. When `done` itself fails, follow its row in Exit codes and run the
+journey again.
 
 Whether the journey passed or failed, run `bun verify up --restart` without
 `NIXIE_VERIFY_NO_DEVICES`, then `bun verify doctor`, so the next journey has devices on. When either

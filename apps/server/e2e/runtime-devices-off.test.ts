@@ -1,12 +1,8 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import {
-  createTestClient,
-  runHostCommand,
-  sendClientMessage,
-  startE2ENixie,
-} from '@heynixie/server/test-utils';
+import { createTestClient, runHostCommand, startE2ENixie } from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 
 async function setupTest() {
   // a config with no devices section, so the devices feature is off
@@ -16,25 +12,36 @@ async function setupTest() {
 
   const api = await createTestClient(server);
 
-  return { nixie, api };
+  return { nixie, api, server };
 }
 
-test('it offers the model no device tool when the config has no devices section', async () => {
+test('it registers no device tool when the config has no devices section', async () => {
   const ctx = await setupTest();
+  const reply = await ctx.server.request('readRegisteredTools', null);
 
-  ctx.nixie.model.addReplies({ text: 'Plum-reply-6DV2' });
-
-  await sendClientMessage(ctx.api.client, { text: 'Quince-message-1HT9' }, 'Plum-reply-6DV2', {
-    timeoutMs: 30_000,
-  });
-
-  const request = ctx.nixie.model.requests.find((entry) => entry.path === '/v1/messages');
-  const tools = request?.body?.tools?.map((tool) => tool.name) ?? [];
+  const names = z.array(z.string()).parse(reply);
 
   expect({
-    hasConversationTool: tools.includes('mcp__nixie__task_start'),
-    offered: tools.filter((name) => /device_/u.test(name)),
-  }).toStrictEqual({ hasConversationTool: true, offered: [] });
+    hasConversationTool: names.includes('task.start'),
+    deviceTools: names.filter((name) => /^devices?\./u.test(name)),
+  }).toStrictEqual({ hasConversationTool: true, deviceTools: [] });
+});
+
+test('it registers the device tools when the config has a devices section, so the check above can fail', async () => {
+  const nixie = await startE2ENixie({});
+
+  const server = nixie.harness.start();
+
+  await server.ready;
+
+  const reply = await server.request('readRegisteredTools', null);
+
+  const names = z.array(z.string()).parse(reply);
+
+  expect(names.filter((name) => /^devices?\./u.test(name))).toIncludeAllMembers([
+    'devices.list',
+    'devices.watch',
+  ]);
 });
 
 test('it leaves devices out of the features that nixie.read reports', async () => {

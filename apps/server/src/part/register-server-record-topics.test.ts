@@ -131,7 +131,7 @@ test('it registers every module on one writer without two owners for a kind', as
   const testLog = await startTestLog();
 
   expect(() => {
-    registerServerRecordTopics(testLog.writer, ['computer']);
+    registerServerRecordTopics(testLog.writer, ['computer', 'voice', 'devices']);
   }).not.toThrow();
 });
 
@@ -152,4 +152,36 @@ test('it leaves the computer topics out when the computer is off', async () => {
   registerServerRecordTopics(testLog.writer, []);
 
   expect(getRecordTopics(testLog.writer, 'computer.handover_asked')).toStrictEqual([]);
+});
+
+test('it registers the call topics when voice is on', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['voice']);
+
+  expect(getRecordTopics(testLog.writer, 'call.started')).toStrictEqual(['tasks', 'calls']);
+});
+
+test('it leaves the call topics out when voice is off', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['computer', 'devices']);
+
+  expect(getRecordTopics(testLog.writer, 'call.started')).toStrictEqual([]);
+});
+
+test('it registers the device topics when devices are on', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['devices']);
+
+  expect(getRecordTopics(testLog.writer, 'device.status_changed')).toStrictEqual(['tasks']);
+});
+
+test('it leaves the device topics out when devices are off', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['computer', 'voice']);
+
+  expect(getRecordTopics(testLog.writer, 'device.status_changed')).toStrictEqual([]);
 });

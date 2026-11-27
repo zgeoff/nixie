@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, sendClientMessage, startE2ENixie } from '@heynixie/server/test-utils';
+import { createTestClient, startE2ENixie } from '@heynixie/server/test-utils';
+import { z } from 'zod';
 
 async function setupTest() {
   // a config with no voice section, so calls are off
-  const nixie = await startE2ENixie({});
+  const nixie = await startE2ENixie({ isVoiceOff: true });
 
   const server = nixie.harness.start();
 
@@ -12,22 +13,30 @@ async function setupTest() {
   return { nixie, api, server };
 }
 
-test('it offers the model no call tool when the config has no voice section', async () => {
+test('it registers no call tool when the config has no voice section', async () => {
   const ctx = await setupTest();
+  const reply = await ctx.server.request('readRegisteredTools', null);
 
-  ctx.nixie.model.addReplies({ text: 'Plum-reply-4VC3' });
-
-  await sendClientMessage(ctx.api.client, { text: 'Quince-message-9WD6' }, 'Plum-reply-4VC3', {
-    timeoutMs: 30_000,
-  });
-
-  const request = ctx.nixie.model.requests.find((entry) => entry.path === '/v1/messages');
-  const tools = request?.body?.tools?.map((tool) => tool.name) ?? [];
+  const names = z.array(z.string()).parse(reply);
 
   expect({
-    hasConversationTool: tools.includes('mcp__nixie__task_start'),
-    offered: tools.filter((name) => /call_|hand_off|hangup/u.test(name)),
-  }).toStrictEqual({ hasConversationTool: true, offered: [] });
+    hasConversationTool: names.includes('task.start'),
+    hasHangUp: names.includes('call.hang_up'),
+  }).toStrictEqual({ hasConversationTool: true, hasHangUp: false });
+});
+
+test('it registers the hang-up tool when the config has a voice section, so the check above can fail', async () => {
+  const nixie = await startE2ENixie({});
+
+  const server = nixie.harness.start();
+
+  await server.ready;
+
+  const reply = await server.request('readRegisteredTools', null);
+
+  const names = z.array(z.string()).parse(reply);
+
+  expect(names).toContain('call.hang_up');
 });
 
 test('it leaves voice out of the features that nixie.read reports', async () => {

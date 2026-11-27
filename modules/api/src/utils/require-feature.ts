@@ -15,6 +15,12 @@ export function requireFeature(
   buildFeatureOff: BuildFeatureOff,
 ): void {
   if (!context.features.includes(feature)) {
-    throw buildFeatureOff({ data: { feature } });
+    refuseFeature(feature, buildFeatureOff);
   }
+}
+
+// The same refusal with no check, for the answers of a feature that is off: its type says the
+// call never returns, so a handler of any output type can end with it.
+export function refuseFeature(feature: FeatureID, buildFeatureOff: BuildFeatureOff): never {
+  throw buildFeatureOff({ data: { feature } });
 }

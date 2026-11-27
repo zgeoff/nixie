@@ -21,6 +21,7 @@ function setupTest() {
     handedOff: { kind: 'call.handed_off' as const, thread: 'call-task', payload: {} },
     heardCut: { kind: 'call.heard_cut' as const, thread: 'call-task', payload: {} },
     spoke: { kind: 'call.spoke' as const, thread: 'call-task', payload: {} },
+    statusChanged: { kind: 'device.status_changed' as const, thread: 'conversation', payload: {} },
     pageEventKept: {
       kind: 'device.page_event' as const,
       thread: 'conversation',
@@ -78,7 +79,9 @@ test('it adds a page event to the inbox only when its wake was kept, when device
   expect({
     kept: isInboxRecord(ctx.pageEventKept),
     unkept: isInboxRecord(ctx.pageEventUnkept),
-  }).toStrictEqual({ kept: true, unkept: false });
+    status: isInboxRecord(ctx.statusChanged),
+    wakesOnStatus: isWakingRecord(ctx.statusChanged),
+  }).toStrictEqual({ kept: true, unkept: false, status: true, wakesOnStatus: true });
 });
 
 test('it leaves the page events out of the inbox when devices are off', () => {
@@ -89,8 +92,9 @@ test('it leaves the page events out of the inbox when devices are off', () => {
 
   expect({
     kept: isInboxRecord(ctx.pageEventKept),
+    status: isInboxRecord(ctx.statusChanged),
     kind: inboxKinds.byKind('device.status_changed'),
-  }).toStrictEqual({ kept: false, kind: null });
+  }).toStrictEqual({ kept: false, status: false, kind: null });
 });
 
 test('it leaves the call kinds out of the inbox when voice is off', () => {
@@ -108,10 +112,11 @@ test('it leaves the call kinds out of the inbox when voice is off', () => {
 
 test('it keeps the kinds of every feature that is on', () => {
   setupTest();
-  fillInboxKinds({ computer: {}, voice: {} });
+  fillInboxKinds({ computer: {}, voice: {}, devices: {} });
 
   expect([
     inboxKinds.byKind('computer.takeover_started') === null,
     inboxKinds.byKind('call.started') === null,
-  ]).toStrictEqual([false, false]);
+    inboxKinds.byKind('device.status_changed') === null,
+  ]).toStrictEqual([false, false, false]);
 });

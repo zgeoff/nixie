@@ -2,10 +2,11 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-A nixie whose config has no `voice` section has no calls. It offers the model no call tool, starts
-no call part, and leaves `voice` out of the features that `nixie.read` reports. The web client hides
-the Call entry of its menu, and a direct visit to `/call` shows a page that reads "This feature is
-off in this nixie".
+A nixie whose config has no `voice` section has no calls. It starts no call part and leaves `voice`
+out of the features that `nixie.read` reports. The tool that ends a call sits in the tool registry
+and in no list that a journey can read, so the e2e suite of calls-off checks that it is absent. The
+web client hides the Call entry of its menu, and a direct visit to `/call` shows a page that reads
+"This feature is off in this nixie".
 
 Run this journey on a plain `up`: a test build turns calls on only when `NIXIE_VERIFY_CALLS=1`, so
 leave that variable unset in the shell. On `preview`, skip this journey and list the feature as not
@@ -39,22 +40,12 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
    Expect: both commands exit 0. The snapshot shows the text that the feature is off, and no button
    to start a call.
 
-3. Check that nixie gave the model no call tool:
-
-   ```bash
-   bun verify db query "with last as (select payload from records where kind = 'server.started' order by sequence desc limit 1) select (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value like 'call.%') as call_tools, (select count(*) from last, json_each(last.payload, '$.given.tools') t where t.value = 'task.start') as task_start_tools"
-   ```
-
-   Expect: one row, with `call_tools` 0 and `task_start_tools` 1. A `task_start_tools` of 1 shows
-   the list holds other tools, so a `call_tools` of 0 means the list has no call tool.
-
 ## End state
 
 - In step 1, the menu held no Call entry.
 - In step 2, the call page said that the feature is off in this nixie.
-- In step 3, the model's tool list held no `call.` tool.
 
 Once the end state matches, run `bun verify done`. When a command fails, follow its row in
 [Exit codes](exit-codes.md). When a command exits 0 but the app differs from the end state, such as
-a Call entry in the menu, a `/call` page that offers to start a call, or a `call_tools` above 0,
-skip `done` and follow step 5 of "Check a change" in the [verify skill](../SKILL.md).
+a Call entry in the menu or a `/call` page that offers to start a call, skip `done` and follow step
+5 of "Check a change" in the [verify skill](../SKILL.md).

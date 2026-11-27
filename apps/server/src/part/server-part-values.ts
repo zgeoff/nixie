@@ -39,6 +39,7 @@ export interface ServerPartValues {
   readonly actions: Tools['actions'];
   readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'> & {
     readonly connectors: ReadonlyMap<string, ActionConnector>;
+    readonly readToolNames: () => readonly string[];
   };
   readonly tools: Tools;
   readonly api_gate: APIGate;
