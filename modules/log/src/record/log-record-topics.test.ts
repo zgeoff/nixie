@@ -47,3 +47,14 @@ test('it marks the topics of a pause on the started writer', async () => {
 
   expect(ctx.changes).toStrictEqual([['nixie', 'tasks']]);
 });
+
+test.each(['erasure.started', 'erasure.finished'] as const)(
+  'it marks the memory and notebook topics for %s on the started writer',
+  async (kind) => {
+    const ctx = await setupTest();
+
+    await ctx.seed.record({ kind, payload: { kind: 'memory_item' } });
+
+    expect(ctx.changes).toStrictEqual([['memory', 'notebook']]);
+  },
+);
