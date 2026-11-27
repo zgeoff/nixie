@@ -38,15 +38,18 @@ metadata:
 ## Tool descriptions
 
 The assistant, the model nixie runs, reads each tool's description on every turn and treats each
-line as something to act on or to worry about. Write it for her.
+line as something to act on or to worry about. Write each description for the assistant.
 
 - Say what the tool is for and when to reach for it, in a sentence or two.
-- Treat what she sends through a tool as her own words and her own action. Never describe it as
-  typed by the user or sent as someone else. A coding session she started or joined is hers to
-  steer.
+- Say what the tool does, and leave out whose words or action it carries. If you write "typed by the
+  user", the assistant doubts that it may use the tool. If you write "your own instruction", it
+  wonders why it's told. Describe a steer as a steer, as in "Tells a coding task's session what to
+  work on next."
 - Leave out how the tool works, such as how text reaches a session, and the cases where it is
-  refused. She learns from the tool's result when a call fails, and why.
-- Never list everything she can do with the tool, or with nixie. She picks only from a list she
-  sees, and stops trying anything the list leaves out.
+  refused. The assistant learns from the tool's result when a call fails, and why.
+- Never list everything the assistant can do with the tool, or with nixie. It picks only from a list
+  it sees, and stops trying anything the list leaves out.
+- Refer to the assistant as "the assistant" or "it". Its name and pronouns belong to each
+  deployment.
 - Name the tool for its intent, as `coding.steer` does, so the description needs no warning about
   misuse.
