@@ -19,9 +19,9 @@ flowchart LR
 
 ## The switch
 
-The computer is on only when the config has a `computer` section, and `computer: {}` turns it on
-with the defaults. Its settings (`idle_hand_back_minutes` and `handover_expiry_minutes`) sit in that
-section. A nixie with no `computer` section is a nixie with no computer:
+Add a `computer` section to the config to turn the computer on, and write `computer: {}` for the
+defaults. Set `idle_hand_back_minutes` and `handover_expiry_minutes` in that section. With no
+`computer` section, nixie has no computer:
 
 - the `computer` and `takeover_restart` server parts never start, and the deployment needs no
   computer image;
@@ -31,13 +31,13 @@ section. A nixie with no `computer` section is a nixie with no computer:
 - `nixie.read` leaves `computer` out of `features`, the web client hides the Computer menu entry and
   the take-over banner, and `/computer` shows the page that says the feature is off.
 
-The computer adds to the lists that core modules own, each filled from the composition root: the
-inbox kinds of take-over and handover records in the tasks module, which also decide whether each
-wakes, and the policy's tool shapes, which tell it that `computer.run` holds a command line and that
-the two screen acts share one always-allow rule. When the computer is off, both lists hold none of
-its entries, and the log registers the topics of its records only when it is on. Turning it off
-keeps its records, and the restart sweep keeps the desktop sandbox whatever its image, so turning it
-on again finds both as they were.
+The computer adds entries to two lists that core modules own, each filled from the composition root:
+the inbox kinds of take-over and handover records in the tasks module, which also decide whether
+each wakes, and the policy's tool shapes, which tell it that `computer.run` holds a command line and
+that the two screen acts share one always-allow rule. When the computer is off, both lists hold none
+of its entries, and the log registers the topics of its records only when it is on. Turning it off
+keeps its records, and the restart sweep keeps the desktop sandbox whatever its image, so both are
+as they were when the computer is turned on again.
 
 ## The sandbox
 

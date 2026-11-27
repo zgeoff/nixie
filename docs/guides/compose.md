@@ -25,8 +25,8 @@ secret reaches the container's configuration or its disk.
    code tool by config, add `code: {}` to `config.yaml` to keep it.
 
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
-   deployment key, impd's token and one credential per model profile, in the shape
-   [the Kubernetes Secret example](../../deploy/kubernetes/secret.example.yaml) shows.
+   deployment key, impd's token and one credential per model profile, in the shape of
+   [the Kubernetes Secret example](../../deploy/kubernetes/secret.example.yaml).
 5. Start the recipe from your copy of the folder, with the paths of the sops file and the host's age
    key:
 
@@ -56,25 +56,31 @@ query parameter, and the last path segment of a device page's frame and image UR
 `/rpc/device/frames/` and `/rpc/device/images/`. When you add an access log, or put a proxy with its
 own log in front, drop those parts of the address from each log line too.
 
-The `/rpc*` rule already sends the socket to nixie, and Caddy carries WebSocket upgrades without
-more settings.
+The `/rpc*` rule sends the socket to nixie, and Caddy carries WebSocket upgrades without more
+settings.
 
-An upgrade changes the tag and the digest of nixie and web together, and of the backup image when
-the deployment runs one, as a release's notes list them. A rollback reverts that change. The
-[upgrade runbook](../runbooks/upgrades.md) gives the steps.
+To upgrade, change the tag and the digest of nixie and web together, and of the backup image when
+the deployment runs one, to the values in the release's notes. To roll back, revert that change.
+Follow the [upgrade runbook](../runbooks/upgrades.md) for the steps.
 
 ## How CI checks it
 
 The Compose workflow runs on each push to main, and on each pull request that changes a file the
 recipe or the test build reads. It checks that each pinned tag resolves to its pinned digest, on
 main and on a pull request that changes the recipe, because an upstream rebuild of a tag moves its
-digest with no change to the recipe. It then starts the recipe with the overlay in
-`deploy/compose/ci/`, which swaps nixie's release image for the test build, because the release
-image leaves the test sandbox out. The test sandbox runs each guest as a local process with no
-isolation, so the overlay is never a deployment. The workflow checks the health URL through the
-recipe's origin, and that the `enrol` service prints a sign-in code. The overlay adds the
-`nixie-backup` container, built from the checkout, and the workflow checks that nixie records a set
-that the container shipped.
+digest with no change to the recipe.
+
+The workflow then starts the recipe with the overlay in `deploy/compose/ci/`, which swaps nixie's
+release image for the test build, because the release image leaves the test sandbox out. The test
+sandbox runs each guest as a local process with no isolation, so the overlay is never a deployment.
+The workflow checks the health URL through the recipe's origin, and that the `enrol` service prints
+a sign-in code. The overlay adds the `nixie-backup` container, built from the checkout, and the
+workflow checks that nixie records a set that the container shipped.
+
+The workflow checks the `config.yaml` that the repo ships beside each recipe, Compose and
+Kubernetes, against the config schema of the release that recipe pins, because a deployment that
+copies the recipe runs that release. It fetches the schema from the release's `config.schema.json`
+asset.
 
 The workflow also checks that the proxy hands on the forwarded protocol and host that the HTTPS
 proxy in front of it sends, because nixie builds the image URLs of a device page from them. Last, it
