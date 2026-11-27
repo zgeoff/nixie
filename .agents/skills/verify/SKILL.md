@@ -143,8 +143,8 @@ app runs apart from `bun verify`, and `detach` leaves it running. An attach targ
 released code, so check a change you are still editing on a launch target.
 
 Run `bun verify use --target <target>` to point every later command at a target. It saves the choice
-in this worktree's `.wringer/`. To point one command alone, pass `--target` to that command. A
-command with neither runs on `local`.
+in this worktree's `.wringer/`. Pass `--target` to point one command alone. A command with neither
+runs on `local`.
 
 <!-- repo: targets -->
 <!-- /repo -->
@@ -180,8 +180,8 @@ in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
 
 Map each file your change adds in the registry with a glob that matches it. Put the glob in a
 feature's `paths`, in `.shared()`, or in `.ignore()` when the running app never reads the file, such
-as a test. The gate fails on a changed file that no glob matches. Run `bun verify features` to list
-the globs. List a feature's files one by one when a directory glob would also match a test.
+as a test. The gate fails on a changed file that no glob matches. Run `bun verify features` for the
+globs. List a feature's files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run
