@@ -23,6 +23,12 @@ test.each<[string, string, Destination | null]>([
   ['a backslash after the host of a URL', String.raw`https://example.org\path`, null],
   ['a backslash in the host of a URL', String.raw`https://example.org\@evil.test/x`, null],
   [
+    'a backslash in the host of a URL with extra slashes',
+    String.raw`https:////example.org\@evil.test/x`,
+    null,
+  ],
+  ['a URL with extra slashes', 'https:///example.org/x', { kind: 'site', domain: 'example.org' }],
+  [
     'a backslash in a URL path',
     String.raw`https://example.org/a\b`,
     { kind: 'site', domain: 'example.org' },

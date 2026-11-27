@@ -35,9 +35,10 @@ export function parsePlace(text: string): Destination | null {
 }
 
 // A URL parser reads a backslash as a slash, so a backslash in the host part names a different host
-// than the text shows.
+// than the text shows. The parser skips any slashes before the host, so the scan starts after them.
 function parseURLSite(text: string): Destination | null {
-  const hostPart = text.slice(text.indexOf('://') + 3).split(/[/?#]/u)[0] ?? '';
+  const afterScheme = text.slice(text.indexOf('://') + 3).replace(/^[/\\]+/u, '');
+  const hostPart = afterScheme.split(/[/?#]/u)[0] ?? '';
 
   return !hostPart.includes('\\') && URL.canParse(text) ? toSite(new URL(text).hostname) : null;
 }
