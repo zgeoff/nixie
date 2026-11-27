@@ -88,7 +88,9 @@ browser, not Google, follows the redirect.
 A renewal advances the connection's removal counter, so a refresh that began before it saves nothing
 and revokes nothing, and a check that began before it keeps the scopes the consent found. The
 renewal also moves the tokens in the live own-value set from the consent's credential to the
-connection, so a Forget clears them.
+connection, so a Forget clears them. A renewal that reaches a new address keeps it under a new
+reference beside the address before, so a decision under an older snapshot still sees only the older
+address, as [places](../policy/places.md) explains. A Forget erases every address.
 
 After `ACCOUNT_MISMATCH`, `FORGET_IN_PROGRESS` or a connection forgotten during the consent, the
 module keeps no token and makes one revocation attempt, unless a live connection reaches the same

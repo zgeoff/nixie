@@ -53,16 +53,15 @@ Built: `web_fetch` declares its host, `computer.screen_click` and `computer.scre
 flag that stops an allow with no destination, the hop gate refuses a `blocked` site, and the
 computer's read tools, its click, its desktop picture and its act tools declare their hosts and
 effects, and the act tools read the tab's host at each call, as the
-[computer doc](../../architecture/connectors/computer.md#reads-and-acts) says. The rest is still to
-build:
+[computer doc](../../architecture/connectors/computer.md#reads-and-acts) says. The phone lists its
+number as a `nixie_own` place, and `parsePlace` reads the destination of `phone.send` as a phone
+place. The rest is still to build:
 
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
   host too, in their own work items.
 - A `blocked` host denies a read of a tab or of the desktop whoever opened the page, and the refusal
   tells the model that a blocked site is on screen. Today the refusal names the blocked place, and
   does not say the page is on screen.
-- A phone feature lists its number as a `nixie_own` place and declares a `phone.send` destination
-  that `parsePlace` reads as a phone place.
 
 ### The notice of an act
 
