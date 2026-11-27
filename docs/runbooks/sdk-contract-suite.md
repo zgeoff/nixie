@@ -50,8 +50,9 @@ never calls the model. With it and neither credential variable set, every probe 
    ANTHROPIC_AUTH_TOKEN=imp-broker-placeholder NIXIE_SDK_CONTRACT=1 bun run test:model-api
    ```
 
-   The command runs only the SDK probes. The GPT-Live test has its own command, `test:gpt-live`.
-   Expect `0 fail`, and no `skip` line. The suite takes about 8 minutes on an agent's imp.
+   The lane runs the SDK contract probes and the pinned-memory model test in `guests/conversation`.
+   Every test in the lane must pass. The GPT-Live test has its own command, `test:gpt-live`. Expect
+   `0 fail`, and no `skip` line. The suite takes about 8 minutes on an agent's imp.
 
 4. Post a comment on the pull request. Give the head commit's SHA and the command. Add the summary
    lines of the output, from the `pass` count to the `Ran` line:

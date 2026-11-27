@@ -129,9 +129,9 @@ test file, run each one that the file needs, from the repo root:
   fail: only the imp's broker supplies the model credential. To run one file, add its path to the
   table's command. Without `NIXIE_SDK_CONTRACT=1`, every test skips and the command passes with no
   test run.
-- Run the GPT-Live test, which needs `OPENAI_API_KEY`, with
-  `NIXIE_GPT_LIVE=1 bun run test:gpt-live`. Without `NIXIE_GPT_LIVE=1`, its tests skip. The
-  `test:model-api` command never runs it.
+- Run the GPT-Live test, which needs `OPENAI_API_KEY` and the headless browser from
+  `bun run test:chromium`, with `NIXIE_GPT_LIVE=1 bun run test:gpt-live`. Without
+  `NIXIE_GPT_LIVE=1`, its tests skip. The `test:model-api` command never runs it.
 
 ### The userns lane
 
