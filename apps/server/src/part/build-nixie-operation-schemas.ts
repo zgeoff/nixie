@@ -56,6 +56,10 @@ export function buildNixieOperationSchemas() {
     }),
     releaseWriterLock: z.null(),
 
+    // a note that the harness writes and forgets as a tool call would, so its session cleanup runs
+    // beside the call
+    forgetNoteBeside: z.null(),
+
     // a call that the user started and connected, on the harness's speech layer
     placeHarnessCall: z.null(),
 

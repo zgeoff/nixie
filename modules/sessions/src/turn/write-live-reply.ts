@@ -13,6 +13,9 @@ export interface LiveReply {
 
   // the step run writing the reply, which a void of the reply names
   readonly runID: string;
+
+  // the sequences of the inbox records the turn had read when it wrote the reply
+  readonly readSequences: readonly number[];
 }
 
 // The reply sits on the thread the moment the host reads it, so a reader sees it while the turn
@@ -28,7 +31,11 @@ export async function writeLiveReply(
     { definitions: context.definitions, model: run.model },
     modelReplyCodec,
     {
-      payload: { messageID: reply.messageID, runID: reply.runID },
+      payload: {
+        messageID: reply.messageID,
+        runID: reply.runID,
+        ...(reply.readSequences.length === 0 ? {} : { readSequences: [...reply.readSequences] }),
+      },
       text: reply.text,
       ...(reply.summary === '' ? {} : { summary: reply.summary }),
     },

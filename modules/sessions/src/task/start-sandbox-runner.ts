@@ -63,6 +63,8 @@ export interface SandboxRunner {
   readonly runCallStep: RunStep;
 
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
+
+  readonly stopCleanups: () => void;
 }
 
 type TaskImpActor = Actor<typeof taskImpMachine>;
@@ -78,6 +80,8 @@ interface TaskRunner {
   // the version hash that each running endpoint started with, null for a task that has none
   readonly endpointHashes: Map<string, string | null>;
   readonly guards: Map<string, SessionGuard>;
+
+  readonly shutdown: AbortController;
 }
 
 export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, SandboxRunner>({
@@ -92,13 +96,18 @@ export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, San
       imps: new Map(),
       endpointHashes: new Map(),
       guards: new Map(),
+      shutdown: new AbortController(),
     };
 
     // The task role's secret goes in at start, so a deployment that lacks it fails here and not at
     // the first started task.
     await resolveModelGrant(runner, session.profile);
 
-    session.defer(() => stopTaskImps(runner));
+    session.defer(() => {
+      runner.shutdown.abort(new Error('nixie is stopping'));
+
+      return stopTaskImps(runner);
+    });
 
     const watch = startEndedTaskWatch(runner);
 
@@ -108,6 +117,9 @@ export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, San
       runStep: (input) => runStartedStep(runner, input),
       runCallStep: (input) => runCallTask(runner, input),
       cleanupSessions: (cause) => runTaskSessionCleanup(runner, cause),
+      stopCleanups: () => {
+        runner.shutdown.abort(new Error('nixie is stopping'));
+      },
     };
   },
 });
@@ -324,7 +336,7 @@ function resolveTaskGuard(runner: TaskRunner, taskID: string): SessionGuard {
     return held;
   }
 
-  const guard = makeSessionGuard();
+  const guard = makeSessionGuard(runner.shutdown.signal);
 
   runner.guards.set(taskID, guard);
 
@@ -526,8 +538,8 @@ async function runTaskSessionCleanup(
     const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
     for (const taskID of cleaned) {
-      await resolveTaskGuard(runner, taskID).withInvalidation(async (lastStep) => {
-        await waitForStepEnd(runner.options.context, taskID, lastStep);
+      await resolveTaskGuard(runner, taskID).withInvalidation(async (lastStep, stopping) => {
+        await waitForStepEnd(runner.options.context, taskID, lastStep, stopping);
         await cleanTaskSession(runner, taskID, cause);
       });
     }

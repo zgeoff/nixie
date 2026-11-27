@@ -2303,6 +2303,285 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
   expect([task.sessionBoundary, task.stepErrors]).toStrictEqual([null, 1]);
 });
 
+test('it ends a cleanup that waits on a stalled turn when the shutdown begins', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  const started = Promise.withResolvers<void>();
+  const stalled = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    stalled.resolve();
+  });
+
+  ctx.sandboxes.setGuestScript(async () => {
+    started.resolve();
+
+    await stalled.promise;
+
+    return [];
+  });
+
+  await ctx.writeMessage('Hi.');
+
+  const step = Promise.allSettled([ctx.runNextStep(runner)]);
+
+  await started.promise;
+
+  const cleanup = runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
+
+  runner.stopCleanups();
+
+  expect(cleanup).rejects.toThrow('nixie is stopping');
+
+  stalled.resolve();
+
+  await step;
+});
+
+test('it delivers the reply of a turn that a forget aborted once, and the rerun answers nothing again', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  const replied = Promise.withResolvers<void>();
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    guest.emit?.([
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      { type: 'assistant', messageID: crypto.randomUUID(), text: 'It is tea.', toolUses: [] },
+    ]);
+
+    await waitForCondition(async () => {
+      const replies = await ctx.readKinds('model.reply');
+
+      return replies.length === 1;
+    });
+
+    replied.resolve();
+
+    await new Promise<void>((resolve) => {
+      guest.signal?.addEventListener('abort', () => {
+        resolve();
+      });
+    });
+
+    return [];
+  });
+
+  const [message] = await ctx.writeMessage('What do I drink?');
+
+  invariant(message);
+
+  await Promise.all([
+    ctx.runNextStep(runner),
+    replied.promise.then(() =>
+      runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' }),
+    ),
+  ]);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'It is tea, again.' })));
+  ctx.clock.advance(30_000);
+
+  await ctx.runNextStep(runner);
+
+  const [replies, voids, task] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+    readTestTaskProgress(ctx.context, 'conversation'),
+  ]);
+
+  expect(replies.map((reply) => reply.erasable)).toStrictEqual([
+    { status: 'readable', fields: { text: 'It is tea.' } },
+  ]);
+
+  expect(voids).toStrictEqual([]);
+  expect([task.state, task.readCursor]).toStrictEqual(['waiting', message.sequence]);
+});
+
+test('it keeps the reply of an aborted turn when a rerun starts while the cleanup still waits', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  const replied = Promise.withResolvers<void>();
+  const stalled = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    stalled.resolve();
+  });
+
+  ctx.readTurnMemory.mockImplementationOnce(async () => {
+    await stalled.promise;
+
+    return { kind: 'none' };
+  });
+
+  const [message] = await ctx.writeMessage('What do I drink?');
+
+  invariant(message);
+
+  const stale = Promise.allSettled([ctx.runNextStep(runner)]);
+
+  await waitForCondition(() => ctx.readTurnMemory.mock.calls.length === 1);
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    guest.emit?.([
+      { type: 'read', uuids: turn.input.map((entry) => entry.uuid) },
+      { type: 'assistant', messageID: crypto.randomUUID(), text: 'It is tea.', toolUses: [] },
+    ]);
+
+    await waitForCondition(async () => {
+      const replies = await ctx.readKinds('model.reply');
+
+      return replies.length === 1;
+    });
+
+    replied.resolve();
+
+    await new Promise<void>((resolve) => {
+      guest.signal?.addEventListener('abort', () => {
+        resolve();
+      });
+    });
+
+    return [];
+  });
+
+  ctx.clock.advance(120_000);
+
+  const aborted = Promise.allSettled([ctx.runNextStep(runner)]);
+
+  await replied.promise;
+
+  const cleanup = runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'It is tea, again.' })));
+  ctx.clock.advance(120_000);
+
+  const rerun = ctx.runNextStep(runner);
+
+  await waitForCondition(async () => {
+    const started = await ctx.readKinds('task.step_started');
+
+    return started.length === 3;
+  });
+
+  // Each read queues behind the rerun's own writes, so a rerun that sweeps at once has voided by now.
+  for (let reads = 0; reads < 20; reads += 1) {
+    await ctx.readKinds('model.reply_voided');
+  }
+
+  stalled.resolve();
+
+  await Promise.all([stale, aborted, cleanup, rerun]);
+
+  const [replies, voids, task] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+    readTestTaskProgress(ctx.context, 'conversation'),
+  ]);
+
+  expect(replies.map((reply) => reply.erasable)).toStrictEqual([
+    { status: 'readable', fields: { text: 'It is tea.' } },
+  ]);
+
+  expect(voids).toStrictEqual([]);
+  expect([task.state, task.readCursor]).toStrictEqual(['waiting', message.sequence]);
+});
+
+test('it answers a message that landed before the kept reply but was not read, and not the one that was', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: buildMockCredentialRef(),
+    toolNames: ['notes_read'],
+  });
+
+  const replied = Promise.withResolvers<void>();
+  const landed = Promise.withResolvers<number>();
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    guest.emit?.([{ type: 'read', uuids: turn.input.map((message) => message.uuid) }]);
+
+    const [second] = await ctx.writeMessage('And a biscuit?');
+
+    invariant(second);
+
+    landed.resolve(second.sequence);
+
+    guest.emit?.([
+      { type: 'assistant', messageID: crypto.randomUUID(), text: 'It is tea.', toolUses: [] },
+    ]);
+
+    await waitForCondition(async () => {
+      const replies = await ctx.readKinds('model.reply');
+
+      return replies.length === 1;
+    });
+
+    replied.resolve();
+
+    await new Promise<void>((resolve) => {
+      guest.signal?.addEventListener('abort', () => {
+        resolve();
+      });
+    });
+
+    return [];
+  });
+
+  await ctx.writeMessage('What do I drink?');
+
+  await Promise.all([
+    ctx.runNextStep(runner),
+    replied.promise.then(() =>
+      runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' }),
+    ),
+  ]);
+
+  const [secondSequence, replies] = await Promise.all([
+    landed.promise,
+    ctx.readKinds('model.reply'),
+  ]);
+
+  expect(replies.at(0)?.sequence).toBeGreaterThan(secondSequence);
+  expect(replies).toHaveLength(1);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'A biscuit, yes.' })));
+  ctx.clock.advance(30_000);
+
+  await ctx.runNextStep(runner);
+
+  const rerun = ctx.sandboxes.turns.at(-1);
+
+  expect(rerun?.input.map((message) => message.text)).toStrictEqual([
+    expect.toInclude('And a biscuit?'),
+  ]);
+});
+
 test('it fails the step and voids the reply it wrote when nixie tool server is not connected', async () => {
   const ctx = await setupTest();
 
@@ -2663,6 +2942,7 @@ test('it keeps the replies the model gave before the model API refused the call,
         model: expect.toBeString(),
         profile: expect.toBeString(),
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+        readSequences: [expect.toBeNumber()],
         runID: expect.toBeString(),
       },
       { status: 'readable', fields: { text: 'Let me check the calendar.' } },
@@ -3983,6 +4263,7 @@ test.each([
         model: expect.any(String),
         profile: expect.any(String),
         messageID: expect.any(String),
+        readSequences: Array.from({ length: row.reports.length + 1 }, () => expect.any(Number)),
         runID: expect.any(String),
       },
       erasable: { status: 'readable', fields: { text: 'Yes, Thursday works.' } },

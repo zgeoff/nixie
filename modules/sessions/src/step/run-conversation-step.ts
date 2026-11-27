@@ -23,7 +23,9 @@ import type { SessionMarks } from '../utils/read-session-marks';
 import { readSessionMarks } from '../utils/read-session-marks';
 import { readToldWaitNotices } from '../utils/read-told-wait-notices';
 import { isStepTurnCut } from './is-step-turn-cut';
+import { pickAnsweredInbox } from './pick-answered-inbox';
 import { pickSessionPosition } from './pick-session-position';
+import { readAnsweredSequences } from './read-answered-sequences';
 import { voidLostReplies } from './void-lost-replies';
 
 // One capture covers the whole step: a threshold compaction, the turn, an overflow compaction and a
@@ -32,8 +34,10 @@ export async function runConversationStep(
   conversation: ConversationRun,
   input: StepInput,
 ): Promise<StepResult> {
-  // a runner that died mid-turn left replies that no commit kept, and no later read may see them
-  await voidLostReplies(conversation, input);
+  // A runner that died mid-turn left replies that no commit kept, and no later read may see them.
+  // The sweep waits for a cleanup in flight, whose invalidation record marks the replies of the
+  // turn it aborted as kept.
+  await conversation.session.withTurn(() => voidLostReplies(conversation, input));
 
   const stopped = await runSpendCheck(conversation, input);
 
@@ -121,9 +125,21 @@ function pickCaptureRole(frame: SessionFrame): 'task' | 'call' | 'conversation' 
     .exhaustive();
 }
 
-function runSessionTurn(conversation: ConversationRun, input: StepInput): Promise<StepResult> {
+function runSessionTurn(conversation: ConversationRun, started: StepInput): Promise<StepResult> {
   return conversation.session.withTurn(
     async (invalidated) => {
+      const kept = await readKeptInbox(conversation, started);
+
+      if (kept.remaining.length === 0 && kept.answered.length > 0) {
+        return {
+          next: 'wait',
+          records: [],
+          acknowledged: kept.answered,
+          sessionBoundary: started.sessionBoundary,
+        };
+      }
+
+      const input = { ...started, inbox: kept.remaining };
       const signal = AbortSignal.any([input.signal, invalidated]);
       const definitions = conversation.getDefinitions();
 
@@ -170,7 +186,9 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
         toldWaitNotices,
       };
 
-      const result = await runSessionStep(step);
+      const stepped = await runSessionStep(step);
+
+      const result = { ...stepped, acknowledged: [...stepped.acknowledged, ...kept.answered] };
 
       const settled =
         run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
@@ -179,8 +197,20 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
 
       return keepApprovedCallsReady(run, input.taskID, settled);
     },
-    { stepKey: input.stepKey, generation: input.lease.generation },
+    { stepKey: started.stepKey, generation: started.lease.generation },
   );
+}
+
+// Only the conversation answers messages with a reply. A task's reply goes to its starter as a
+// report, so a rerun of a task never skips a record.
+async function readKeptInbox(conversation: ConversationRun, input: StepInput) {
+  if (conversation.frame.kind !== 'conversation') {
+    return { remaining: input.inbox, answered: [] };
+  }
+
+  const answered = await readAnsweredSequences(conversation.context, input.taskID);
+
+  return pickAnsweredInbox(input.inbox, answered);
 }
 
 async function runSessionStep(step: SessionStep): Promise<StepResult> {

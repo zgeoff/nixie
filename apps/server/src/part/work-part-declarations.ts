@@ -268,7 +268,15 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         otherStep,
       );
 
-      await startRunners(parts, runStep, () => reader.find('mcp'));
+      await startRunners(
+        parts,
+        runStep,
+        () => reader.find('mcp'),
+        () => {
+          reader.get('conversation_imp').stopCleanups();
+          reader.get('sandbox_runner').stopCleanups();
+        },
+      );
 
       parts.state.update({ areRunnersStarted: true });
     },
@@ -462,6 +470,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         registerHarnessOperations(harness.link, parts.context, {
           calls: parts.apiContext.calls,
           mail: reader.get('context').mail?.memory ?? null,
+          notebook: reader.get('notebook'),
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
         });
 
