@@ -31,12 +31,13 @@ that cannot reach every text it needs, such as one page that fails in a long bac
 source never moves its cursor past a text it did not read.
 
 A call that fails to reach the provider throws, and a send that throws has an unknown outcome.
-Twilio stamps a text to the second, and nixie takes the time Twilio created the text as its receive
-time, so a rule that the model set after the text arrived cannot take it. Twilio sorts its list by
+Twilio stamps a text to the second. nixie takes the time Twilio created a text as its receive time,
+so a wake rule that the model set after the text arrived cannot take it. Twilio sorts its list by
 the sent time, which Twilio sets on a received text at or after its creation time. So Twilio can
-list an older text among newer ones, and a read of the texts stops only at a page sent wholly before
-its start time. Twilio lists a queued text with no sent time, so a read for a send looks at the
-creation time and pages through the list without a filter on the sent time.
+list an older text among newer ones, and a read keeps paging until it reaches a page whose texts
+were all sent before the read's start time. Twilio lists a queued text with no sent time, so the
+read that checks a send matches on the creation time and pages through the list without a filter on
+the sent time.
 
 The adapter calls the provider's Messages API through the credential store's fetcher, bound to the
 provider's API origin. The fetcher adds the API key as HTTP Basic, with the key's SID as the user,
@@ -51,24 +52,25 @@ the real one, and the harness operation `deliverText` puts a text in it.
 triggers module's list of text sources before any part starts. The source reads the provider each
 `poll_interval`, so nixie needs no address that the internet can reach.
 
-- At its first start the source records where the provider stands and writes nothing for the texts
-  it holds, so a new deployment never wakes on old texts.
+- At its first start the source sets its cursor at the provider's newest texts and stores none of
+  the texts already there, so a new deployment never wakes on old texts.
 - For each new text the source writes a `phone.text_received` record in a write transaction of its
-  own, then delivers the batch with the new cursor. A crash between the two delivers the batch
-  again, and the core drops each arrival it holds by its dedupe key, the provider's message ID.
+  own, then delivers the batch with the new cursor. After a crash between the two, the source
+  delivers the batch again, and the core drops each arrival it already holds, by its dedupe key, the
+  provider's message ID.
 - After an outage the source stores each text it missed. The batch holds an arrival only for the
   texts received in the last hour, so a wake rule never fires on a text a day old.
-- A read that fails backs off from a minute, doubling up to an hour, and the source reports
-  `unhealthy` after 3 failures in a row.
+- After a failed read the source waits a minute before the next, doubling the wait up to an hour,
+  and reports `unhealthy` after 3 failures in a row.
 
 The cursor holds the newest receive time and the message IDs that share it, so two texts in the same
-second are neither lost nor read twice. At its first start the source records every text of the
-newest time, however many pages they fill, and that time as the cursor's floor. The provider can
-list a text after the cursor passed its receive time, so each read reaches a day behind the cursor.
-A new text is one past the cursor, or one above the floor with no row in `phone_texts`. A forgotten
-text keeps its row, so a later read never stores it again. The arrival that the source delivers
-holds the text's fields, and the core replaces them with the ones the phone's store holds when it
-writes the arrival, so a text forgotten between the store and the arrival wakes nothing.
+second are neither lost nor read twice. At its first start the source puts every text of the newest
+time in the cursor, however many pages they fill, and makes that time the cursor's floor. The
+provider can list a text after the cursor passed its receive time, so each read starts a day before
+the cursor. A new text is one past the cursor, or one above the floor with no row in `phone_texts`.
+A forgotten text keeps its row, so a later read never stores it again. The arrival that the source
+delivers holds the text's fields. When the core writes the arrival, it replaces those fields with
+the ones in the phone's store, so a text forgotten between the two writes wakes nothing.
 
 ## The stored text
 

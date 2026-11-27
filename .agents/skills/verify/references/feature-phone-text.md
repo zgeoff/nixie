@@ -70,7 +70,7 @@ Before you start:
 
 5. Script the turn that the next wake starts: the model lists the texts from the library's number,
    opens the newest, queues a reply text, then replies. Then deliver the library's text, move the
-   clock, and wait for the model to receive the text and for the reply text to wait for approval.
+   clock, and wait until the model has received the text and the reply text waits for approval.
 
    ```bash
    bun verify action script-reply --text 'I read the text and answered it.' --phone-read '{"from":"+61422222222"}' --phone-send '{"to":"+61422222222","body":"Thanks, I will be there."}'
@@ -101,7 +101,7 @@ Before you start:
    query, `phone.list`, `phone.read` and `phone.send` come in that order. The `outcome` of
    `phone.list` and `phone.read` is `result`, and their `content_source` is `untrusted`. A read of
    an unknown text ID would fail this check. The third query lists `phone.send`, because the reply
-   text waits for the user's approval and never reaches a provider.
+   text waits for the user's approval. It never reaches a provider.
 
 ## End state
 
