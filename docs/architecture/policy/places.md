@@ -61,13 +61,14 @@ and an origin: `you`, `proposal`, `card`, `seed` or `nixie_own`. The levels are:
 
 The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted`,
 which goes on the call's thread. Each add, change or removal that the user or a tool makes runs the
-in-force seed in its own write transaction, which puts a definitions snapshot that holds the
-directory in force. The definitions seed writes the entries of `places.yaml` inside its own
-snapshot, and the seed of nixie's own entries runs the in-force seed once after its entries, when it
-added any. When the seed refuses, the whole transaction rolls back. A call decides under the
-snapshot it started with, so a block takes effect for each call that starts after the commit. The
-snapshot lists each entry's level and the record its name came from, so a rename leaves an older
-snapshot's name of an address, phone number, handle or contact as it was.
+in-force seed inside the write transaction of its record. The in-force seed puts in force a
+definitions snapshot that holds the directory. The definitions seed writes the entries of
+`places.yaml` inside its own snapshot, and the seed of nixie's own entries runs the in-force seed
+once after its entries, when it added any. When the in-force seed refuses, the whole transaction
+rolls back. A call decides under the snapshot it started with, so a block takes effect for each call
+that starts after the commit. The snapshot lists each entry's level and the record its name came
+from, so a rename leaves an older snapshot's name of an address, phone number, handle or contact as
+it was.
 
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. A call uses an
 entry when its `tool_called` decision carries the entry's permission, whatever the outcome. The
@@ -79,7 +80,8 @@ erasable fields. A fold cannot read erasable fields, so no projection row holds 
 erasable field gives. A rebuild gives back the rows of the live log. The writer of an address, phone
 number or handle removal records it in `place_removals`, a table outside the projections, and a
 rebuild and each server start read the removals back. A removed entry keeps its row, so a replay of
-an older call finds its key.
+an older call finds the entry. The directory reads the key of an address, phone number or handle
+back from the entry's records.
 
 A call that an `act` place allowed writes its `places.acted` record on the call's thread once the
 action queue admits the attempt, and a retry of the call reads the act records back and writes none
