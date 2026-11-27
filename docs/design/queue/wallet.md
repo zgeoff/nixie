@@ -7,12 +7,13 @@
 
 The assistant pays with cards that sit in the same vault as its passwords. It fills a card into a
 checkout the way it fills a password, so the card's number never reaches the model. A purchase is a
-`spend` action under the [budgets](../../architecture/policy/budgets.md) rules: a lift lets a small
-one through without asking, but only when the total on the page matches the amount the assistant
-declared. Every other purchase asks the user. Each card has a monthly budget of its own and lifts of
-its own, so the assistant's card can lift small purchases while another card asks every time. A rule
-can also name a card's [group](accounts.md#the-vault) to ask or deny. The wallet is an optional
-feature: with no `wallet` section in the deployment config, nixie offers none of its tools.
+`spend` action under the [budgets](../../architecture/policy/budgets.md) rules. A small purchase
+goes through without asking only under a lift, and only when the total on the page matches the
+amount the assistant declared. Every other purchase asks the user. Each card has a monthly budget of
+its own and lifts of its own, so the assistant's card can lift small purchases while another card
+asks every time. A rule can also name a card's [group](accounts.md#the-vault) to ask or deny. The
+wallet is an optional feature: with no `wallet` section in the deployment config, nixie offers none
+of its tools.
 
 ## Shape
 
@@ -179,10 +180,10 @@ The card on the page:
 
 Spending:
 
-- Before the decision, the guest reads the checkout's total from the page. The policy trusts the
-  total only when it matches the declared amount to the currency's minor unit. The guest reads the
-  currency from an ISO code on the page or a symbol only one currency uses. A total in a symbol
-  several currencies share, such as `$` alone, counts as no total found. Stage 4 of
+- Before the decision, the guest reads the checkout's total from the page. The total counts only
+  when it matches the declared amount to the currency's minor unit. The guest reads the currency
+  from an ISO code on the page or a symbol only one currency uses. A total in a symbol several
+  currencies share, such as `$` alone, counts as no total found. Stage 4 of
   [budgets](../../architecture/policy/budgets.md) gains this check: a `spend` lift passes only when
   the page total matched.
 - Every budget figure is in USD micros, as the budgets ledger counts. When the page's currency is
@@ -252,5 +253,5 @@ Spending:
 
 ## Open questions
 
-- **Does the bank ask for a 3-D Secure check on each purchase?** A test purchase settles it, once
-  the user has the card. Until then, a purchase waits for a bank check as `wallet.pay` describes.
+- **Does the bank ask for a 3-D Secure check on each purchase?** Settle it with a test purchase once
+  the user has the card. Until then, `wallet.pay` waits up to 5 minutes for a bank check.

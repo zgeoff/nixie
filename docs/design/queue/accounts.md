@@ -283,8 +283,8 @@ Secrets:
 - The broker never puts a secret in the model's context, a tool result, a `hidden` value, a
   snapshot, an approval card, the event log or the server log. Nothing logs the body of a fill
   frame.
-- A page that shows a filled password as text can put it in a screenshot. The design accepts that
-  for passwords, and the acceptance test leaves screenshots out of its search for a password.
+- A page that shows a filled password as text can put it in a screenshot. nixie accepts that for
+  passwords, and the acceptance test leaves screenshots out of its search for a password.
 - Before any result of an `account.*`, `wallet.*` or `computer.*` tool reaches the model, the server
   replaces each vault secret it finds in the result's text with dots: every entry's secret, pending
   entries included. A stored page read later through `web_fetch` gets the same pass. This catches a
@@ -293,7 +293,7 @@ Secrets:
   outside its entry's origins. The body of an HTTPS request goes unscanned.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
   off.
-- Chromium runs as its own user on the desktop, as [the desktop](desktop.md) sets, so no command the
+- Chromium runs as its own user on the desktop (see [the desktop](desktop.md)), so no command the
   assistant runs reads the page's memory or its profile.
 - The desktop stream that you watch shows a filled page as it is. Only a signed-in client watches.
 - `vault.reveal` asks for a fresh passkey tap, and only a signed-in client's full session calls it.
@@ -321,7 +321,7 @@ Filling:
 Entry state:
 
 - The broker writes a `sign_up`'s pending entry before it sends the fill frame. When the guest
-  refuses, it has filled nothing, so the site never saw the password and the broker removes the
+  refuses, it has filled nothing and the site never saw the password, so the broker removes the
   entry.
 - A `sign_up` entry turns `ready` when the sign-up reaches `signed_in` or `next_step`. Otherwise it
   stays `pending` until its first `sign_in` does. A pending entry signs in like a ready one.

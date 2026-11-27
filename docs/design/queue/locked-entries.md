@@ -63,9 +63,9 @@ vault.reveal({ account, prf }); // prf only for a locked entry
   old key, so a backup of the key store from before the lock can't open the secret sealed after it.
   `vault.unlock` makes a new secret key the same way.
 - A lock, an unlock and every wrapper removal make a backup due. The vault screen shows the lock's
-  backup state the way
-  [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state) shows,
-  and the lock is whole only once that state is complete.
+  backup state as it shows
+  [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state). The
+  lock is whole only once that state is complete.
 - `vault.lock` wraps the secret under only the passkey that answered it. Add another passkey with
   `vault.addLockPasskey`, and give each copy that passkey's own PRF output.
 - Revoking a passkey removes its copies. The vault fills the core list of revoke guards, so a revoke
@@ -96,6 +96,6 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 ## Open questions
 
 - **Does your passkey return a PRF output?** Locked entries need the WebAuthn PRF extension in the
-  passkey provider and the browser. You settle it by locking one throwaway entry once this lands.
-  Until then, and on a passkey without PRF, `vault.lock` refuses with `NO_PRF`, and every other part
-  of the vault works.
+  passkey provider and the browser. Lock one throwaway entry once this lands to find out. Until
+  then, and on a passkey without PRF, `vault.lock` refuses with `NO_PRF`, and every other part of
+  the vault works.

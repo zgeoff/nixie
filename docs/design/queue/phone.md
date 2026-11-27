@@ -82,7 +82,7 @@ phone.text_received    -- one per new text, keyed by the provider's message ID; 
   created during the attempt and recorded by no other send. With no message found, it asks the user
   through `answerUnknownOutcome`.
 - `phone.text_received` declares `from` and `body` in `ErasableRecordKinds`, the server record-kind
-  map and one descriptor list. Forgetting it erases nixie's copy and leaves the text at the
+  map and one descriptor list. Forgetting a text erases nixie's copy and leaves the text at the
   provider.
 - When a sign-up asks for a phone number and the phone is on, the assistant gives its own number and
   reads the code from the text. With the phone off, it hands the step to the user.
