@@ -100,7 +100,7 @@ export async function seedJoinedSession(
 
   const shortID = /"id":"(?<id>[^"]+)"/u.exec(JSON.stringify(listed))?.groups?.['id'];
 
-  invariant(shortID, 'coding.sessions lists the session');
+  invariant(shortID !== undefined && shortID !== '', 'coding.sessions lists the session');
 
   const started = await callTool('coding.start', {
     name: seed.name,
