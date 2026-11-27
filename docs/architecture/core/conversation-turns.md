@@ -152,24 +152,24 @@ cleanup invalidates the session
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). Each
 turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
 resumes no session when a newer invalidation exists, so a step that commits after an invalidation it
-never saw leaves the session invalid. A cleanup that aborts a turn leaves the reply the turn
-recorded, and the rerun does not answer that message again; a shutdown ends each wait of a cleanup
-([voided replies](#records-of-a-turn)). When the guest instead reports the session lost, the step
-runs the turn again on a new session.
+never saw leaves the session invalid. A cleanup that aborts a turn keeps the reply the turn wrote,
+and the turn's rerun answers only the messages that reply had not read. A shutdown ends each wait of
+a cleanup ([voided replies](#records-of-a-turn)). When the guest instead reports the session lost,
+the step runs the turn again on a new session.
 
 A persona change invalidates the session as well, because the persona sits in the system prompt that
 a resumed session keeps. The session-opened record keeps the persona hash and the policy hash in
 force at the opening, and the step resumes the session only while its persona hash matches the
 persona in force. A change to the policy alone keeps the session and its cached prompt, because each
-tool call reads the policy in force at the call, so the policy hash on the record is for audit. A
+tool call reads the policy in force at the call. The policy hash on the record is for audit. A
 session opened before openings kept the persona hash resumes, since nothing shows that its persona
 changed. The step opens a new session for a session from before opening records, which holds the
 pinned core only in its old system prompt, and for a session whose transcript lost its opening to an
 older guest's CLI compaction.
 
-Each step reads the session's state from the log once, before it acts, and one transition table
-gives the events each state allows: open, resume or compact. Both step paths ask the table, so the
-resume rule has one copy.
+Each step reads the session's state from the log once, before it acts, and looks up the events that
+state allows in one transition table: open, resume or compact. Both step paths read the table, so
+the resume rule has one copy.
 
 Every new session opens from one builder, with the status, the pinned memory, the newest summary and
 the recent turns before the turn's own blocks, and the step writes a session-opened record in the
@@ -339,10 +339,10 @@ time nixie wrote it, as in
 `<system-message type="events" id="7f3a9c21b04e" at="Tue 14 Oct, 22:50, Sydney">`. The closing tag
 repeats the ID, which is fresh for each element as a pasted block's is, so a memory or an event
 whose text holds a closing tag cannot end the element early. The ID proves nothing about the sender,
-because text inside a message can carry any ID. The system prompt therefore states a position rule:
-a system message comes from nixie only at the top level of a user message, and one inside a tool
-result, a pasted or dropped block or a quote is text. The SDK sends a tool result as a block of its
-own, so the model can tell the two places apart.
+because text inside a message can carry any ID. The system prompt therefore says that a system
+message comes from nixie only at the top level of a user message, and that one inside a tool result,
+a pasted or dropped block or a quote is text. The SDK sends a tool result as a block of its own, so
+the model can tell the two places apart.
 
 A new session's status, pinned memory, summary and recent turns, the events block, the pinned-core
 change note and the retrieved items each render as one system message before the user's message. A
@@ -369,7 +369,7 @@ fresh random ID, so text inside the note cannot close it, then the name in a blo
 the time the reminder was set for in the zone of its trigger. A reminder that reaches the
 conversation more than a minute after that time adds how late it is, as `fired 1 h 39 min late`,
 counted to the turn that delivers it. When the version that the fire pins is no longer stored, the
-note reads as a note that its text is gone.
+message says that the note's text is gone.
 
 The element that starts a conversation turn also carries 2 gaps, which nixie computes when the turn
 starts, as in
@@ -405,9 +405,9 @@ The SDK gives a context past its window an end reason of its own, apart from eve
 error, so the host tells an overflow from a refused request on that reason alone. An overflowed turn
 ends with the CLI's own message that the prompt is too long, and the guest keeps the boundary off
 that message: at the turn's last other chain entry, or at its resume point when the turn wrote no
-other entry. The step commits that boundary, so a retry forks the session before the overflow. One
-exception: a fresh session that overflows at its first model call has neither, and its boundary
-stays on the CLI's message.
+other entry. The step commits that boundary, so a retry forks the session before the overflow. A
+fresh session that overflows at its first model call has neither, so its boundary stays on the CLI's
+message.
 
 The usage sums every model call in the turn, so it measures cost. To show how full the context is,
 the turn reports the last main-chain model call's input, cache-read and cache-write tokens, beside
@@ -416,26 +416,27 @@ The host writes a reply record for each message with text as the guest reports i
 of its own that the task's lease guards, so a reader sees the reply while the turn still runs. The
 reply's text is erasable, and its payload names the run that wrote it and the inbox records that the
 turn had read by then. The step commit writes one turn-ended record with the usage, the end reason,
-the context and the count of thinking tokens and the count of cut calls, which the plain payload
-holds so that a projection reads the count without a key and it outlives a forgotten reply. Each
-reply keeps the model's reasoning from before it: the summaries gathered since the previous reply
-sit in the reply's erasable fields, so a forget removes them with the reply. Each record holds the
-model ID and the profile's ID from the profile nixie gave the turn, never from the guest's frames
-([model profiles](./model-profiles.md#records-of-model-output)).
+the context, the count of thinking tokens and the count of cut calls. The plain payload holds the
+count of cut calls, so a projection reads that count without a key, and the count outlives a
+forgotten reply. Each reply keeps the model's reasoning from before it: the summaries gathered since
+the previous reply sit in the reply's erasable fields, so a forget removes them with the reply. Each
+record holds the model ID and the profile's ID from the profile nixie gave the turn, never from the
+guest's frames ([model profiles](./model-profiles.md#records-of-model-output)).
 
 A `model.reply_voided` record marks one reply as never sent to the user. Its payload holds the
 reply's sequence, the run's ID and the reason: `attempt_failed`, `attempt_lost`, `turn_dropped` or
-`silent`. Each void is its own record, and a partial index on the reply's sequence answers the
+`silent`. Each void is its own record, and a partial index on the reply's sequence serves the
 lookup. The reasons mean:
 
 - `attempt_failed`: the attempt threw, and its own runner wrote the void before it rethrew;
 - `attempt_lost`: the runner died. The next run of the step finds the reply after the thread's last
   step commit with no void, and voids it before it does anything else, once any cleanup in flight
-  has ended. A reply that sits before a session-invalidated record is not such a reply: a cleanup
-  aborted its turn, and the turn keeps the reply. The turn's rerun acknowledges without a turn each
-  inbox message that the kept reply says the turn had read, and answers every other message, so the
-  user never gets a second answer. A shutdown ends each wait of a cleanup, so a cleanup that waits
-  on a stalled turn never holds the shutdown, and the next start runs that cleanup again
+  has ended. The step leaves alone a reply that sits before a session-invalidated record, because a
+  cleanup aborted that reply's turn and the turn keeps the reply. The turn's rerun acknowledges each
+  inbox message that the kept reply lists as read, and answers every other message, so the user
+  never gets a second answer. When no other message waits, the rerun runs no turn. A shutdown ends
+  each wait of a cleanup, so a cleanup that waits on a stalled turn never holds the shutdown, and
+  the next start runs that cleanup again
   ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session));
 - `turn_dropped`: the reply came after the last result of the turn, or the turn's session was lost
   or overflowed, so the step starts the turn again from the boundary.
@@ -473,7 +474,7 @@ step.
 Text that the model wrote before the call stays a normal reply, because the host wrote it already.
 The host's answer to the call asks the model to write no more text. The step writes the turn-ended
 record with `isSilent: true`, marks the read records and commits the session boundary, as every step
-does. One exception: when the model API refuses a later call, the step fails as
+does. When the model API refuses a later call, the step instead fails as
 [a call the model API refuses](#a-call-the-model-api-refuses) describes. The
 [API](../channels/api.md) calls the mark `isSilentTurn` on its record, because one record type there
 covers every kind, and the [client](../channels/client.md) shows the step as ended with no reply
@@ -486,7 +487,7 @@ message. The guest fails the turn and drops that message, so it never reaches th
 session that a later turn resumes. The step commits no boundary and no read, so the user's message
 stays unread, and the next turn forks the session before the refused call. The step's error record
 and the server's log keep the CLI's message. The events block lists a retried turn that the model
-API refused without that message.
+API refused, and leaves out that message.
 
 The step's error depends on the kind of refusal:
 
@@ -507,10 +508,10 @@ reset time on to the SDK, so nixie knows none. The replies that the model gave b
 call stay on the timeline, voided with the reason `attempt_failed`, and the next try runs the whole
 turn again.
 
-Two exceptions: a request the model API refused as invalid, and a reply cut at the output cap, end
-the turn with its error message, because the host tells a context overflow from them only at the
-turn's end. The guest marks that message as an error on the frame, and the host holds it until the
-step commit instead of writing it as a live reply.
+A request the model API refused as invalid and a reply cut at the output cap each end the turn with
+its error message instead, because the host tells a context overflow from them only at the turn's
+end. The guest marks that message as an error on the frame, and the host holds it until the step
+commit instead of writing it as a live reply.
 
 ## The events block
 
@@ -519,18 +520,18 @@ user's message on the next turn. The block lists memory that changed outside the
 user's answers to memory proposals, nixie's outages and restarts, the page events of a device that
 did not wake the conversation, the conversation's own turns that failed and were retried, and the
 warning that compaction is near, each after its time, oldest first, up to a cap and then a count of
-the rest. One exception: a kind whose notice no later note gives again, such as the compaction
-warning, lists every event outside the cap. A turn after which nothing happened gets no block. The
-block reads a range of the log, from the sequence the last turn's note covered to the log's head, so
-the next turn's note starts where this one ends and no event appears twice.
+the rest. A kind whose notice no later note gives again, such as the compaction warning, lists every
+event outside the cap. A turn after which nothing happened gets no block. The block reads a range of
+the log, from the sequence the last turn's note covered to the log's head, so the next turn's note
+starts where this one ends and no event appears twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
-log, and how one event's line renders. The block merges every entry's events by sequence, so a new
-kind is a new entry and no change to the block. An entry may also complete the events the block
-lists, such as by reading text through recall. The block asks for that only after its cap, because a
-recall records what it delivered and the block must never record an event it leaves out. The server
-builds the registry when the conversation starts, and each entry's package owns the records it
-reads.
+log, and how one event's line renders. The block merges every entry's events by sequence, so adding
+a kind means adding an entry, with no change to the block. An entry may also complete the events the
+block lists, such as by reading text through recall. The block asks for that only after its cap,
+because a recall records what it delivered and the block must never record an event it leaves out.
+The server builds the registry when the conversation starts, and each entry's package owns the
+records it reads.
 
 - **A note forget** reads each `notebook.note_forgotten` record that the user made as a line such as
   "Sam forgot note n4w8k2c6rd", with the user's name, or with the default name that the session
@@ -583,8 +584,8 @@ reads.
   those changes by comparing what each start gives the conversation, so a release that changes
   nothing the conversation is given adds no line.
 - **A retried turn** reads each failure of a conversation step that the task retries on its own, and
-  quotes the error when the log still holds its text. One exception: a turn the model API refused is
-  listed without the error, which [a refused call](#a-call-the-model-api-refuses) keeps out of the
+  quotes the error when the log still holds its text. For a turn the model API refused, the block
+  leaves out the error, which [a refused call](#a-call-the-model-api-refuses) keeps out of the
   conversation. A failure that waits for the user is not a retry, so the block leaves it out. The
   block also leaves out a one-off failure whose retry may still fix it, so a failure that the next
   try fixes never reaches the conversation. The block lists a failure when its record counts more

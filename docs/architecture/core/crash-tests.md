@@ -206,8 +206,8 @@ and that no `model.session_cleanup_completed` record exists. A shutdown ends the
 a stalled turn cannot hold the stop.
 
 The next start runs that cleanup again. The rerun of an aborted turn answers only the messages that
-have no reply, as [Conversation turns](./conversation-turns.md) explains. The conversation runner's
-unit tests cover that rerun, and no crash test does.
+the turn's kept reply had not read, as [Conversation turns](./conversation-turns.md) explains. The
+conversation runner's unit tests cover that rerun, and no crash test does.
 
 ## Coverage
 
