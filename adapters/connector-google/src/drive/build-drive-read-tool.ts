@@ -1,4 +1,4 @@
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { ToolDefinition, ToolOutcome } from '@heynixie/connections';
 import { z } from 'zod';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { maxAttachmentBytes, readAttachmentContent } from '../call/read-attachment-content';
@@ -177,6 +177,7 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
       const bytes = file.size ?? content.bytes.byteLength;
 
       const parts = await readAttachmentContent(
+        deps.toolkit,
         { type: request.type, bytes: content.bytes },
         { textBytes: deps.textBytes, imageLongEdge: deps.imageLongEdge },
       );

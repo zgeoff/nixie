@@ -1,6 +1,5 @@
-import type { BodyFields, BodyFieldsRequest } from '@heynixie/connections';
-import type { JSONObject, Log } from '@heynixie/log';
-import { readRecordAttachments } from '@heynixie/log';
+import { readRecordAttachments } from '@heynixie/connections';
+import type { BodyFields, BodyFieldsRequest, JSONObject, Log } from '@heynixie/connections';
 import { buildGmailSendFields } from './build-gmail-send-fields';
 import { buildGmailWakeFields } from './build-gmail-wake-fields';
 import { formatCardNames } from './format-card-names';

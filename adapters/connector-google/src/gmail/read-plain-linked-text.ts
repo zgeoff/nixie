@@ -1,15 +1,17 @@
-import { formatLinkTag, getPageSession, writeHitLinks } from '@heynixie/connectors';
-import type { LinkedText, TagSpan } from '@heynixie/connectors';
-import type { Log } from '@heynixie/log';
-import type { ToolRun } from '@heynixie/tools';
-import type { LinkLimits } from './types';
+import type { Log, ToolRun } from '@heynixie/connections';
+import type { GoogleToolkit, LinkLimits, LinkedText, TagSpan } from './types';
 
 const urlPattern = /https?:\/\/[^\s<>"'`]+/gu;
 const trailingPunctuation = /[.,;:!?)\]}]+$/u;
 
+interface PlainLinkedTextDeps {
+  readonly toolkit: Pick<GoogleToolkit, 'formatLinkTag' | 'writeHitLinks'>;
+  readonly log: Pick<Log, 'writer'>;
+}
+
 // The same for a plain-text body, whose links are the addresses it writes out.
 export async function readPlainLinkedText(
-  log: Pick<Log, 'writer'>,
+  deps: PlainLinkedTextDeps,
   run: ToolRun,
   text: string,
   limits: LinkLimits,
@@ -19,7 +21,7 @@ export async function readPlainLinkedText(
     url: match[0].replace(trailingPunctuation, ''),
   }));
 
-  const numbers = await writeHitLinks(log, getPageSession(run), [
+  const numbers = await deps.toolkit.writeHitLinks(deps.log, run, [
     ...new Set(found.map((entry) => entry.url)),
   ]);
 
@@ -41,7 +43,7 @@ export async function readPlainLinkedText(
 
     const before = text.slice(cursor, entry.start);
 
-    const tag = formatLinkTag(number, entry.url, {
+    const tag = deps.toolkit.formatLinkTag(number, entry.url, {
       pageHost: null,
       linkPathChars: limits.linkPathChars,
     });

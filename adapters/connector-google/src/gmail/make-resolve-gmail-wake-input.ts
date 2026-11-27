@@ -1,6 +1,5 @@
 import { conversationTaskID, pickWakeTiming, resolveWakeTarget } from '@heynixie/connections';
-import type { JSONObject } from '@heynixie/log';
-import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import type { InputResolution, JSONObject, ToolResolveContext } from '@heynixie/connections';
 import { findTextField } from './find-text-field';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { parseItemID } from './parse-item-id';

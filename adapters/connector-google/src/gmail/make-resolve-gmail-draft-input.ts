@@ -1,5 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
-import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import type { InputResolution, JSONObject, ToolResolveContext } from '@heynixie/connections';
 import { buildDraftDigest } from './build-draft-digest';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { parseItemID } from './parse-item-id';

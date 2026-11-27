@@ -1,4 +1,4 @@
-import type { JSONValue } from '@heynixie/log';
+import type { JSONValue } from '@heynixie/connections';
 import type { GmailSourceCursor } from './gmail-source-cursor';
 
 export function toCursorJSON(cursor: GmailSourceCursor): JSONValue {

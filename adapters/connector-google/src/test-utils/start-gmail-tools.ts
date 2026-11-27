@@ -9,6 +9,7 @@ import { buildCalendarActions } from '../calendar/build-calendar-actions';
 import { buildDriveActions } from '../drive/build-drive-actions';
 import { buildGmailActions } from '../gmail/build-gmail-actions';
 import type { GmailDeps } from '../gmail/types';
+import { buildTestToolkit } from './build-test-toolkit';
 import type { FakeGmailSite } from './fake-gmail/start-fake-gmail-site';
 import { startFakeGmailSite } from './fake-gmail/start-fake-gmail-site';
 
@@ -54,6 +55,7 @@ export async function startGmailTools(options: GmailToolsOptions = {}): Promise<
   const clock = triggers?.clock ?? createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
 
   const deps: GmailDeps = {
+    toolkit: buildTestToolkit(),
     hosts: site.hosts,
     access: site.access,
     log,

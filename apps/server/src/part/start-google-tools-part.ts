@@ -11,6 +11,7 @@ import {
 import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 import type { FetchReply } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { buildGoogleToolkit } from '../google/build-google-toolkit';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
 import { collectOwnerAddresses } from './collect-owner-addresses';
 import { readMailHTML } from './read-mail-html';
@@ -79,6 +80,7 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
   invariant(google !== undefined, 'the google tools start only with a google section');
 
   const actions = buildGoogleActions({
+    toolkit: buildGoogleToolkit(),
     hosts,
     access: {
       readLiveContexts: (connection) => {

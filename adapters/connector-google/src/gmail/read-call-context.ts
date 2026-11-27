@@ -1,5 +1,4 @@
-import type { ConnectorContext } from '@heynixie/connections';
-import type { JSONObject } from '@heynixie/log';
+import type { ConnectorContext, JSONObject } from '@heynixie/connections';
 import type { GmailAccess } from './types';
 
 // The live connection that a call's input names, which the endpoint put there before the call. Null

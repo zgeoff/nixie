@@ -1,4 +1,4 @@
-import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
+import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/connections';
 import { z } from 'zod';
 import { formatReplyWake } from './format-reply-wake';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
@@ -67,7 +67,7 @@ export function buildGmailSendTool(deps: GmailDeps, kind: NewMailKind): ToolDefi
         return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
       }
 
-      const files = await readSendFiles(deps.log, {
+      const files = await readSendFiles(deps.toolkit, deps.log, {
         thread: context.run.thread,
         ids: mail.files,
         withContent: false,

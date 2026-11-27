@@ -265,6 +265,14 @@ export const controlRoutes = {
     // how many sessions of the gateway took the state
     output: z.strictObject({ sessions: z.int().nonnegative() }),
   },
+  gmailRequests: {
+    method: 'GET',
+    path: '/control/gmail-requests',
+    input: z.strictObject({}),
+
+    // how many requests the fake Gmail has answered since nixie last started
+    output: z.strictObject({ requests: z.int().nonnegative() }),
+  },
   modelReceived: {
     method: 'POST',
     path: '/control/model-received',

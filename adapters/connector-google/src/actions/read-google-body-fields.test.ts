@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import { startTestMemory } from '@heynixie/memory/test-utils';
+import { buildTestToolkit } from '../test-utils/build-test-toolkit';
 import { readGoogleBodyFields } from './read-google-body-fields';
 
 test('it words the card of a Gmail label change with its thread count and each label', async () => {
   const memory = await startTestMemory();
 
   const fields = await readGoogleBodyFields(
+    buildTestToolkit(),
     memory.log,
     {
       tool: 'gmail.label',
@@ -28,6 +30,7 @@ test('it leaves the card of a Gmail send without a body when its facts are gone'
   const memory = await startTestMemory();
 
   const fields = await readGoogleBodyFields(
+    buildTestToolkit(),
     memory.log,
     { tool: 'gmail.send', thread: 'conversation', input: {}, callSequence: 1 },
     'UTC',
@@ -40,6 +43,7 @@ test('it words the card of a calendar invitation in the default zone of the depl
   const memory = await startTestMemory();
 
   const fields = await readGoogleBodyFields(
+    buildTestToolkit(),
     memory.log,
     {
       tool: 'calendar.create_event_with_guests',

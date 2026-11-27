@@ -1,5 +1,4 @@
-import type { ConnectorContext, ProviderResponse } from '@heynixie/connections';
-import type { JSONObject } from '@heynixie/log';
+import type { ConnectorContext, JSONObject, ProviderResponse } from '@heynixie/connections';
 import { readCallContext } from '../gmail/read-call-context';
 import type { GoogleDeps } from '../types';
 import { parseEventRef } from './parse-event-ref';

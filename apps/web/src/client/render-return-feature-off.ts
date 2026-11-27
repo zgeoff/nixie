@@ -13,7 +13,7 @@ export function renderReturnFeatureOff(feature: FeatureID): Response {
 </head>
 <body>
 <h1>This feature is off in this nixie</h1>
-<p>The ${feature} feature is not set up here, so there is nothing to finish.</p>
+<p>The ${feature} feature is not set up here, or you are not signed in, so there is nothing to finish.</p>
 <p><a href="/">Back to nixie</a></p>
 </body>
 </html>

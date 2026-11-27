@@ -270,7 +270,7 @@ async function readRawFiles(
   thread: string,
   ids: readonly string[],
 ): Promise<RawFiles> {
-  const read = await readSendFiles(deps.log, { thread, ids, withContent: true });
+  const read = await readSendFiles(deps.toolkit, deps.log, { thread, ids, withContent: true });
 
   if (read.status === 'error') {
     return { kind: 'response', response: { kind: 'refused', reason: read.message } };

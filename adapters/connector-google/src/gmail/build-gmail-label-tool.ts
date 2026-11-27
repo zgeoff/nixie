@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@heynixie/tools';
+import type { ToolDefinition } from '@heynixie/connections';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';

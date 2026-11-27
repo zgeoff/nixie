@@ -1,6 +1,5 @@
+import { setWakeRuleInTransaction, withWriteTransaction } from '@heynixie/connections';
 import type { SetWakeRule, WakeRuleInput } from '@heynixie/connections';
-import { setWakeRuleInTransaction } from '@heynixie/connections';
-import { withWriteTransaction } from '@heynixie/log';
 import { buildGmailMailbox } from './build-gmail-mailbox';
 import type { GmailDeps } from './types';
 

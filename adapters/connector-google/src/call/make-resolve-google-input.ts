@@ -1,5 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
-import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import type { InputResolution, JSONObject, ToolResolveContext } from '@heynixie/connections';
 import { parseItemID } from '../gmail/parse-item-id';
 import type { GmailAccess } from '../gmail/types';
 

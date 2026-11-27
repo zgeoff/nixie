@@ -1,4 +1,4 @@
-import type { DestinationPermission } from '@heynixie/log';
+import type { DestinationPermission } from '@heynixie/connections';
 
 const permissionWords: Readonly<Record<DestinationPermission, string>> = {
   owner: 'you',

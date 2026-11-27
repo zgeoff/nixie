@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@heynixie/tools';
+import type { ToolDefinition } from '@heynixie/connections';
 
 type Declaration = ToolDefinition['declaration'];
 

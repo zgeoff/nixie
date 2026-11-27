@@ -17,6 +17,7 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { driveFilesCommand } from './drive-files-command';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
+import { gmailRequestsCommand } from './gmail-requests-command';
 import { gmailSentCommand } from './gmail-sent-command';
 import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
@@ -363,6 +364,7 @@ export function createVerifyRegistry(): Wringer {
     })
     .command(calendarWrittenCommand)
     .command(driveFilesCommand)
+    .command(gmailRequestsCommand)
     .command(gmailSentCommand)
     .command(liveOpensCommand)
     .command({

@@ -1,6 +1,5 @@
 import { formatDurationText, readWakeRules } from '@heynixie/connections';
-import type { JSONObject } from '@heynixie/log';
-import type { ToolDefinition } from '@heynixie/tools';
+import type { JSONObject, ToolDefinition } from '@heynixie/connections';
 import { buildGmailMailbox } from './build-gmail-mailbox';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';

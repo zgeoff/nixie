@@ -1,4 +1,4 @@
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { ToolDefinition, ToolOutcome } from '@heynixie/connections';
 import { z } from 'zod';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { readCallContext } from '../gmail/read-call-context';

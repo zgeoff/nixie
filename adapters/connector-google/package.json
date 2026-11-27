@@ -14,10 +14,7 @@
   "dependencies": {
     "@heynixie/clock": "workspace:*",
     "@heynixie/connections": "workspace:*",
-    "@heynixie/connectors": "workspace:*",
-    "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
-    "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
@@ -25,10 +22,13 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/connectors": "workspace:*",
     "@heynixie/egress": "workspace:*",
+    "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
     "@heynixie/triggers": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }

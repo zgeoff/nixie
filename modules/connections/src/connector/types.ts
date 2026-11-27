@@ -130,7 +130,7 @@ export interface OAuthSpec {
   // every consent asks for all of them
   readonly scopes: readonly string[];
 
-  // what the provider's scope names start with, so `gmail.modify` is a short name
+  // what the provider's scope names start with, so a scope's short name leaves the prefix out
   readonly scopePrefix: string;
   readonly authorizeParams: Readonly<Record<string, string>>;
 
@@ -156,7 +156,7 @@ export interface SetupStep {
   readonly input?: 'oauth_client';
 }
 
-// What a Google tool, attempt or check gets for one connection.
+// What a connector's tool, attempt or check gets for one connection.
 export interface ConnectorContext {
   readonly connectionID: string;
 

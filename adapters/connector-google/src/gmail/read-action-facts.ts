@@ -1,4 +1,4 @@
-import type { Log } from '@heynixie/log';
+import type { Log } from '@heynixie/connections';
 import { sql } from 'kysely';
 import { z } from 'zod';
 

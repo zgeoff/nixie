@@ -1,6 +1,6 @@
-import { readCodeFile, readCodeFileEntry } from '@heynixie/connectors';
-import type { Log } from '@heynixie/log';
+import type { Log } from '@heynixie/connections';
 import { maxAttachmentBytes } from '../call/read-attachment-content';
+import type { GoogleToolkit } from './types';
 
 interface SendFile {
   readonly file: string;
@@ -26,13 +26,14 @@ interface SendFilesRequest {
 // another thread reads as unknown, and the files hold no more than a mail carries. The bytes are
 // read only when `withContent` is set, as the action that sends needs them.
 export async function readSendFiles(
+  toolkit: Pick<GoogleToolkit, 'readCodeFile' | 'readCodeFileEntry'>,
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   request: SendFilesRequest,
 ): Promise<SendFiles> {
   const files: SendFile[] = [];
 
   for (const id of request.ids) {
-    const entry = await readCodeFileEntry(log, id);
+    const entry = await toolkit.readCodeFileEntry(log, id);
 
     if (entry.kind === 'missing' || entry.row.thread !== request.thread) {
       return { status: 'error', message: `UNKNOWN_FILE: no file ${id} belongs to this thread` };
@@ -46,7 +47,7 @@ export async function readSendFiles(
     }
 
     const read = request.withContent
-      ? await readCodeFile(log, { thread: request.thread, fileID: id })
+      ? await toolkit.readCodeFile(log, { thread: request.thread, fileID: id })
       : null;
 
     if (read !== null && read.kind !== 'ok') {

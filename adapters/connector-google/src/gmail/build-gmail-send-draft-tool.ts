@@ -1,4 +1,4 @@
-import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
+import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/connections';
 import { z } from 'zod';
 import { buildDraftDigest } from './build-draft-digest';
 import { collectAddresses } from './collect-addresses';

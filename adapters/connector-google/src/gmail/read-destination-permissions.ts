@@ -1,5 +1,5 @@
-import type { DestinationPermission, Log } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import { readRecords } from '@heynixie/connections';
+import type { DestinationPermission, Log } from '@heynixie/connections';
 import { z } from 'zod';
 
 const erasableSchema = z.object({

@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@heynixie/tools';
+import type { ToolDefinition } from '@heynixie/connections';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import type { GoogleDeps } from '../types';
 import { driveDeclarations } from './drive-declarations';

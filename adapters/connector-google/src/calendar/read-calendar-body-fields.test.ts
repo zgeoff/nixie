@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { startTestLog } from '@heynixie/connectors/test-utils';
 import { writeRecords } from '@heynixie/log';
 import { buildCardAttachment } from '../gmail/gmail-card';
+import { buildTestToolkit } from '../test-utils/build-test-toolkit';
 import { buildEventCard } from './build-event-card';
 import { readCalendarBodyFields } from './read-calendar-body-fields';
 import type { CalendarEvent } from './types';
@@ -61,6 +62,7 @@ async function setupTest() {
     writeCall,
     read: (tool: string, input: Record<string, string | readonly string[]>, callSequence: number) =>
       readCalendarBodyFields(
+        buildTestToolkit(),
         log,
         { tool, thread: 'conversation', input: { ...input }, callSequence },
         'UTC',

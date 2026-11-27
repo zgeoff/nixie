@@ -52,12 +52,16 @@ test('it answers a page with the error code when the API refuses, with no store 
   ]).toStrictEqual([400, 'no-store', 'no-referrer', true, false]);
 });
 
-test('it answers 400 with the error code when the browser has no session', async () => {
+test('it answers the feature-off page when the browser has no session, so a nixie with Google off never shows an error', async () => {
   const ctx = await setupTest();
   const response = await ctx.handleReturn('?state=abc&code=4%2F0Ab', null);
   const page = await response.text();
 
-  expect([response.status, page.includes('UNAUTHORIZED')]).toStrictEqual([400, true]);
+  expect([
+    response.status,
+    page.includes('This feature is off in this nixie'),
+    ctx.api.requests.map((request) => request.path),
+  ]).toStrictEqual([404, true, ['/rpc/nixie/read']]);
 });
 
 test('it answers 400 without calling the API when the state is missing', async () => {

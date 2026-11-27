@@ -1,4 +1,4 @@
-import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
+import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/connections';
 import { z } from 'zod';
 import { decodeHeaderWords } from './decode-header-words';
 import { formatReplyWake } from './format-reply-wake';
@@ -76,7 +76,7 @@ export function buildGmailReplyTool(deps: GmailDeps): ToolDefinition {
         };
       }
 
-      const files = await readSendFiles(deps.log, {
+      const files = await readSendFiles(deps.toolkit, deps.log, {
         thread: context.run.thread,
         ids: parsed.data.files ?? [],
         withContent: false,

@@ -1,5 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
-import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import type { InputResolution, JSONObject, ToolResolveContext } from '@heynixie/connections';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import type { GoogleDeps } from '../types';
 import { collectOtherAddresses } from './collect-other-addresses';

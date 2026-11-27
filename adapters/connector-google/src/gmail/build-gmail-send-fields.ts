@@ -1,5 +1,4 @@
-import type { BodyFields } from '@heynixie/connections';
-import type { DestinationPermission } from '@heynixie/log';
+import type { BodyFields, DestinationPermission } from '@heynixie/connections';
 import { annotateRecipients } from './annotate-recipients';
 import type { GmailCard } from './gmail-card';
 import { gmailToolNames } from './gmail-tool-names';

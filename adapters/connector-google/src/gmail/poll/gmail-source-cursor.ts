@@ -1,4 +1,4 @@
-import type { JSONValue } from '@heynixie/log';
+import type { JSONValue } from '@heynixie/connections';
 import { z } from 'zod';
 
 const entrySchema = z.strictObject({

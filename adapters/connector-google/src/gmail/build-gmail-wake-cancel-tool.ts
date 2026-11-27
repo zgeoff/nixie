@@ -1,6 +1,9 @@
-import { endWakeRuleInTransaction, readWakeRules } from '@heynixie/connections';
-import { withWriteTransaction } from '@heynixie/log';
-import type { ToolDefinition } from '@heynixie/tools';
+import {
+  endWakeRuleInTransaction,
+  readWakeRules,
+  withWriteTransaction,
+} from '@heynixie/connections';
+import type { ToolDefinition } from '@heynixie/connections';
 import { z } from 'zod';
 import { buildGmailMailbox } from './build-gmail-mailbox';
 import { gmailDeclarations } from './gmail-declarations';

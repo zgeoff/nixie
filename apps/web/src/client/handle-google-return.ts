@@ -39,6 +39,12 @@ export async function handleGoogleReturn(apiURL: string, request: Request): Prom
       return renderReturnFeatureOff('google');
     }
   } catch (error) {
+    // nixie.read needs a session, so a browser with none cannot learn whether the feature is on. The
+    // page that it gets says so, and a signed-in visit shows the error of the return.
+    if (error instanceof ORPCError && error.code === 'UNAUTHORIZED') {
+      return renderReturnFeatureOff('google');
+    }
+
     return toReturnErrorResponse(error);
   }
 

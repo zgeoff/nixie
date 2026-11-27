@@ -1,4 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
+import type { JSONObject } from '@heynixie/connections';
 import { fenceOutsideText } from '../gmail/fence-outside-text';
 import { buildEventRef } from './build-event-ref';
 import { toEndorsedTime } from './to-endorsed-time';

@@ -1,7 +1,4 @@
-import type { ConnectorContext } from '@heynixie/connections';
-import { collectPageParts } from '@heynixie/connectors';
-import type { LinkedText } from '@heynixie/connectors';
-import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
+import type { ConnectorContext, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/connections';
 import { z } from 'zod';
 import { buildItemID } from './build-item-id';
 import { collectAddresses } from './collect-addresses';
@@ -18,7 +15,7 @@ import { readGmailMessage } from './read-gmail-message';
 import { readMarkedLinkedText } from './read-marked-linked-text';
 import { readPartBytes } from './read-part-bytes';
 import { readPlainLinkedText } from './read-plain-linked-text';
-import type { GmailDeps, GmailMessage } from './types';
+import type { GmailDeps, GmailMessage, LinkedText } from './types';
 
 const inputSchema = z.strictObject({
   message: z.string(),
@@ -147,7 +144,8 @@ async function readMessageResult(
     return { status: 'error', message: `GMAIL_FAILED: ${body.reason}` };
   }
 
-  const parts = body.kind === 'text' ? collectPageParts(body.linked, deps.textBytes) : [];
+  const parts =
+    body.kind === 'text' ? deps.toolkit.collectPageParts(body.linked, deps.textBytes) : [];
 
   if (body.kind === 'text' && view.part > parts.length) {
     return {
@@ -243,7 +241,7 @@ async function readBody(
     const text = decodePartText(plain.bytes, content.textPart.headers.get('content-type'));
 
     if (text.trim() !== '') {
-      const linked = await readPlainLinkedText(deps.log, run, text, limits);
+      const linked = await readPlainLinkedText(deps, run, text, limits);
 
       return linked === null ? { kind: 'ended' } : { kind: 'text', linked };
     }
@@ -271,7 +269,7 @@ async function readBody(
   }
 
   const linked = await readMarkedLinkedText(
-    deps.log,
+    deps,
     run,
     { text: reply.text, links: reply.links },
     limits,

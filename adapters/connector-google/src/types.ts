@@ -4,5 +4,5 @@ import type { GmailDeps } from './gmail/types';
 // log that holds each action, the clock, and the limits of a text part and an image.
 export type GoogleDeps = Pick<
   GmailDeps,
-  'hosts' | 'access' | 'log' | 'clock' | 'textBytes' | 'imageLongEdge'
+  'toolkit' | 'hosts' | 'access' | 'log' | 'clock' | 'textBytes' | 'imageLongEdge'
 >;

@@ -1,6 +1,9 @@
-import type { ConnectorContext } from '@heynixie/connections';
-import type { JSONObject } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type {
+  ConnectorContext,
+  JSONObject,
+  ToolDefinition,
+  ToolOutcome,
+} from '@heynixie/connections';
 import { z } from 'zod';
 import { buildItemID } from './build-item-id';
 import { callGmail } from './call-gmail';

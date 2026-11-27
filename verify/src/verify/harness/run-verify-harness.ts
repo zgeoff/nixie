@@ -1,3 +1,4 @@
+import { readFile, writeFile } from 'node:fs/promises';
 import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
@@ -8,6 +9,7 @@ import {
 } from '@heynixie/model-gateway/test-utils';
 import type { TestModelGateway } from '@heynixie/model-gateway/test-utils';
 import {
+  connectTestGoogle,
   createSpawnedNixie,
   createTestClient,
   readTestBundle,
@@ -116,12 +118,13 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_NO_COMPUTER=1 leaves the computer's section out of the config.
   const isComputerOff = process.env['NIXIE_VERIFY_NO_COMPUTER'] === '1';
 
-  // A start with NIXIE_VERIFY_NO_GOOGLE=1 leaves the google section out of the config.
-  const isGoogleOff = process.env['NIXIE_VERIFY_NO_GOOGLE'] === '1';
+  // A start with NIXIE_VERIFY_NO_GOOGLE=1 connects the fake Google account, then takes the google
+  // section out of the config and starts nixie again on the same data, so a stored connection meets
+  // a nixie that has no Google.
+  const isGoogleDropped = process.env['NIXIE_VERIFY_NO_GOOGLE'] === '1';
 
   const nixie = await createSpawnedNixie(stack, {
     ...(isComputerOff ? { isComputerOff: true } : {}),
-    ...(isGoogleOff ? { isGoogleOff: true } : {}),
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     googleURL: google.url,
     fetchSiteURL: deviceSite.url,
@@ -175,12 +178,34 @@ export async function runVerifyHarness(): Promise<void> {
 
   // how far the harness moved nixie's clock, which stamps a Gmail mail so it falls after its rule
   const advancedMs = { total: 0 };
-  const server = nixie.harness.start();
+
+  // the requests that the fake Gmail answered before nixie's last start
+  const gmailBaseline = { requests: 0 };
+  let server = nixie.harness.start();
+
+  let api = await createTestClient(server);
+
+  if (isGoogleDropped) {
+    await connectTestGoogle(api);
+
+    await server.sendStopSignal();
+    await server.waitForExit();
+
+    const config = await readFile(nixie.configPath, 'utf8');
+
+    await writeFile(nixie.configPath, config.replace('\ngoogle: {}', ''));
+
+    server = nixie.harness.start();
+
+    api = await createTestClient(server);
+
+    gmailBaseline.requests = google.gmail.requests.length;
+  }
+
   const running: RunningState = { isRunning: true };
 
   void watchExit(server.exited, running);
 
-  const api = await createTestClient(server);
   const webServerPath = await readWebBuild();
   const web = await createBuiltWeb(api.url, webServerPath);
 
@@ -298,6 +323,7 @@ export async function runVerifyHarness(): Promise<void> {
 
       return gateway.sessions.size;
     },
+    readGmailRequests: () => ({ requests: google.gmail.requests.length - gmailBaseline.requests }),
     deliverGmail: (mail) => {
       google.gmail.seed({ ...mail, sentAtMs: Date.now() + advancedMs.total });
     },

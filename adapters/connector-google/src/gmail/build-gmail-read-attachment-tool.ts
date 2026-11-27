@@ -1,4 +1,4 @@
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { ToolDefinition, ToolOutcome } from '@heynixie/connections';
 import { z } from 'zod';
 import { maxAttachmentBytes, readAttachmentContent } from '../call/read-attachment-content';
 import { collectMessageContent } from './collect-message-content';
@@ -124,6 +124,7 @@ export function buildGmailReadAttachmentTool(deps: GmailDeps): ToolDefinition {
       }
 
       const fileContent = await readAttachmentContent(
+        deps.toolkit,
         { type, bytes: bytes.bytes },
         { textBytes: deps.textBytes, imageLongEdge: deps.imageLongEdge },
       );

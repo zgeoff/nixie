@@ -1,10 +1,9 @@
-import type { BodyFields, BodyFieldsRequest } from '@heynixie/connections';
-import { readMessageTimeZone } from '@heynixie/connectors';
-import type { JSONObject, Log } from '@heynixie/log';
-import { readRecordAttachments } from '@heynixie/log';
+import { readRecordAttachments } from '@heynixie/connections';
+import type { BodyFields, BodyFieldsRequest, JSONObject, Log } from '@heynixie/connections';
 import type { GmailCard } from '../gmail/gmail-card';
 import { joinCardList, parseCardAttachment } from '../gmail/gmail-card';
 import { readDestinationPermissions } from '../gmail/read-destination-permissions';
+import type { GoogleToolkit } from '../gmail/types';
 import { buildCalendarFields } from './build-calendar-fields';
 import { calendarToolNames } from './calendar-tool-names';
 import { primaryCalendar } from './constants';
@@ -21,6 +20,7 @@ const attachedTools: ReadonlySet<string> = new Set([
 // a create the call's input. An erased attachment reads as unreadable. Times show in the zone of
 // the owner's newest message, else the default zone.
 export async function readCalendarBodyFields(
+  toolkit: Pick<GoogleToolkit, 'readMessageTimeZone'>,
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   request: BodyFieldsRequest,
   defaultZone: string,
@@ -33,7 +33,7 @@ export async function readCalendarBodyFields(
     return { status: 'none' };
   }
 
-  const messageZone = await readMessageTimeZone(log, request.callSequence);
+  const messageZone = await toolkit.readMessageTimeZone(log, request.callSequence);
 
   const zone = messageZone ?? defaultZone;
 

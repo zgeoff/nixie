@@ -5,7 +5,7 @@ export { createGoogleConnector } from './connector/create-google-connector';
 export { googleSetupSteps } from './connector/google-setup-steps';
 export { collectHeldBackTools, pickAvailableActions } from './actions/pick-available-actions';
 export { ScopeCheckError } from './connector/check-google-scopes';
-export type { GmailAccess, GmailDeps } from './gmail/types';
+export type { GmailAccess, GmailDeps, GoogleToolkit } from './gmail/types';
 export { buildGmailActions } from './gmail/build-gmail-actions';
 export { buildGoogleActions } from './actions/build-google-actions';
 export { calendarCheckName, calendarToolNames } from './calendar/calendar-tool-names';

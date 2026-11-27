@@ -1,5 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { JSONObject, ToolDefinition, ToolOutcome } from '@heynixie/connections';
 import { z } from 'zod';
 import { callGoogle } from '../call/call-google';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';

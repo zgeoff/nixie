@@ -1,4 +1,4 @@
-import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
+import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/connections';
 import { z } from 'zod';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { buildCardAttachment } from '../gmail/gmail-card';

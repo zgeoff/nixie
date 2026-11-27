@@ -83,3 +83,27 @@ export {
   resolveWakeTarget,
   setWakeRuleInTransaction,
 } from '@heynixie/triggers';
+
+// What a connector may use of the tools and log modules: the tool types a connector action holds,
+// and the record reads and writes of its tools, so an adapter depends on this module alone.
+export type {
+  InputResolution,
+  PrepareRefusal,
+  Prepared,
+  ToolContext,
+  ToolDefinition,
+  ToolImage,
+  ToolOutcome,
+  ToolResolveContext,
+  ToolRun,
+} from '@heynixie/tools';
+
+export type { DestinationPermission, JSONObject, JSONValue, Log } from '@heynixie/log';
+
+export {
+  parseJSONObject,
+  readRecordAttachments,
+  readRecords,
+  withWriteTransaction,
+  writeRecords,
+} from '@heynixie/log';

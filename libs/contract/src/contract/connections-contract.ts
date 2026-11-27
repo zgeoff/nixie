@@ -171,13 +171,13 @@ export const connectionsContract = {
         message: 'This consent is unknown, used, lapsed, or was started by another session',
         status: 404,
       },
-      CONSENT_REFUSED: { message: 'Google did not grant the consent', status: 400 },
+      CONSENT_REFUSED: { message: 'The provider did not grant the consent', status: 400 },
       TOKEN_EXCHANGE_FAILED: {
-        message: 'Google refused the code',
+        message: 'The provider refused the code',
         status: 502,
         data: z.object({ providerError: z.string().nullable() }),
       },
-      NO_REFRESH_TOKEN: { message: 'Google returned no refresh token', status: 502 },
+      NO_REFRESH_TOKEN: { message: 'The provider returned no refresh token', status: 502 },
       ACCOUNT_MISMATCH: {
         message: 'The account is not the one this connection reaches',
         status: 409,

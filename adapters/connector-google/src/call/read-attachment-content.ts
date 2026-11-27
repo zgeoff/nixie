@@ -1,5 +1,5 @@
-import { collectPageParts, fitFetchedImage } from '@heynixie/connectors';
-import type { ToolImage } from '@heynixie/tools';
+import type { ToolImage } from '@heynixie/connections';
+import type { GoogleToolkit } from '../gmail/types';
 
 export const maxAttachmentBytes = 25 * 1024 * 1024;
 
@@ -32,6 +32,7 @@ interface AttachmentFile {
 // UTF-8 text in parts, an image as an image, and every other type as unsupported. A file over 25
 // MiB is too large. Gmail and Drive read files through this one function.
 export async function readAttachmentContent(
+  toolkit: Pick<GoogleToolkit, 'collectPageParts' | 'fitFetchedImage'>,
   file: AttachmentFile,
   limits: AttachmentContentLimits,
 ): Promise<AttachmentContent> {
@@ -44,11 +45,11 @@ export async function readAttachmentContent(
   if (type.startsWith('text/') || type === 'application/json') {
     const text = new TextDecoder().decode(file.bytes);
 
-    return { kind: 'text', parts: collectPageParts({ text, tags: [] }, limits.textBytes) };
+    return { kind: 'text', parts: toolkit.collectPageParts({ text, tags: [] }, limits.textBytes) };
   }
 
   if (type.startsWith('image/')) {
-    const fitted = await fitFetchedImage(file.bytes, limits.imageLongEdge);
+    const fitted = await toolkit.fitFetchedImage(file.bytes, limits.imageLongEdge);
 
     return fitted.kind === 'image'
       ? { kind: 'image', image: fitted.image, width: fitted.width, height: fitted.height }
