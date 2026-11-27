@@ -371,7 +371,7 @@ A task list read returns the most recently active tasks up to a cap, each with i
 state, last activity, whether it takes a message of the user's, the task it waits on, the controls
 its runner offers and its [action counts](../core/actions.md#cancelled-actions). It also gives the
 log sequence it read at, which it reads before the tasks, so a client that follows the log from that
-sequence sees every change the list leaves out. It also gives `changesAt`, the earliest time that a
+sequence sees every change the list leaves out. The read gives `changesAt`, the earliest time that a
 listed task changes with no write, which is the next task run of a task that wakes on a schedule, or
 null, and a client reads the list again at that time. Each listed task also names its `runner`. A
 task whose runner binds an outside session also gives `session`, with the session's origin

@@ -1,9 +1,9 @@
 # The queue design
 
-These are the designs for work that nixie has not built yet. Each design is the contract that two or
-more pieces of work build on, so those pieces fit together when different people or agents build
-them. When you hold the Linear issue for such work, read the issue first, then the sections of the
-design that it links. With no issue, find the design by area in the table below.
+This folder holds the designs for work that nixie has not built yet. Two or more pieces of work
+build on each design, so the pieces fit together when different people or agents build them. When
+you hold the Linear issue for such work, read the issue first, then the sections of the design that
+it links. With no issue, find the design by area in the table below.
 
 Write a design as code sketches, constraint bullets and a diagram. List the Linear issues that build
 on it and the questions still open. It stays a draft until the owner approves it. Give every design

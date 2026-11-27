@@ -62,10 +62,10 @@ state it mapped and logs the value.
 
 `events` builds each session event from the trail:
 
-- `message-answered` gives `answered`, with the whole answer from the event's `text`. An answer that
-  atc marks `complete: false`, or whose `textError` is set, keeps the preview and ends with a line
-  that says atc cut it. `message-unanswered` gives `unanswered`, and `note` gives `note`, read the
-  same way. Every other kind of event is dropped.
+- `message-answered` becomes `answered`, with the whole answer from the event's `text`. An answer
+  that atc marks `complete: false`, or whose `textError` is set, keeps the preview and ends with a
+  line that says atc cut it. `message-unanswered` becomes `unanswered`, and `note` becomes `note`,
+  read the same way. Every other kind of event is dropped.
 - Each `state` event comes from an `atc_session_get` of a bound session. `events` reads one after
   every trail event of that session, and again once a minute for each bound session that has not
   ended, and yields a `state` event only when the state changed. A read that fails for any reason
@@ -127,8 +127,8 @@ the adapter a plain string. The token is a static service token of the gateway, 
 token file rotates it with no outage.
 
 - The adapter sends the token only as the bearer of each request, and never logs it.
-- The gateway's token file gives `service:nixie` the scopes `read`, `message`, `spawn` and `kill`.
-  `spawn` covers typing into a session as well as a spawn.
+- The gateway's token file lists `service:nixie` with the scopes `read`, `message`, `spawn` and
+  `kill`. `spawn` covers typing into a session as well as a spawn.
 - Each daemon's own config grants `service:nixie` the targets it may use. atc owns that grant. The
   adapter names a configured target in every spawn and keeps only those in every list.
 - A principal's grant reaches every session on its targets, so `coding.sessions` shows the user's

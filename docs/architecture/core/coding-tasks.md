@@ -175,8 +175,9 @@ on the thread changes the row in the same commit.
 ## Policy
 
 The coding module adds the effect name `coding_start`, which the start, the join and a stop of a
-started session declare. A start acts on a coding session outside nixie, which nixie does not see
-call by call, and `code_run` covers only code in nixie's own sandbox.
+started session declare. It needs an effect of its own because a start acts on a coding session
+outside nixie, which nixie does not see call by call, and `code_run` covers only code in nixie's own
+sandbox.
 
 | Starter rule                  | What it does                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------- |
@@ -217,11 +218,11 @@ declares `note`, so the starter rules allow them.
 
 ## Supervising in the live view
 
-A coding task shows in the live view like any task, and its listing adds the session. The runner's
-list fields give `tasks.list` and `tasks.read` a `session` for each task that binds one, from the
-sessions row: the session's origin, its state and the time of its last event, which is null before
-the first event, and whether the task let go of the session at a stop, a close or a failure. A task
-that binds no session lists none.
+A coding task shows in the live view like any task, with its session added to the listing. The
+runner's list fields give `tasks.list` and `tasks.read` a `session` for each task that binds one,
+from the sessions row: the session's origin, its state and the time of its last event, which is null
+before the first event, and whether the task let go of the session at a stop, a close or a failure.
+A task that binds no session lists none.
 
 The web client shows the session on the dashboard and on the task's page when the `coding` feature
 is on, as [the client doc](../channels/client.md#the-task-dashboard) describes. The state moves
@@ -233,10 +234,10 @@ started, in the group "Coding sessions", and keeps a finished task there with it
 state until the user closes it. A task that joined a session shows in its ordinary group with no
 session line, because the user already watches that session in atc.
 
-A coding runner offers pause, resume, stop and close, and neither restart nor interrupt, so a
-stopped coding task can only be closed. The stop and close confirmations tell the user what happens
-to a session that nixie started: it stops. A task that joined a session says nothing of it. After a
-stop has let go of the session, a close says nothing of it.
+A coding runner offers pause, resume, stop and close, with no restart or interrupt, so a stopped
+coding task can only be closed. When nixie started the session, the stop and close confirmations
+tell the user that the session stops. They mention no session for a task that joined one, or for a
+close after a stop has let go of the session.
 
 ## The atc adapter and the server
 

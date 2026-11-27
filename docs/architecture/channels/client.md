@@ -641,15 +641,14 @@ started. The page also adds these lines, in the browser's time zone:
 - On an `asleep` task with a `nextRunAt`, "Next run" and that time.
 - On a `finished` task, "Sent its report".
 
-The dashboard filters by definition and by state. Each filter is one select with an All option, so
-it takes one value. The route keeps them as the search parameters `definition` and `state`, so a
-reload or a shared link keeps them, and it drops a state that is not one of the 11 listed states.
-The definition filter lists each definition that has a task, by its name, from
-`definitions.listTasks`. It shows only while a listed task has a `definitionID` or a filter is set,
-so a server that gives no `definitionID` shows no definition filter. The filters go into the
-`tasks.list` input, so the server filters before its cap. With a filter set, the dashboard shows
-only the groups that hold a match, and a Clear filters button. With no match, it shows the
-empty-group text.
+The dashboard filters by definition and by state. Each filter is a select with an All option and
+takes one value. The route keeps them as the search parameters `definition` and `state`, so a reload
+or a shared link keeps them, and it drops a state that is not one of the 11 listed states. The
+definition filter lists each definition that has a task, by its name, from `definitions.listTasks`.
+It shows only while a listed task has a `definitionID` or a filter is set, so a server that gives no
+`definitionID` shows no definition filter. The filters go into the `tasks.list` input, so the server
+filters before its cap. With a filter set, the dashboard shows only the groups that hold a match,
+and a Clear filters button. With no match, it shows the empty-group text.
 
 The dashboard reads the task list again on each `changed` event of the `tasks` topic, and when the
 page comes to the front. A task that wakes on a schedule changes with no write, so no topic
@@ -684,7 +683,7 @@ A task's page at `/tasks/<task_id>` shows that task's thread in the conversation
 header with the task's name, state and controls. The page reads that task on its own and never from
 the task list, which keeps only the most recently active tasks. Its composer sends to that thread,
 so a message sent there lands in the task's inbox and never in the conversation's. The composer
-shows only once the task's read succeeds, so a closed task's page keeps its thread readable with no
+shows only once the task's read succeeds. A closed task's page keeps its thread readable with no
 composer, and a failed read shows the failure with a retry.
 
 The header shows the task's brief, the prompt the task started with, cut to 2 lines, and a button
