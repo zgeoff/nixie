@@ -10,6 +10,7 @@ import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
 import { erasureContract } from './erasure-contract';
 import { featureIDs } from './feature-ids';
+import { featureOffErrors } from './feature-off-errors';
 import { followLive } from './follow-live';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { imageNotFoundError } from './image-not-found-error';
@@ -400,6 +401,7 @@ export const contract = {
       ),
 
     issueCode: checkedAction
+      .errors(featureOffErrors)
       .input(
         z.object({ clientActionID: clientActionIDSchema, scope: sessionScopeSchema.optional() }),
       )

@@ -12,6 +12,7 @@ import {
   webFetchConfigSchema,
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
+import { devicesConfigSchema } from '@heynixie/devices';
 import { googleConfigSchema } from '@heynixie/google';
 import { mailConfigSchema } from '@heynixie/mail';
 import { mcpConfigSchema } from '@heynixie/mcp';
@@ -68,6 +69,7 @@ export const deploymentConfigSchema = z
     display: displayConfigSchema.optional(),
     coding: codingConfigSchema.optional(),
     voice: voiceConfigSchema.optional(),
+    devices: devicesConfigSchema.optional(),
     mail: mailConfigSchema.optional(),
     phone: phoneSectionSchema.optional(),
     google: googleConfigSchema.optional(),

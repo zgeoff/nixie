@@ -11,19 +11,28 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/api": "workspace:*",
     "@heynixie/budgets": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/credentials": "workspace:*",
     "@heynixie/db": "workspace:*",
+    "@heynixie/definitions": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
+    "@heynixie/models": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
+    "@heynixie/sessions": "workspace:*",
     "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/memory": "workspace:*",
+    "@heynixie/policy": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
 }

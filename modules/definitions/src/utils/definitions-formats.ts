@@ -22,5 +22,4 @@ export const definitionsFormats = {
   mcp: 6,
 
   places: 7,
-  voice: 5,
 };

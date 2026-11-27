@@ -1,10 +1,11 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
+import { createCallsProcedures } from '@heynixie/calls';
 import { readOwnerAddress } from '@heynixie/connections';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import { checkPromptProposal } from '@heynixie/definitions';
+import { buildDevicesFeatureProcedures } from '@heynixie/devices';
 import { writeChatChannels } from '@heynixie/policy';
 import { buildRunSettings } from '@heynixie/sessions';
-import { buildServerSpeech } from '../call/build-server-speech';
 import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { buildProposalConfig } from '../deployment/build-proposal-config';
@@ -23,7 +24,6 @@ import type { AnyPartDeclaration } from '../types';
 import { buildAPIGate } from '../utils/build-api-gate';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import { makeServerDecisions } from '../utils/make-server-decisions';
-import { harnessSpeech } from './harness-speech';
 import { loadStartState } from './load-start-state';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
@@ -70,22 +70,11 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             ...(options.spend === null ? {} : { gateway: options.spend.gateway }),
             logger: options.log,
           }),
-          runners: buildServerTaskRunners({ coding: coding?.runner.definition ?? null }),
+          runners: buildServerTaskRunners({
+            coding: coding?.runner.definition ?? null,
+            isCallsOn: options.config.voice !== undefined,
+          }),
           taskRunLimits: options.config.models.limits.taskRun.default,
-          calls: {
-            voice: options.config.voice ?? null,
-            logEvent: options.log,
-            messaging: buildTaskMessaging(options.config),
-            speech:
-              options.speech ??
-              (NIXIE_TEST_BUILD && options.harness !== undefined ? harnessSpeech : null) ??
-              buildServerSpeech({
-                voice: options.config.voice ?? null,
-                credentials: options.credentials,
-                clock: options.writer.clock,
-                logEvent: options.log,
-              }),
-          },
           defaultZone: options.config.time.default_zone,
           features: listFeaturesOn(options.config),
           ...(options.spend === null
@@ -194,7 +183,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'http',
     needs: ['inputs', 'state', 'context', 'tools', 'api_gate'],
-    uses: ['memory', 'server_parts', 'definitions_exports'],
+    uses: ['memory', 'server_parts', 'definitions_exports', 'calls', 'device_streams'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -202,7 +191,20 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         ...options,
         state: parts.get('state'),
         tools: parts.get('tools'),
-        apiContext: parts.get('context').apiContext,
+        apiContext: {
+          ...parts.get('context').apiContext,
+          readFeatureProcedures: () => {
+            const calls = parts.find('calls');
+            const streams = parts.find('device_streams');
+
+            return {
+              ...(calls === null
+                ? {}
+                : { calls: (api) => createCallsProcedures(calls.context, api) }),
+              ...(streams === null ? {} : buildDevicesFeatureProcedures(streams)),
+            };
+          },
+        },
         gate: parts.get('api_gate'),
         readMemory: () => parts.find('memory'),
         runInForceSeed: () =>

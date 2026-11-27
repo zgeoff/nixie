@@ -17,15 +17,7 @@ const coreInboxKinds: ReadonlySet<string> = new Set([
   'proposals.settled',
   'proposals.deferred',
   'proposals.returned',
-  'device.status_changed',
   'tool_changed',
-  'call.started',
-  'call.answered',
-  'call.ended',
-  'call.spoke',
-  'call.handed_off',
-  'call.heard_cut',
-  'call.closing',
 ]);
 
 export function isInboxRecord(
@@ -42,23 +34,29 @@ export function isInboxRecord(
     );
   }
 
-  // A page event is in the inbox only when its wake was kept. One without it waits in the events
-  // block of the conversation's next turn, which would otherwise show it twice. Devices registers
-  // this kind, and tasks depends on no device.
-  const kind: string = record.kind;
-
-  if (kind === 'device.page_event') {
-    return record.thread !== null && record.payload?.['wake'] === true;
-  }
-
   // An event of a source that names its task is in the inbox only when it wakes the task, and a
   // record that arrives without its payload is no such event.
   if (record.kind === 'trigger.task_input') {
     return record.thread !== null && record.payload?.['wake'] === true;
   }
 
+  if (record.thread === null) {
+    return false;
+  }
+
+  if (coreInboxKinds.has(record.kind)) {
+    return true;
+  }
+
+  // A kind that a feature adds says for itself which of its records are in the inbox, and a record
+  // that arrives without its payload is none of those.
+  const added = inboxKinds.byKind(record.kind);
+
+  if (added === null) {
+    return false;
+  }
+
   return (
-    record.thread !== null &&
-    (coreInboxKinds.has(record.kind) || inboxKinds.byKind(record.kind) !== null)
+    added.isInbox === undefined || (record.payload !== undefined && added.isInbox(record.payload))
   );
 }

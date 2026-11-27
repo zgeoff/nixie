@@ -244,13 +244,22 @@ export interface InboxRenderContext {
   readonly at: string;
   readonly ownerName: string | null;
   readonly mint: () => string;
+
+  // what the kind's read fetched beside the record, or undefined for a kind with no read
+  readonly extra?: unknown;
 }
 
 // A kind of inbox record that a feature adds: whether it wakes the task, and how the inbox shows it.
 // The feature fills the list; the inbox names none.
 export interface InboxKind {
   readonly kind: string;
+
+  // whether a record of the kind is in the inbox at all, when only some are; absent means each is
+  readonly isInbox?: (payload: LogRecord['payload']) => boolean;
   readonly wakes: (payload: LogRecord['payload']) => boolean;
+
+  // reads what the message shows beside its record, such as an earlier record
+  readonly read?: (context: Pick<TasksContext, 'log'>, record: LogRecord) => Promise<unknown>;
   readonly render: (record: LogRecord, context: InboxRenderContext) => string;
 }
 

@@ -1,7 +1,6 @@
 export { buildEventRegistry } from './event/build-event-registry';
 export { buildModelStatus } from './session/build-model-status';
 export { buildSilentEndTool } from './turn/build-silent-end-tool';
-export { buildHangUpTool, hangUpToolName } from './call/build-hang-up-tool';
 export { buildStartStatus } from './session/build-start-status';
 export { buildStartTimeStatus } from './session/build-start-time-status';
 
@@ -127,3 +126,5 @@ export { toWorkerLimit } from './worker/to-worker-limit';
 export { sessionsRecordTopics } from './session/sessions-record-topics';
 export { workerRecordTopics } from './worker/worker-record-topics';
 export { buildProposalSettledKind } from './event/build-proposal-settled-kind';
+export type { CallStep, CallStepHooks } from './task/sandbox-runner-options';
+export type { CallHistoryRecordKind } from './turn/call-history-record-kind';

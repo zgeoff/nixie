@@ -1,5 +1,4 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
-import type { CallsContext } from '@heynixie/calls';
 import type { ConnectionsPort } from '@heynixie/connections';
 import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/connectors';
 import type { DefinitionNotice, FeatureID, ImageMediaType } from '@heynixie/contract';
@@ -27,6 +26,7 @@ import type { Kysely } from 'kysely';
 import type { WatchTickets } from './computer/create-watch-tickets';
 import type { ClientRegistry } from './live/create-client-registry';
 import type { PasskeyState } from './passkey/passkey-state';
+import type { FeatureProcedures } from './session/feature-procedures';
 
 export interface APISettings {
   readonly enrolmentCodeLifetimeMs: number;
@@ -145,8 +145,9 @@ export interface APIContext extends TasksContext {
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
 
-  // absent, the server holds no calls module, and every call procedure answers as with voice off
-  readonly calls?: CallsContext;
+  // The procedures of each feature that is on, which the router mounts in place of the answers of a
+  // feature that is off. The server reads it as the API starts, after the features start.
+  readonly readFeatureProcedures?: () => FeatureProcedures;
 
   // absent, the server holds no computer to watch
   readonly computerWatch?: ComputerWatchPort;

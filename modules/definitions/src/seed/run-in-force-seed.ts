@@ -115,7 +115,7 @@ export async function seedInForceInTransaction(
     tasks: taskPlan.tasks,
     budgets: budgets.inForce,
     mcp: lists.mcp,
-    voice: inForce.voice,
+    sections: inForce.sections,
   });
 
   await writeAdoptedSkills(tx, {

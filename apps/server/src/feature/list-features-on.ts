@@ -7,6 +7,7 @@ export interface FeatureConfig {
   readonly code?: unknown;
   readonly google?: unknown;
   readonly voice?: unknown;
+  readonly devices?: unknown;
   readonly images: unknown;
   readonly mail?: unknown;
   readonly phone?: unknown;
@@ -15,13 +16,13 @@ export interface FeatureConfig {
   readonly search: { readonly credential: unknown };
 }
 
-// The one place that works out which features a deployment has on, from its config. Until a
-// feature's switch lands, each feature is on by today's rule for it.
+// The one place that works out which features a deployment has on, from its config. A feature with
+// a section is on when its section is there.
 export function listFeaturesOn(config: FeatureConfig): readonly FeatureID[] {
   const isOn: Record<FeatureID, boolean> = {
     computer: config.computer !== undefined,
     code: config.code !== undefined,
-    devices: true,
+    devices: config.devices !== undefined,
     google: config.google !== undefined,
     mcp: true,
     voice: config.voice !== undefined,

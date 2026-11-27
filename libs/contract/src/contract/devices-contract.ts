@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { featureOffErrors } from './feature-off-errors';
 import { isJSONWithin } from './is-json-within';
 import { layoutLimits, regionBackgroundSchema } from './region-background-schema';
 import { regionEventContentSchema } from './region-content-schema';
@@ -98,10 +99,11 @@ export const notADeviceError = {
 };
 
 // A call on the session's own device row. A full session that holds no row registers one first.
-const ownDevice = signedIn.errors({ NOT_A_DEVICE: notADeviceError });
+const ownDevice = signedIn.errors(featureOffErrors).errors({ NOT_A_DEVICE: notADeviceError });
 
 export const devicesContract = {
   register: signedIn
+    .errors(featureOffErrors)
     .errors(reusedIDErrors)
     .input(z.object({ clientActionID: z.uuid(), name: z.string().min(1).max(100) }))
     .output(z.object({ deviceID: z.string() })),

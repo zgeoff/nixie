@@ -12,12 +12,8 @@ import { renderOwnerText } from '../utils/render-owner-text';
 import { renderActionFailure } from './render-action-failure';
 import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
-import { renderCallNotice } from './render-call-notice';
-import { renderCallThreadLine } from './render-call-thread-line';
-import type { HeardCut } from './render-call-thread-line';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderMailWoke } from './render-mail-woke';
-import { renderPageEventMessage } from './render-page-event-message';
 import { renderProposalDefer } from './render-proposal-defer';
 import { renderProposalSettled } from './render-proposal-settled';
 import { renderRecoveryNotice } from './render-recovery-notice';
@@ -31,8 +27,9 @@ interface RenderedExtras {
   readonly reminder?: ReminderRead | null;
   readonly result?: ActionResultBlock | null;
   readonly approvedAt?: Date | null;
-  readonly cut?: HeardCut | null;
-  readonly smallTalk?: readonly string[];
+
+  // what the read of a kind that a feature added fetched
+  readonly kindExtra?: unknown;
 
   // the settlements that read as one note, the first of them being the record
   readonly settled?: readonly [LogRecord, ...LogRecord[]];
@@ -88,27 +85,8 @@ export function renderInboxMessage(
       at: formatMessageTime(record.recordedAt, null, times),
       ownerName: view.messaging.ownerName,
       mint: mintBlockID,
+      extra: extras.kindExtra,
     });
-  }
-
-  if (
-    record.kind === 'call.started' ||
-    record.kind === 'call.answered' ||
-    record.kind === 'call.ended'
-  ) {
-    return renderCallNotice(record, times, view.messaging.ownerName ?? 'the user');
-  }
-
-  if (
-    record.kind === 'call.handed_off' ||
-    record.kind === 'call.heard_cut' ||
-    record.kind === 'call.closing'
-  ) {
-    return renderCallThreadLine(record, times, extras.cut ?? null, extras.smallTalk ?? []);
-  }
-
-  if (record.kind === 'device.page_event') {
-    return renderPageEventMessage(record, times);
   }
 
   if (record.kind === 'policy.action_answered') {

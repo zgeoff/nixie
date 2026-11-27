@@ -3,7 +3,6 @@ import type { DefinitionsContext } from '@heynixie/definitions';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
-import { answerPageRequest } from '../device/answer-page-request';
 import type { ProposalParts } from '../proposal/build-proposal-core-deps';
 import { findSessionToken } from '../session/find-session-token';
 import { isDeviceProcedure } from '../session/is-device-procedure';
@@ -35,7 +34,7 @@ export function createAPIApp(
 
       // A page's frame sends no session and no client header, so its two paths answer by ticket
       // before the checks that need them.
-      const page = answerPageRequest(context, request);
+      const page = context.readFeatureProcedures?.().devicePages?.(context, request) ?? null;
 
       if (page !== null) {
         return page;

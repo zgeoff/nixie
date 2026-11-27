@@ -2258,6 +2258,11 @@
       ],
       "additionalProperties": false
     },
+    "devices": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "mail": {
       "type": "object",
       "properties": {

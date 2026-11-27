@@ -11,12 +11,15 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/api": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/egress": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",

@@ -25,8 +25,8 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
 
         parts.log(event, { ...warning }, 'warn');
       },
-      onVoiceProblem: (problem) => {
-        parts.log('definitions.voice_file_skipped', { ...problem }, 'warn');
+      onSectionProblem: (problem) => {
+        parts.log(problem.event, { path: problem.path, reason: problem.reason }, 'warn');
       },
       source: parts.source,
       tasks: parts.tasks,

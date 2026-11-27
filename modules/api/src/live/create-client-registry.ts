@@ -1,6 +1,4 @@
 import type { Clock } from '@heynixie/clock';
-import type { DeviceStreams } from '@heynixie/devices';
-import { createDeviceStreams } from '@heynixie/devices';
 
 export interface Presence {
   // true while any session's newest sessions.shown lies within withinMs
@@ -10,9 +8,6 @@ export interface Presence {
 export interface ClientRegistry {
   // read by the push notifier
   readonly presence: Presence;
-
-  // read by the devices module; a device is online while one of its device streams is open
-  readonly devices: DeviceStreams;
 
   // notes that a session shows nixie on screen now
   readonly recordShown: (sessionID: string) => void;
@@ -32,7 +27,6 @@ export function createClientRegistry(options: ClientRegistryOptions): ClientRegi
       isPresent: (withinMs) =>
         shownAtMs.values().some((atMs) => options.clock.now() - atMs <= withinMs),
     },
-    devices: createDeviceStreams({ clock: options.clock }),
     recordShown: (sessionID) => {
       shownAtMs.set(sessionID, options.clock.now());
     },

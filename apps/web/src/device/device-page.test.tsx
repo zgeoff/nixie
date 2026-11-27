@@ -15,6 +15,7 @@ import { CallEnvironmentContext } from '../call/call-environment';
 import { CallProvider } from '../call/call-provider';
 import { CallScreen } from '../call/call-screen';
 import { deviceStore } from '../mocks/device-store';
+import { featureStore } from '../mocks/feature-store';
 import { endMockDeviceStreams, mockLive } from '../mocks/mock-live';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
@@ -26,7 +27,7 @@ import { render } from '../test-utils/render';
 import { DevicePage } from './device-page';
 import { useDeviceFeed } from './use-device-feed';
 
-function setupTest(path = '/device') {
+function setupTest(path = '/device', isVoiceOn = true) {
   const stub = buildStubCallEnvironment({ microphoneError: null });
 
   // The root also reads the tab's one device feed, beside the device page, and shows what the feed
@@ -38,7 +39,7 @@ function setupTest(path = '/device') {
 
       return (
         <CallEnvironmentContext value={stub.environment}>
-          <CallProvider isOn>
+          <CallProvider isOn={isVoiceOn}>
             <output aria-label="Feed reader">
               {JSON.stringify({ event: events.event, connection: events.connection })}
             </output>
@@ -70,6 +71,48 @@ function setupTest(path = '/device') {
 test('it shows the enrolment form to a browser with no device session', async () => {
   const ctx = setupTest();
   const rendered = ctx.mount();
+
+  const heading = await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect(heading).toBeVisible();
+});
+
+test('it shows the feature-off page, not a failure, when the devices feature is off', async () => {
+  const ctx = setupTest();
+
+  await createScreenSession();
+
+  await featureStore.featuresOff.create({ feature: 'devices' });
+
+  const rendered = ctx.mount();
+
+  await rendered.findByRole('heading', { name: 'This feature is off in this nixie' });
+
+  expect(rendered.queryByText('Device mode could not reach nixie.')).toBeNull();
+});
+
+test('it shows the feature-off page, not the enrolment form, to a browser with no session when devices are off', async () => {
+  const ctx = setupTest();
+
+  await featureStore.featuresOff.create({ feature: 'devices' });
+
+  const rendered = ctx.mount();
+
+  await rendered.findByRole('heading', { name: 'This feature is off in this nixie' });
+
+  expect(rendered.queryByRole('heading', { name: 'Enrol this browser' })).toBeNull();
+});
+
+test('it opens, and signs out, while the voice feature is off', async () => {
+  const ctx = setupTest('/device', false);
+
+  await createScreenSession();
+
+  const rendered = ctx.mount();
+
+  const signOut = await rendered.findByRole('button', { name: 'Sign out' });
+
+  await ctx.user.click(signOut);
 
   const heading = await rendered.findByRole('heading', { name: 'Enrol this browser' });
 

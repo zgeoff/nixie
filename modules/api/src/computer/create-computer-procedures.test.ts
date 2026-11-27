@@ -18,7 +18,9 @@ async function setupTest() {
       ...defaultAPISettings,
       readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
     },
-    { features: ['computer'] },
+
+    // a wall panel's code is a device scope, which exists only while devices are on
+    { features: ['computer', 'devices'] },
   );
 
   api.setWatch(() => ({

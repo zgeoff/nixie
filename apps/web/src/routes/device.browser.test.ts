@@ -171,7 +171,7 @@ test('it sends one resize with the new size after the window resizes', async () 
   // stores this size too
   await ctx.waitForPage(`resizeEventSize === '800x600'`);
   await ctx.setViewport({ width: 820, height: 610 });
-  await ctx.waitForPage('innerWidth === 820 && innerHeight === 610');
+  await ctx.waitForPage(`resizeEventSize === '820x610'`);
   await ctx.advancePageClock(2500);
 
   expect(ctx.readResizes()).toStrictEqual([{ width: 820, height: 610, pixelRatio: 1 }]);

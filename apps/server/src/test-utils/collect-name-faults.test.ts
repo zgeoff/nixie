@@ -7,7 +7,7 @@ test.each([
 ])('it finds no fault for a name that an exception on $title covers', (row) => {
   const faults = collectNameFaults(
     [{ file: 'modules/api/src/a.ts', name: 'google' }],
-    [{ where: row.where, names: ['google'], removedBy: 'GEO-2880' }],
+    [{ where: row.where, names: ['google'], removedBy: 'GEO-2881' }],
   );
 
   expect(faults).toStrictEqual([]);
@@ -29,7 +29,7 @@ test.each([
 ])('it finds a fault when an exception covers $title', (row) => {
   const faults = collectNameFaults(
     [{ file: 'modules/api/src/a.ts', name: 'google' }],
-    [{ where: row.where, names: row.names, removedBy: 'GEO-2880' }],
+    [{ where: row.where, names: row.names, removedBy: 'GEO-2881' }],
   );
 
   expect(faults).toHaveLength(1);

@@ -2,6 +2,7 @@ import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
 import type { Connections, DatabaseHeldBackend } from '@heynixie/connections';
 import type { ActionConnector, ComputerTools, RenderSandbox } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
+import type { DeviceStreams } from '@heynixie/devices';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import type { Mcp } from '@heynixie/mcp';
 import type { StartedMemoryStore } from '@heynixie/memory';
@@ -17,6 +18,7 @@ import type { ServerParts } from '../types';
 import type { APIGate } from '../utils/build-api-gate';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import type { ServerInputs } from './server-inputs';
+import type { CallsPart } from './start-calls-part';
 import type { CodeRunPart } from './start-code-run-part';
 import type { GoogleToolsPart } from './start-google-tools-part';
 import type { Tools } from './tools';
@@ -39,6 +41,7 @@ export interface ServerPartValues {
   readonly actions: Tools['actions'];
   readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'> & {
     readonly connectors: ReadonlyMap<string, ActionConnector>;
+    readonly readToolNames: () => readonly string[];
   };
   readonly tools: Tools;
   readonly api_gate: APIGate;
@@ -77,7 +80,9 @@ export interface ServerPartValues {
   readonly sandbox_runner: SandboxRunner;
   readonly runners: void;
   readonly coding_sweep: void;
+  readonly calls: CallsPart;
   readonly calls_sweep: void;
+  readonly device_streams: DeviceStreams;
   readonly seed_poll: void;
   readonly proposal_sweeps: void;
   readonly device_wakes: void;

@@ -1,4 +1,3 @@
-import type { VoiceFileProblem } from '@heynixie/calls';
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { RuleFileWarning } from '@heynixie/policy';
@@ -23,6 +22,7 @@ import type {
   DefinitionsSnapshot,
   DefinitionsSource,
   ParsedDefinitions,
+  SectionFileProblem,
   Snapshot,
   SnapshotPolicy,
 } from '../types';
@@ -50,8 +50,8 @@ export interface SeedOptions {
   // Takes each skipped definition and each dropped tool
   readonly onTaskWarning?: (warning: TaskDefinitionWarning) => void;
 
-  // Takes each voice file that the seed left unapplied, which never refuses the seed
-  readonly onVoiceProblem?: (problem: VoiceFileProblem) => void;
+  // Takes each file of a feature's section that the seed left unapplied, which never refuses the seed
+  readonly onSectionProblem?: (problem: SectionFileProblem) => void;
 
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
 
@@ -96,8 +96,8 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     options.onTaskWarning?.(warning);
   }
 
-  for (const problem of read.parsed.voiceProblems) {
-    options.onVoiceProblem?.(problem);
+  for (const problem of read.parsed.sectionProblems) {
+    options.onSectionProblem?.(problem);
   }
 
   return withWriteTransaction(options.log.writer, async (tx) => {
@@ -165,7 +165,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       tasks: taskPlan.tasks,
       budgets: budgets.inForce,
       mcp: read.parsed.mcp,
-      voice: read.parsed.voice,
+      sections: read.parsed.sections,
     });
 
     await writeAdoptedSkills(tx, {

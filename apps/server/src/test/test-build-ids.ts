@@ -60,6 +60,7 @@ export const testBuildIDs: readonly string[] = [
   'placeHarnessCall',
   'emitSpeech',
   'readSpeechCalls',
+  'readRegisteredTools',
   'fake-session-',
   'connectCredential',
   'refreshCredential',

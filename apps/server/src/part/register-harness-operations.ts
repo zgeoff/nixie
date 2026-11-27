@@ -29,6 +29,7 @@ export interface HarnessParts {
   readonly notebook: NotebookStore;
   readonly runInForceSeed: () => Promise<unknown>;
   readonly runInForce: PlaceContext['runInForce'];
+  readonly readToolNames: () => readonly string[];
 }
 
 export function registerHarnessOperations(
@@ -191,6 +192,10 @@ export function registerHarnessOperations(
 
     return added.shortID;
   });
+
+  link.registerOperation('readRegisteredTools', schemas.readRegisteredTools, () => [
+    ...parts.readToolNames(),
+  ]);
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {
     removeLockDescriptor(context.log.writer.dataDir);

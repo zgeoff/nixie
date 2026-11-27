@@ -1,4 +1,3 @@
-import { removeDevice } from '@heynixie/devices';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { APIContext, APITables, Identity } from '../types';
@@ -7,6 +6,7 @@ import { closePasskeyWindow } from './close-passkey-window';
 import { probeLiveIdentity } from './probe-live-identity';
 import type { ClientAction } from './read-client-action';
 import { readClientAction } from './read-client-action';
+import { sessionHooks } from './session-hooks';
 import { sessionRevokedCodec } from './session-revoked-codec';
 import { writeClientAction } from './write-client-action';
 
@@ -125,7 +125,9 @@ async function updateRevokedAt(
     .where('identity_id', '=', revocation.sessionID)
     .execute();
 
-  await removeDevice(tx, revocation.sessionID);
+  for (const hook of sessionHooks.list()) {
+    await hook.onRevoked?.(tx, revocation.sessionID);
+  }
 
   closePasskeyWindow(context, revocation.sessionID);
 

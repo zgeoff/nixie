@@ -199,7 +199,7 @@ async function readCallRun(
       persona: 'default',
       memory: 'read',
       log: 'own',
-      tools: pickCallTools(calls.conversationToolNames),
+      tools: pickCallTools(calls.conversationToolNames, calls.addedToolNames),
       report: 'none',
       limits: runner.options.models.limits.taskRun.default,
     },

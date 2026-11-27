@@ -1,14 +1,15 @@
-import { parseVoiceFiles } from '@heynixie/calls';
 import type { BudgetDefinition, EffectOverride, PlaceFileEntry } from '@heynixie/policy';
 import { parsePlaceFile } from '@heynixie/policy';
 import { parseRuleDefinitions } from '../rule/parse-rule-definitions';
+import { definitionSections } from '../section/definition-sections';
+import type { DefinitionSection } from '../section/definition-sections';
 import { manifestSchema } from '../skill/manifest-schema';
 import { parseConversationSkills } from '../skill/parse-conversation-skills';
 import { parseSkills } from '../skill/parse-skills';
 import { parseTaskDefinitions } from '../task/parse-task-definitions';
 import { TaskSeedRefusedError } from '../task/task-seed-refused-error';
 import type { TaskSeedContext } from '../task/types';
-import type { DefinitionBudget, ParsedDefinitions, Snapshot } from '../types';
+import type { DefinitionBudget, ParsedDefinitions, SectionFileProblem, Snapshot } from '../types';
 import { buildBudgetHash } from '../utils/build-budget-hash';
 import { definitionsFormats } from '../utils/definitions-formats';
 import type { ParseProblem } from '../utils/definitions-parse-error';
@@ -30,7 +31,8 @@ export function parseDefinitions(
   snapshot: Snapshot,
   tasks: TaskSeedContext | null,
 ): ParsedDefinitions {
-  const decoded = decodeFiles(snapshot.files);
+  const sections = definitionSections.list();
+  const decoded = decodeFiles(snapshot.files, sections);
   const texts = decoded.texts;
   const manifest = parseManifest(texts.get(manifestPath));
   const formatVersion = manifest.format;
@@ -70,19 +72,28 @@ export function parseDefinitions(
 
   const placesText = formatVersion >= definitionsFormats.places ? texts.get(placesPath) : undefined;
   const places = parsePlaces(placesText);
-  const readsVoice = formatVersion >= definitionsFormats.voice;
+  const readSections = sections.filter((section) => formatVersion >= section.minFormat);
 
-  const voice = readsVoice
-    ? parseVoiceFiles(
-        new Map(
-          [...texts].filter(
-            ([path]) => path.startsWith('voice/') && !overrides.partFiles.has(path),
-          ),
+  const parsedSections = readSections.map((section) => ({
+    section,
+    parsed: section.parse(
+      new Map(
+        [...texts].filter(
+          ([path]) => path.startsWith(`${section.folder}/`) && !overrides.partFiles.has(path),
         ),
-      )
-    : { voice: null, problems: [], paths: new Set<string>() };
+      ),
+    ),
+  }));
 
-  const voiceProblems = [...voice.problems, ...decoded.unreadableVoicePaths.map(toNotTextProblem)];
+  const sectionProblems: SectionFileProblem[] = parsedSections.flatMap((entry) =>
+    entry.parsed.problems.map((problem) => toSectionProblem(entry.section.problemEvent, problem)),
+  );
+
+  const unreadableProblems: SectionFileProblem[] = sections.flatMap((section) =>
+    decoded.unreadableSectionPaths
+      .filter((path) => path.startsWith(`${section.folder}/`))
+      .map((path) => toSectionProblem(section.problemEvent, toNotTextProblem(path))),
+  );
 
   const taskTexts = new Map(
     [...texts].filter(([path]) => path.startsWith('tasks/') && !overrides.partFiles.has(path)),
@@ -107,17 +118,17 @@ export function parseDefinitions(
     .filter((path) => !mcp.paths.has(path))
     .filter((path) => path !== placesPath || formatVersion < definitionsFormats.places)
     .filter((path) => !taskDefinitions.paths.has(path))
-    .filter((path) => !voice.paths.has(path))
+    .filter((path) => !parsedSections.some((entry) => entry.parsed.paths.has(path)))
     .toSorted();
 
-  // A file under tasks/ that no definition applies is listed and never read. A file under voice/
-  // that the voice settings leave out is listed, and a fault in it never refuses the seed.
+  // A file under tasks/ that no definition applies is listed and never read. A file under the folder
+  // of a section that the section leaves out is listed, and a fault in it never refuses the seed.
   const readsTasks = formatVersion >= definitionsFormats.tasks;
 
   requireParsable(
     unapplied
       .filter((path) => !readsTasks || !path.startsWith('tasks/'))
-      .filter((path) => !readsVoice || !path.startsWith('voice/'))
+      .filter((path) => !readSections.some((section) => path.startsWith(`${section.folder}/`)))
       .map((path) => [path, texts.get(path) ?? '']),
   );
 
@@ -135,8 +146,12 @@ export function parseDefinitions(
     mcp: mcp.overrides,
     tasks: taskDefinitions.definitions,
     taskWarnings: taskDefinitions.warnings,
-    voice: voice.voice,
-    voiceProblems,
+    sections: Object.fromEntries(
+      parsedSections.flatMap((entry) =>
+        entry.parsed.value === null ? [] : [[entry.section.key, entry.parsed.value]],
+      ),
+    ),
+    sectionProblems: [...sectionProblems, ...unreadableProblems],
     unapplied,
   };
 }
@@ -144,12 +159,15 @@ export function parseDefinitions(
 interface DecodedFiles {
   readonly texts: ReadonlyMap<string, string>;
 
-  // the files under voice/ that are not UTF-8 text, which the voice settings report in place of a
-  // refusal, whatever the format
-  readonly unreadableVoicePaths: readonly string[];
+  // the files under a section's folder that are not UTF-8 text, which the section reports in place
+  // of a refusal, whatever the format
+  readonly unreadableSectionPaths: readonly string[];
 }
 
-function decodeFiles(files: Snapshot['files']): DecodedFiles {
+function decodeFiles(
+  files: Snapshot['files'],
+  sections: readonly DefinitionSection[],
+): DecodedFiles {
   const decoder = new TextDecoder('utf-8', { fatal: true });
 
   const decoded = [...files].map(([path, bytes]) => {
@@ -163,7 +181,7 @@ function decodeFiles(files: Snapshot['files']): DecodedFiles {
   const unreadable = decoded.filter((file) => file.text === null);
 
   const problems = unreadable
-    .filter((file) => !file.path.startsWith('voice/'))
+    .filter((file) => !sections.some((section) => file.path.startsWith(`${section.folder}/`)))
     .map((file) => toNotTextProblem(file.path));
 
   if (problems.length > 0) {
@@ -172,7 +190,7 @@ function decodeFiles(files: Snapshot['files']): DecodedFiles {
 
   return {
     texts: new Map(decoded.flatMap((file) => (file.text === null ? [] : [[file.path, file.text]]))),
-    unreadableVoicePaths: unreadable.map((file) => file.path),
+    unreadableSectionPaths: unreadable.map((file) => file.path),
   };
 }
 
@@ -272,6 +290,15 @@ function parsePlaces(text: string | undefined): readonly PlaceFileEntry[] {
   }
 
   return parsed.places;
+}
+
+interface SectionProblemInput {
+  readonly path: string;
+  readonly reason: string;
+}
+
+function toSectionProblem(event: string, problem: SectionProblemInput): SectionFileProblem {
+  return { event, path: problem.path, reason: problem.reason };
 }
 
 type TextFile = readonly [path: string, text: string];

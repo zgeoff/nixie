@@ -47,6 +47,7 @@ export interface BootFileExtras {
   readonly isComputerOff?: boolean;
   readonly isCodeOff?: boolean;
   readonly isGoogleOff?: boolean;
+  readonly isDevicesOff?: boolean;
 
   // the text of voice/voice.yaml, which puts the definitions at format 5
   readonly voiceYaml?: string;
@@ -258,6 +259,7 @@ function buildConfigLines(
     ...(extras.isComputerOff === true ? [] : ['computer: {}']),
     ...(extras.isCodeOff === true ? [] : ['code: {}']),
     ...(extras.isGoogleOff === true || extras.config.includes('google:') ? [] : ['google: {}']),
+    ...(extras.isDevicesOff === true || extras.config.includes('devices:') ? [] : ['devices: {}']),
     'definitions:',
     `  source: { kind: path, path: ${join(directory, 'definitions')} }`,
   ];

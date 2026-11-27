@@ -93,27 +93,25 @@ The code breaks a rule in these places. New code follows the rules.
 The wire lib's `harnessIDs` is a second list of the models module's `harnesses`, which rule 10
 allows: a test in the models module fails when the two lists differ.
 
-The places in this table name a feature ID or an outside service in a core module, or make a core
-module depend on a feature module. Each row comes from the entries in
-`apps/server/src/leak/leak-exceptions.ts`, and those entries go when the row's work item lands.
+Each row of this table is a place where a core module names a feature ID or an outside service, or
+depends on a feature module. In the middle column, a name in code font is a feature ID or an outside
+service that the place names, and a phrase such as "the connectors module" is a feature module that
+the place imports. Each row comes from the entries in `apps/server/src/leak/leak-exceptions.ts`.
+Remove a row and its entries together when the row's work item lands.
 
 | Place                 | Names or depends on                                                                             | Work item                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `libs/contract`       | `devices`, `voice`                                                                              | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `libs/contract`       | `images`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/actions`     | the connectors module                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/api`         | `devices`, `voice`; the calls and devices modules                                               | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/api`         | `coding`, `images`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/budgets`     | `spend`                                                                                         | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/credentials` | `atc`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/definitions` | `voice`; the calls module                                                                       | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/definitions` | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/log`         | `coding`, `spend`                                                                               | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/models`      | `images`, `openai`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/policy`      | `coding`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/proposals`   | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/sandbox`     | `coding`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/sessions`    | `voice`; the calls and devices modules                                                          | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/sessions`    | `images`, `mail`, `mcp`, `spend`; the connectors and spend modules                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/skills`      | `github`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/tasks`       | `mail`, `spend`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |

@@ -169,7 +169,7 @@ export type SessionFrame =
       readonly kind: 'call';
       readonly callID: string;
       readonly seedThrough: number;
-      readonly voicePrompt: string;
+      readonly prompt: string;
     }
   | { readonly kind: 'task'; readonly startedBy: string; readonly report: TaskReport };
 

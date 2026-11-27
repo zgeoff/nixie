@@ -52,6 +52,9 @@ export interface WebFetchOptions {
   readonly makeBlockedPlaceFinder?: (
     callSequence: number,
   ) => (url: string) => Promise<string | null>;
+
+  // whether the devices feature is on, which alone gets a fetch sandbox for the pages of devices
+  readonly isDeviceFetchOn?: boolean;
 }
 
 export interface WebFetch {
@@ -63,8 +66,8 @@ export interface WebFetch {
   readonly readHTML: FetchSandbox['readHTML'];
 
   // reads a response body as text, and unpacks an npm package, for the device pages' declared
-  // fetches and approved packages, in a sandbox of their own
-  readonly deviceFetch: Pick<FetchSandbox, 'readBody' | 'readPackage'>;
+  // fetches and approved packages, in a sandbox of their own; null while the devices feature is off
+  readonly deviceFetch: Pick<FetchSandbox, 'readBody' | 'readPackage'> | null;
 
   // the host pauses of the web fetch, which a declared fetch joins
   readonly backoff: FetchBackoff;
@@ -136,17 +139,20 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
   // a declared fetch follows at most 3 redirects, within its own host
   const deviceFetchRedirects = 3;
 
-  const deviceSandbox = startFetchSandbox({
-    ...sandbox,
-    limits: {
-      ...config.limits,
-      bodyBytes: deviceFetchBytes,
-      redirects: deviceFetchRedirects,
-      textBytes: deviceFetchBytes * textBytesPerBodyByte,
-      imageBytes: 0,
-    },
-    owner: 'device_fetch',
-  });
+  const deviceSandbox =
+    options.isDeviceFetchOn === true
+      ? startFetchSandbox({
+          ...sandbox,
+          limits: {
+            ...config.limits,
+            bodyBytes: deviceFetchBytes,
+            redirects: deviceFetchRedirects,
+            textBytes: deviceFetchBytes * textBytesPerBodyByte,
+            imageBytes: 0,
+          },
+          owner: 'device_fetch',
+        })
+      : null;
 
   const clock = options.clock ?? systemClock;
 
@@ -177,7 +183,10 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     }),
     readSkillPage: skillSandbox.readPage,
     readHTML: fetchSandbox.readHTML,
-    deviceFetch: { readBody: deviceSandbox.readBody, readPackage: deviceSandbox.readPackage },
+    deviceFetch:
+      deviceSandbox === null
+        ? null
+        : { readBody: deviceSandbox.readBody, readPackage: deviceSandbox.readPackage },
     backoff,
     findSecret: options.findSecret,
     logger: options.logger,
@@ -185,7 +194,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     packageRegistry: config.packageRegistry,
     clearPauses: backoff.clear,
     stop: async () => {
-      await Promise.all([fetchSandbox.stop(), skillSandbox.stop(), deviceSandbox.stop()]);
+      await Promise.all([fetchSandbox.stop(), skillSandbox.stop(), deviceSandbox?.stop()]);
     },
   };
 }

@@ -4,6 +4,7 @@ import type { APIContext } from '../types';
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { apiImplementer } from '../utils/api-implementer';
 import { readSessions } from '../utils/read-sessions';
+import { requireFeature } from '../utils/require-feature';
 
 export function createSessionProcedures(context: APIContext) {
   return {
@@ -13,6 +14,11 @@ export function createSessionProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      // a device scope belongs to the devices feature, so no code for one exists while it is off
+      if (options.input.scope === 'device') {
+        requireFeature(context, 'devices', options.errors.FEATURE_OFF);
+      }
 
       const result = await writeIssuedCode(
         context,

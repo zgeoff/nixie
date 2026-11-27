@@ -1,4 +1,3 @@
-import { callSpokeCodec } from '@heynixie/calls';
 import type { LogRecord } from '@heynixie/log';
 import { ownerMessageCodec, taskMessageCodec } from '@heynixie/tasks';
 import { mintBlockID } from '@heynixie/wire';
@@ -10,6 +9,7 @@ import type { MessageTimeOptions } from '../types';
 import { renderImageMarkers } from '../utils/render-image-markers';
 import { renderOwnerText } from '../utils/render-owner-text';
 import type { HistoryTurn } from './read-recent-turns';
+import { spokeFieldsSchema } from './spoke-fields-schema';
 
 export function renderHistoryLine(
   turn: HistoryTurn,
@@ -20,7 +20,7 @@ export function renderHistoryLine(
   const record = turn.record;
 
   if (record.kind === 'call.spoke') {
-    const spoke = callSpokeCodec.decode(record.payload);
+    const spoke = spokeFieldsSchema.parse(record.payload);
     const said = record.erasable.status === 'readable' ? record.erasable.fields['text'] : undefined;
 
     return `[#${spoke.lineID} · ${formatMessageTime(record.recordedAt, null, times)}] speech layer, small talk: ${typeof said === 'string' ? said : '[a line, since forgotten]'}`;

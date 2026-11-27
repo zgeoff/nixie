@@ -18,9 +18,15 @@ export interface CallState {
 
 export const CallContext = createContext<CallState | undefined>(undefined);
 
+// The call of this device while the voice feature is on, or undefined while it is off, for a page
+// that works either way.
+export function useCallWhenOn(): CallState | undefined {
+  return use(CallContext);
+}
+
 // The call of this device, held above the router.
 export function useCall(): CallState {
-  const state = use(CallContext);
+  const state = useCallWhenOn();
 
   if (state === undefined) {
     throw new Error('useCall needs a CallProvider above it');

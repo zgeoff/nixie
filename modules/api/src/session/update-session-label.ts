@@ -1,6 +1,6 @@
-import { updateDeviceName } from '@heynixie/devices';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { APIContext, APITables } from '../types';
+import { sessionHooks } from '../utils/session-hooks';
 
 interface LabelInput {
   readonly sessionID: string;
@@ -49,11 +49,9 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
       .where('identity_id', '=', input.sessionID)
       .execute();
 
-    await updateDeviceName(tx, {
-      identityID: input.sessionID,
-      name: label,
-      nowMs: context.clock.now(),
-    });
+    for (const hook of sessionHooks.list()) {
+      await hook.onLabelled?.(tx, { identityID: input.sessionID, label }, context.clock.now());
+    }
 
     return { status: 'labelled', sessionID: input.sessionID, label };
   });

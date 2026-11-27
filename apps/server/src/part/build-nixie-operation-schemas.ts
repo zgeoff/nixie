@@ -69,6 +69,9 @@ export function buildNixieOperationSchemas() {
     // what the speech layer was asked to do, in order
     readSpeechCalls: z.null(),
 
+    // the name of each tool in the registry that the tool endpoint serves
+    readRegisteredTools: z.null(),
+
     // the owner's approval of a device page package, which a journey cannot give with a passkey
     approvePackage: z.null(),
 

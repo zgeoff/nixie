@@ -32,14 +32,6 @@ test('#createClientRegistry holds a session absent once its newest beat is older
   expect(ctx.registry.presence.isPresent(120_000)).toBeFalse();
 });
 
-test('#createClientRegistry holds nobody present for an open device stream alone', () => {
-  const ctx = setupTest();
-
-  ctx.registry.devices.open('dk4m7q2w9x', { width: 800, height: 600, pixelRatio: 1 });
-
-  expect(ctx.registry.presence.isPresent(120_000)).toBeFalse();
-});
-
 test('#createClientRegistry keeps a session present by its newest beat when an older one lapsed', () => {
   const ctx = setupTest();
 

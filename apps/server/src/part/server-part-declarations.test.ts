@@ -72,3 +72,52 @@ test.each(['web_fetch', 'actions', 'tool_endpoint'])(
     expect(names.indexOf('google_tools')).toBeLessThan(names.indexOf(part));
   },
 );
+
+test.each([
+  { part: 'calls', feature: 'voice' },
+  { part: 'calls_sweep', feature: 'voice' },
+  { part: 'device_streams', feature: 'devices' },
+  { part: 'device_wakes', feature: 'devices' },
+  { part: 'device_show_clocks', feature: 'devices' },
+  { part: 'render', feature: 'devices' },
+])('it tags the $part part with the $feature feature', (row) => {
+  const ctx = setupTest();
+
+  expect(ctx.findDeclaration(row.part)?.feature).toBe(row.feature);
+});
+
+test('it leaves each part of calls and devices out of the plan when the config has neither section', () => {
+  const plan = planParts(['google', 'mcp'], serverPartDeclarations);
+
+  expect({
+    left: [...plan.leftOut].filter((name) => /^(?:calls|device_|render)/u.test(name)).toSorted(),
+    planned: plan.parts
+      .map((part) => part.name)
+      .filter((name) => /^(?:calls|device_|render)/u.test(name)),
+  }).toStrictEqual({
+    left: [
+      'calls',
+      'calls_sweep',
+      'device_show_clocks',
+      'device_streams',
+      'device_wakes',
+      'render',
+    ],
+    planned: [],
+  });
+});
+
+test('it lists no part of calls or devices in the needs of a core part', () => {
+  const featured = new Set(
+    serverPartDeclarations
+      .filter((declaration) => declaration.feature === 'voice' || declaration.feature === 'devices')
+      .map((declaration) => declaration.name),
+  );
+
+  expect(
+    serverPartDeclarations
+      .filter((declaration) => declaration.feature === undefined)
+      .filter((declaration) => declaration.needs.some((name) => featured.has(name)))
+      .map((declaration) => declaration.name),
+  ).toStrictEqual([]);
+});

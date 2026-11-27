@@ -9,13 +9,6 @@ test.each([
   ['tool_changed', 'conversation', false],
   ['task.step_committed', 'task-1', false],
   ['owner_message', null, false],
-  ['call.started', 'conversation', true],
-  ['call.answered', 'conversation', true],
-  ['call.ended', 'conversation', true],
-  ['call.rang', 'conversation', false],
-  ['call.handed_off', 'call-task', true],
-  ['call.spoke', 'call-task', false],
-  ['call.heard_cut', 'call-task', false],
 ] as const)('it reads a %s record on thread %s as waking: %p', (kind, thread, expected) => {
   expect(isWakingRecord({ kind, thread, payload: {} })).toBe(expected);
 });

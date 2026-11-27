@@ -12,7 +12,6 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
-    "@heynixie/calls": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",

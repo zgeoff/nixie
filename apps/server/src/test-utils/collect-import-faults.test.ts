@@ -15,7 +15,7 @@ test('it names the package and the import for a dependency that no exception cov
 test('it finds no fault for a dependency that an exception covers', () => {
   const faults = collectImportFaults(
     [{ directory: 'modules/api', importName: '@heynixie/calls' }],
-    [{ where: 'modules/api', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' }],
+    [{ where: 'modules/api', imports: ['@heynixie/calls'], removedBy: 'GEO-2881' }],
   );
 
   expect(faults).toStrictEqual([]);
