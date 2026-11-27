@@ -9,8 +9,9 @@ message asserts the memory. The first check that fails ends the gate, and the wr
 proposal with that check as its review reason, so nothing the model writes reaches memory on the
 model's word alone. A pin of an item outside the pinned core waits for review unless an allow rule
 covers it, and an unpin applies at once ([pins](#pins)). A write from a task passes the same gates
-as a write from the conversation. The exception is a write of a self-note by a task without the
-self-note grant ([self-notes](#self-notes)).
+as a write from the conversation, because the conversation and the tasks it starts write memory
+through the same tools. nixie has no built-in memory task. The one exception is a write of a
+self-note by a task without the self-note grant ([self-notes](#self-notes)).
 
 A few writes fail outright instead. The tool returns an error to the model, and nothing is written:
 no item, no version and no proposal. These are:
