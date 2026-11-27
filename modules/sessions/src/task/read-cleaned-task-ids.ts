@@ -8,7 +8,7 @@ export async function readCleanedTaskIDs(
   context: TasksContext,
   cause: SessionCleanupCause,
 ): Promise<readonly string[]> {
-  if ('connectionID' in cause) {
+  if ('connectionID' in cause || 'textID' in cause) {
     return [];
   }
 

@@ -55,6 +55,11 @@ test.each<{ feature: FeatureID; config: FeatureConfig; on: FeatureID[] }>([
     on: ['devices', 'mcp', 'mail'],
   },
   {
+    feature: 'phone',
+    config: { images: null, search: { credential: null }, phone: {} },
+    on: ['devices', 'google', 'mcp', 'phone'],
+  },
+  {
     feature: 'spend',
     config: { images: null, search: { credential: null }, spendStop: {} },
     on: ['devices', 'mcp', 'spend'],

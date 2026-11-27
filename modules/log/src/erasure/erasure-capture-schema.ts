@@ -17,12 +17,16 @@ const connectionCause = z.strictObject({
   wakeSequences: z.array(z.int()).exactOptional(),
 });
 
+// `wakeSequences` lists the records of the wakes that show the text, whose sessions the forget cleans
+const textCause = z.strictObject({ textID: z.string(), wakeSequences: z.array(z.int()) });
+
 const sessionCauseSchema = z.union([
   noteCause,
   momentCause,
   itemCause,
   recordCause,
   connectionCause,
+  textCause,
 ]);
 
 const purgeSchema = z.strictObject({ recordSequence: z.int(), itemIDs: z.array(z.string()) });

@@ -150,7 +150,8 @@ export type SessionCleanupCause =
   | { readonly recordSequence: number }
   | { readonly momentID: string }
   | { readonly noteID: string }
-  | { readonly connectionID: string };
+  | { readonly connectionID: string }
+  | { readonly textID: string };
 
 export interface SessionDefinitions {
   readonly persona: string;

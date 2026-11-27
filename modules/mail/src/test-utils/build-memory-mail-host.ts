@@ -134,7 +134,7 @@ export function buildMemoryMailHost(options: MemoryMailHostOptions): MemoryMailH
 
       return { hostMessageID };
     },
-    findSent: (messageIDHeader) => {
+    readSentTexts: (messageIDHeader) => {
       const found = sent.find((mail) =>
         Buffer.from(mail.raw).toString('latin1').includes(`Message-ID: <${messageIDHeader}>`),
       );
