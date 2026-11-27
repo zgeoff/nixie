@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.124.0](https://github.com/zgeoff/nixie/compare/v0.123.0...v0.124.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **server:** switch calls and devices by config ([#1535](https://github.com/zgeoff/nixie/issues/1535))
+* **coding:** the coding adapter calls the gateway's /rpc fleet API in place of its MCP tools, so it needs an atc-gateway of major 8.
+
+### Features
+
+* **coding:** reach atc through its typed fleet rpc ([#1536](https://github.com/zgeoff/nixie/issues/1536)) ([7dbadbd](https://github.com/zgeoff/nixie/commit/7dbadbd6b1821130bda7200f04784bbea6793e6d))
+* **phone:** give the assistant a phone behind its switch ([#1533](https://github.com/zgeoff/nixie/issues/1533)) ([7d342cb](https://github.com/zgeoff/nixie/commit/7d342cb43c6bb0815076549d1fe32357e13e1aa6))
+* **server:** switch calls and devices by config ([#1535](https://github.com/zgeoff/nixie/issues/1535)) ([62cb3e0](https://github.com/zgeoff/nixie/commit/62cb3e0bcb895af9b14e61b64c42081961a42ca1))
+
+
+### Bug Fixes
+
+* **coding:** rewrite the coding tool descriptions ([#1537](https://github.com/zgeoff/nixie/issues/1537)) ([794836c](https://github.com/zgeoff/nixie/commit/794836c0ff05dff24d18e9ccd5d92fd7cd385369))
+* **sessions:** end cleanup waits at shutdown and keep an aborted reply ([#1532](https://github.com/zgeoff/nixie/issues/1532)) ([d57c65f](https://github.com/zgeoff/nixie/commit/d57c65fe6f6cbe925185dad72503d45a6903f5cf))
+* **verify:** flag only the features a change can reach ([#1538](https://github.com/zgeoff/nixie/issues/1538)) ([26cc76b](https://github.com/zgeoff/nixie/commit/26cc76bc564f39f445ec3eae9b52644ceaf9f407))
+
 ## [0.123.0](https://github.com/zgeoff/nixie/compare/v0.122.0...v0.123.0) (2026-11-27)
 
 
