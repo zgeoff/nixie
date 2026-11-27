@@ -143,7 +143,7 @@ the same transaction, so a batch's records and its cursor commit together.
 
 - The source drops each event of a session that has no bound `coding_sessions` row, and stores
   nothing of it, because nixie's principal reaches sessions that nixie is not working with. Only
-  sessions that nixie started or joined therefore show in the live view.
+  sessions that nixie started show in the live view, and the web client skips a joined one.
 - The source can read a session's events before the coding task's step records the binding. When it
   starts, and when a session's row appears, it catches up each bound session whose state is not
   `ended`: it reads the trail from the row's stored cursor until a read has no more events. The

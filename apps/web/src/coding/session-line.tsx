@@ -20,15 +20,14 @@ export function SessionLine(props: SessionLineProps): ReactNode {
   const isHydrated = useIsHydrated();
   const session = props.task.session;
 
-  if (session === undefined || !isCodingOn) {
+  if (session?.origin !== 'started' || !isCodingOn) {
     return null;
   }
 
   return (
     <>
       <p className={line}>
-        Coding session, outside nixie: {session.origin === 'started' ? 'started' : 'joined'} by
-        nixie
+        Coding session, outside nixie: started by nixie
         {' · '}
         <span aria-label="Session state">{formatSessionState(session.state)}</span>
         {isHydrated ? (

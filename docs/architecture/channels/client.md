@@ -664,9 +664,9 @@ until its step ends. A stop first lists the actions it cancels and the started o
 their outcome. The dashboard offers the confirm only once that list loads, so the user never cancels
 an action unseen. A close asks first too, because a closed task takes no more messages. The
 conversation offers no close. For a task that binds a session, the stop and the close confirmations
-add a line: "This also stops its coding session." when nixie started the session, and "Its coding
-session keeps running, as yours." when it joined one. A coding task offers no restart and no
-interrupt, so a stopped one offers only Close.
+add a line, "This also stops its coding session.", when nixie started the session, and none when the
+task joined one. A coding task offers no restart and no interrupt, so a stopped one offers only
+Close.
 
 While nixie is paused, every signed-in page shows a banner with the cause in words, a restore, you
 or the spending limit, and since when, beside a Resume nixie button that acts at once. A restore

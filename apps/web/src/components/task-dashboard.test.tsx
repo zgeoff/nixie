@@ -252,7 +252,7 @@ test('it says that a close stops the session that nixie started, when no stop ca
   expect(within(closing).getByText('This also stops its coding session.')).toBeVisible();
 });
 
-test('it leaves the session that nixie joined running when you stop the task', async () => {
+test('it says nothing of a joined session when you stop the task', async () => {
   const ctx = setupTest();
 
   await createDeviceSession();
@@ -274,13 +274,11 @@ test('it leaves the session that nixie joined running when you stop the task', a
 
   const stopping = within(row).getByRole('group', { name: 'Stop the task' });
 
-  const keepLine = await within(stopping).findByText('Its coding session keeps running, as yours.');
-
-  expect(keepLine).toBeVisible();
-
   await waitFor(() => {
     expect(within(stopping).getByRole('button', { name: 'Stop the task' })).toBeEnabled();
   });
+
+  expect(within(stopping).queryByText(/coding session/u)).toBeNull();
 
   await ctx.user.click(within(stopping).getByRole('button', { name: 'Stop the task' }));
 

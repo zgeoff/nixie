@@ -21,7 +21,7 @@ const workingStates: ReadonlySet<ListedState> = new Set([
 
 const heldStates: ReadonlySet<ListedState> = new Set(['paused', 'stopped', 'failed']);
 
-// A task that supervises a session, started or joined, groups apart in any listed state but closed
+// A task that supervises a session nixie started groups apart in any listed state but closed
 // while the coding feature is on, so a finished task keeps its session's last state until you
 // close it. A task with no listed state groups by its stored state.
 export function collectDashboardGroups(
@@ -29,7 +29,10 @@ export function collectDashboardGroups(
   isCodingOn: boolean,
 ): DashboardGroups {
   const others = tasks.filter((task) => task.taskID !== 'conversation');
-  const isSupervised = (task: ListedTask): boolean => isCodingOn && task.session !== undefined;
+
+  const isSupervised = (task: ListedTask): boolean =>
+    isCodingOn && task.session?.origin === 'started';
+
   const supervised = others.filter((task) => isSupervised(task));
   const unsupervised = others.filter((task) => !isSupervised(task));
 

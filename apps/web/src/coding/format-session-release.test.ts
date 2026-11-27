@@ -8,9 +8,9 @@ test.each([
     expected: 'This also stops its coding session.',
   },
   {
-    title: 'leaves a joined session running',
+    title: 'says nothing of a joined session',
     session: { origin: 'joined', state: 'idle', lastEventAt: null, isReleased: false } as const,
-    expected: 'Its coding session keeps running, as yours.',
+    expected: null,
   },
   {
     title: 'says nothing of a started session that the task let go of',

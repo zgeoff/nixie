@@ -228,14 +228,15 @@ is on, as [the client doc](../channels/client.md#the-task-dashboard) describes. 
 without a reload because every record that changes the row marks the `tasks` topic, and the client
 reads the list again on that topic, as [live updates](../channels/live-updates.md#topics) describes.
 No other stream carries the session. A session in atc that nixie never started or joined has no row,
-so the source drops its events and it never shows. The live view shows each session that has a row,
-whether nixie started or joined it, in the group "Coding sessions", and keeps a finished task there
-with its session's last state until the user closes it.
+so the source drops its events and it never shows. The live view shows each session that nixie
+started, in the group "Coding sessions", and keeps a finished task there with its session's last
+state until the user closes it. A task that joined a session shows in its ordinary group with no
+session line, because the user already watches that session in atc.
 
 A coding runner offers pause, resume, stop and close, and neither restart nor interrupt, so a
 stopped coding task can only be closed. The stop and close confirmations tell the user what happens
-to the session: nixie stops a session it started, and a session it joined keeps running as the
-user's. After a stop has let go of the session, a close says nothing of it.
+to a session that nixie started: it stops. A task that joined a session says nothing of it. After a
+stop has let go of the session, a close says nothing of it.
 
 ## The atc adapter and the server
 

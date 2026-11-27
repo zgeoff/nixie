@@ -132,12 +132,15 @@ test('it leaves out a closed task that supervised a session', () => {
   expect(collectDashboardGroups([closed], true).supervised).toStrictEqual([]);
 });
 
-test('it puts a task that joined a session in the coding group, as the one that nixie started', () => {
+test('it keeps a task that joined a session in its ordinary group', () => {
   const joined = buildMockListedTask({
     listedState: 'waiting',
     session: { isReleased: false, lastEventAt: null, origin: 'joined', state: 'idle' },
     taskID: 'k3vq8m2xpa',
   });
 
-  expect(collectDashboardGroups([joined], true).supervised).toStrictEqual([joined]);
+  const groups = collectDashboardGroups([joined], true);
+
+  expect(groups.supervised).toStrictEqual([]);
+  expect(groups.working).toStrictEqual([joined]);
 });
