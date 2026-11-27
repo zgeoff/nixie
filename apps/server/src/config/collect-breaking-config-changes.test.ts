@@ -64,6 +64,16 @@ test.each([
     { anyOf: [{ type: 'string' }, { type: 'null' }] },
   ],
   [
+    'a string that becomes the same string or another one',
+    { type: 'string', pattern: '^AC[0-9a-f]{32}$' },
+    {
+      anyOf: [
+        { type: 'string', pattern: '^AC[0-9a-f]{32}$' },
+        { type: 'string', pattern: '^deployment:.+$' },
+      ],
+    },
+  ],
+  [
     'a new oneOf choice with its own required tag',
     { oneOf: [{ type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] }] },
     {
@@ -244,6 +254,17 @@ test.each([
     released: { propertyNames: { pattern: '^[a-z]+$' } },
     current: { propertyNames: { pattern: '^[a-z]$' } },
     expected: ['(key): changes pattern'],
+  },
+  {
+    label: 'a string that becomes an anyOf of other strings',
+    released: { type: 'string', pattern: '^AC[0-9a-f]{32}$' },
+    current: {
+      anyOf: [
+        { type: 'string', pattern: '^AC[0-9a-f]{8}$' },
+        { type: 'string', pattern: '^deployment:.+$' },
+      ],
+    },
+    expected: ['(root): adds anyOf'],
   },
   {
     label: 'a dropped anyOf choice',

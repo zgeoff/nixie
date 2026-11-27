@@ -157,6 +157,26 @@ phone:
     api_url: https://api.twilio.com
 ```
 
+Write the number, `account_sid` and `api_key_sid` each as the value or as a `deployment:<name>`
+reference to an entry in the `settings` group of the secrets file. When all 3 are references, a
+config file in a public repo holds none of them:
+
+```yaml
+phone:
+  number: deployment:phone_number
+  twilio:
+    account_sid: deployment:twilio_account_sid
+    api_key_sid: deployment:twilio_api_key_sid
+    credential: deployment:phone
+```
+
+The server reads each reference once the secrets load, in `readPhoneSection`, and checks the entry
+against the pattern of a plain value. A reference with no entry stops the start with the error of a
+missing credential, which names the key, such as `phone.number`. An entry that fails its pattern
+stops the start with an error that names the key and the reference. Neither error quotes a value.
+This change adds no new place that records the 3 values. The stored record of a `phone.list` result
+already holds the assistant's number, because the model gives it to a sign-up.
+
 The number takes texts only. The provider's settings refuse calls, and nixie places none.
 
 ## Tests

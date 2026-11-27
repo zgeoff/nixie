@@ -19,6 +19,8 @@ Read each part's doc for the meaning of its settings. The sections cover:
   `server.outage_notice_minutes`, which has a default: a shorter stop, such as a deploy, adds no
   line to the [events block](../core/conversation-turns.md#the-events-block)
 - the user's name and pronouns, and the names the user calls the agent by
+- the number and the Twilio IDs of the [phone](../connectors/phone.md#configuration), when the
+  deployment turns the phone on
 - the hashes of the API's [read-only tokens](../channels/api.md#read-only-tokens)
 - the [model profiles and the role map](../core/model-profiles.md#the-role-map), with each profile's
   [harness](../core/model-profiles.md#harnesses) and its credential as a reference, and when
@@ -76,6 +78,10 @@ configuration lives in a public repo keeps them in the secrets file. The
 the server refuses to start when the secrets file lacks an entry, except a model profile's, which
 the sandbox host may hold. nixie therefore never shows the model a reference in place of a name or a
 pronoun.
+
+The `phone` section's number, Twilio account SID and Twilio API key SID take either a reference to a
+`settings` entry or the value too, and the server checks each entry against the pattern of the plain
+value.
 
 The server generates a JSON Schema from the zod schema and commits it as `config.schema.json`, and a
 test fails when the committed file differs. Each release publishes that file

@@ -11,6 +11,7 @@ import { readDeploymentConfig } from '../deployment/read-deployment-config';
 import { listImageNeeds } from '../part/list-image-needs';
 import { serverPartDeclarations } from '../part/server-part-declarations';
 import { createPhoneInputs } from '../phone/create-phone-inputs';
+import { readPhoneSection } from '../phone/read-phone-section';
 import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
 import { pickNeededImages } from '../sandbox/pick-needed-images';
 import { resolveSandboxSettings } from '../sandbox/resolve-sandbox-settings';
@@ -79,7 +80,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const search = createSearchSettings(loaded.search, credentials);
 
-  const phone = createPhoneInputs(loaded.phone, {
+  const phone = createPhoneInputs(readPhoneSection(loaded.phone, secrets.readSetting), {
     credentials,
     wake: loaded.wake_rules,
     isFaked: options.harness !== undefined,

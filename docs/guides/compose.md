@@ -64,6 +64,43 @@ To upgrade, change the tag and the digest of nixie and web together, and of the 
 the deployment runs one, to the values in the release's notes. To roll back, revert that change.
 Follow the [upgrade runbook](../runbooks/upgrades.md) for the steps.
 
+## Turn on the phone
+
+The phone is on only when `config.yaml` holds a `phone` section. When your deployment repo is
+public, keep the number and the Twilio IDs out of it: each of the 3 takes a `deployment:<name>`
+reference to an entry in the `settings` group of the sops secrets file, and the API key's secret
+takes one to an entry in `connector_credentials`.
+
+1. Upgrade nixie and web to a release that reads these references, as the
+   [release notes](https://github.com/zgeoff/nixie/releases) say. An older release, such as the one
+   this recipe pins, drops the `phone` section at start and leaves the phone off.
+2. Add the entries to the secrets file, and encrypt it again:
+
+   ```yaml
+   connector_credentials:
+     twilio: <api_key_secret>
+   settings:
+     phone_number: '+61411111111'
+     twilio_account_sid: AC00000000000000000000000000000000
+     twilio_api_key_sid: SK00000000000000000000000000000000
+   ```
+
+3. Add the section to `config.yaml`:
+
+   ```yaml
+   phone:
+     number: deployment:phone_number
+     twilio:
+       account_sid: deployment:twilio_account_sid
+       api_key_sid: deployment:twilio_api_key_sid
+       credential: deployment:twilio
+   ```
+
+4. Start nixie. Expect it to refuse to start, and to name the key, when a reference has no entry.
+
+A plain value in the config still works.
+[The assistant's phone](../architecture/connectors/phone.md#configuration) describes each key.
+
 ## How CI checks it
 
 The Compose workflow runs on each push to main, and on each pull request that changes a file the
