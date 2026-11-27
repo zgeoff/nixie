@@ -18631,7 +18631,7 @@
                 "type": "object",
                 "properties": {
                   "connector": {
-                    "const": "google"
+                    "type": "string"
                   },
                   "origin": {
                     "type": "string",
@@ -18824,6 +18824,90 @@
               }
             }
           },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "503",
             "content": {
@@ -18902,7 +18986,7 @@
                     "format": "uuid"
                   },
                   "connector": {
-                    "const": "google"
+                    "type": "string"
                   },
                   "clientID": {
                     "type": "string",
@@ -19089,6 +19173,55 @@
               "application/json": {
                 "schema": {
                   "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
                     {
                       "type": "object",
                       "properties": {
@@ -19428,6 +19561,55 @@
                           "const": true
                         },
                         "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
                           "const": "CLIENT_ACTION_ID_REUSED"
                         },
                         "status": {
@@ -19710,6 +19892,55 @@
                           "const": true
                         },
                         "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
                           "const": "CLIENT_ACTION_ID_REUSED"
                         },
                         "status": {
@@ -19860,7 +20091,7 @@
                     "format": "uuid"
                   },
                   "connector": {
-                    "const": "google"
+                    "type": "string"
                   },
                   "connection": {
                     "anyOf": [
@@ -20035,6 +20266,55 @@
               "application/json": {
                 "schema": {
                   "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
                     {
                       "type": "object",
                       "properties": {
@@ -20460,6 +20740,55 @@
                           "const": true
                         },
                         "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
                           "const": "ACCOUNT_MISMATCH"
                         },
                         "status": {
@@ -20557,7 +20886,7 @@
                         "data": {
                           "type": "object",
                           "properties": {
-                            "googleError": {
+                            "providerError": {
                               "anyOf": [
                                 {
                                   "type": "string"
@@ -20569,7 +20898,7 @@
                             }
                           },
                           "required": [
-                            "googleError"
+                            "providerError"
                           ]
                         }
                       },
@@ -20994,6 +21323,90 @@
               }
             }
           },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "503",
             "content": {
@@ -21316,6 +21729,55 @@
                           "const": true
                         },
                         "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
                           "const": "CLIENT_ACTION_ID_REUSED"
                         },
                         "status": {
@@ -21586,6 +22048,90 @@
                         "code",
                         "status",
                         "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
                       ]
                     },
                     {
@@ -21902,6 +22448,90 @@
                         "code",
                         "status",
                         "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "FEATURE_OFF"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This feature is off in this nixie"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "enum": [
+                                "computer",
+                                "code",
+                                "voice",
+                                "devices",
+                                "google",
+                                "mcp",
+                                "coding",
+                                "search",
+                                "images",
+                                "mail",
+                                "spend"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "feature"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
                       ]
                     },
                     {

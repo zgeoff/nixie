@@ -565,7 +565,7 @@ test('#connections.finishConsent carries the error code of Google in a failed ex
 
   ctx.setConnections(ctx.port);
 
-  ctx.state.finished = { kind: 'token_exchange_failed', googleError: 'invalid_grant' };
+  ctx.state.finished = { kind: 'token_exchange_failed', providerError: 'invalid_grant' };
 
   const refused = ctx.client.connections.finishConsent({ state: 's1', code: 'c1', error: null });
 
@@ -573,7 +573,7 @@ test('#connections.finishConsent carries the error code of Google in a failed ex
 
   expect(refused).rejects.toMatchObject({
     code: 'TOKEN_EXCHANGE_FAILED',
-    data: { googleError: 'invalid_grant' },
+    data: { providerError: 'invalid_grant' },
   });
 });
 

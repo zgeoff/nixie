@@ -149,7 +149,7 @@ test('it answers a refusal of the code with the error code from Google', async (
 
   const result = await ctx.connect('code-work');
 
-  expect(result).toStrictEqual({ kind: 'token_exchange_failed', googleError: 'invalid_client' });
+  expect(result).toStrictEqual({ kind: 'token_exchange_failed', providerError: 'invalid_client' });
 });
 
 test('it keeps nothing when the owner refuses on Google’s page, and uses up the state', async () => {

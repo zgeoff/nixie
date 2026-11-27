@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { startGoogleConnections } from '@heynixie/connections/test-utils';
-import { buildGmailArrivalSource } from '@heynixie/connectors';
-import { startFakeGmailSite } from '@heynixie/connectors/test-utils';
+import { buildGmailArrivalSource } from '@heynixie/connector-google';
+import { startFakeGmailSite } from '@heynixie/connector-google/test-utils';
 import { readRecords } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { eraseGmailMailbox, readGmailWakeRecords, startTriggerSources } from '@heynixie/triggers';

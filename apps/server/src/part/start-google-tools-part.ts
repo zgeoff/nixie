@@ -1,13 +1,13 @@
 import type { Clock } from '@heynixie/clock';
-import type { ConnectionContext, ConnectionState } from '@heynixie/connections';
-import type { ConnectorAction, GoogleHosts, PickedFile } from '@heynixie/connectors';
+import type { ConnectionContext, ConnectionState, ConnectorAction } from '@heynixie/connections';
+import type { GoogleHosts, PickedFile } from '@heynixie/connector-google';
 import {
   buildGoogleActions,
   collectGmailConnections,
   googleHosts,
   isGmailPolled,
   readPickedFiles,
-} from '@heynixie/connectors';
+} from '@heynixie/connector-google';
 import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 import type { FetchReply } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
@@ -74,6 +74,9 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
   };
 
   const webFetch = inputs.options.config.web_fetch;
+  const google = inputs.options.config.google;
+
+  invariant(google !== undefined, 'the google tools start only with a google section');
 
   const actions = buildGoogleActions({
     hosts,

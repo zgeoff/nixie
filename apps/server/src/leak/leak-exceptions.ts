@@ -5,6 +5,7 @@ import type { LeakExceptions } from '../types';
 // entry that matches nothing.
 export const leakExceptions: LeakExceptions = {
   owned: {
+    google: ['modules/api/src/connection'],
     computer: [
       'libs/contract/src/contract/computer-contract.ts',
       'libs/contract/src/contract/contract.ts',
@@ -90,11 +91,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'libs/contract',
-      names: ['google'],
-      removedBy: 'GEO-2879',
-    },
-    {
-      where: 'libs/contract',
       names: ['devices', 'voice'],
       removedBy: 'GEO-2880',
     },
@@ -141,11 +137,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/api',
-      names: ['google'],
-      removedBy: 'GEO-2879',
-    },
-    {
-      where: 'modules/api',
       names: ['devices', 'voice'],
       removedBy: 'GEO-2880',
     },
@@ -159,11 +150,6 @@ export const leakExceptions: LeakExceptions = {
       names: ['code'],
       removedBy: 'never',
       reason: 'the OAuth authorization code and its verifier, and no sandbox',
-    },
-    {
-      where: 'modules/connections',
-      names: ['google'],
-      removedBy: 'GEO-2879',
     },
     {
       where: 'modules/budgets',
@@ -272,13 +258,6 @@ export const leakExceptions: LeakExceptions = {
     { where: 'modules/api', imports: ['@heynixie/connectors'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/devices'], removedBy: 'GEO-2880' },
     { where: 'modules/api', imports: ['@heynixie/mail'], removedBy: 'GEO-2881' },
-    {
-      where: 'modules/connections',
-      imports: ['@heynixie/connectors'],
-      removedBy: 'GEO-2879',
-      reason:
-        "connections owns the core Connector interface, and reaches connectors only for Google's code, which the retrofit moves into a connector-google adapter",
-    },
     { where: 'modules/api', imports: ['@heynixie/mcp'], removedBy: 'GEO-2881' },
     { where: 'modules/api', imports: ['@heynixie/spend'], removedBy: 'GEO-2881' },
     { where: 'modules/definitions', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' },

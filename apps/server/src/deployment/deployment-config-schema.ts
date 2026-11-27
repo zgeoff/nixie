@@ -3,10 +3,10 @@ import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
 import { voiceConfigSchema } from '@heynixie/calls';
 import { codingConfigSchema } from '@heynixie/coding';
+import { googleConfigSchema } from '@heynixie/connector-google';
 import {
   codeConfigSchema,
   computerConfigSchema,
-  gmailConfigSchema,
   imagesConfigSchema,
   searchConfigSchema,
   timeConfigSchema,
@@ -68,7 +68,10 @@ export const deploymentConfigSchema = z
     coding: codingConfigSchema.optional(),
     voice: voiceConfigSchema.optional(),
     mail: mailConfigSchema.optional(),
-    gmail: gmailConfigSchema.default(gmailConfigSchema.parse({})),
+    google: googleConfigSchema.optional(),
+    gmail: z
+      .never({ error: 'The gmail section moved under google: write google: { gmail: { … } }' })
+      .optional(),
     wake_rules: wakeRulesConfigSchema.default(wakeRulesConfigSchema.parse({})),
   })
   .superRefine((config, issues) => {

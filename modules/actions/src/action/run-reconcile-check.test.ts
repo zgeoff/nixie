@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import type { ActionConnector } from '@heynixie/connectors';
-import { startGmailTools } from '@heynixie/connectors/test-utils';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
@@ -49,29 +48,6 @@ async function setupTest() {
 
       await runActionAttempt(actions.context, lease, {
         connectors: new Map([['test.send', connector]]),
-        leaseMs: 60_000,
-      });
-    },
-    queueGmailSend: () =>
-      queueTestAction(actions.context, {
-        step,
-        tool: 'gmail.send',
-        actionHash: 'sha256:gmail-send-1',
-        arguments: {
-          connection: 'k3x9m2p7qa',
-          to: ['sam@example.org'],
-          cc: [],
-          bcc: [],
-          subject: 'Q3 numbers',
-          text: 'Hi Sam.',
-        },
-        decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
-      }),
-    runGmailNext: async (connector: ActionConnector) => {
-      const lease = await claimTestAction(actions.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-      await runActionAttempt(actions.context, lease, {
-        connectors: new Map([['gmail.send', connector]]),
         leaseMs: 60_000,
       });
     },
@@ -438,60 +414,4 @@ test('it brings an unknown outcome to the owner at once when the connector decla
       ownerReason: 'no_reconcile',
     },
   ]);
-});
-
-test('it settles an unknown Gmail send as done once the Sent folder holds it, with one mail sent', async () => {
-  const ctx = await setupTest();
-  const gmail = await startGmailTools();
-
-  const connector = gmail.findAction('gmail.send').queued;
-
-  invariant(connector, 'gmail.send runs queued');
-
-  await ctx.runNext(buildStubConnector(() => ({ kind: 'success', result: {} })).connector);
-  await ctx.queueGmailSend();
-
-  gmail.site.gmail.sendOutcomes.push('error_after_send');
-
-  await ctx.runGmailNext(connector);
-
-  ctx.clock.advance(300_000);
-
-  await ctx.runGmailNext(connector);
-
-  const outcomes = await ctx.readOutcomes();
-
-  expect([
-    outcomes.map((outcome) => outcome['status']),
-    gmail.site.gmail.sent.length,
-  ]).toStrictEqual([['done', 'done'], 1]);
-});
-
-test('it brings an unknown Gmail send to the owner when the Sent folder lacks it, and sends nothing again', async () => {
-  const ctx = await setupTest();
-  const gmail = await startGmailTools();
-
-  const connector = gmail.findAction('gmail.send').queued;
-
-  invariant(connector, 'gmail.send runs queued');
-
-  await ctx.runNext(buildStubConnector(() => ({ kind: 'success', result: {} })).connector);
-  await ctx.queueGmailSend();
-
-  gmail.site.gmail.sendOutcomes.push('error_after_send');
-
-  await ctx.runGmailNext(connector);
-
-  gmail.site.gmail.messages.clear();
-  gmail.site.gmail.sent.splice(0);
-  ctx.clock.advance(300_000);
-
-  await ctx.runGmailNext(connector);
-
-  const outcomes = await ctx.readOutcomes();
-
-  expect([
-    outcomes.map((outcome) => outcome['status']),
-    gmail.site.gmail.sent.length,
-  ]).toStrictEqual([['done', 'unknown'], 0]);
 });

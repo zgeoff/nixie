@@ -3,8 +3,8 @@ import {
   createFakeDrive,
   createFakeGmail,
   serveFakeGoogle,
-} from '@heynixie/connectors/test-utils';
-import type { FakeCalendar, FakeDrive, FakeGmail } from '@heynixie/connectors/test-utils';
+} from '@heynixie/connector-google/test-utils';
+import type { FakeCalendar, FakeDrive, FakeGmail } from '@heynixie/connector-google/test-utils';
 import { buildIDToken } from '@heynixie/credentials/test-utils';
 import { createTestCertificate } from '@heynixie/egress/test-utils';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';

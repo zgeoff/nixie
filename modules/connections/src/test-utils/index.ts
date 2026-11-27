@@ -10,3 +10,11 @@ export {
   googleScopes,
   startGoogleConnections,
 } from './start-google-connections';
+
+export {
+  buildTestConnector,
+  buildTestOAuthSpec,
+  testConnectorScopes,
+} from './build-test-connector';
+
+export type { TestConnectorHosts } from './build-test-connector';

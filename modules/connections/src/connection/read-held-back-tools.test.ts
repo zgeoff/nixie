@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import type { ConnectorAction } from '@heynixie/connectors';
 import { buildMockToolDefinition } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
+import type { ConnectorAction } from '../connector/types';
 import { startGoogleConnections } from '../test-utils/start-google-connections';
 
 async function setupTest() {

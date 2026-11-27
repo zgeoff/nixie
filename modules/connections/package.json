@@ -12,17 +12,16 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
-    "@heynixie/connectors": "workspace:*",
     "@heynixie/credentials": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/tools": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/tools": "workspace:*",
     "@heynixie/turn-inputs": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }

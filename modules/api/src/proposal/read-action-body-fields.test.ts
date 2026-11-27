@@ -1,6 +1,7 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { seedCodeRunFiles } from '@heynixie/connectors/test-utils';
 import { startTestMemory } from '@heynixie/memory/test-utils';
+import { bodyFieldReaders } from '../utils/body-field-readers';
 import { readActionBodyFields } from './read-action-body-fields';
 
 test('it shows the reply rule that a send with no reply wake sets, from the deployment default', async () => {
@@ -66,65 +67,55 @@ test('it lists each file of a mail send by name and size on the card', async () 
   });
 });
 
-test('it words the card of a Gmail label change with its thread count and each label', async () => {
+test('it asks each reader on the list in turn and answers the first card that one gives', async () => {
   const memory = await startTestMemory();
+
+  bodyFieldReaders.set([
+    (_log, request) => {
+      if (request.tool === 'first.tool') {
+        return Promise.resolve({ status: 'fields', fields: { from: 'first' } });
+      }
+
+      return Promise.resolve({ status: 'none' });
+    },
+    (_log, request) => {
+      if (request.tool === 'second.tool') {
+        return Promise.resolve({ status: 'fields', fields: { from: 'second' } });
+      }
+
+      return Promise.resolve({ status: 'none' });
+    },
+  ]);
+
+  onTestFinished(() => {
+    bodyFieldReaders.set([]);
+  });
 
   const fields = await readActionBodyFields(
     memory.log,
-    {
-      tool: 'gmail.label',
-      thread: 'conversation',
-      input: { threads: ['k3x9m2p7qa.a1', 'k3x9m2p7qa.b2'], add: ['Reports'], remove: ['INBOX'] },
-      callSequence: 1,
-    },
+    { tool: 'second.tool', thread: 'conversation', input: {}, callSequence: 1 },
     undefined,
     'UTC',
   );
 
-  expect(fields).toStrictEqual({
-    status: 'fields',
-    fields: {},
-    sentence: 'Label 2 threads: add Reports, remove INBOX',
-    approveLabel: 'Label',
-  });
+  expect(fields).toStrictEqual({ status: 'fields', fields: { from: 'second' } });
 });
 
-test('it leaves the card of a Gmail send without a body when its facts are gone', async () => {
+test('it adds no field to a tool that no reader on the list owns', async () => {
   const memory = await startTestMemory();
+
+  bodyFieldReaders.set([() => Promise.resolve({ status: 'none' })]);
+
+  onTestFinished(() => {
+    bodyFieldReaders.set([]);
+  });
 
   const fields = await readActionBodyFields(
     memory.log,
-    { tool: 'gmail.send', thread: 'conversation', input: {}, callSequence: 1 },
+    { tool: 'other.tool', thread: 'conversation', input: {}, callSequence: 1 },
     undefined,
     'UTC',
   );
 
-  expect(fields).toStrictEqual({ status: 'unreadable' });
-});
-
-test('it words the card of a calendar invitation in the default zone of the deployment', async () => {
-  const memory = await startTestMemory();
-
-  const fields = await readActionBodyFields(
-    memory.log,
-    {
-      tool: 'calendar.create_event_with_guests',
-      thread: 'conversation',
-      input: {
-        title: 'Lunch',
-        start: '2026-12-02T12:00:00+11:00',
-        end: '2026-12-02T13:00:00+11:00',
-        guests: ['lee@example.org'],
-      },
-      callSequence: 1,
-    },
-    undefined,
-    'Australia/Sydney',
-  );
-
-  expect(fields).toMatchObject({
-    status: 'fields',
-    sentence: 'Invite lee@example.org to "Lunch" on Wed 2 Dec 2026, 12:00 Sydney',
-    approveLabel: 'Send invitations',
-  });
+  expect(fields).toStrictEqual({ status: 'none' });
 });

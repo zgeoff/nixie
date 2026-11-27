@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { featureOffErrors } from './feature-off-errors';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-const connectionsProcedure = signedIn.errors({
+const connectionsProcedure = signedIn.errors(featureOffErrors).errors({
   CONNECTIONS_NOT_STARTED: {
     message: 'nixie has not started its connections yet; try again in a moment',
     status: 503,
@@ -11,7 +12,7 @@ const connectionsProcedure = signedIn.errors({
 });
 
 const checkedAction = connectionsProcedure.errors(reusedIDErrors);
-const connectorSchema = z.literal('google');
+const connectorSchema = z.string();
 const clientNotFound = { message: 'No registered client has this ID', status: 404 } as const;
 const connectionNotFound = { message: 'No connection has this ID', status: 404 } as const;
 const erasureSchema = z.enum(['pending', 'done']);
@@ -174,7 +175,7 @@ export const connectionsContract = {
       TOKEN_EXCHANGE_FAILED: {
         message: 'Google refused the code',
         status: 502,
-        data: z.object({ googleError: z.string().nullable() }),
+        data: z.object({ providerError: z.string().nullable() }),
       },
       NO_REFRESH_TOKEN: { message: 'Google returned no refresh token', status: 502 },
       ACCOUNT_MISMATCH: {

@@ -14,6 +14,7 @@ import type { HeldSlot } from '../credential/create-held-slot';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 import { listFeaturesOn } from '../feature/list-features-on';
+import { fillGoogleLists } from '../google/fill-google-lists';
 import { registerServerRecordTopics } from '../part/register-server-record-topics';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
@@ -93,6 +94,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   const inputs = await loadServerInputs(options);
 
   fillComputerLists(inputs.config);
+  fillGoogleLists(inputs.config);
 
   const cleanup = buildCleanup();
   const encoder = inputs.encoder;

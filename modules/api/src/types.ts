@@ -1,12 +1,7 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
 import type { CallsContext } from '@heynixie/calls';
 import type { ConnectionsPort } from '@heynixie/connections';
-import type {
-  ComputerTakeover,
-  PickedFile,
-  WatchConnection,
-  WatchSocket,
-} from '@heynixie/connectors';
+import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/connectors';
 import type { DefinitionNotice, FeatureID, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
@@ -115,6 +110,15 @@ export interface ErasureStuckPort {
 
   // runs each stuck forget again, and returns the ones still open afterwards
   readonly retryStuck: () => Promise<readonly StuckForget[]>;
+}
+
+// One file that the owner picked in a provider's file picker.
+export interface PickedFile {
+  readonly file: string;
+
+  // null when nixie cannot see the file
+  readonly name: string | null;
+  readonly isVisible: boolean;
 }
 
 export interface APIContext extends TasksContext {

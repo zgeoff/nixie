@@ -1,5 +1,6 @@
 import type { ConnectionTables } from '@heynixie/connections';
 import { startConnections } from '@heynixie/connections';
+import { createGoogleConnector } from '@heynixie/connector-google';
 import { buildHeldSpec } from '@heynixie/credentials/test-build';
 import type { ErasureRegistry, KeyStoreTables } from '@heynixie/log';
 import { readRecordKeys } from '@heynixie/log';
@@ -141,7 +142,9 @@ export function registerCredentialOperations(
       backend: held.backend,
       erasure,
       now: () => Date.now(),
+      connector: createGoogleConnector(),
       endpoints: {
+        name: 'Google',
         tokenURL: args.tokenURL,
         revokeURL: args.revokeURL,
         authorizeURL: `${args.origin}/authorize`,

@@ -25,6 +25,7 @@
     "@heynixie/coding-atc": "workspace:*",
     "@heynixie/compaction": "workspace:*",
     "@heynixie/connections": "workspace:*",
+    "@heynixie/connector-google": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/credentials": "workspace:*",

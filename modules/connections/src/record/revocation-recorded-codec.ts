@@ -12,6 +12,6 @@ export const revocationRecordedCodec = defineRecordCodec(
     connection: z.string(),
     outcome: z.enum(['confirmed', 'refused', 'unknown', 'not_attempted']),
     status: z.int().nullable(),
-    googleError: z.string().nullable(),
+    providerError: z.string().nullable().default(null),
   }),
 );

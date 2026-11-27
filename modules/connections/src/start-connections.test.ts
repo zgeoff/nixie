@@ -68,7 +68,7 @@ test('it records the revocation outcome before it deletes the keys', async () =>
         connection: connection.tokenRef.credentialID,
         outcome: 'confirmed',
         status: 200,
-        googleError: null,
+        providerError: null,
       },
     ],
     true,
@@ -163,10 +163,10 @@ test('it makes the tokens unreadable and keeps the row of a forgotten connection
 });
 
 test.each([
-  { name: 'confirmed', status: 200, outcome: 'confirmed', googleError: null },
-  { name: 'refused', status: 400, outcome: 'refused', googleError: 'invalid_token' },
-  { name: 'unknown', status: 503, outcome: 'unknown', googleError: null },
-  { name: 'unconfirmed', status: 202, outcome: 'unknown', googleError: null },
+  { name: 'confirmed', status: 200, outcome: 'confirmed', providerError: null },
+  { name: 'refused', status: 400, outcome: 'refused', providerError: 'invalid_token' },
+  { name: 'unknown', status: 503, outcome: 'unknown', providerError: null },
+  { name: 'unconfirmed', status: 202, outcome: 'unknown', providerError: null },
 ])('it records a $name revocation when the provider answers $status', async (row) => {
   const ctx = await setupTest();
   const connection = await ctx.seedConnection();
@@ -191,7 +191,7 @@ test.each([
       connection: connection.tokenRef.credentialID,
       outcome: row.outcome,
       status: row.status,
-      googleError: row.googleError,
+      providerError: row.providerError,
     },
   ]);
 });

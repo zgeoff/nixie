@@ -164,7 +164,7 @@ export type FinishConsentResult =
     }
   | { readonly kind: 'consent_not_found' }
   | { readonly kind: 'consent_refused' }
-  | { readonly kind: 'token_exchange_failed'; readonly googleError: string | null }
+  | { readonly kind: 'token_exchange_failed'; readonly providerError: string | null }
   | { readonly kind: 'no_refresh_token' }
   | { readonly kind: 'account_mismatch' }
   | { readonly kind: 'forget_in_progress' };

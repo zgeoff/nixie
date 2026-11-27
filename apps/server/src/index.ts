@@ -5,6 +5,7 @@ export { deploymentConfigSchema } from './deployment/deployment-config-schema';
 export { loadDeploymentConfig } from './deployment/load-deployment-config';
 export { erasableDescriptors } from './erasure/erasable-descriptors';
 export { fillComputerLists } from './computer/fill-computer-lists';
+export { fillGoogleLists } from './google/fill-google-lists';
 export { runConversationReset } from './utils/run-conversation-reset';
 export type { ConversationOptions } from './conversation/start-conversation';
 export { startConversation } from './conversation/start-conversation';

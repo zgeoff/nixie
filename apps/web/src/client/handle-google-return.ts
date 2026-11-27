@@ -53,15 +53,15 @@ export async function handleGoogleReturn(apiURL: string, request: Request): Prom
   }
 }
 
-const googleErrorSchema = z.object({ googleError: z.string().nullable() });
+const providerErrorSchema = z.object({ providerError: z.string().nullable() });
 
 function toReturnErrorResponse(error: unknown): Response {
   if (!(error instanceof ORPCError)) {
     return renderReturnError(502, 'API_UNREACHABLE', null);
   }
 
-  const googleError = googleErrorSchema.safeParse(error.data);
-  const reported = googleError.success ? googleError.data.googleError : null;
+  const providerError = providerErrorSchema.safeParse(error.data);
+  const reported = providerError.success ? providerError.data.providerError : null;
 
   return renderReturnError(400, String(error.code), reported);
 }

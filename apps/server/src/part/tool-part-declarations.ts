@@ -58,7 +58,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'web_fetch',
-    needs: ['inputs', 'context', 'sandbox_adapter', 'google_tools'],
+    needs: ['inputs', 'context', 'sandbox_adapter'],
+    uses: ['google_tools'],
     images: () => ['fetch'],
     start: async (parts) => {
       const webFetch = await startWebFetchPart({
@@ -67,7 +68,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         log: parts.get('context').apiContext.log,
       });
 
-      parts.get('google_tools').bindHTMLReader(webFetch.readHTML);
+      parts.find('google_tools')?.bindHTMLReader(webFetch.readHTML);
 
       return webFetch;
     },
@@ -124,8 +125,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'actions',
-    needs: ['inputs', 'context', 'google_tools'],
-    uses: ['computer'],
+    needs: ['inputs', 'context'],
+    uses: ['computer', 'google_tools'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
@@ -144,23 +145,17 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const mailContext = buildServerMailContext(mail, apiContext, options.log);
       const withMail = addMailConnectors(withCoding, mail, mailContext);
 
-      return Promise.resolve(addGoogleConnectors(withMail, parts.get('google_tools').actions));
+      return Promise.resolve(
+        addGoogleConnectors(withMail, parts.find('google_tools')?.actions ?? []),
+      );
     },
   },
   {
     name: 'tool_endpoint',
-    needs: [
-      'inputs',
-      'context',
-      'web_fetch',
-      'render',
-      'worker',
-      'actions',
-      'decisions',
-      'google_tools',
-    ],
+    needs: ['inputs', 'context', 'web_fetch', 'render', 'worker', 'actions', 'decisions'],
     uses: [
       'computer',
+      'google_tools',
       'code_run',
       'memory',
       'notebook',
@@ -196,7 +191,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           render: parts.get('render'),
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
-          google: parts.get('google_tools').actions.map((action) => action.tool),
+          google: parts.find('google_tools')?.actions.map((action) => action.tool) ?? [],
 
           buildCodingStart: buildServerCodingStart(parts.get('context')),
           codeRun: parts.find('code_run')?.tool ?? null,

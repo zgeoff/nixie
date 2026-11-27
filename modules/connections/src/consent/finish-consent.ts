@@ -1,9 +1,9 @@
-import { pickDefaultLabel } from '@heynixie/connectors';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { readClientByID } from '../client/read-client-by-id';
 import { readRowContext } from '../connection/read-connection-context';
 import { readConnectionRowByID } from '../connection/read-connection-rows';
+import { pickDefaultLabel } from '../connector/pick-default-label';
 import { buildProviderSpec } from '../provider/build-provider-spec';
 import type { ServiceContext } from '../service-context';
 import type { ConnectionMissingScope, FinishConsentInput, FinishConsentResult } from '../types';
@@ -91,7 +91,7 @@ export async function finishConsent(
       isRevoked: true,
     });
 
-    return { kind: 'token_exchange_failed', googleError: 'id_token_malformed' };
+    return { kind: 'token_exchange_failed', providerError: 'id_token_malformed' };
   }
 
   const credential = await readConnectionRowByID(context.log, credentialID);
