@@ -6,6 +6,7 @@ import {
   sendClientMessage,
   startE2ENixie,
 } from '@heynixie/server/test-utils';
+import invariant from 'tiny-invariant';
 
 async function setupTest() {
   // a config with no devices section, so the devices feature is off
@@ -84,10 +85,14 @@ test('it needs no render image when the config has no devices section, because n
     join(ctx.nixie.directory, 'sandbox-manifest.json'),
   ]);
 
-  expect({ exitCode: run.exitCode, keys: Object.keys(JSON.parse(run.stdout)) }).toStrictEqual({
-    exitCode: 0,
-    keys: expect.not.arrayContaining(['render']),
-  });
+  const manifest: unknown = JSON.parse(run.stdout);
+
+  invariant(typeof manifest === 'object' && manifest !== null, 'the manifest is an object');
+
+  expect({
+    exitCode: run.exitCode,
+    hasRender: Object.keys(manifest).includes('render'),
+  }).toStrictEqual({ exitCode: 0, hasRender: false });
 });
 
 test('it needs the render image when the config has a devices section, so the check above can fail', async () => {
@@ -100,5 +105,9 @@ test('it needs the render image when the config has a devices section, so the ch
     join(nixie.directory, 'sandbox-manifest.json'),
   ]);
 
-  expect(Object.keys(JSON.parse(run.stdout))).toContain('render');
+  const manifest: unknown = JSON.parse(run.stdout);
+
+  invariant(typeof manifest === 'object' && manifest !== null, 'the manifest is an object');
+
+  expect(Object.keys(manifest)).toContain('render');
 });

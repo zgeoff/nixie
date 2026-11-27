@@ -17,7 +17,7 @@ export function renderPageEventMessage(record: LogRecord, context: InboxRenderCo
 }
 
 // The generic line for a device that went online or offline, which names the record and its fields.
-export function renderDeviceStatusMessage(record: LogRecord): string {
+function renderDeviceStatusMessage(record: LogRecord): string {
   return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
 }
 
