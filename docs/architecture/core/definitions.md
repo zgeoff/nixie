@@ -100,8 +100,9 @@ these files, and the seed lists as unapplied each file from a format later than 
   one that it added and the file no longer lists, and replaces one whose level the file changed. It
   never changes an entry that you added or changed, and one bad line refuses the whole file. An
   address, a phone number or a handle never comes from the repo. The snapshot lists each place of
-  the directory by ID and level; a snapshot from before format 7 lists the contacts you marked,
-  which a call reads as places at `known`.
+  the directory by ID and level, and each live account that is you by its connection ID at `self`; a
+  snapshot from before format 7 lists the contacts you marked, which a call reads as places at
+  `known`.
 
 The prompt and task exports raise the manifest's `format` line to the format they need, as
 [prompts](prompts.md) and [the export of task definitions](#the-export-of-task-definitions)

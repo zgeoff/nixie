@@ -8,6 +8,7 @@ import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
+import type { PlaceContext } from '@heynixie/policy';
 import { readPendingActionProposals, writePlaceAdded } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
@@ -21,6 +22,7 @@ export interface HarnessParts {
   readonly calls: CallsContext | undefined;
   readonly mail: MemoryMailHost | null;
   readonly runInForceSeed: () => Promise<unknown>;
+  readonly runInForce: PlaceContext['runInForce'];
 }
 
 export function registerHarnessOperations(
@@ -143,9 +145,7 @@ export function registerHarnessOperations(
       {
         log: context.log,
         definitions: context.definitions,
-        publishSnapshot: async () => {
-          await parts.runInForceSeed();
-        },
+        runInForce: parts.runInForce,
       },
       {
         key: { kind: 'site', domain: request.domain, subdomains: false },

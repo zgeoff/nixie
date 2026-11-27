@@ -20,6 +20,13 @@ test.each<[string, string, Destination | null]>([
     { kind: 'site', domain: 'mixed.example' },
   ],
   ['a backslash in a host', String.raw`foo\bar`, null],
+  ['a backslash after the host of a URL', String.raw`https://example.org\path`, null],
+  ['a backslash in the host of a URL', String.raw`https://example.org\@evil.test/x`, null],
+  [
+    'a backslash in a URL path',
+    String.raw`https://example.org/a\b`,
+    { kind: 'site', domain: 'example.org' },
+  ],
   ['a query on a mail address domain', 'sam@example.org?query', null],
   ['an IP address', 'http://10.0.0.1:80/x', { kind: 'site', domain: '10.0.0.1' }],
   [

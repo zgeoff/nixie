@@ -15,7 +15,7 @@ async function setupTest() {
     context: {
       log,
       definitions: () => ({ snapshotHash: 'snapshot-1' }),
-      publishSnapshot: () => Promise.resolve(),
+      runInForce: () => Promise.resolve(),
     },
   };
 }

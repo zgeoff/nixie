@@ -26,6 +26,7 @@ import { readRuleStore } from '../utils/read-rule-store';
 import { readWrittenSkills } from '../written/read-written-skills';
 import { readRepoBudgets } from './read-repo-budgets';
 import { readRepoTasks } from './read-repo-tasks';
+import type { SelfPlacesReader } from './read-seed-policy';
 import { readSeedPolicy } from './read-seed-policy';
 import { writeSeed } from './write-seed';
 
@@ -36,6 +37,9 @@ export interface InForceSeedOptions {
 
   // the triggers that another module owns, which the seed arms beside the definitions
   readonly readExtraArmed?: TaskHooksContext['readExtraArmed'];
+
+  // the accounts that are you, which the snapshot lists as places at self
+  readonly readSelfPlaces?: SelfPlacesReader;
 }
 
 export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult> {
@@ -82,12 +86,14 @@ export async function seedInForceInTransaction(
   const now = options.log.writer.clock.now();
 
   const lists = await readSeedLists(tx, inForce.recordSequence);
+  const selfPlaces = await options.readSelfPlaces?.(tx);
 
   const policy = await readSeedPolicy(tx, {
     base: options.buildPolicy(inForce.prompts),
     overrides: lists.effects,
     rules: revisions.inForce,
     places: { adds: [], removes: [] },
+    selfPlaces: selfPlaces ?? [],
   });
 
   if (policy.status === 'refused') {

@@ -31,6 +31,7 @@ import invariant from 'tiny-invariant';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
 import { buildServerMailContext } from '../mail/build-server-mail-context';
+import { makePlaceSeed } from '../place/make-place-seed';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runServerReminderMoves } from '../reminder/run-server-reminder-moves';
@@ -463,6 +464,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           calls: parts.apiContext.calls,
           mail: reader.get('context').mail?.memory ?? null,
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
+          runInForce: makePlaceSeed(parts, null),
         });
 
         registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));

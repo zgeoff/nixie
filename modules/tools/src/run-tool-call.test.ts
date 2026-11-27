@@ -4736,7 +4736,7 @@ test.each([
       {
         log: ctx.log,
         definitions: () => ({ snapshotHash: 'sha256:test' }),
-        publishSnapshot: () => Promise.resolve(),
+        runInForce: () => Promise.resolve(),
       },
       {
         key: { kind: 'address', address: 'sam@example.org' },

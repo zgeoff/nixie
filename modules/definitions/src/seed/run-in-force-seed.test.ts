@@ -14,6 +14,7 @@ import { readDefinitionsInForce } from '../definition/read-definitions-in-force'
 import { runSeed } from '../rule/run-seed';
 import { checkSkillFiles } from '../skill/check-skill-files';
 import { readSnapshotMcpOverrides } from '../snapshot/read-snapshot-mcp-overrides';
+import { readSnapshotPolicy } from '../snapshot/read-snapshot-policy';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
@@ -538,4 +539,57 @@ test('it keeps the MCP overrides of the repo in the snapshot of a seed that only
     await readSnapshotMcpOverrides(ctx.writer.db, first.inForce.snapshotHash),
     await readSnapshotMcpOverrides(ctx.writer.db, second.inForce.snapshotHash),
   ]).toStrictEqual([false, overrides, overrides]);
+});
+
+test('it lists each account that is you in the snapshot as a place at self, and a new account needs a new snapshot', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 7\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+    readSelfPlaces: () => Promise.resolve(['account-b', 'account-a']),
+  });
+
+  invariant(first.status === 'seeded');
+
+  const unchanged = await runInForceSeed({
+    log: ctx.log,
+    buildPolicy: () => policy,
+    readSelfPlaces: () => Promise.resolve(['account-a', 'account-b']),
+  });
+
+  const second = await runInForceSeed({
+    log: ctx.log,
+    buildPolicy: () => policy,
+    readSelfPlaces: () => Promise.resolve(['account-a', 'account-b', 'account-c']),
+  });
+
+  invariant(second.status === 'seeded');
+
+  const firstPolicy = await readSnapshotPolicy(ctx.writer.db, first.inForce.snapshotHash);
+  const secondPolicy = await readSnapshotPolicy(ctx.writer.db, second.inForce.snapshotHash);
+
+  expect({
+    unchanged: unchanged.status,
+    first: firstPolicy.places,
+    second: secondPolicy.places,
+  }).toStrictEqual({
+    unchanged: 'unchanged',
+    first: [
+      { placeID: 'account-a', trust: 'self' },
+      { placeID: 'account-b', trust: 'self' },
+    ],
+    second: [
+      { placeID: 'account-a', trust: 'self' },
+      { placeID: 'account-b', trust: 'self' },
+      { placeID: 'account-c', trust: 'self' },
+    ],
+  });
 });

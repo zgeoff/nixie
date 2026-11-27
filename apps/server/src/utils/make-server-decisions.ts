@@ -30,9 +30,10 @@ export interface ServerDecisionsOptions {
   // the consent checker, which starts after the decision points do
   readonly readCheck: () => RunConsentCheck | null;
 
-  // the addresses that are you, such as each connected Google account's own: a mail to one needs no
-  // card, and forgetting the connection takes the address away
-  readonly readOwnerDestinations: () => Promise<readonly string[]>;
+  // The address of an account that is you, by the reference its place holds in a snapshot, such as
+  // a Google connection's ID. Null once the account is gone, and forgetting its connection takes the
+  // address away: the snapshot holds the reference, never the address.
+  readonly readOwnerAddress: (reference: string) => Promise<string | null>;
 }
 
 const unavailable: ConsentAnswer = { verdict: 'unsure', failure: 'error' };
@@ -44,7 +45,16 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
       readInputs: async (snapshot) => {
         const read = await readSnapshotPolicy(options.log.writer.db, snapshot);
         const stored = await readSnapshotPlaces(options.log, snapshot);
-        const addresses = await options.readOwnerDestinations();
+
+        const held = new Set(stored.map((place) => place.placeID));
+
+        const references = read.places
+          .filter((place) => place.trust === 'self' && !held.has(place.placeID))
+          .map((place) => place.placeID);
+
+        const addresses = await Promise.all(
+          references.map((reference) => options.readOwnerAddress(reference)),
+        );
 
         const places: readonly PolicyPlace[] = [...stored, ...buildOwnPlaces(addresses)];
 
@@ -68,21 +78,27 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
     });
 }
 
-// The addresses that are you come from the connected accounts, so forgetting a connection takes its
-// address away. Each is a place at self that holds no record. Every one takes the same ID, because a
-// decision stores the ID of each place it used and an address must stay out of the log.
+// Each account that is you is a place at self that holds no record, and a call decides under the
+// accounts its snapshot lists. Every one takes the same ID, because a decision stores the ID of each
+// place it used and an address must stay out of the log.
 const ownPlaceID = 'self';
 
-function buildOwnPlaces(addresses: readonly string[]): readonly PolicyPlace[] {
-  return addresses.map((address) => {
+function buildOwnPlaces(addresses: readonly (string | null)[]): readonly PolicyPlace[] {
+  return addresses.flatMap((address) => {
+    if (address === null || address === '') {
+      return [];
+    }
+
     const parsed = parsePlace(address);
 
-    return {
-      placeID: ownPlaceID,
-      shortID: 'self',
-      key: parsed?.kind === 'address' ? parsed : ({ kind: 'raw', value: address } as const),
-      trust: 'self',
-      name: null,
-    };
+    return [
+      {
+        placeID: ownPlaceID,
+        shortID: 'self',
+        key: parsed?.kind === 'address' ? parsed : ({ kind: 'raw', value: address } as const),
+        trust: 'self' as const,
+        name: null,
+      },
+    ];
   });
 }

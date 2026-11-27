@@ -1,10 +1,11 @@
-import type { Definitions, Log } from '@heynixie/log';
+import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 
 export interface PlaceContext {
   readonly log: Log;
   readonly definitions: () => Definitions;
 
-  // Publishes a definitions snapshot that holds the directory as it is now, because a call decides
-  // under the snapshot it started with. A write is in force for the next call only once it runs.
-  readonly publishSnapshot: () => Promise<void>;
+  // Puts a definitions snapshot that holds the directory in force, in the transaction of the write
+  // that changed it, because a call decides under the snapshot it started with. It throws when the
+  // seed refuses, which rolls the write back, so a write is in force for the next call or not made.
+  readonly runInForce: (tx: WriteTransaction) => Promise<void>;
 }

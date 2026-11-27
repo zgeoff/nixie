@@ -37,7 +37,7 @@ async function setupTest() {
       log,
       clock: started.clock,
       definitions: () => ({ snapshotHash: 'snapshot-1' }),
-      publishSnapshot: () => Promise.resolve(),
+      runInForce: () => Promise.resolve(),
     },
   };
 }

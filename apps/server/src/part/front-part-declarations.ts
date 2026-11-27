@@ -173,12 +173,15 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'decisions',
     needs: ['inputs', 'context'],
-    uses: ['checker', 'google_tools'],
+    uses: ['checker', 'connections'],
     start: (parts) =>
       Promise.resolve(
         makeServerDecisions({
-          readOwnerDestinations: () =>
-            parts.find('google_tools')?.readAccounts() ?? Promise.resolve([]),
+          readOwnerAddress: async (connectionID) => {
+            const context = await parts.find('connections')?.readContext(connectionID);
+
+            return context?.account ?? null;
+          },
           log: parts.get('context').apiContext.log,
           linkMaxAgeMs: parts.get('inputs').options.config.policy.consent.linkMaxAgeMs,
           readCheck: () => parts.find('checker')?.check ?? null,

@@ -58,10 +58,11 @@ and an origin: `you`, `proposal`, `card`, `seed` or `nixie_own`. The levels are:
 | `self`    | one of your own addresses, numbers or handles; allows like `act` with no record |
 
 The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted`,
-which goes on the call's thread. After each add, change or removal that took effect, the writer runs
-the in-force seed, which puts a definitions snapshot that holds the directory in force. A call
-decides under the snapshot it started with, so a block takes effect for the next call. The seed that
-adds nixie's own entries publishes the snapshot itself.
+which goes on the call's thread. Each add, change or removal runs the in-force seed in its own write
+transaction, which puts a definitions snapshot that holds the directory in force. When the seed
+refuses, the whole transaction rolls back and the write is not made. A call decides under the
+snapshot it started with, so a block takes effect for each call that starts after the commit. The
+seed that adds nixie's own entries runs the in-force seed itself, once all its entries are in.
 
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. It keeps the
 key of a site or mail domain. The key and the name of an address, phone number or handle are
@@ -70,10 +71,12 @@ keeps its row, so a replay of an older call finds its key.
 
 A forget of one record of an address, phone number or handle entry, through `log.forget` or the
 conversation's forget, removes the keys of every `places.added` and `places.changed` record of that
-entry, so no later change of its name keeps what the forget meant to erase, and the entry covers
-nothing. These records carry no thread, so the forget accepts them with any conversation's thread. A
-call that an `act` place allowed writes its `places.acted` record once the action queue admits the
-attempt, and a retry of the call writes none a second time.
+entry, and of the marking record when the entry is a contact you marked. No later change of its name
+keeps what the forget meant to erase, and the entry covers nothing. `places.removed` and
+`places.acted` hold only the entry's ID, which no key opens, because the projection reads the ID of
+a removal and a retry reads the ID of an act. These records carry no thread, so the forget accepts
+them with any conversation's thread. A call that an `act` place allowed writes its `places.acted`
+record once the action queue admits the attempt, and a retry of the call writes none a second time.
 
 - The directory holds at most one entry per key, checked inside the write transaction against the
   keys read back, and contact entries count.
@@ -85,8 +88,10 @@ attempt, and a retry of the call writes none a second time.
   reads every entry at `known`, whoever added it, and the consent check's typed-name match compares
   the canonical form of both addresses.
 - The addresses that are you, such as each connected Google account's own, are entries at `self`
-  that hold no record, so forgetting a connection takes its address away. They share one ID, so a
-  decision never stores an address.
+  that hold no record. A snapshot lists one entry per live connection by the connection's ID, and a
+  call reads the address through the connection's own erasable record. A connection made after a
+  snapshot needs a new snapshot, which the end of its consent runs, and forgetting a connection
+  takes its address away at once. They share one ID, so a decision never stores an address.
 - A feature adds its own addresses, numbers or sites at `act` as `nixie_own` through a source that
   the composition root lists. Before each seed, nixie adds each listed value unless it added that
   value before, so a value you removed stays removed. No feature lists one yet.

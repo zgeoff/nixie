@@ -9,10 +9,10 @@ import { writePlaceAdded } from './write-place-added';
 // added that value before: a value you removed stays removed. Returns the count it added. It runs
 // in the seed, which publishes the snapshot itself once the entries are in.
 export async function writeOwnPlaces(
-  seeding: Omit<PlaceContext, 'publishSnapshot'>,
+  seeding: Omit<PlaceContext, 'runInForce'>,
   sources: readonly OwnPlaceSource[],
 ): Promise<number> {
-  const context: PlaceContext = { ...seeding, publishSnapshot: () => Promise.resolve() };
+  const context: PlaceContext = { ...seeding, runInForce: () => Promise.resolve() };
 
   const lists = await Promise.all(sources.map((source) => source.read()));
 

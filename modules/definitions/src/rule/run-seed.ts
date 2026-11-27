@@ -10,6 +10,7 @@ import { parseDefinitions } from '../definition/parse-definitions';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import { buildTaskSeedRecords } from '../runtime-task/build-task-seed-records';
 import { readTaskSeedInput } from '../runtime-task/read-task-seed-input';
+import type { SelfPlacesReader } from '../seed/read-seed-policy';
 import { readSeedPolicy } from '../seed/read-seed-policy';
 import { writeSeed } from '../seed/write-seed';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
@@ -59,6 +60,9 @@ export interface SeedOptions {
 
   // the triggers that another module owns, which the seed arms beside the definitions
   readonly readExtraArmed?: TaskHooksContext['readExtraArmed'];
+
+  // the accounts that are you, which the snapshot lists as places at self
+  readonly readSelfPlaces?: SelfPlacesReader;
 }
 
 export type SeedResult =
@@ -128,11 +132,14 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
     const placesPlan = buildPlacesSeedPlan(read.parsed.places, placeRows);
 
+    const selfPlaces = await options.readSelfPlaces?.(tx);
+
     const policy = await readSeedPolicy(tx, {
       base: options.buildPolicy(read.parsed.prompts),
       overrides: read.parsed.effects,
       rules: revisions.inForce,
       places: placesPlan,
+      selfPlaces: selfPlaces ?? [],
     });
 
     if (policy.status === 'refused') {

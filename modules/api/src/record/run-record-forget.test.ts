@@ -2,7 +2,12 @@ import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { readRecordForgetPreview } from '@heynixie/memory';
 import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
-import { readPlaces, writePlaceAdded, writePlaceChanged } from '@heynixie/policy';
+import {
+  readPlaces,
+  writeContactMarked,
+  writePlaceAdded,
+  writePlaceChanged,
+} from '@heynixie/policy';
 import {
   reminderCancelledCodec,
   reminderSetCodec,
@@ -307,7 +312,7 @@ test('it forgets a personal place by its add record and erases its later name ch
   const places = {
     log: ctx.context.log,
     definitions: ctx.context.definitions,
-    publishSnapshot: () => Promise.resolve(),
+    runInForce: () => Promise.resolve(),
   };
 
   const added = await writePlaceAdded(places, {
@@ -345,4 +350,47 @@ test('it forgets a personal place by its add record and erases its later name ch
     listed: await readPlaces(ctx.context.log),
     changeFields: changes.map((entry) => entry.record.erasable.status),
   }).toStrictEqual({ forgotten: 'forgotten', listed: [], changeFields: ['shredded'] });
+});
+
+test('it forgets a contact you marked by a later change of its entry and shreds its marking record', async () => {
+  const ctx = await setupTest();
+
+  const marked = await writeContactMarked(ctx.context, {
+    destination: 'sam@example.org',
+    name: 'Sam',
+  });
+
+  const changed = await writePlaceChanged(
+    {
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      runInForce: () => Promise.resolve(),
+    },
+    { placeID: marked.contact.contactID, name: 'Sam at work' },
+  );
+
+  invariant(changed.status === 'changed');
+
+  const [changeRecord] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.changed'],
+  });
+
+  invariant(changeRecord);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: changeRecord.record.sequence,
+  });
+
+  const markings = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['policy.contact_marked_known'],
+  });
+
+  expect({
+    forgotten: forgotten.status,
+    listed: await readPlaces(ctx.context.log),
+    markingFields: markings.map((entry) => entry.record.erasable.status),
+  }).toStrictEqual({ forgotten: 'forgotten', listed: [], markingFields: ['shredded'] });
 });

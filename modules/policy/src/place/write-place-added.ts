@@ -26,28 +26,15 @@ export type PlaceAddResult =
   | { readonly status: 'refused'; readonly fault: PlaceKeyFault | 'key_held' };
 
 // Adds an entry, and checks the one entry per key inside the write transaction against the keys read
-// back from the records. The first of a place's records takes no thread. Once the entry is stored,
-// the next call decides under a snapshot that holds it.
-export async function writePlaceAdded(
-  context: PlaceContext,
-  add: PlaceAdd,
-): Promise<PlaceAddResult> {
+// back from the records. The first of a place's records takes no thread. The snapshot that holds the
+// entry goes in force in the same transaction.
+export function writePlaceAdded(context: PlaceContext, add: PlaceAdd): Promise<PlaceAddResult> {
   const fault = checkPlaceKey(add.key, add.trust, add.addedBy);
 
   if (fault !== null) {
-    return { status: 'refused', fault };
+    return Promise.resolve({ status: 'refused', fault });
   }
 
-  const result = await writeAdded(context, add);
-
-  if (result.status === 'added') {
-    await context.publishSnapshot();
-  }
-
-  return result;
-}
-
-function writeAdded(context: PlaceContext, add: PlaceAdd): Promise<PlaceAddResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 
@@ -73,6 +60,8 @@ function writeAdded(context: PlaceContext, add: PlaceAdd): Promise<PlaceAddResul
         ...buildErasable(add.key, name),
       },
     ]);
+
+    await context.runInForce(tx);
 
     return { status: 'added', placeID, shortID, trust: add.trust } as const;
   });

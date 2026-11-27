@@ -7,8 +7,9 @@ export interface ClickReach {
   readonly destinations: readonly string[];
 }
 
-// What a click on a control reaches: the host of the tab, and for a plain link the host it points
-// to as well. Any other control acts on the tab's page.
+// What a click on a control reaches: the host of the tab, and the host of any web address the
+// control points to. Only a plain link just loads that page: any other control also acts on the
+// tab's page.
 export function pickClickReach(element: ClickedElement, tabURL: string): ClickReach {
   const isPlainLink =
     element.role === 'link' &&
@@ -16,7 +17,7 @@ export function pickClickReach(element: ClickedElement, tabURL: string): ClickRe
     !element.isInForm &&
     !element.hasClickHandler;
 
-  const hosts = [findURLHost(tabURL), isPlainLink ? findURLHost(element.href ?? '') : null].filter(
+  const hosts = [findURLHost(tabURL), findURLHost(element.href ?? '')].filter(
     (host) => host !== null,
   );
 

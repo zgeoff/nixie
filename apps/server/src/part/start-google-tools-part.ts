@@ -13,7 +13,6 @@ import type { FetchReply } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildGoogleToolkit } from '../google/build-google-toolkit';
 import { buildTestGoogleHosts } from '../test/build-test-google-hosts';
-import { collectOwnerAddresses } from './collect-owner-addresses';
 import { readMailHTML } from './read-mail-html';
 import type { ServerInputs } from './server-inputs';
 
@@ -43,9 +42,6 @@ export interface GoogleToolsPart {
     connection: string,
     files: readonly string[],
   ) => Promise<readonly PickedFile[] | null>;
-
-  // the address of each live Google connection, in lowercase NFC; none before the connections run
-  readonly readAccounts: () => Promise<readonly string[]>;
 
   // the live connections, the log and the clock, once they run; a tool finds no connection before
   // that
@@ -140,11 +136,6 @@ export function startGoogleToolsPart(inputs: ServerInputs): GoogleToolsPart {
         connection,
         files,
       ),
-    readAccounts: async () => {
-      const live = bound.runtime === null ? [] : await bound.runtime.readLiveContexts();
-
-      return collectOwnerAddresses(live.map((entry) => entry.account));
-    },
     bindRuntime: (runtime) => {
       bound.runtime = runtime;
     },

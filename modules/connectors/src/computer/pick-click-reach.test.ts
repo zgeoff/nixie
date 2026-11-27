@@ -15,12 +15,12 @@ test.each([
   [
     'a link with a click handler',
     { role: 'link', href: 'https://other.test/a', isInForm: false, hasClickHandler: true },
-    { isPlainLink: false, destinations: ['site.test'] },
+    { isPlainLink: false, destinations: ['site.test', 'other.test'] },
   ],
   [
     'a link inside a form',
     { role: 'link', href: 'https://other.test/a', isInForm: true, hasClickHandler: false },
-    { isPlainLink: false, destinations: ['site.test'] },
+    { isPlainLink: false, destinations: ['site.test', 'other.test'] },
   ],
   [
     'a button',

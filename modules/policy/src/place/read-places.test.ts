@@ -30,11 +30,17 @@ async function setupTest() {
       log,
       clock: started.clock,
       definitions: () => ({ snapshotHash: 'snapshot-1' }),
-      publishSnapshot: () => {
+      runInForce: () => {
         published.count += 1;
 
         return Promise.resolve();
       },
+    },
+    refusingContext: {
+      log,
+      clock: started.clock,
+      definitions: () => ({ snapshotHash: 'snapshot-1' }),
+      runInForce: () => Promise.reject(new Error('the seed was refused')),
     },
   };
 }
@@ -440,4 +446,62 @@ test('it publishes no snapshot for an add, a change and a removal that took no e
   await writePlaceRemoved(ctx.context, 'no-such-place');
 
   expect(ctx.published.count).toBe(0);
+});
+
+test('it leaves no place when the seed refuses an add', async () => {
+  const ctx = await setupTest();
+
+  const add = writePlaceAdded(ctx.refusingContext, {
+    key: { kind: 'site', domain: 'a.example.org', subdomains: false },
+    trust: 'read',
+    name: null,
+    addedBy: 'you',
+  });
+
+  const settled = await Promise.allSettled([add]);
+  const places = await readPlaces(ctx.log, { isRemovedIncluded: true });
+
+  expect(settled.map((outcome) => outcome.status)).toStrictEqual(['rejected']);
+  expect(places).toStrictEqual([]);
+});
+
+test('it keeps the level of a place when the seed refuses a change', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.context, {
+    key: { kind: 'site', domain: 'a.example.org', subdomains: false },
+    trust: 'read',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const settled = await Promise.allSettled([
+    writePlaceChanged(ctx.refusingContext, { placeID: added.placeID, trust: 'blocked' }),
+  ]);
+
+  const places = await readPlaces(ctx.log);
+
+  expect(settled.map((outcome) => outcome.status)).toStrictEqual(['rejected']);
+  expect(places.map((place) => place.trust)).toStrictEqual(['read']);
+});
+
+test('it keeps a place when the seed refuses its removal', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.context, {
+    key: { kind: 'site', domain: 'a.example.org', subdomains: false },
+    trust: 'read',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const settled = await Promise.allSettled([writePlaceRemoved(ctx.refusingContext, added.placeID)]);
+  const places = await readPlaces(ctx.log);
+
+  expect(settled.map((outcome) => outcome.status)).toStrictEqual(['rejected']);
+  expect(places.map((place) => place.placeID)).toStrictEqual([added.placeID]);
 });

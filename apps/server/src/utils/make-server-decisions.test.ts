@@ -1,8 +1,11 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildPolicyCall } from '@heynixie/policy/test-utils';
+import invariant from 'tiny-invariant';
 import { startTestLog } from '../test-utils/start-test-log';
 import { makeServerDecisions } from './make-server-decisions';
 
@@ -15,6 +18,12 @@ async function setupTest() {
 
   onTestFinished(() => log.writer.stop());
 
+  const root = join(dataDir, 'definitions');
+
+  await mkdir(root);
+  await writeFile(join(root, 'nixie.yaml'), 'format: 7\n');
+  await writeFile(join(root, 'persona.md'), '# Persona\n');
+
   const declaration = {
     effects: ['send' as const],
     destinations: ['to'],
@@ -23,25 +32,48 @@ async function setupTest() {
     results: {},
   };
 
+  const accounts = new Map<string, string>();
+
+  const decide = makeServerDecisions({
+    log,
+    linkMaxAgeMs: 1000,
+    readCheck: () => null,
+    readOwnerAddress: (reference) => Promise.resolve(accounts.get(reference) ?? null),
+  })(() => declaration);
+
   return {
-    decide: makeServerDecisions({
-      log,
-      linkMaxAgeMs: 1000,
-      readCheck: () => null,
-      readOwnerDestinations: () => Promise.resolve(['Me@Example.org']),
-    })(() => declaration),
+    accounts,
+    runSnapshot: async () => {
+      const seeded = await runSeed({
+        tasks: buildTestTaskSeed(),
+        log,
+        source: createPathSource({ directory: root }),
+        buildPolicy: () => ({ rules: [], tools: [] }),
+        readSelfPlaces: () => Promise.resolve([...accounts.keys()]),
+      });
+
+      invariant(seeded.inForce);
+
+      return seeded.inForce.snapshotHash;
+    },
+    decideMail: (snapshot: string, to: string) =>
+      decide(
+        buildPolicyCall({
+          args: { to },
+          destinations: [{ value: to, replyTarget: false }],
+          snapshot,
+        }),
+      ),
   };
 }
 
 test('it allows a mail to an address that is you with no card, whatever its case', async () => {
   const ctx = await setupTest();
 
-  const policy = await ctx.decide(
-    buildPolicyCall({
-      args: { to: 'me@example.org' },
-      destinations: [{ value: 'me@example.org', replyTarget: false }],
-    }),
-  );
+  ctx.accounts.set('account-1', 'Me@Example.org');
+
+  const snapshot = await ctx.runSnapshot();
+  const policy = await ctx.decideMail(snapshot, 'me@example.org');
 
   expect(policy.decision).toMatchObject({
     outcome: 'allow',
@@ -53,12 +85,48 @@ test('it allows a mail to an address that is you with no card, whatever its case
 test('it asks for a mail to an address that nothing names', async () => {
   const ctx = await setupTest();
 
-  const policy = await ctx.decide(
-    buildPolicyCall({
-      args: { to: 'stranger@example.org' },
-      destinations: [{ value: 'stranger@example.org', replyTarget: false }],
-    }),
-  );
+  ctx.accounts.set('account-1', 'Me@Example.org');
+
+  const snapshot = await ctx.runSnapshot();
+  const policy = await ctx.decideMail(snapshot, 'stranger@example.org');
+
+  expect(policy.decision.outcome).toBe('ask');
+});
+
+test('it asks for a mail to an account connected after the snapshot of the call', async () => {
+  const ctx = await setupTest();
+  const snapshot = await ctx.runSnapshot();
+
+  ctx.accounts.set('account-1', 'me@example.org');
+
+  const policy = await ctx.decideMail(snapshot, 'me@example.org');
+
+  expect(policy.decision.outcome).toBe('ask');
+});
+
+test('it allows a mail to an account connected before the next snapshot', async () => {
+  const ctx = await setupTest();
+
+  await ctx.runSnapshot();
+
+  ctx.accounts.set('account-1', 'me@example.org');
+
+  const snapshot = await ctx.runSnapshot();
+  const policy = await ctx.decideMail(snapshot, 'me@example.org');
+
+  expect(policy.decision.outcome).toBe('allow');
+});
+
+test('it asks for a mail to an account whose connection was forgotten, under the same snapshot', async () => {
+  const ctx = await setupTest();
+
+  ctx.accounts.set('account-1', 'me@example.org');
+
+  const snapshot = await ctx.runSnapshot();
+
+  ctx.accounts.delete('account-1');
+
+  const policy = await ctx.decideMail(snapshot, 'me@example.org');
 
   expect(policy.decision.outcome).toBe('ask');
 });

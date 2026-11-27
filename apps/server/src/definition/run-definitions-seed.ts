@@ -1,3 +1,4 @@
+import { readLiveConnectionIDs } from '@heynixie/connections';
 import type { SeedResult } from '@heynixie/definitions';
 import { runSeed } from '@heynixie/definitions';
 import { writeContactKinds, writeOwnPlaces } from '@heynixie/policy';
@@ -36,6 +37,7 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       buildPolicy: parts.buildPolicy,
       builtInBudgets: parts.context.budgets?.builtIn() ?? [],
       readExtraArmed: readArmedReminders,
+      readSelfPlaces: readLiveConnectionIDs,
     });
 
     parts.state.update({

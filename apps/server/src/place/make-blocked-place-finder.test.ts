@@ -5,19 +5,19 @@ import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { writeRecords } from '@heynixie/log';
-import { writePlaceAdded, writePlaceRemoved } from '@heynixie/policy';
+import { readPlaces, writePlaceAdded, writePlaceRemoved } from '@heynixie/policy';
 import { buildPolicyCall } from '@heynixie/policy/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { toolCalledCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
-import { runQueuedInForceSeed } from '../seed/run-queued-in-force-seed';
 import type { SeedParts } from '../seed/run-queued-seed';
 import { createServerContext } from '../server/create-server-context';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildStartState } from '../utils/build-start-state';
 import { makeServerDecisions } from '../utils/make-server-decisions';
 import { makeBlockedPlaceFinder } from './make-blocked-place-finder';
+import { makePlaceSeed } from './make-place-seed';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -50,7 +50,19 @@ async function setupTest() {
     context: context.apiContext,
     source: createPathSource({ directory: root }),
     tasks: buildTestTaskSeed(),
-    buildPolicy: () => ({ rules: [], tools: [] }),
+    buildPolicy: () => ({
+      rules: [],
+      tools: [
+        {
+          name: 'web_fetch',
+          effects: ['fetch'],
+          destinations: ['url'],
+          amount: null,
+          content: [],
+          results: {},
+        },
+      ],
+    }),
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},
@@ -63,16 +75,14 @@ async function setupTest() {
   const places = {
     log,
     definitions: context.apiContext.definitions,
-    publishSnapshot: async () => {
-      await runQueuedInForceSeed(parts);
-    },
+    runInForce: makePlaceSeed(parts, null),
   };
 
   const decide = makeServerDecisions({
     log,
     linkMaxAgeMs: 1000,
     readCheck: () => null,
-    readOwnerDestinations: () => Promise.resolve([]),
+    readOwnerAddress: () => Promise.resolve(null),
   })(() => ({
     effects: ['fetch'],
     destinations: ['url'],
@@ -86,6 +96,7 @@ async function setupTest() {
       decide(
         buildPolicyCall({
           tool: 'web_fetch',
+          toolList: ['web_fetch'],
           args: { url },
           destinations: [{ value: url, replyTarget: false }],
           snapshot: context.apiContext.definitions().snapshotHash,
@@ -105,6 +116,25 @@ async function setupTest() {
       return added;
     },
     removePlace: (placeID: string) => writePlaceRemoved(places, placeID),
+    addBlockWithFailingSeed: (domain: string) =>
+      writePlaceAdded(
+        {
+          ...places,
+          runInForce: async (tx) => {
+            await places.runInForce(tx);
+
+            throw new Error('the seed failed');
+          },
+        },
+        {
+          key: { kind: 'site', domain, subdomains: true },
+          trust: 'blocked',
+          name: null,
+          addedBy: 'you',
+        },
+      ),
+    readPlaces: () => readPlaces(log),
+    readSnapshotHash: () => context.apiContext.definitions().snapshotHash,
     recordCall: async () => {
       const [called] = await writeRecords(log, [
         {
@@ -179,10 +209,33 @@ test('it still finds a block that was removed between the call snapshot and a ho
 
 test('it denies the next call to a site that a block added through the writer covers', async () => {
   const ctx = await setupTest();
-
-  await ctx.addBlock('tracker.example.org');
-
+  const added = await ctx.addBlock('tracker.example.org');
   const policy = await ctx.decideFetch('https://cdn.tracker.example.org/page');
 
-  expect(policy.decision.outcome).toBe('deny');
+  expect(policy.decision).toMatchObject({
+    outcome: 'deny',
+    stage: 3,
+    places: [{ placeID: added.placeID, shortID: added.shortID }],
+  });
+});
+
+test('it keeps no block and the same snapshot in force when the seed fails after the write', async () => {
+  const ctx = await setupTest();
+
+  const before = ctx.readSnapshotHash();
+
+  const settled = await Promise.allSettled([ctx.addBlockWithFailingSeed('tracker.example.org')]);
+  const policy = await ctx.decideFetch('https://tracker.example.org/');
+
+  expect({
+    outcomes: settled.map((outcome) => outcome.status),
+    places: await ctx.readPlaces(),
+    isSnapshotKept: ctx.readSnapshotHash() === before,
+    decision: policy.decision.outcome,
+  }).toStrictEqual({
+    outcomes: ['rejected'],
+    places: [],
+    isSnapshotKept: true,
+    decision: 'ask',
+  });
 });

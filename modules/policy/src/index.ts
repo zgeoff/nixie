@@ -18,6 +18,7 @@ export type { PendingActionProposal } from './action/read-pending-action-proposa
 export { readPendingActionProposals } from './action/read-pending-action-proposals';
 export type { ActionProposalState } from './action/read-action-proposals';
 export { readActionProposals } from './action/read-action-proposals';
+export { contactMarkedKnownCodec } from './contact/contact-marked-known-codec';
 export { knownContactsProjection } from './contact/known-contacts-projection';
 export type { KnownContactEntry } from './contact/read-known-contacts';
 export { readKnownContactIDs, readKnownContacts } from './contact/read-known-contacts';

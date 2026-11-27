@@ -19,21 +19,12 @@ export type PlaceChangeResult =
   | { readonly status: 'refused'; readonly fault: PlaceKeyFault };
 
 // Changes the level or the name of an entry that is still in the directory. A personal place
-// repeats its whole name in the erasable fields, so the latest record holds it.
-export async function writePlaceChanged(
+// repeats its whole name in the erasable fields, so the latest record holds it. The snapshot that
+// holds the change goes in force in the same transaction.
+export function writePlaceChanged(
   context: PlaceContext,
   change: PlaceChange,
 ): Promise<PlaceChangeResult> {
-  const result = await writeChanged(context, change);
-
-  if (result.status === 'changed') {
-    await context.publishSnapshot();
-  }
-
-  return result;
-}
-
-function writeChanged(context: PlaceContext, change: PlaceChange): Promise<PlaceChangeResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 
@@ -67,6 +58,8 @@ function writeChanged(context: PlaceContext, change: PlaceChange): Promise<Place
         ...(isPersonal ? { erasable: { name } } : {}),
       },
     ]);
+
+    await context.runInForce(tx);
 
     return { status: 'changed', trust } as const;
   });
