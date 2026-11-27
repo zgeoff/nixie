@@ -109,7 +109,7 @@ An item is in one of 4 states:
 | ---------- | --------------------------------- | --------------------------------------------------- |
 | active     | Until its end time passes         | edit, edit labels, retire, undo, pin, unpin, forget |
 | retired    | Only when asked for retired items | edit, edit labels, restore, undo, forget            |
-| forgetting | Never                             | none; the forget completes it                       |
+| forgetting | Never                             | none; a second forget joins the open erasure        |
 | forgotten  | Never                             | none; the keys are gone and nothing reads           |
 
 Retire an item when its fact stopped being true: the item stays readable with its history. A
@@ -554,9 +554,9 @@ the start, and an item has no child.
 
 The runner holds these rules, which the code enforces:
 
-- One tree of erasures runs at a time. A retry of a forget, the catch-up at start and the watch
-  below queue behind each other, so no cleanup runs twice and no run releases the capture hold that
-  another still needs.
+- One tree of erasures runs at a time. A retry of a forget, the catch-up at the server's start and
+  the watch below queue behind each other, so no cleanup runs twice and no run releases the capture
+  hold that another still needs.
 - A parent finishes after every child it reached, whichever erasure started that child. A child that
   changed after the runner read it is read again, so its keys go before the parent finishes.
 - `erasure.started` holds a count of the keys the capture names, taken in the start transaction.

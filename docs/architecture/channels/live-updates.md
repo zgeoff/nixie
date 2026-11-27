@@ -49,8 +49,10 @@ screen state and each change, as [the devices doc](./devices.md#the-streams) des
 A page stream starts after the last event ID when that is a sequence of 1 to 15 digits, and
 otherwise after `afterSequence`, and never past the head, because a start past the head would skip a
 `session.revoked` record that names the caller. A shredded record arrives with `isRemoved`, which
-the server reads from the `record.forget_started` record that names it. A `record` event reads the
-record as a page read does, as [the API doc](./api.md#reading-and-the-live-stream) describes.
+the server reads from the `record.forget_started` record that names it. That record belongs to the
+forget of a log record, and is a separate family from the `erasure.started` and `erasure.finished`
+records that [Topics](#topics) covers. A `record` event reads the record as a page read does, as
+[the API doc](./api.md#reading-and-the-live-stream) describes.
 
 The API reads the head of the log, then checks the session, and refuses a missing or revoked session
 with a plain 401. The head comes first, so a revoke that commits after the check lies past the head,
@@ -85,20 +87,20 @@ root can lack a topic, and the contract test keeps a list of those unfollowed ro
 them. The test fails when a topic matches no root, or when a root has neither a topic nor a place on
 that list.
 
-| Topic         | Reads under the root                             |
-| ------------- | ------------------------------------------------ |
-| `nixie`       | `nixie.read`, which holds the pause              |
-| `spend`       | `spend.read`                                     |
-| `backups`     | `backups.readNotice`                             |
-| `approvals`   | `approvals.listItems`, `approvals.readProposals` |
-| `calls`       | `calls.get`                                      |
-| `computer`    | `computer.readHandover`                          |
-| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`    |
-| `triggers`    | `triggers.report`                                |
-| `definitions` | `definitions.listTasks`                          |
-| `memory`      | the memory page's reads                          |
-| `notebook`    | the notebook's reads                             |
-| `images`      | `images.list`                                    |
+| Topic         | Reads under the root                                           |
+| ------------- | -------------------------------------------------------------- |
+| `nixie`       | `nixie.read`, which holds the pause                            |
+| `spend`       | `spend.read`                                                   |
+| `backups`     | `backups.readNotice`                                           |
+| `approvals`   | `approvals.listItems`, `approvals.readProposals`               |
+| `calls`       | `calls.get`                                                    |
+| `computer`    | `computer.readHandover`                                        |
+| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`                  |
+| `triggers`    | `triggers.report`                                              |
+| `definitions` | `definitions.listTasks`                                        |
+| `memory`      | every read under the `memory` root, which the memory page uses |
+| `notebook`    | every read under the `notebook` root, which the notebook uses  |
+| `images`      | `images.list`                                                  |
 
 Each module that owns record kinds declares the topics each kind changes, and the server registers
 them with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry,
@@ -109,7 +111,8 @@ skip marks `tasks`, `triggers` and `definitions`, because it moves the watermark
 of a definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same
 reason. The log module owns the topics of the erasure records. `erasure.started` and
 `erasure.finished` mark `memory` and `notebook`, because a forget of a memory item, a moment or a
-note changes what those pages show. The topic map reads no payload to tell the kinds apart.
+note changes what those pages show. The topic map reads no payload to tell the kinds apart, so all
+three kinds of forget mark both topics.
 
 Two other marks cover a change with no record. `markChanged(tx, topics)` adds topics to the commit
 of a transaction, and a transaction that rolls back drops them. `publishChanged(writer, topics)`
@@ -131,9 +134,10 @@ A task that comes due on a schedule changes the task list with no write, so the 
 fires for it. `tasks.list` returns `changesAt`, the earliest next run of a listed task, and the
 client reads the list again at that time, besides reading it on the `tasks` topic.
 
-A forget of any kind turns stuck once it stays open long enough, with no write. The `erasure` root
-has no topic, and the web client reads `erasure.readStuck` again on a timer. That timer covers only
-the stuck state. The erasure records mark `memory` and `notebook` as [Topics](#topics) says.
+A forget of any kind, whether of a memory item, a moment or a note, turns stuck once it stays open
+long enough, with no write. The `erasure` root has no topic, and the web client reads
+`erasure.readStuck` again on a timer. That timer covers only the stuck state. The erasure records
+mark `memory` and `notebook` as [Topics](#topics) says.
 
 ## The client registry
 

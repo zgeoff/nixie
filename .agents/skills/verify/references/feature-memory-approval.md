@@ -79,7 +79,7 @@ item's fact would make nixie keep the item at once, with no proposal.
    ```
 
    Expect: the "Memory" list holds one collapsed item, which shows the item's text and no buttons.
-   Note the text.
+   On `local`, that text is the `--memory` text of step 1. Note the text.
 
    On `preview`, the "Memory" list can hold items from earlier passes. Pick the item whose text
    matches the fact you asked for. When the list holds no such item, skip steps 5 and 6, and skip
@@ -130,6 +130,10 @@ item's fact would make nixie keep the item at once, with no proposal.
 
    Expect: `script-reply` shows `data.replies` of 3, and `conversation turn` exits 0.
 
+   When `conversation turn` fails, run `bun verify browser snapshot` to read the error, skip step 8
+   and `bun verify done`, and say in your reply that the reminder's result listed no `related` item.
+   Run the first query of step 6 to see whether the item is still `active`.
+
 8. Check that the reminder is set and the note names the related memory.
 
    ```bash
@@ -156,10 +160,11 @@ item's fact would make nixie keep the item at once, with no proposal.
 
    Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
    exit 0. The last snapshot waits until the forgotten item's line shows a "forgotten" date, which
-   appears only once `erasure.finished` is written. A line that reads "forgetting" means the erasure
-   is still open, so do not start step 10 until the date shows. `--until-text` makes `snapshot` wait
-   for that text to show in the page. When the "forgotten" date never shows and the command fails,
-   skip `bun verify done`, run step 10's queries anyway, and list in your reply the rows you got.
+   appears only once `erasure.finished` is written. `--until-text` makes `snapshot` wait for that
+   text to show in the page. A line that reads "forgetting" means the erasure is still open, and the
+   command is still waiting: start step 10 only after it exits 0. When it fails because the
+   "forgotten" date never showed, skip `bun verify done`, run step 10's queries anyway to see where
+   the erasure stopped, and list in your reply the rows you got.
 
 10. Check the erasure states of the forget and the memory page:
 
@@ -189,3 +194,6 @@ item's fact would make nixie keep the item at once, with no proposal.
   the memory page shows no item.
 - On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case
   from step 4.
+
+When every fact above holds for your target, record the verdict with `bun verify done`, as
+[Check a change](../SKILL.md#check-a-change) says.

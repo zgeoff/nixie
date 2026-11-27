@@ -116,17 +116,18 @@ restart sweep once more in the test process, as a last restart, then checks:
 
 A test asserts that every list the oracle returns is empty. The scenario's own checks, such as the
 retry delays or the unknown outcome after a kill between an attempt record and its result, sit
-beside the oracle in the test.
+beside the oracle in the test, as do the erasure checks that the section on the erasure runner
+lists.
 
-## Fault points of the forget
+## Fault points of the record forget
 
 A forgotten record can leave evidence quotes in memory items. The evidence purge of a
 [record forget](../memory/store.md#the-evidence-purge) removes them, and it holds at 5 fault points,
-one for each row of its kill table. This is a different path from the erasure runner that the next
-section covers, which forgets a memory item, a note or a moment. Each point sits behind the
-test-build flag. A test arms a point, makes the forget or the purge reach it, stops nixie there and
-starts it again, and checks that the purge finishes and the current text of each item still reads.
-`recover-record-forget-purge.test.ts` does this.
+one for each row of its kill table. Each point sits behind the test-build flag. A test arms a point,
+makes the forget or the purge reach it, stops nixie there and starts it again, and checks that the
+purge finishes and the current text of each item still reads. `recover-record-forget-purge.test.ts`
+does this. Forgetting a memory item, a note or a moment is a different path, the erasure runner,
+which the next section covers.
 
 | Fault point                 | Reached                                                   |
 | --------------------------- | --------------------------------------------------------- |
@@ -138,18 +139,24 @@ starts it again, and checks that the purge finishes and the current text of each
 
 Beside the oracle, this suite checks one more case. It starts the previous release on the data after
 each kill, and checks that it finishes the purge too, so a rollback by one release in the middle of
-a forget loses nothing. It runs that release's test build, which the e2e lane builds from the
-release's tag, because the release build stops at the parts of a start that need a real sandbox.
+a record forget loses nothing. The case covers only the record forget: a memory item forgets through
+the erasure runner, and a release before that runner cannot open the data, as
+[forgetting](../memory/store.md#forgetting) says. The case runs the previous release's test build,
+which the e2e lane builds from the release's tag, because the release build stops at the parts of a
+start that need a real sandbox.
 
 ## Fault points of the erasure runner
 
-The [erasure runner](../memory/store.md#forgetting) holds at 5 fault points behind the test-build
-flag, in the order of its steps. `recover-erasure.test.ts` arms each point for a note, and for a
-memory item. A test arms a point, makes the forget reach it, stops nixie there and starts it again.
-It checks that the erasure finishes, that none of the target's keys remains in the key store, and
-that `erasure.finished` follows `erasure.started`. The target's keys are its
-[key family](../memory/store.md#forgetting), which `erasure.started` names. These checks sit beside
-the oracle, which does not know about erasures.
+The [erasure runner](../memory/store.md#forgetting) forgets a memory item, a note or a moment. It
+holds at 5 fault points behind the test-build flag, in the order of its steps.
+`recover-erasure.test.ts` arms each point for a note and for a memory item, and no test arms them
+for a moment. A test arms a point, makes the forget reach it, stops nixie there and starts it again.
+It checks 3 things beside the oracle, which does not know about erasures:
+
+- The erasure finishes.
+- None of the target's keys remains in the key store. These are the keys of its
+  [key family](../memory/store.md#forgetting), which `erasure.started` names.
+- `erasure.finished` follows `erasure.started`.
 
 | Fault point                   | Reached                                                                                                    |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
