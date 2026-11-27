@@ -45,12 +45,13 @@ newer release's field never stops an older release from seeding: the seed skips 
 so it matches nothing, and drops only the field from an ask or a deny rule, so the rule matches
 more. The seed logs a warning with the rule and the field. Each release publishes the format as a
 JSON Schema, the `definitions-rules.schema.json` asset, generated from the schema that the parser
-uses. After a change to the format, `bun run --cwd modules/policy rules-schema` rewrites the
-committed file, and a test fails while the two differ.
+uses. After a change to the format, run `bun run --cwd modules/policy rules-schema` to rewrite the
+committed file. A test fails while the two differ.
 
 A pattern uses `*` as its only wildcard and matches the whole text, so `*@example.com` matches every
-address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. One kind of
-wildcard keeps the widening check decidable, which a regular expression would not.
+address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. Because `*`
+is the only wildcard, the widening check can decide whether one pattern lies inside another by
+comparing the text between the wildcards. A regular expression would not allow that.
 
 The parser of a rules file reads 2 deprecated names: `jobs` for `definitions`, and the context `job`
 for `task`. The parser refuses a rule that holds both `jobs` and `definitions`, because merging the
@@ -68,8 +69,8 @@ therefore give the same rule.
 
 ## Matching
 
-A rule matches a call when every field it holds matches. A list field reads one way for an allow and
-the other way for an ask or a deny, because an allow grants access and must cover all of a call,
+A rule matches a call when every field it holds matches. A list field matches one way for an allow
+and the other way for an ask or a deny, because an allow grants access and must cover all of a call,
 while an ask or a deny guards access and catches any part of it:
 
 | Field          | An allow covers the call when                         | An ask or a deny catches the call when   |
@@ -128,9 +129,9 @@ The check never reports a widening as a narrowing. When the check tests whether 
 inside pattern B, a wildcard in A counts as covered only by a wildcard in B, so the check returns
 "not inside" for a pair it cannot prove. An edit that adds, removes or changes a condition widens,
 because the check cannot read CEL. An edit that keeps the condition text and the outcome is classed
-by the other fields, because the same condition holds on both sides, so dropping a destination
-narrows. For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and
-never access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
+by the other fields, because the same condition holds on both sides. Dropping a destination narrows.
+For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and never
+access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
 describes.
 
 ## Rules in force

@@ -45,8 +45,8 @@ A rule may use only this subset, and the conformance suite covers each row:
 | Timestamp methods | `getHours`, `getMinutes`, `getDayOfWeek`, `getDate`, `getMonth`, `getFullYear`, each with a zone string |
 
 A timestamp method needs a zone name that the runtime knows. As in CEL, `getMonth` and
-`getDayOfWeek` count from 0. The card's words name the month and the day. The library reads a zone's
-wall time by parsing text in the host's own zone, which moves the hour in a gap of the host's
+`getDayOfWeek` count from 0. The card shows the month and the day by name. The library reads a
+zone's wall time by parsing text in the host's own zone, which moves the hour in a gap of the host's
 daylight saving. nixie registers its own method for each part, which reads the part from the zone
 alone, and points each timestamp method of a checked condition at it, so a replay gives the same
 verdict on every host.

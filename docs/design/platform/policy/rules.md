@@ -38,11 +38,11 @@ compare in Unicode NFC on both sides. A pattern uses `*` as its only wildcard an
 string, so `*@example.com` matches every address at that domain. **Why:** one kind of wildcard keeps
 the widening check decidable in plain code, and you read the pattern at a glance; a regular
 expression would give the check a problem it cannot solve in general. A saved contact name in the
-consent check matches as literal text between word boundaries, never as a pattern.
+consent check matches as literal text between word boundaries.
 
 A rule with a CEL condition is valid only when the fixed checks cannot express it. No starter rule
-uses CEL. [Rule conditions](../../../architecture/policy/rule-conditions.md) sets the library, the
-subset, the limits and the card.
+uses CEL. For the library, the subset, the limits and the card, see
+[Rule conditions](../../../architecture/policy/rule-conditions.md).
 
 Each rule also carries metadata outside its match: its source (a definitions commit, or the approval
 that created it), who proposed it (you, or nixie from a task), when it was created, and when it last
@@ -61,9 +61,10 @@ content sources read strictly in both directions:
 - **A deny or ask rule catches a call when it catches any part of it.** One shared effect, one
   element that passes a check, one destination that matches, or one shared source is enough.
 
-[Memory writes on rules](../../../architecture/memory/writes.md#rules-on-memory-writes) sets how the
-host resolves a memory write's sources. A write whose sources the host cannot resolve counts as
-`outside`, so no allow rule for trusted content covers it.
+For how the host resolves a memory write's sources, see
+[Memory writes on rules](../../../architecture/memory/writes.md#rules-on-memory-writes). A write
+whose sources the host cannot resolve counts as `outside`, so no allow rule for trusted content
+covers it.
 
 ### Rendering
 

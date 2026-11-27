@@ -113,12 +113,12 @@ the model reads "Waiting for approval as `<shortID>`". The model keeps working. 
 `condition_error`. The last is a call that asks because a deny rule's condition errored, as
 [rule conditions](rule-conditions.md#evaluating-a-condition) describes.
 
-`nixie proposals approve <shortID>` and `nixie proposals reject <shortID>`, or the page for actions,
-answer it. The answer lands in the inbox of the task that asked. Approving queues the call once, and
-the call runs as [actions](../core/actions.md#approved-actions) describes. A proposal lapses after a
-fixed time without an answer. [Approvals](approvals.md) describes the row and the answer path.
-`contacts.mark_known` is a tool that declares `policy_widen`, so it always asks, and approving it
-marks the contact.
+Answer an ask with `nixie proposals approve <shortID>` or `nixie proposals reject <shortID>`, or on
+the page for actions. The answer lands in the inbox of the task that asked. Approving queues the
+call once, and the call runs as [actions](../core/actions.md#approved-actions) describes. A proposal
+lapses after a fixed time without an answer. For the row and the answer path, read
+[Approvals](approvals.md). `contacts.mark_known` is a tool that declares `policy_widen`, so it
+always asks, and approving it marks the contact.
 
 A call that asks again while its proposal is open, or while its approval is unused, writes no second
 proposal. The model reads "Waiting for approval as `<shortID>`" with the open proposal's short ID,

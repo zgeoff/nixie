@@ -73,10 +73,10 @@ Dependencies:
 - Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
   for an external dependency and `"workspace:*"` for an internal one.
 - The root `package.json` declares only tooling.
-- Pin exact versions, with no `^` or `~` ranges. `bun add` saves exact versions, so the rule covers
-  hand-written edits.
-- One exception: the Pulumi component declares the Pulumi SDKs as peer dependencies with a `>=x <y`
-  range, because the deployment's own program supplies them.
+- Pin exact versions, with no `^` or `~` ranges, in hand-written edits too. `bun add` saves exact
+  versions.
+- The Pulumi component is the one exception. It declares the Pulumi SDKs as peer dependencies with a
+  `>=x <y` range, because the deployment's own program supplies them.
 
 Boundaries:
 
@@ -84,8 +84,8 @@ Boundaries:
 - A lib depends only on libs.
 - A module never imports an adapter and never forms a cycle with another module.
 - A lib tagged `server-only`, such as `libs/db`, is closed to guests and clients.
-- An adapter depends only on the module that owns its interface. The tags allow any module, so
-  review enforces this rule.
+- An adapter depends only on the module that owns its interface. The tags allow any module, so check
+  this rule yourself in review.
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 

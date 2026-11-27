@@ -7,9 +7,9 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
 
 ## Before an upgrade
 
-1. Read the release notes of the release. They list each migration, and say whether the release
-   before can read the schema the release leaves, as the
-   [release pipeline](../architecture/deployment/release-pipeline.md) describes.
+1. Read the release notes for each migration, and for whether the release before can read the schema
+   this release leaves, as the [release pipeline](../architecture/deployment/release-pipeline.md)
+   describes.
 2. When the deployment skips releases, also follow
    [deploy in milestones](releasing.md#deploy-in-milestones).
 3. When your copy of the starter rules has `ask-coding-sessions` on `task.start/atc` and
@@ -17,9 +17,9 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
    [`starter.yaml`](../../deploy/compose/definitions/rules/starter.yaml): ask on `coding.start`, and
    allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
    call, so a join of a coding session needs no approval.
-4. When a rule in your definitions has a `cel` key and no `note`, add a note that says what the
-   condition means. The first seed refuses a rules file that holds such a rule, and the
-   [rule conditions](../architecture/policy/rule-conditions.md) doc says what a condition reads.
+4. When a rule in your definitions has a `cel` key and no `note`, add a `note` that explains the
+   condition. The first seed refuses a rules file that holds such a rule. See
+   [rule conditions](../architecture/policy/rule-conditions.md) for what a condition reads.
 
 ## Upgrade
 

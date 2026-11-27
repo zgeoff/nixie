@@ -14,9 +14,8 @@ metadata:
 Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
 [Check a change](#check-a-change). You are done once the report is published and the run is ended.
-Hand back the PR link and each feature you could not verify, as the **Reply** line at the end says.
-Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
-description.
+Finish with the **Reply** line at the end: the PR link and each feature you could not verify. Leave
+`bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its description.
 
 These cost the most time:
 
@@ -135,8 +134,8 @@ command passed. It holds `<command> ok=<true|false>`, then `error.code` and `err
 
 Read `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure.
 `evidence` lists the files the command kept, under `.wringer/`. `truncatedPath` names the file that
-holds `data` when it was too large to print. When a command fails, do what its row in
-[Exit codes](references/exit-codes.md) says.
+holds `data` when it was too large to print. When a command fails, follow its row in
+[Exit codes](references/exit-codes.md).
 
 ## Targets
 
