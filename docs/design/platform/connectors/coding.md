@@ -30,8 +30,8 @@ credentials, lifecycle and agent harness. A coding runner drives one adapter, an
 adapter's ID.
 
 The interface's calls are `start`, `join`, `list`, `read`, `steer`, `message`, `stop` and `events`.
-[The coding adapter contract](../../queue/coding-session-runner/atc.md#the-coding-adapter) holds
-their signatures.
+[The atc adapter](../../../architecture/connectors/coding-atc.md) holds the calls and the coding
+module holds their signatures.
 
 A session is a task, so it shows on the dashboard. nixie starts a session, or joins one you already
 run, through the `coding.start` tool, which declares `coding_start`, so your rules decide both.
@@ -39,8 +39,8 @@ nixie steers a session with `coding.steer`, which types into its input as a user
 a note with `coding.message`, which never steers it. The spawn, each steer, each note and each stop
 run as actions on the queue. The adapter's `events` feed a trigger source with a cursor, so the
 session's events reach the task's thread as records.
-[The coding session runner](../../queue/coding-session-runner/README.md) holds the types, the tools,
-the step and the records.
+[Coding tasks](../../../architecture/core/coding-tasks.md) covers the tools, the step and the
+records.
 
 ## The atc adapter
 
@@ -48,9 +48,8 @@ atc runs coding sessions under its own rules, so each atc session is a supervise
 `coding-atc` adapter calls atc-gateway's MCP tools over HTTP as a service client. Each atc daemon's
 config grants that client the targets nixie uses. It never goes through the
 [MCP proxy](mcp-proxy.md), and the model never sees atc's own tools, so your rules decide every
-start, steer, note and stop.
-[The atc adapter](../../queue/coding-session-runner/atc.md#the-atc-adapter) holds the map of each
-adapter call onto the gateway's tools.
+start, steer, note and stop. [The atc adapter](../../../architecture/connectors/coding-atc.md) holds
+the map of each adapter call onto the gateway's tools.
 
 ## The built-in adapter
 

@@ -55,6 +55,7 @@ These cost the most time:
 | policy-proposal    | Approve a call that an ask rule held unrun                        | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
 | task-control       | Pause and resume a task                                           | [references/feature-task-control.md](references/feature-task-control.md)             |
 | coding-session     | Start a coding session from chat                                  | [references/feature-coding-session.md](references/feature-coding-session.md)         |
+| coding-supervision | Supervise a coding session from the live view                     | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |
 | call-hand-off      | Hand a question off in a call, and hear the answer                | [references/feature-call-hand-off.md](references/feature-call-hand-off.md)           |
 | call-screen        | Start a call, see its proposal card, and hang up                  | [references/feature-call-screen.md](references/feature-call-screen.md)               |
 | call-device-show   | Show an answer on the call's device                               | [references/feature-call-device-show.md](references/feature-call-device-show.md)     |

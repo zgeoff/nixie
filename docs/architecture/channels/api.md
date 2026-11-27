@@ -374,10 +374,13 @@ log sequence it read at, which it reads before the tasks, so a client that follo
 sequence sees every change the list leaves out. It also gives `changesAt`, the earliest time that a
 listed task changes with no write, which is the next task run of a task that wakes on a schedule, or
 null, and a client reads the list again at that time. Each listed task also names its `runner`. A
-client shows only the controls that the task's [runner](../core/started-tasks.md#task-runners)
-offers and the task's state allows. A started task whose name the user forgot shows under its ID. A
-task read returns one task with the same fields, whatever its place in the list, so a task's page
-shows a task past the cap.
+task whose runner binds an outside session also gives `session`, with the session's origin
+(`started` or `joined`), its state (`running`, `waiting`, `idle`, `ended` or `gone`) and the time of
+its last event, null before the first. The runner supplies it through its list fields, so the API
+names no runner, and a task of a runner with no such fields gives none. A client shows only the
+controls that the task's [runner](../core/started-tasks.md#task-runners) offers and the task's state
+allows. A started task whose name the user forgot shows under its ID. A task read returns one task
+with the same fields, whatever its place in the list, so a task's page shows a task past the cap.
 
 Each listed task also gives `listedState`, built from the state that the model tool `tasks.list`
 reads: the stored state, or `idle`, `finished` or `asleep` for a task whose stored state is

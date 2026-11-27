@@ -109,6 +109,10 @@ of a transaction, and a transaction that rolls back drops them. `publishChanged(
 announces a change that no write made. The spend watcher calls it when the stop it reads, or whether
 the gateway answers, differs from its last read.
 
+A change of a coding session's state needs no topic of its own: each event that the coding source
+lands on a task's thread is a record that marks `tasks`, so the task list's `session` moves through
+the same stream as any task change.
+
 Each topic has a test that makes the change and asserts that an open stream receives `changed` with
 that topic.
 

@@ -90,13 +90,13 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 
 A tool's effects are fixed per tool and never depend on its arguments, except through a declared
 discriminator that picks a registered variant, such as the sandbox runner of `task.start`. Each
-variant has a fixed declaration and a rule name of its own, such as `task.start/sandbox`, as
-[the coding session runner](../../queue/coding-session-runner/runner.md#the-start-the-join-and-the-policy)
-sets out. Any other capability whose effects differ by argument splits into tools: moving an email
-to the trash is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for
-every call of a tool, and the tool's name tells you its risk. Creating a job carries `schedule` plus
-the effects of every tool on the job's list, so your rules decide which jobs nixie schedules on its
-own.
+variant has a fixed declaration and a rule name of its own, such as `task.start/sandbox`. A runner
+whose input cannot share the tool's starts from a tool of its own, such as `coding.start`, whose
+[policy](../../../architecture/core/coding-tasks.md#policy) is in the coding tasks doc. Any other
+capability whose effects differ by argument splits into tools: moving an email to the trash is a
+`write`, and purging it is a `delete`. **Why:** a rule then reads the same for every call of a tool,
+and the tool's name tells you its risk. Creating a job carries `schedule` plus the effects of every
+tool on the job's list, so your rules decide which jobs nixie schedules on its own.
 
 A tool also declares which arguments are destinations, which argument holds the amount for a
 `spend`, which arguments are free-text content, and the source of each field of its result. Effect

@@ -52,5 +52,6 @@ event carries one record and the projection rows its transaction changed, so the
 the log itself. The stream covers every thread, with full payloads only for the thread on screen. A
 payload whose key is destroyed arrives as a gap.
 
-Coding sessions that nixie supervises through atc show later as a fifth dashboard group, labelled as
-outside nixie.
+Coding sessions that nixie supervises through atc show as their own dashboard group, labelled as
+outside nixie, as [the client doc](../../../architecture/channels/client.md#the-task-dashboard)
+describes.

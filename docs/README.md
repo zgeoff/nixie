@@ -119,6 +119,8 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   profiles, the charge and the stored attempts
 - [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the
   Kagi provider and its key
+- [The atc adapter](architecture/connectors/coding-atc.md) — the gateway calls behind a coding
+  session, its states and replies, the coding source and the supported gateway versions
 
 ### Channels
 

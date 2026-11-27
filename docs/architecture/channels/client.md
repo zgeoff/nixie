@@ -621,13 +621,13 @@ Deferred group is collapsed.
 
 ## The task dashboard
 
-The dashboard at `/tasks` lists every open task in three groups: the conversation, the working tasks
-and the held tasks. The conversation is the task with the ID `conversation`, and it stays in its own
-group in every state, a pause of nixie included. The other tasks group by their listed state, the
-state that the API's `tasks.list` gives in `listedState`. Working holds `ready`, `running`,
-`waiting`, `idle`, `asleep` and `finished`, and Held holds `paused`, `stopped` and `failed`. A
-`done` or `closed` task leaves the list. A task from a server that gives no listed state groups and
-shows by its stored state.
+The dashboard at `/tasks` lists every open task in four groups: the conversation, the working tasks,
+the held tasks and the coding sessions. The conversation is the task with the ID `conversation`, and
+it stays in its own group in every state, a pause of nixie included. The other tasks group by their
+listed state, the state that the API's `tasks.list` gives in `listedState`. Working holds `ready`,
+`running`, `waiting`, `idle`, `asleep` and `finished`, and Held holds `paused`, `stopped` and
+`failed`. A `done` or `closed` task leaves the list. A task from a server that gives no listed state
+groups and shows by its stored state.
 
 Each task shows its name, which links to its page, its state, the time of its last activity, its
 brief, the task it waits on, the tasks that wait on it, and how many of its actions are queued and
@@ -662,7 +662,10 @@ retry after a failure sends the same client action ID. A pause of a running task
 until its step ends. A stop first lists the actions it cancels and the started ones that run to
 their outcome. The dashboard offers the confirm only once that list loads, so the user never cancels
 an action unseen. A close asks first too, because a closed task takes no more messages. The
-conversation offers no close.
+conversation offers no close. For a task that binds a session, the stop and the close confirmations
+add a line: "This also stops its coding session." when nixie started the session, and "Its coding
+session keeps running, as yours." when it joined one. A coding task offers no restart and no
+interrupt, so a stopped one offers only Close.
 
 While nixie is paused, every signed-in page shows a banner with the cause in words, a restore, you
 or the spending limit, and since when, beside a Resume nixie button that acts at once. A restore
