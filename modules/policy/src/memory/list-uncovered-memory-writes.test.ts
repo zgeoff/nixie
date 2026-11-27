@@ -264,3 +264,15 @@ test.each<[string, Rule]>([
     }
   }
 });
+
+test('#listUncoveredMemoryWrites counts a condition as an error, so a rule with one covers nothing', () => {
+  const rule: Rule = {
+    id: 'allow-conditional-memory',
+    outcome: 'allow',
+    effects: ['memory_write'],
+    cel: 'now.getHours("UTC") < 17',
+    note: 'Only in the day.',
+  };
+
+  expect(listUncoveredMemoryWrites(rule)).toContain('a new fact');
+});

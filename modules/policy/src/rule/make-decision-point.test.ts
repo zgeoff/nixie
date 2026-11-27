@@ -1201,3 +1201,33 @@ test('it never lets a condition read a content argument of the declaration', asy
     conditionErrors: [{ ruleID: 'allow-friendly-reads', code: 'no_such_key', missing: 'body' }],
   });
 });
+
+test.each([
+  ['true', 'args.count < 5', 'allow', 7],
+  ['false', 'args.count > 5', 'ask', 5],
+] as const)(
+  'it grants the rule permission to a destination only when the condition of the allow rule is %s',
+  async (_title, cel, outcome, stage) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({ effects: ['send'], destinations: ['to'] }),
+      rules: [
+        buildRuleEntry('allow-small-mail', {
+          outcome: 'allow',
+          effects: ['send'],
+          destinations: ['sam@example.org'],
+          cel,
+          note: 'Small mail.',
+        }),
+      ],
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        args: { count: 2 },
+        destinations: [{ value: 'sam@example.org', replyTarget: false }],
+      }),
+    );
+
+    expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual([outcome, stage]);
+  },
+);

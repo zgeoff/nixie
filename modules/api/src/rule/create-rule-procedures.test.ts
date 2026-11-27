@@ -25,6 +25,12 @@ async function setupTest() {
       '  outcome: allow',
       '  tools: [mail.send]',
       '  destinations: [harbour@example.org, marina@example.org]',
+      'allow-term-mail:',
+      '  outcome: allow',
+      '  tools: [mail.send]',
+      '  destinations: [harbour@example.org, marina@example.org]',
+      '  cel: now.getHours("Europe/London") < 17',
+      '  note: Term mail goes out in the working day.',
       'deny-shell:',
       '  outcome: deny',
       '  tools: [shell.run]',
@@ -348,4 +354,55 @@ test('#editRule settles a retry after the rule was removed with the revision it 
   const retried = await ctx.client.editRule(call);
 
   expect(retried).toStrictEqual({ ruleID: 'allow-mail', revision: 2 });
+});
+
+test('#readRule reads the note, the words and the expression of a rule with a condition', async () => {
+  const ctx = await setupTest();
+  const rule = await ctx.client.readRule({ ruleID: 'allow-term-mail' });
+
+  expect(rule).toStrictEqual({
+    ruleID: 'allow-term-mail',
+    revision: 1,
+    sentence: expect.toInclude('when its condition holds'),
+    condition: {
+      note: 'Term mail goes out in the working day.',
+      noteBy: 'you',
+      words: 'the hour in Europe/London is before 17',
+      source: 'now.getHours("Europe/London") < 17',
+    },
+    outcome: 'allow',
+    destinations: ['harbour@example.org', 'marina@example.org'],
+  });
+});
+
+test('#editRule drops a destination from a rule with a condition and keeps the condition', async () => {
+  const ctx = await setupTest();
+
+  await ctx.client.editRule({
+    ruleID: 'allow-term-mail',
+    revision: 1,
+    destinations: ['harbour@example.org'],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const rule = await ctx.client.readRule({ ruleID: 'allow-term-mail' });
+
+  expect({ destinations: rule.destinations, source: rule.condition?.source }).toStrictEqual({
+    destinations: ['harbour@example.org'],
+    source: 'now.getHours("Europe/London") < 17',
+  });
+});
+
+test('#removeRule removes a rule with its condition', async () => {
+  const ctx = await setupTest();
+
+  await ctx.client.removeRule({
+    ruleID: 'allow-term-mail',
+    revision: 1,
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(ctx.client.readRule({ ruleID: 'allow-term-mail' }));
+
+  expect(refusal).toStrictEqual({ code: 'NOT_FOUND', data: undefined });
 });

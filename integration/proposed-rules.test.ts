@@ -660,6 +660,84 @@ test.each([
   expect(refused.status).toBe('invalid');
 });
 
+test.each([
+  [
+    'a condition with no note',
+    { outcome: 'allow', tools: ['test.send'], cel: 'args.count < 3' },
+    'cel: condition_note_missing',
+  ],
+  [
+    'a condition outside the subset',
+    { outcome: 'allow', tools: ['test.send'], cel: 'args.name.matches("a")', note: 'Matches.' },
+    'cel: condition_not_allowed',
+  ],
+  [
+    'a condition that does not parse',
+    { outcome: 'allow', tools: ['test.send'], cel: 'args.count <', note: 'Broken.' },
+    'cel: condition_syntax',
+  ],
+])('it refuses an edit to a rule with %s, with the fault code', async (_name, rule, fault) => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  const refused = await ctx.editProposedRule(old.row.id, old.row.actionHash, rule);
+
+  expect(refused).toStrictEqual({
+    status: 'invalid',
+    faults: [expect.stringContaining(fault)],
+  });
+});
+
+test('it opens a card with the note, the words and the expression of an edited rule that holds a condition', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  const edited = await ctx.editProposedRule(old.row.id, old.row.actionHash, {
+    outcome: 'allow',
+    tools: ['test.send'],
+    cel: 'now.getHours("Europe/London") < 17',
+    note: 'Only in the working day.',
+  });
+
+  const open = await ctx.readProposedRules();
+
+  expect({
+    edited: edited.status,
+    risk: open.map((entry) => entry.row.riskClass),
+    conditions: open.map((entry) => entry.body?.ruleConditions),
+    sentence: open.map((entry) => entry.body?.sentence),
+  }).toStrictEqual({
+    edited: 'edited',
+    risk: ['always_ask'],
+    conditions: [
+      [
+        {
+          rule: 0,
+          note: 'Only in the working day.',
+          noteBy: 'you',
+          words: 'the hour in Europe/London is before 17',
+          source: 'now.getHours("Europe/London") < 17',
+        },
+      ],
+    ],
+    sentence: ['**Allow** `test.send`, when its condition holds.'],
+  });
+});
+
 test('it shows on the card of a proposed rule what the rule will not cover in memory', async () => {
   const ctx = await setupTest();
 

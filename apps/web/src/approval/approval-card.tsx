@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { RuleCondition } from '../rule/rule-condition';
 import type { RuleDraft } from '../rule/rule-draft';
 import { toRuleDraft } from '../rule/rule-draft';
 import { RuleSentence } from '../rule/rule-sentence';
@@ -263,6 +264,20 @@ function Bounds(props: BoundsProps): ReactNode {
         <p className={meta}>
           Always allow adds this rule: <RuleSentence sentence={props.body.ruleSentence} />
         </p>
+      )}
+      {(props.body.ruleConditions ?? []).map((condition) => (
+        <RuleCondition condition={condition} key={condition.rule} />
+      ))}
+      {props.body.conditionErrors === undefined ||
+      props.body.conditionErrors.length === 0 ? null : (
+        <ul aria-label="Conditions that failed" className={meta}>
+          {props.body.conditionErrors.map((error) => (
+            <li key={error.ruleID}>
+              The condition of the rule <code>{error.ruleID}</code> failed with the error{' '}
+              <code>{error.code}</code>.
+            </li>
+          ))}
+        </ul>
       )}
     </>
   );
