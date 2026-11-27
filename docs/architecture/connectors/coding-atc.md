@@ -3,15 +3,14 @@
 atc is a separate program that runs coding sessions, one daemon per machine. atc-gateway serves the
 tools of several daemons as one MCP server, and nixie calls it over HTTP as the service client
 `service:nixie`. The `coding-atc` package implements the coding module's adapter interface with
-those tools, and it is the one package that calls the gateway. It speaks MCP with the workspace's
-MCP client, so nixie writes none of atc's wire protocol. atc owns its tool schemas, its daemon
-config and the format of the gateway's token file, so read atc for those. This doc covers what nixie
-builds on them: the tools, scopes and grants the adapter relies on, how it maps states, events and
-error codes, how the coding source reads the events, and which gateway versions it accepts.
+those tools, and it is the only package that calls the gateway. It speaks MCP with the workspace's
+MCP client, so nixie writes none of atc's wire protocol. Read atc for its tool schemas, its daemon
+config and the format of the gateway's token file. This doc covers the tools, scopes and grants the
+adapter relies on, how it maps states, events and error codes, how the coding source reads the
+events, and which gateway versions it accepts.
 
-Read this doc before you change the adapter, or the coding source's reads.
-[Coding tasks](../core/coding-tasks.md) covers the runner, the tools and the records that sit above
-the adapter.
+Read this doc before you change the adapter or the coding source's reads. For the runner, the tools
+and the records above the adapter, see [Coding tasks](../core/coding-tasks.md).
 
 ## The calls
 
@@ -115,11 +114,11 @@ the queue's ambiguous outcome.
   longer than the daemon, so while the queue still holds the key, a resend never runs the call
   twice. Once the queue's key expires, the queue sends the unknown outcome to the user.
 - A refused attempt's key is spent at the gateway, so a resend of it gets `outcome_unknown` and runs
-  nothing. The next attempt after a refusal therefore takes the next key, `<action ID>.<n>`. An
-  attempt after an unknown outcome keeps its key, which the gateway resends to the daemon as a
-  replay. A replay gets the first answer only when the daemon holds the key as completed. When the
-  first send never reached the daemon, every resend gets `outcome_unknown`, and the unknown outcome
-  reaches the user once the queue's key expires.
+  nothing. The next attempt after a refusal takes the next key, `<action ID>.<n>`. An attempt after
+  an unknown outcome keeps its key, which the gateway resends to the daemon as a replay. A replay
+  gets the first answer only when the daemon holds the key as completed. When the first send never
+  reached the daemon, every resend gets `outcome_unknown`, and the unknown outcome reaches the user
+  once the queue's key expires.
 
 ## Config, token and reach
 
@@ -171,7 +170,7 @@ the same transaction, so a batch's records and its cursor commit together.
 - The source drops an event of a task that is stopped, done, failed or closed, and of a session
   whose row has `unbound_at` set, and still moves its cursor.
 - A trigger input's hop is the `hop` of the session's row. The tasks module owns the record's codec,
-  because the step's wake reads the hop, and every other waking record that is not a task message
+  and the step's wake reads the hop through it. Every other waking record that is not a task message
   has hop 0.
 - After a failed read the source waits, doubling its wait up to a cap, and reports itself unhealthy
   after several failures in a row.

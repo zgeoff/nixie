@@ -11,10 +11,10 @@ ask, the prompt cause. It runs a fixed pipeline of deterministic stages, and a c
 settles asks you, or goes to auto-mode once auto-mode is on. Every decision is part of a record in
 the [event log](../core/event-log.md).
 
-This doc is for whoever builds nixie, whether the owner or an agent, before they add a tool, an
-effect or a rule, or change the pipeline.
-[What to do when you change it](#what-to-do-when-you-change-it) gives the steps for each change, and
-[Where to go next](#where-to-go-next) lists the docs for what this one leaves out.
+Read this before you add a tool, an effect or a rule, or change the pipeline, whether you are the
+owner or an agent. Follow the steps for your change in
+[What to do when you change it](#what-to-do-when-you-change-it), and find what this doc leaves out
+in [Where to go next](#where-to-go-next).
 
 ## The pipeline
 
@@ -36,26 +36,27 @@ that stages 1 to 7 leave open gets its decision from the memory gate in place of
 | 8. Consent         | Your own message asked for this call                             | Allow   | None               |
 | 9. No rule matched | Nothing above decided                                            | Ask     | No rule matched    |
 
-Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters, as
-[rules](rules.md#evaluation-order) covers.
+Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters (see
+[rules](rules.md#evaluation-order)).
 
 A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
 decides it, the memory gate decides it in their place, and the write applies at once or becomes a
-memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
-covers. **Why:** the gate's checks are the default for a memory write, so consent never lets a
-direct "remember that" skip them.
+memory proposal (see the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)).
+**Why:** the gate's checks are the default for a memory write, so consent never lets a direct
+"remember that" skip them.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
-for a worker, so delegation only narrows. A connector tool on the list names the connections it may
-use, and stage 2 denies a call whose connection is not among them. Stage 2 also denies a call that
-creates a job whose tool list pins a connection the caller may not use for that tool. The tools
+for a worker, so delegation only narrows. A connector tool on the list comes with the connections it
+may use, and stage 2 denies a call whose connection is not among them. Stage 2 also denies a call
+that creates a job whose tool list pins a connection the caller may not use for that tool. The tools
 endpoint resolves every connector call to one connection before stage 1, as the
 [connection argument](../connectors/connector.md#the-connection-argument) defines, so a rule can
-check `connection` on any call. A denied call returns the rule's ID and sentence to the model as the
-tool result, so the model can take another path, and no prompt reaches you. A queued action runs
-through the pipeline again before each attempt, so a rule that narrowed after its approval still
-applies; [actions](../../../architecture/core/actions.md) covers how an approval answers each
-outcome.
+check `connection` on any call.
+
+A denied call returns the rule's ID and sentence to the model as the tool result, so the model can
+take another path, and no prompt reaches you. A queued action runs through the pipeline again before
+each attempt, so a rule that narrowed after its approval still applies. See
+[actions](../../../architecture/core/actions.md) for how an approval answers each outcome.
 
 ## The slice 1 rule
 
@@ -115,15 +116,15 @@ declarations are policy data that you can read and edit. Removing an effect from
 counts as a widening, because it can move a call out of the always-ask set or past an ask rule.
 
 Every `code_run` call, from the conversation, a task or a worker, gets a fresh sandbox with no
-network and no grants, as [the code tool](../../../architecture/connectors/code-tool.md) sets out.
-The sandbox record holds its spec, so the log shows that the program ran with no grant. A program
-holds no credential, so `code_run` never reaches a budget.
+network and no grants (see [the code tool](../../../architecture/connectors/code-tool.md)). The
+sandbox record holds its spec, so the log shows that the program ran with no grant. A program holds
+no credential, so `code_run` never reaches a budget.
 
 ### The always-ask set and narrowing changes
 
 `spend`, `policy_widen` and `budget_raise` form the always-ask set. Stage 4 asks for any call with
-one of them unless a lifting rule covers the call and its budget has room, as
-[budgets](budgets.md#lifting-rules) covers. A deny rule can still refuse such a call at stage 3.
+one of them unless a lifting rule covers the call and its budget has room (see
+[budgets](budgets.md#lifting-rules)). A deny rule can still refuse such a call at stage 3.
 
 `policy_narrow` and `budget_lower` apply at once, with a record and an undo in the client. Undoing a
 narrowing is a widening, so the undo is an always-ask approval.
@@ -148,12 +149,12 @@ build.
 
 ### Consent
 
-Your own direct message can carry consent for a call. Consent needs 2 checks, and both must pass:
+You can consent to a call in your own direct message. Consent needs 2 checks, and both must pass:
 
 1. Code checks that every destination appears word for word in text you typed in the message that
    started the current turn, or that a name you typed matches exactly one saved contact with that
    destination. A pasted span never counts.
-2. The consent checker, a checker model that nixie runs always, confirms that you asked for this
+2. The consent checker, a checker model that nixie always runs, confirms that you asked for this
    call. It sees your message with its pasted spans marked and the call as structured fields, never
    any tool output, so injected content cannot reach it.
 
@@ -253,11 +254,12 @@ set or the pipeline.
 
 ## Where to go next
 
-- [Rules](rules.md): evaluation order, the snapshot hash, and gaps and proposed rules.
-- [Budgets](budgets.md): lifting rules and budget limits.
-- [Memory writes](../memory/writes.md): the memory gate.
-- [Connectors](../connectors/connector.md): the connection argument.
-- [Tasks](../core/tasks.md): job runs and their definitions.
-- [Actions](../../../architecture/core/actions.md): how an approval answers each outcome.
-- [Coding tasks](../../../architecture/core/coding-tasks.md#policy): the policy of `coding.start`.
-- [The code tool](../../../architecture/connectors/code-tool.md): `code_run`.
+- Read [Rules](rules.md) for evaluation order, the snapshot hash, and gaps and proposed rules.
+- Read [Budgets](budgets.md) for lifting rules and budget limits.
+- Read [Memory writes](../memory/writes.md) for the memory gate.
+- Read [Connectors](../connectors/connector.md) for the connection argument.
+- Read [Tasks](../core/tasks.md) for job runs and their definitions.
+- Read [Actions](../../../architecture/core/actions.md) for how an approval answers each outcome.
+- Read [Coding tasks](../../../architecture/core/coding-tasks.md#policy) for the policy of
+  `coding.start`.
+- Read [The code tool](../../../architecture/connectors/code-tool.md) for `code_run`.

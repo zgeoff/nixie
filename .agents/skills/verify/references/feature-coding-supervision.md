@@ -9,9 +9,9 @@ moves on the open page when the session changes, with no reload. A stop of the t
 session that nixie started, and the stop's confirmation says so.
 
 Run this journey on `local` only, on the `up` of the [coding-session](feature-coding-session.md)
-journey, once that journey's steps 1 to 7 have passed. The task "Login fix" and its session must
-exist, and the browser must stay signed in. On `preview`, skip this journey, and list the feature as
-not verified there in your reply.
+journey, after its steps 1 to 7 have passed. Keep the browser signed in, and keep the task "Login
+fix" and its session in place. On `preview`, skip this journey, and list the feature as not verified
+there in your reply.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
@@ -34,8 +34,8 @@ as [Exit codes](exit-codes.md) says.
    nixie", and its state reads "Running" or "Idle".
 
 2. Tell the coding gateway that the session waits for you. The `--state` values of this journey are
-   `needs_you` and `done`; they are session states, and `bun verify done` is a separate command. Run
-   no `browser goto` after this, so the next snapshot shows what the live stream moved.
+   `needs_you` and `done`; they are session states, and `bun verify done` is a separate command. Do
+   not run `browser goto` after this, so the next snapshot shows what the live stream moved.
 
    ```bash
    bun verify action set-session-state --state needs_you
@@ -72,8 +72,8 @@ as [Exit codes](exit-codes.md) says.
 5. Confirm the stop, then check the task, its session and the stop's outcome. The stop's outcome
    arrives after the task stops, so on exit 1 from `task`, or on a query that returns no row, run
    the `task` and `db query` commands again, and the snapshot once after they pass, up to 5 runs in
-   all, and click nothing again. When the fifth run still fails, stop the journey and report the
-   last output of each command, and the last snapshot.
+   all, and do not click again. When the fifth run still fails, stop the journey and report the last
+   output of each command, and the last snapshot.
 
    ```bash
    bun verify browser click --role button --name 'Stop the task'

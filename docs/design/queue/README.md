@@ -1,10 +1,10 @@
 # The queue design
 
-This folder holds the designs for work that nixie has not built yet. A design exists when two or
-more pieces of work build on the same contract, so the pieces fit together when different people or
-agents build them. Work that one piece builds alone needs no design here. When you hold the Linear
-issue for such work, read the issue first, then the sections of the design that it links. With no
-issue, find the design by area in the table below.
+Designs for work that nixie has not built yet live in this folder. The owner opens a design when two
+or more pieces of work build on the same contract, so the pieces fit together when different people
+or agents build them. Work that one piece builds alone needs no design here. When you hold the
+Linear issue for such work, read the issue first, then the sections of the design that it links.
+With no issue, find the design by area in the table below.
 
 Write a design as code sketches, constraint bullets and a diagram. List the Linear issues that build
 on it and the questions still open. Start the design with a `Status` line: `draft` until the owner
@@ -32,5 +32,5 @@ describe code that has since changed, and a reader could not tell it from one st
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [the phone](phone.md)              |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
-in its Linear issue alone, and so has no row here. The decision records these designs follow are in
+in its Linear issue alone and has no row here. The decision records these designs follow are in
 [`docs/decisions/`](../../decisions/).
