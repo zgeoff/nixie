@@ -2,17 +2,24 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 import { findConfigProblem } from './find-config-problem.ts';
-
-const schemaPath = 'apps/server/config.schema.json';
+import { parseServerPin } from './parse-server-pin.ts';
 
 const shipped = [
-  { path: 'deploy/compose/config.yaml', isConfigMap: false },
-  { path: 'deploy/kubernetes/config.yaml', isConfigMap: true },
+  {
+    configPath: 'deploy/compose/config.yaml',
+    recipePath: 'deploy/compose/compose.yaml',
+    isConfigMap: false,
+  },
+  {
+    configPath: 'deploy/kubernetes/config.yaml',
+    recipePath: 'deploy/kubernetes/nixie.yaml',
+    isConfigMap: true,
+  },
 ];
 
-// Checks that the schema in this checkout accepts each config.yaml that the repo ships, so a
-// section a feature switch adds never becomes required of a deployment that leaves it out.
-function runCLI(): void {
+// Checks each config.yaml that the repo ships against the config schema of the release its recipe
+// pins, because a deployment that copies the recipe runs that release, never the checkout.
+async function runCLI(): Promise<void> {
   const command = parseStepCommand('check-shipped-configs.ts', [], process.argv.slice(2));
 
   if (!command.isValid) {
@@ -24,23 +31,57 @@ function runCLI(): void {
   }
 
   const summaryPath = getStepEnv(process.env, 'GITHUB_STEP_SUMMARY');
-  const schema: unknown = JSON.parse(readFileSync(schemaPath, 'utf8'));
+  const releasesURL = getStepEnv(process.env, 'RELEASES_URL');
 
   for (const file of shipped) {
-    const parsed: unknown = Bun.YAML.parse(readFileSync(file.path, 'utf8'));
-    const config = file.isConfigMap ? readConfigMapConfig(parsed) : parsed;
-    const problem = findConfigProblem(schema, config);
+    const pin = parseServerPin(readFileSync(file.recipePath, 'utf8'));
 
-    if (problem !== null) {
-      console.log(`::error::${schemaPath} refuses ${file.path}: ${problem}`);
+    if ('problem' in pin) {
+      console.log(`::error::${file.recipePath} ${pin.problem}`);
 
       process.exitCode = 1;
 
       return;
     }
 
-    appendFileSync(summaryPath, `${file.path}\n`);
+    const tag = `v${pin.version}`;
+
+    const schema = await readReleaseSchema(`${releasesURL}/${tag}/config.schema.json`);
+
+    if (schema === null) {
+      process.exitCode = 1;
+
+      return;
+    }
+
+    const parsed: unknown = Bun.YAML.parse(readFileSync(file.configPath, 'utf8'));
+    const config = file.isConfigMap ? readConfigMapConfig(parsed) : parsed;
+    const problem = findConfigProblem(schema, config);
+
+    if (problem !== null) {
+      console.log(`::error::the ${tag} config schema refuses ${file.configPath}: ${problem}`);
+
+      process.exitCode = 1;
+
+      return;
+    }
+
+    appendFileSync(summaryPath, `${file.configPath} against ${tag}\n`);
   }
+}
+
+async function readReleaseSchema(url: string): Promise<unknown> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    console.log(`::error::${url} answered ${String(response.status)}`);
+
+    return null;
+  }
+
+  const schema: unknown = await response.json();
+
+  return schema;
 }
 
 function readConfigMapConfig(documents: unknown): unknown {
@@ -68,5 +109,5 @@ function readField(value: unknown, key: string): unknown {
 }
 
 if (import.meta.main) {
-  runCLI();
+  await runCLI();
 }

@@ -41,6 +41,8 @@ imp:
 # the sets
 backup:
   enabled: false
+# the assistant's computer, which is on only while this section is here
+computer: {}
 definitions:
   source:
     kind: path

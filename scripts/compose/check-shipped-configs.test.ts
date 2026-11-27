@@ -18,83 +18,171 @@ function setupTest() {
   mkdirSync(join(directory, 'deploy', 'kubernetes'), { recursive: true });
   writeFileSync(summaryPath, '');
 
-  writeFileSync(
-    join(directory, 'apps', 'server', 'config.schema.json'),
-    JSON.stringify({
-      $schema: 'https://json-schema.org/draft/2020-12/schema',
-      type: 'object',
-      properties: { server: { type: 'object' } },
-      additionalProperties: false,
-    }),
-  );
-
   return {
     summaryPath,
-    writeShipped: (composeConfig: string, kubernetesConfig: string) => {
-      writeFileSync(join(directory, 'deploy', 'compose', 'config.yaml'), composeConfig);
-
-      writeFileSync(
-        join(directory, 'deploy', 'kubernetes', 'config.yaml'),
-        [
-          'kind: ConfigMap',
-          'data:',
-          '  config.yaml: |',
-          ...kubernetesConfig.split('\n').map((line) => `    ${line}`),
-          '---',
-          'kind: ConfigMap',
-          'data:',
-          '  other: value',
-          '',
-        ].join('\n'),
-      );
+    writeFile: (path: string, text: string) => {
+      writeFileSync(join(directory, path), text);
     },
-    run: () =>
+    run: (releasesURL: string) =>
       $`${process.execPath} ${join(import.meta.dir, 'check-shipped-configs.ts')}`
         .cwd(directory)
-        .env({ ...process.env, GITHUB_STEP_SUMMARY: summaryPath })
+        .env({ ...process.env, GITHUB_STEP_SUMMARY: summaryPath, RELEASES_URL: releasesURL })
         .nothrow()
         .quiet(),
   };
 }
 
-test('it lists each shipped config in the summary when the schema accepts it', async () => {
+test('it lists each shipped config with its pinned release when that release accepts it', async () => {
   const ctx = setupTest();
 
-  ctx.writeShipped('server: {}\n', 'server: {}');
+  const server = Bun.serve({
+    port: 0,
+    routes: {
+      '/releases/download/v0.7.2/config.schema.json': Response.json({
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        properties: { server: { type: 'object' } },
+        additionalProperties: false,
+      }),
+      '/releases/download/v0.6.0/config.schema.json': Response.json({
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        properties: { server: { type: 'object' } },
+        additionalProperties: false,
+      }),
+    },
+  });
 
-  const result = await ctx.run();
+  onTestFinished(() => server.stop(true));
 
-  expect(result.exitCode).toBe(0);
-
-  expect(readFileSync(ctx.summaryPath, 'utf8')).toBe(
-    'deploy/compose/config.yaml\ndeploy/kubernetes/config.yaml\n',
+  ctx.writeFile(
+    'deploy/compose/compose.yaml',
+    `services:\n  nixie:\n    image: ghcr.io/zgeoff/nixie:0.7.2@sha256:${'a'.repeat(64)}\n`,
   );
+
+  ctx.writeFile('deploy/compose/config.yaml', 'server: {}\n');
+
+  ctx.writeFile(
+    'deploy/kubernetes/nixie.yaml',
+    `spec:\n  containers:\n    - image: ghcr.io/zgeoff/nixie:0.6.0@sha256:${'b'.repeat(64)}\n`,
+  );
+
+  ctx.writeFile(
+    'deploy/kubernetes/config.yaml',
+    'kind: ConfigMap\ndata:\n  config.yaml: |\n    server: {}\n---\nkind: ConfigMap\ndata:\n  other: value\n',
+  );
+
+  const result = await ctx.run(`${server.url.origin}/releases/download`);
+
+  expect({
+    exitCode: result.exitCode,
+    summary: readFileSync(ctx.summaryPath, 'utf8'),
+  }).toStrictEqual({
+    exitCode: 0,
+    summary:
+      'deploy/compose/config.yaml against v0.7.2\ndeploy/kubernetes/config.yaml against v0.6.0\n',
+  });
 });
 
-test('it fails, naming the file, when the schema refuses the compose config', async () => {
+test('it fails, naming the release and the file, when the pinned release refuses a section the checkout accepts', async () => {
   const ctx = setupTest();
 
-  ctx.writeShipped('server: {}\ncomputer: {}\n', 'server: {}');
+  const server = Bun.serve({
+    port: 0,
+    routes: {
+      '/v0.7.2/config.schema.json': Response.json({
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        properties: { server: { type: 'object' } },
+        additionalProperties: false,
+      }),
+    },
+  });
 
-  const result = await ctx.run();
+  onTestFinished(() => server.stop(true));
 
-  expect(result.exitCode).toBe(1);
-
-  expect(result.stdout.toString()).toBe(
-    '::error::apps/server/config.schema.json refuses deploy/compose/config.yaml: the config must NOT have additional properties\n',
+  ctx.writeFile(
+    'apps/server/config.schema.json',
+    JSON.stringify({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: { server: { type: 'object' }, code: { type: 'object' } },
+      additionalProperties: false,
+    }),
   );
+
+  ctx.writeFile(
+    'deploy/compose/compose.yaml',
+    `services:\n  nixie:\n    image: ghcr.io/zgeoff/nixie:0.7.2@sha256:${'a'.repeat(64)}\n`,
+  );
+
+  ctx.writeFile('deploy/compose/config.yaml', 'server: {}\ncode: {}\n');
+
+  ctx.writeFile(
+    'deploy/kubernetes/nixie.yaml',
+    `spec:\n  containers:\n    - image: ghcr.io/zgeoff/nixie:0.7.2@sha256:${'a'.repeat(64)}\n`,
+  );
+
+  ctx.writeFile(
+    'deploy/kubernetes/config.yaml',
+    'kind: ConfigMap\ndata:\n  config.yaml: |\n    server: {}\n',
+  );
+
+  const result = await ctx.run(server.url.origin);
+
+  expect({ exitCode: result.exitCode, stdout: result.stdout.toString() }).toStrictEqual({
+    exitCode: 1,
+    stdout:
+      '::error::the v0.7.2 config schema refuses deploy/compose/config.yaml: the config must NOT have additional properties\n',
+  });
 });
 
-test('it fails when the schema refuses the config inside the Kubernetes ConfigMap', async () => {
+test('it fails, naming the URL, when the pinned release publishes no config schema', async () => {
   const ctx = setupTest();
 
-  ctx.writeShipped('server: {}\n', 'server: {}\ncode: {}');
+  const server = Bun.serve({
+    port: 0,
+    routes: { '/v0.6.0/config.schema.json': Response.json({}) },
+  });
 
-  const result = await ctx.run();
+  onTestFinished(() => server.stop(true));
 
-  expect(result.exitCode).toBe(1);
-
-  expect(result.stdout.toString()).toBe(
-    '::error::apps/server/config.schema.json refuses deploy/kubernetes/config.yaml: the config must NOT have additional properties\n',
+  ctx.writeFile(
+    'deploy/compose/compose.yaml',
+    `services:\n  nixie:\n    image: ghcr.io/zgeoff/nixie:0.7.2@sha256:${'a'.repeat(64)}\n`,
   );
+
+  ctx.writeFile('deploy/compose/config.yaml', 'server: {}\n');
+
+  const result = await ctx.run(server.url.origin);
+
+  expect({ exitCode: result.exitCode, stdout: result.stdout.toString() }).toStrictEqual({
+    exitCode: 1,
+    stdout: `::error::${server.url.origin}/v0.7.2/config.schema.json answered 404\n`,
+  });
+});
+
+test('it fails, naming the recipe, when the recipe pins no one nixie release', async () => {
+  const ctx = setupTest();
+
+  ctx.writeFile(
+    'deploy/compose/compose.yaml',
+    [
+      'services:',
+      '  setup:',
+      `    image: ghcr.io/zgeoff/nixie:0.7.2@sha256:${'a'.repeat(64)}`,
+      '  nixie:',
+      `    image: ghcr.io/zgeoff/nixie:0.8.0@sha256:${'c'.repeat(64)}`,
+      '',
+    ].join('\n'),
+  );
+
+  ctx.writeFile('deploy/compose/config.yaml', 'server: {}\n');
+
+  const result = await ctx.run('http://127.0.0.1:9');
+
+  expect({ exitCode: result.exitCode, stdout: result.stdout.toString() }).toStrictEqual({
+    exitCode: 1,
+    stdout: '::error::deploy/compose/compose.yaml pins more than one nixie release: 0.7.2, 0.8.0\n',
+  });
 });

@@ -76,7 +76,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: nixie
-          image: ghcr.io/zgeoff/nixie:0.1.0@sha256:06d8802f4aac382106d53be0915887e86e36c6960e2404e19af6611a4c01b309
+          image: ghcr.io/zgeoff/nixie:0.121.0@sha256:8d6e02a405f8b356e21f843901adbd2c60a7df98d8881a62045361d8e02a8f42
           args: ['serve']
           env:
             # sops finds the age key here when nixie decrypts its secrets file at start

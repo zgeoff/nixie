@@ -46,7 +46,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/zgeoff/nixie-web:0.1.0@sha256:318c0b6c6ff89e0b0bbd252df2d04b0120ef28c7266d698ffa9757ff4d2f5754
+          image: ghcr.io/zgeoff/nixie-web:0.121.0@sha256:34d7b2dfc09db7f6ac9abcc79fd7d89e3270463785c46e914540b762c8dd6fb5
           env:
             - name: NIXIE_API_URL
               value: http://nixie:8080
