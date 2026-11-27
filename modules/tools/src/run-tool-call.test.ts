@@ -2986,6 +2986,8 @@ test('it gives the proposal of an ask the lapse that the config sets for actions
     proposalConfig: { lapseDays: { ...defaultProposalConfig.lapseDays, action: 1 } },
   });
 
+  const startedAtMs = Date.now();
+
   await runToolCall(
     { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
     {
@@ -3001,10 +3003,12 @@ test('it gives the proposal of an ask the lapse that the config sets for actions
   const entries = await readRecords(ctx.log, { afterSequence: 0, kinds: ['proposals.proposed'] });
 
   const [proposed] = entries;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const lapsesAt = Number(proposed?.record.payload['lapsesAt']);
 
-  expect(proposed?.record.payload['lapsesAt']).toBe(
-    (proposed?.record.recordedAt.getTime() ?? 0) + 24 * 60 * 60 * 1000,
-  );
+  // The proposal reads the clock before the record is written, so it can lapse a millisecond early.
+  expect(lapsesAt).toBeGreaterThanOrEqual(startedAtMs + dayMs);
+  expect(lapsesAt).toBeLessThanOrEqual((proposed?.record.recordedAt.getTime() ?? 0) + dayMs);
 });
 
 test('it returns the error of a deadline that cannot resolve, and never asks the decision point', async () => {
