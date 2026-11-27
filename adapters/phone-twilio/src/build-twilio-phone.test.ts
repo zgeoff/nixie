@@ -190,7 +190,7 @@ test('it finds the texts that it sent to one number with one body in a window', 
 test('it throws when the API key is wrong', async () => {
   const ctx = await setupTest();
 
-  await twilioStore.keys.clear();
+  twilioStore.keys.clear();
 
   const [result] = await Promise.allSettled([ctx.provider.readRecent()]);
 
