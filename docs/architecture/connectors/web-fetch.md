@@ -181,6 +181,8 @@ These rules hold for the step:
 
 - Step 3 runs before step 4, so the scan refuses a URL that holds a secret even when a page for it
   is stored.
+- A stored page whose fetch ended at another URL answers only when the call's snapshot blocks no
+  site that covers that URL. Otherwise the call ends with the blocked site's refusal.
 - Step 4 runs before step 5, so a stored page of a paused host still answers.
 - The second pass never reads the cache.
 - Two calls for one URL that run together both fetch, and each stores its page.

@@ -40,7 +40,8 @@ parsePlacePattern('*.github.io'); // null: the key would cover a whole public su
   matcher reads through `tldts` with `allowPrivateDomains: true`. A `mail_domain` entry holds
   `blocked`, `known` or `read`, never `act`, and a site is never `self`.
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
-  entry wins: an exact or `raw` key, then the longer domain.
+  entry wins: an exact or `raw` key, then the longer domain, then the higher level. A contact you
+  marked at one of your own addresses therefore leaves that address at `self`.
 - A rule's `destinations` keep their patterns. Both sides are put in lower case before the match,
   unless the destination parses as a `handle` or as `null`.
 
@@ -62,16 +63,19 @@ which goes on the call's thread. Each add, change or removal runs the in-force s
 transaction, which puts a definitions snapshot that holds the directory in force. When the seed
 refuses, the whole transaction rolls back and the write is not made. A call decides under the
 snapshot it started with, so a block takes effect for each call that starts after the commit. The
-seed that adds nixie's own entries runs the in-force seed itself, once all its entries are in.
+snapshot lists each entry's level and the record its name came from, so a rename leaves an older
+snapshot's name of an address, phone number, handle or contact as it was. The seed that adds nixie's
+own entries runs the in-force seed itself, once all its entries are in.
 
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. A call uses an
 entry when its `tool_called` decision carries the entry's permission, whatever the outcome. The
 projection keeps the key of a site or mail domain, and a removal or an act of one holds the entry's
 IDs in its payload. An address, phone number or handle keeps its key and name in the erasable fields
-of `places.added` and `places.changed`, and a `places.removed` or `places.acted` record of one holds
-the entry's IDs in its own erasable fields. A fold cannot read erasable fields, so the removal's
-writer marks the row removed, and a rebuild and the start of the server read each removal back. A
-removed entry keeps its row, so a replay of an older call finds its key.
+of `places.added` and `places.changed`, as a contact keeps a new name. A `places.removed` or
+`places.acted` record of an address, phone number or handle holds the entry's IDs in its own
+erasable fields. A fold cannot read erasable fields, so the removal's writer marks the row removed,
+and a rebuild and the start of the server read each removal back. A removed entry keeps its row, so
+a replay of an older call finds its key.
 
 A call that an `act` place allowed writes its `places.acted` record on the call's thread once the
 action queue admits the attempt, and a retry of the call reads the act records back and writes none
@@ -80,13 +84,15 @@ a second time.
 A forget of one record of an address, phone number or handle entry, through `log.forget` or the
 conversation's forget, removes the key of every record of that entry: its `places.added`,
 `places.changed`, `places.removed` and `places.acted` records, and the marking record when the entry
-is a contact you marked. Any of those records is a forget target. `places.added`, `places.changed`
-and `places.removed` carry no thread, so the forget accepts them with any conversation's thread, and
-`places.acted` takes its call's thread. The forget's start record keeps the key of each record it
-found while the entry was readable, so a retry after a crash removes them all once the target's own
-key is gone. The entry then covers nothing, and no readable record holds its IDs. A record of a site
-or mail domain is no forget target, because its key and IDs sit in the payload, where no key can
-erase them.
+is a contact you marked. Any of those records is a forget target. `places.added`, `places.changed`,
+`places.removed` and the marking record carry no thread, so the forget accepts them with any
+conversation's thread, and `places.acted` takes its call's thread.
+
+The forget's start record keeps the key of each record it found while the entry was readable. The
+cleanup reads the entry's records again, which finds an act written since the start, and removes the
+target's own key last, so a retry after a crash removes them all. The entry then covers nothing, and
+no readable record holds its IDs. A record of a site or mail domain is no forget target, because its
+key and IDs sit in the payload, where no key can erase them.
 
 - The directory holds at most one entry per key, checked inside the write transaction against the
   keys read back, and contact entries count.

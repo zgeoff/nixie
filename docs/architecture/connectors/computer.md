@@ -251,6 +251,10 @@ tab in front, and no destination when another window is in front. A site at `blo
 these. A site that no entry covers is read without asking, and an entry at `read` gives the same
 answer.
 
+The page can change between the read of its address and the capture, so each of these tools also
+checks the address of the captured page against the call's snapshot. A blocked site refuses the call
+with `PAGE_CHANGED`, and the tool returns nothing of the page.
+
 A fill can post a form, so it is a queued `send`. A click declares `fetch`, and its `prepare` hook
 adds `send` unless the control is a plain link: an `<a>` with an http or https address, outside a
 form and with no `onclick`. The hook asks the guest for the control, and the destinations of a plain
@@ -258,6 +262,9 @@ link are the tab's host and the link's host. Any other control has the tab's hos
 action runs, the tool reads the control again and refuses with `PAGE_CHANGED` when its kind or its
 destinations differ from the ones the decision covered. A script's click handler is invisible to
 `prepare`, so a plain link that a script turns into an action runs without asking.
+
+Two calls with the same input share one prepared entry. When 2 preparations of one click find
+different kinds of control, every action of that click refuses with `PAGE_CHANGED`.
 
 Both tools read the tab's URL before the decision. The host becomes the call's destination, and the
 URL becomes `expectURL`, which the action hash covers. When the action runs, the guest compares the
