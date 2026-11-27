@@ -126,8 +126,8 @@ A forgotten record can leave evidence quotes in memory items. The evidence purge
 one for each row of its kill table. Each point sits behind the test-build flag. A test arms a point,
 makes the forget or the purge reach it, stops nixie there and starts it again, and checks that the
 purge finishes and the current text of each item still reads. `recover-record-forget-purge.test.ts`
-does this. Forgetting a memory item, a note or a moment is a different path, the erasure runner,
-which the next section covers.
+does this. The erasure runner forgets a memory item, a note or a moment, and the next section covers
+it.
 
 | Fault point                 | Reached                                                   |
 | --------------------------- | --------------------------------------------------------- |
@@ -151,7 +151,7 @@ The [erasure runner](../memory/store.md#forgetting) forgets a memory item, a not
 holds at 5 fault points behind the test-build flag, in the order of its steps.
 `recover-erasure.test.ts` arms each point for a note and for a memory item, and no test arms them
 for a moment. A test arms a point, makes the forget reach it, stops nixie there and starts it again.
-It checks 3 things beside the oracle, which does not know about erasures:
+The test then checks these beside the oracle, which does not know about erasures:
 
 - The erasure finishes.
 - None of the target's encryption keys remains in the key store. These are the keys of its

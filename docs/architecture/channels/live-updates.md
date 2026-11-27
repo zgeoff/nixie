@@ -14,8 +14,8 @@ ID and a closed stream misses it.
 Two changes happen with no write, so the tab reads again on a timer. A task that comes due changes
 the task list, so the tab reads the list at the `changesAt` time the list returns, as well as on the
 `tasks` topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the stuck
-forgets on a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic either. See
-[Topics](#topics) for each.
+forgets on a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic either.
+See [Topics](#topics) for each.
 
 ```mermaid
 flowchart LR
@@ -81,11 +81,10 @@ interval and the idle limit, and a test asserts that 3 keepalive intervals fit i
 ## Topics
 
 A topic is the name of one root of the web client's query keys, and no two topics share a root. The
-contract's `liveTopicSchema`, in
-[live-topic-schema.ts](../../../libs/contract/src/contract/live-topic-schema.ts), holds the list. A
-root can lack a topic, and the contract test keeps a list of those unfollowed roots, `erasure` among
-them. The test fails when a topic matches no root, or when a root has neither a topic nor a place on
-that list.
+topics are the entries of `liveTopicSchema` in the contract, in
+[live-topic-schema.ts](../../../libs/contract/src/contract/live-topic-schema.ts). A root can lack a
+topic, and the contract test keeps a list of those unfollowed roots, `erasure` among them. The test
+fails when a topic matches no root, or when a root has neither a topic nor a place on that list.
 
 | Topic         | Reads under the root                                           |
 | ------------- | -------------------------------------------------------------- |
@@ -137,7 +136,7 @@ client reads the list again at that time, besides reading it on the `tasks` topi
 A forget of any kind, whether of a memory item, a moment or a note, turns stuck once it stays open
 long enough, with no write. The `erasure` root has no topic, and the web client reads
 `erasure.readStuck` again on a timer. That timer covers only the stuck state. The erasure records
-mark `memory` and `notebook` as [Topics](#topics) says.
+still mark `memory` and `notebook`.
 
 ## The client registry
 

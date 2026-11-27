@@ -138,7 +138,7 @@ item's fact would make nixie keep the item at once, with no proposal.
    and `bun verify done`, and say in your reply that the reminder's result listed no `related` item.
    Run the first query of step 6 to see whether the item is still `active`.
 
-8. Check that the reminder is set and the note names the related memory.
+8. Check that the reminder is set and the note carries the short ID of the related memory.
 
    ```bash
    bun verify db query "select count(*) as reminders from reminders where state = 'active'"
@@ -164,11 +164,10 @@ item's fact would make nixie keep the item at once, with no proposal.
 
    Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
    exit 0. The last snapshot waits until the forgotten item's line shows a "forgotten" date, which
-   appears only once `erasure.finished` is written. `--until-text` makes `snapshot` wait for that
-   text to show in the page. A line that reads "forgetting" means the erasure is still open, and the
-   command is still waiting: start step 10 only after it exits 0. When it fails because the
-   "forgotten" date never showed, skip `bun verify done`, run step 10's queries anyway to see where
-   the erasure stopped, and list in your reply the rows you got.
+   appears once `erasure.finished` is written. While the line reads "forgetting", the erasure is
+   still open: start step 10 only after the command exits 0. When it fails because the "forgotten"
+   date never showed, skip `bun verify done`, run step 10's queries anyway to see where the erasure
+   stopped, and list in your reply the rows you got.
 
 10. Check the erasure states of the forget and the memory page:
 
@@ -193,7 +192,8 @@ item's fact would make nixie keep the item at once, with no proposal.
 - After step 6, the memory page shows the item's text from step 4: on `local`, "The user keeps bees
   on the allotment.". Step 10 checks that the text is gone.
 - On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the
-  approved item: the reminder's result listed it as `related`, and the call applied first.
+  approved item: the reminder's result listed it as `related` because the item was already active
+  when the call ran.
 - On `local`, after step 9 the item is `forgotten`, with one finished erasure and no open one, and
   the memory page shows no item.
 - On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case

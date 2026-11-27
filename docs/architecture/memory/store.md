@@ -115,8 +115,8 @@ An item is in one of 4 states:
 
 Retire an item when its fact stopped being true: the item stays readable with its history. A
 retirement takes the item out of the pinned core, and a restore does not pin it again. Forgetting
-destroys an item, and only a checked action in the client or a reset of the memories at the host
-forgets one, so a misread "forget that" in the conversation only retires an item.
+destroys an item. Only a checked action in the client or a reset of the memories at the host forgets
+one, so a misread "forget that" in the conversation costs a retirement at most.
 
 ## Changing an item
 
@@ -252,8 +252,8 @@ items that the purge then changes, and then goes on. A cleanup that runs again f
 writes nothing more. A forget that an earlier release finished, with a `record.forgotten` and no
 purge set, leaves its quotes in the items, and the user forgets such an item from the memory view.
 
-A kill at any step leaves a state that the next start finishes, because each step finds its own
-record or a missing key and writes nothing more when it runs again:
+After a kill at any step, the next start finishes the purge, because each step finds its own record
+or a missing key and writes nothing more when it runs again:
 
 | A kill after                          | The server start finds                             | The server start does                   |
 | ------------------------------------- | -------------------------------------------------- | --------------------------------------- |
@@ -263,19 +263,19 @@ record or a missing key and writes nothing more when it runs again:
 | the key deletes, before the last mark | no `memory.evidence_purged` for the item           | `memory.evidence_purged`                |
 | every item                            | no `record.forgotten`                              | `record.forgotten`                      |
 
-[Crash tests](../core/crash-tests.md#fault-points-of-the-forget) lists the fault points that hold
-each of these. The purge deletes a key with `removeRecordKey`, which fails when a reader of the key
-store holds the write-ahead log. The purge then stops before `memory.evidence_purged`, so a purge
-counts as done only after the checkpoint cleared the old key from the log.
+[Crash tests](../core/crash-tests.md#fault-points-of-the-record-forget) lists the fault points that
+hold each of these. The purge deletes a key with `removeRecordKey`, which fails when a reader of the
+key store holds the write-ahead log. The purge then stops before `memory.evidence_purged`, so a
+purge counts as done only after the checkpoint cleared the old key from the log.
 
-The server's start finishes each purge that no open record forget owns, where an open forget has no
-`record.forgotten` yet. The release before this one can end a forget with such a purge left: it
-skips an item whose own forget began, deletes that item's keys at its start before any record
-forget, and never marks the item purged. No code writes a purge set with no record forget behind it,
-and the server's start scrubs nothing. A scrub of each merge change of the consolidator would be
-needed only because a change sat under the key of its first input. The migration that removed the
-consolidator's records and tables ran at every earlier release's first start, before memory starts,
-so no database that this release opens holds such a change.
+At its start, the server finishes each purge that no open record forget owns, where an open forget
+has no `record.forgotten` yet. The release before this one can end a forget with such a purge left:
+it skips an item whose own forget began, deletes that item's keys at its start before any record
+forget, and never marks the item purged. No code writes a purge set with no record forget behind it.
+The start also scrubs none of the consolidator's merge changes, which sat under the key of their
+first input: the migration that removed the consolidator's records and tables ran at every earlier
+release's first start, before memory starts, so no database that this release opens holds such a
+change.
 
 ### Reading a key
 
@@ -484,10 +484,10 @@ item that left the active state. A query matches any of its words, and the store
 so no character a caller sends reads as FTS5 syntax.
 
 The index leaves function words, such as "to" and "a", out of both the query and the text it stores.
-BM25 weighs a word by how few items hold it and not by what it means, so a function word that one
-item holds would score as high as a topic word and bring back an item the query says nothing about.
-The filter covers the stored text too, because the porter tokenizer stems some content words to a
-function word, such as "one" to "on". A word in capitals, such as "US", is an acronym and stays.
+BM25 weighs a word by how few items hold it, so a function word that one item holds would score as
+high as a topic word and bring back an item the query says nothing about. The filter covers the
+stored text too, because the porter tokenizer stems some content words to a function word, such as
+"one" to "on". A word in capitals, such as "US", is an acronym and stays.
 
 A query can also set a score floor, which drops each match whose BM25 score falls below it, and can
 leave pinned items out. BM25 gives no weight to a word that half the items hold, so in an index of 1
@@ -553,7 +553,7 @@ registers the same way, as [moments](./moments.md#destroying-a-moment) describes
 [the notebook](./notebook.md#forgetting-a-note) describes a note's. The runner owns the steps after
 the start, and an item has no child.
 
-The runner holds these rules, which the code enforces:
+The runner enforces these rules:
 
 - One tree of erasures runs at a time. A retry of a forget, the catch-up at the server's start and
   the watch below queue behind each other, so no cleanup runs twice and no run releases the capture
@@ -614,9 +614,9 @@ records `by` as `assistant` for a forget whose provenance is not the owner's, so
 no change to the record.
 
 The migration that moved items onto the runner raises the oldest reader. The release before
-registers only moments, so it cannot finish an open `memory_item` erasure, and it refuses to open a
-database that the new release wrote. A rollback by one release is therefore no longer possible from
-that migration on.
+registers only moments, so it cannot finish an open `memory_item` erasure and refuses to open a
+database that the new release wrote. From that migration on, the database cannot roll back by one
+release.
 
 The key deletion and its checkpoint are the ones [erasable fields](../core/erasable-fields.md)
 describes, so neither the key store file nor its write-ahead log keeps the wrapped key. The version

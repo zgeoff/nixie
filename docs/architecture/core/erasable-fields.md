@@ -1,14 +1,13 @@
 # Erasable fields
 
-nixie forgets text by destroying keys, never by rewriting the log. Every free-text field of a
-record, such as message text, tool arguments or a tool result, sits in the record's erasable fields,
-encrypted under a key that belongs to that record alone. The one exception is a memory version's
-text, which is sealed under its item's key, as [below](#keys) says. The keys live in a key store, a
-SQLite file of their own beside the database. Deleting a record's key leaves the record in the log
-with its envelope and payload, and its text unreadable in every copy of the database that exists,
-backups included. This is crypto-shredding, chosen for memory in
-[0007](../../decisions/0007-crypto-shredding.md). [The event log](./event-log.md) covers the record
-the fields belong to.
+nixie forgets text by destroying keys. Every free-text field of a record, such as message text, tool
+arguments or a tool result, sits in the record's erasable fields, encrypted under a key that belongs
+to that record alone. The one exception is a memory version's text, which is sealed under its item's
+key (see [Keys](#keys)). The keys live in a key store, a SQLite file of their own beside the
+database. Deleting a record's key leaves the record in the log with its envelope and payload, and
+its text unreadable in every copy of the database that exists, backups included. This is
+crypto-shredding, chosen for memory in [0007](../../decisions/0007-crypto-shredding.md).
+[The event log](./event-log.md) covers the record the fields belong to.
 
 ## Keys
 
@@ -24,17 +23,16 @@ their own, keyed by the record's sequence and the attachment's position, and sea
 record's own key. The key ID and the position are bound in as additional data, so an attachment
 copied onto another record, or moved to another position, fails to decrypt. The table is append-only
 like the log, and a forget leaves its rows in place, unreadable with the record's text. The payload
-holds only what describes an attachment, such as an image's media type, and never its bytes.
+holds only what describes an attachment, such as an image's media type.
 
 The payload never holds free text, and no projection reads the erasable fields. The one exception is
-a memory version's text. The memory store seals it under its item's key, not under the key of the
-record that carries it, and the payload holds only that ciphertext, which the
-[memory store](../memory/store.md#items-and-versions) folds into its versions table. A forget
-destroys the item's key, so every copy of the sealed text becomes unreadable at once, the payload's
-copy and the versions table's copy alike. A projection rebuilt after a forget therefore gives the
-same rows as before, and no plaintext of the text survives outside the erasable fields. The database
-holds no full-text index over erasable fields for the same reason: an index would keep the plaintext
-after its key is gone.
+a memory version's text. The memory store seals it under its item's key, and the payload holds only
+that ciphertext, which the [memory store](../memory/store.md#items-and-versions) folds into its
+versions table. A forget destroys the item's key, so every copy of the sealed text becomes
+unreadable at once, the payload's copy and the versions table's copy alike. A projection rebuilt
+after a forget therefore gives the same rows as before, and no plaintext of the text survives
+outside the erasable fields. The database holds no full-text index over erasable fields for the same
+reason: an index would keep the plaintext after its key is gone.
 
 ## Declaring erasable kinds
 
@@ -42,8 +40,8 @@ Add each record kind that carries erasable fields to `ErasableRecordKinds` in th
 the kind, beside its entry in `RecordKinds`. The log's `RecordInput` takes `erasable` only for a
 kind in that interface, so a write of erasable fields under any other kind fails the type check.
 When a kind gains erasable fields, also add it to the forgettable kinds, which are the kinds a
-record forget may take, or to one of the groups that a record forget leaves out, as
-[forgetting a record](../channels/api.md#forgetting-a-record) says. The groups are the records of a
+record forget may take, or to one of the groups that a record forget leaves out (see
+[forgetting a record](../channels/api.md#forgetting-a-record)). The groups are the records of a
 moment, of a memory item and of a note, which the forget of the moment, item or note takes.
 
 Export a static descriptor from each module that owns an erasable kind. It lists the kind, its
@@ -54,12 +52,12 @@ start, and `bun run --cwd apps/server forgettable-kinds` generates the contract'
 list from them. Never edit that list by hand, because a CI check fails on a hand edit. A test checks
 that each record kind sits in exactly one descriptor list.
 
-The forget of a memory item, a note or a moment runs through the erasure runner in `modules/log`,
-whose steps the [memory store](../memory/store.md#forgetting) shows for an item. It writes
-`erasure.started` and `erasure.finished` in clear, because a forget must not need the text it
-deletes. Only `erasure.started` carries the selection of keys to delete, which is the target's key
-family and the keys of any child the forget reaches. `erasure.finished` carries the count of keys
-removed.
+The forget of a memory item, a note or a moment runs through the erasure runner in `modules/log`.
+For the steps of a forget of an item, see the [memory store](../memory/store.md#forgetting). The
+runner writes `erasure.started` and `erasure.finished` in clear, because a forget must not need the
+text it deletes. Only `erasure.started` carries the selection of keys to delete, which is the
+target's key family and the keys of any child the forget reaches. `erasure.finished` carries the
+count of keys removed.
 
 ## The key store
 
@@ -72,12 +70,12 @@ key deleted after it. Every ID that keys the key store is random, never a sequen
 
 ## Removing a key
 
-This section covers the key removal the erasure runner calls, not the steps of a forget. Removing a
-key checks the writer epoch first, so a process that lost the writer role deletes nothing. It then
-deletes the key and checkpoints the key store, so neither the file nor its write-ahead log holds the
-wrapped key afterwards. A connection that holds a read on the key store blocks the checkpoint, and
-the removal then fails until a retry finishes the checkpoint, rather than report a key gone that
-still sits in the log file.
+The erasure runner calls the key removal described here. Removing a key checks the writer epoch
+first, so a process that lost the writer role deletes nothing. It then deletes the key and
+checkpoints the key store, so neither the file nor its write-ahead log holds the wrapped key
+afterwards. A connection that holds a read on the key store blocks the checkpoint, and the removal
+then fails until a retry finishes the checkpoint, so it never reports a key gone while it still sits
+in the log file.
 
 A record whose key is gone reads as shredded, with its envelope and payload intact. A record whose
 key fails to unwrap, such as one wrapped by another deployment's key, or whose ciphertext fails to

@@ -298,9 +298,9 @@ no entry keeps reading the next 500, up to 5,000 records in one call, so most se
 match in one call. An empty page costs little to return, and the reads stop at the first page that
 holds an entry, so a result stays one page of the usual size. A search that still finds nothing in
 those 5,000 records returns no entries with a cursor and a `note`. The note says the read stopped
-early, so no match is not shown, and gives the time span of the records it read. The model passes
-the cursor as `after` to go on, or narrows the range with `from` and `to`. Only a `null` cursor
-means the thread holds nothing more.
+early, so the empty result does not show that no match exists, and gives the time span of the
+records it read. The model passes the cursor as `after` to go on, or narrows the range with `from`
+and `to`. Only a `null` cursor means the thread holds nothing more.
 
 A list clips each entry's text at 2,000 characters and marks the entry `isCut`. A read with
 `record`, the event ID of one entry, returns that entry whole, in pages under the same byte limit as
@@ -363,8 +363,8 @@ of a session's opening, or in the model's own words. An item forgets through the
 `modules/log`, as [the store's forgetting](./store.md#forgetting) describes. The runner runs this
 session cleanup as one step of that forget, and the forget finishes only after the cleanup returns.
 A [forget of one message or reply](../channels/api.md#forgetting-a-record) runs the same cleanup,
-because the session holds the record's text too, and the cleanup's records name the item or the
-record it ran for. The cleanup runs in order:
+because the session holds the record's text too. The cleanup's records name the item or the record
+it ran for. The cleanup runs in order:
 
 1. It aborts every turn in flight and waits for each one to end, so it never removes a transcript
    that a live CLI still writes. The assistant's own `notebook.forget` starts the cleanup only after
@@ -402,8 +402,8 @@ record open, and the erasure catch-up at the server's start runs the cleanup aga
 claims work. The aborted turn's step fails and runs again after its retry delay, and that rerun
 finds the invalidated record and rebuilds the session.
 
-The SDK transcript is a cache in the sandbox, and backups and the memory export leave it out, so the
-purge in step 6 removes every copy of it.
+Backups and the memory export leave out the SDK transcript, a cache in the sandbox, so the purge in
+step 6 removes every copy of it.
 
 A request already sent to the model provider keeps the text it received. The cleanup removes nixie's
 copies and cannot recall that one.

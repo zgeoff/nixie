@@ -173,11 +173,11 @@ show the image under a reply.
 `image.name` writes an `image.named` record, whose name is erasable, and `image.pin` and
 `image.unpin` write `image.pinned` and `image.unpinned` records.
 
-A [forget](../core/erasable-fields.md#forgetting-a-record) of a call's record makes its image
-unreadable and leaves the row, so the edit chain keeps its shape. The forget cleanup also removes
-the key of each image imported from the forgotten record, so a forgotten photo erases its imports. A
-source, a reference and a provider reply never count against the session's image caps; only the
-picture shown beside a result does.
+A [forget](../core/erasable-fields.md#removing-a-key) of a call's record makes its image unreadable
+and leaves the row, so the edit chain keeps its shape. The forget cleanup also removes the key of
+each image imported from the forgotten record, so a forgotten photo erases its imports. A source, a
+reference and a provider reply never count against the session's image caps; only the picture shown
+beside a result does.
 
 The web client's [images page](../channels/client.md#the-images-page) reads the stored images
 through [the `images` calls](../channels/api.md#reading-and-forgetting-images). Its forget takes the
