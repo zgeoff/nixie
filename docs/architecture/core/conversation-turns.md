@@ -155,15 +155,17 @@ resumes no session when a newer invalidation exists, so a step that commits afte
 never saw leaves the session invalid. A cleanup that aborts a turn leaves the reply the turn
 recorded, and the rerun does not answer that message again; a shutdown ends each wait of a cleanup
 ([voided replies](#records-of-a-turn)). When the guest instead reports the session lost, the step
-runs the turn again on a new session. A persona change invalidates the session as well, because the
-persona sits in the system prompt that a resumed session keeps. The session-opened record keeps the
-persona hash and the policy hash in force at the opening, and the step resumes the session only
-while its persona hash matches the persona in force. A change to the policy alone keeps the session
-and its cached prompt, because each tool call reads the policy in force at the call, so the policy
-hash on the record serves audit. A session opened before openings kept the persona hash resumes,
-since nothing shows that its persona changed. A session from before opening records holds the pinned
-core only in its old system prompt, and an older guest's CLI compaction dropped the opening from its
-session's transcript, so the step opens a new session in place of either.
+runs the turn again on a new session.
+
+A persona change invalidates the session as well, because the persona sits in the system prompt that
+a resumed session keeps. The session-opened record keeps the persona hash and the policy hash in
+force at the opening, and the step resumes the session only while its persona hash matches the
+persona in force. A change to the policy alone keeps the session and its cached prompt, because each
+tool call reads the policy in force at the call, so the policy hash on the record is for audit. A
+session opened before openings kept the persona hash resumes, since nothing shows that its persona
+changed. The step opens a new session for a session from before opening records, which holds the
+pinned core only in its old system prompt, and for a session whose transcript lost its opening to an
+older guest's CLI compaction.
 
 Each step reads the session's state from the log once, before it acts, and one transition table
 gives the events each state allows: open, resume or compact. Both step paths ask the table, so the
@@ -173,7 +175,7 @@ Every new session opens from one builder, with the status, the pinned memory, th
 the recent turns before the turn's own blocks, and the step writes a session-opened record in the
 turn's commit ([session opening](./session-opening.md)). A turn that resumes its session carries no
 opening. The SDK transcript is a cache, so a rebuild restores the conversation's recent context from
-the event log rather than an identical session.
+the event log, and the new session need not match the old one.
 
 ## Inbox records as messages
 
@@ -374,8 +376,8 @@ starts, as in
 `<owner-message id="48213" … since-your-last-turn="3 h 12 min" since-owner-last-wrote="3 h 40 min">`:
 
 - `since-your-last-turn` is the time since the model's previous conversation turn ended, whether it
-  ended with a reply, silently or in a failure. The log's turn-ended record and step-errored record
-  give that time. The attribute is absent on the conversation's first turn.
+  ended with a reply, silently or in a failure. nixie reads that time from the log's turn-ended
+  record and step-errored record. The attribute is absent on the conversation's first turn.
 - `since-owner-last-wrote` is the time since the user's previous message. On a turn that a user
   message starts, it runs between that message and the one before it. On any other turn, such as a
   reminder fire, it runs from the newest user message to the turn's start. The attribute is absent
@@ -427,14 +429,13 @@ reply's sequence, the run's ID and the reason: `attempt_failed`, `attempt_lost`,
 lookup. The reasons mean:
 
 - `attempt_failed`: the attempt threw, and its own runner wrote the void before it rethrew;
-- `attempt_lost`: the runner died, and the next run of the step found the reply after the thread's
-  last step commit with no void, and voided it before it did anything else, once any cleanup in
-  flight had ended. A reply that sits before a session-invalidated record is no such reply: a
-  cleanup aborted its turn, and the turn keeps the reply. The turn's rerun counts the inbox messages
-  that the kept reply says the turn had read as answered, and acknowledges them without a turn, so
-  the user never gets a second answer. It answers every other message. A shutdown ends each wait of
-  a cleanup, so a cleanup that waits on a stalled turn never holds the shutdown, and the next start
-  runs that cleanup again
+- `attempt_lost`: the runner died. The next run of the step finds the reply after the thread's last
+  step commit with no void, and voids it before it does anything else, once any cleanup in flight
+  has ended. A reply that sits before a session-invalidated record is not such a reply: a cleanup
+  aborted its turn, and the turn keeps the reply. The turn's rerun acknowledges without a turn each
+  inbox message that the kept reply says the turn had read, and answers every other message, so the
+  user never gets a second answer. A shutdown ends each wait of a cleanup, so a cleanup that waits
+  on a stalled turn never holds the shutdown, and the next start runs that cleanup again
   ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session));
 - `turn_dropped`: the reply came after the last result of the turn, or the turn's session was lost
   or overflowed, so the step starts the turn again from the boundary.
@@ -533,9 +534,8 @@ reads.
 
 - **A note forget** reads each `notebook.note_forgotten` record that the user made as a line such as
   "Sam forgot note n4w8k2c6rd", with the user's name, or with the default name that the session
-  prompt uses when none is set. A record that the assistant made adds no line. The
-  [notebook](../memory/notebook.md) owns the entry, and the server registers it only when
-  `forget_notices.note` is on.
+  prompt uses when none is set. A record that the assistant made adds no line. The server registers
+  the [notebook's](../memory/notebook.md) entry only when `forget_notices.note` is on.
 - **A memory change** and a merge into one of the conversation's proposals are memory's own kinds. A
   memory change is an item that anything but the conversation itself wrote, such as an edit in the
   memory view. Each item lists once, at its latest version in the block's range, with its current
@@ -594,6 +594,6 @@ reads.
 - **A compaction heads-up** reads the first turn of a session that ended near the compaction
   threshold, and gives the tokens left, as [compaction](./compaction.md#the-heads-up) describes.
 
-Each line shows its time in the zone that [the time tool](../connectors/time.md) answers in, which
-is the zone of the user's newest message. Each line names the user by the name in the owner section
-of the deployment configuration, and uses the same default name when the section sets none.
+Each line shows its time in the zone of the user's newest message, the zone that
+[the time tool](../connectors/time.md) answers in. Each line names the user by the name in the owner
+section of the deployment configuration, or by the same default name when the section sets none.

@@ -406,9 +406,9 @@ The user may have read a reply that the aborted turn wrote, so the turn keeps it
 ([conversation turns](../core/conversation-turns.md#records-of-a-turn)). Each reply names the
 messages that the turn had read when it wrote the reply. The conversation's rerun counts those
 messages as answered and acknowledges them without a turn, so the user never gets a second answer.
-It answers every other message, one that landed before the reply but that the turn had not read
-included. A rerun that starts while the cleanup still waits holds its lost-reply sweep until the
-cleanup ends, so the sweep sees the invalidated record and leaves the kept reply alone.
+It answers every other message, including one that landed before the reply but that the turn had not
+read. A rerun that starts while the cleanup still waits holds its lost-reply sweep until the cleanup
+ends, so the sweep sees the invalidated record and leaves the kept reply alone.
 
 A shutdown ends each wait of a cleanup: for a turn to end, even a stalled one, for a step to commit
 and for the guest purge to answer. The runners stop before the notebook and the memory store, which

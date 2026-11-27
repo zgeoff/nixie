@@ -199,14 +199,14 @@ and checks that the stream still ends with `UNAUTHORIZED`.
 while a step is still running. The graceful-stop suite, `stop-graceful.test.ts`, holds the stop
 there, sends `SIGTERM`, and advances the clock through the grace. It checks that a step which ends
 inside the grace commits once, and that a step still running at the deadline is left to the next
-start's restart sweep. Another test starts the forget of a note while a turn waits at
-`turn.reply.after`, with the harness operation that writes a note and starts its forget, so the
-forget's session cleanup waits on a turn that never ends. It checks that nixie still exits with code
-0 once the grace has passed and that no `model.session_cleanup_completed` record exists. A shutdown
-ends the cleanup's waits, so a stalled turn cannot hold the stop.
+start's restart sweep. Another test holds a turn at `turn.reply.after` and calls the harness
+operation that writes a note and starts its forget. The forget's session cleanup then waits on a
+turn that never ends. The test checks that nixie still exits with code 0 once the grace has passed
+and that no `model.session_cleanup_completed` record exists. A shutdown ends the cleanup's waits, so
+a stalled turn cannot hold the stop.
 
-The next start runs that cleanup again. [Conversation turns](./conversation-turns.md) explains how
-the rerun of an aborted turn answers only the messages that have no reply. The conversation runner's
+The next start runs that cleanup again. The rerun of an aborted turn answers only the messages that
+have no reply, as [Conversation turns](./conversation-turns.md) explains. The conversation runner's
 unit tests cover that rerun, and no crash test does.
 
 ## Coverage
