@@ -128,8 +128,8 @@ code reach test code.
   and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `module`, `adapter`,
   `server-only`, `verify`, `integration` or `eval`, so a guest or a client that declares it fails
   the check.
-- **An adapter depends only on the module that owns its interface.** The tags allow any module, so
-  review holds this rule.
+- **An adapter depends only on the module that owns its interface.** Check this rule in review,
+  because the tags allow any module.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
   module that depends on it takes that work through an interface the server passes in.
 
@@ -139,6 +139,7 @@ A few imports belong to one package each, and the Agent SDK to two:
 | ----------------------------------- | ---------------------------------- |
 | The Agent SDK                       | `guests/conversation` and `evals/` |
 | imp's client                        | `adapters/sandbox-imp`             |
+| atc's client                        | `adapters/coding-atc`              |
 | `bun:sqlite` and the Kysely dialect | `libs/db`                          |
 | ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`            |
 
@@ -152,7 +153,8 @@ import escapes the zones. The zones exist because the Agent SDK runs only inside
 
 ## Modules
 
-Each module package covers one area of the architecture, and its doc covers the package.
+Each module package covers one area of the architecture. Read the doc the table links for the
+package.
 
 | Package       | Area                                                                                                                                                |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -176,6 +178,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `connections` | The [credential database](connectors/credential-database.md): the database backend for OAuth tokens and the forget of a connection                  |
 | `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools     |
 | `google`      | [Google](connectors/google-connections.md): the connector, the Gmail, Calendar and Drive tools, the Gmail arrival source and the provider interface |
+| `coding`      | [Coding tasks](core/coding-tasks.md): the runner, its tools, the trigger source on a session's events and the release of a session                  |
 | `memory`      | The [memory store](memory/store.md) and its context                                                                                                 |
 | `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                    |
 | `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                               |
@@ -196,6 +199,8 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
 - `adapters/connector-google` is the google module's provider on Google: its hosts, its OAuth
   consent, its setup steps and its scope check.
+- `adapters/coding-atc` is the coding module's adapter on atc's typed fleet API, and the one package
+  that imports atc's client. [The atc adapter](connectors/coding-atc.md) covers its calls.
 - `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
   and on the Gemini API.
 - `adapters/speech-gpt-live` is the calls module's speech layer on OpenAI's GPT-Live.

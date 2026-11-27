@@ -1,8 +1,7 @@
 # Agent Guidelines
 
-This repo is nixie, a self-hosted personal assistant platform that works for one person. It is in
-its first build: `docs/design/` holds the locked design baseline, and `docs/architecture/` covers
-the parts built so far.
+This repo is nixie, a self-hosted personal assistant platform that works for one person.
+`docs/architecture/` describes what is built, and `docs/design/` holds the designs for what is not.
 
 ## Required reading
 
@@ -70,9 +69,9 @@ versions it ran against, and imports product files by path.
 
 Dependencies:
 
-- Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
-  for an external dependency and `"workspace:*"` for an internal one.
-- The root `package.json` declares only tooling.
+- Declare every external version once, in the root `workspaces.catalog`. In a package, write
+  `"catalog:"` for an external dependency and `"workspace:*"` for an internal one.
+- Declare only tooling in the root `package.json`.
 - Pin exact versions, with no `^` or `~` ranges, in hand-written edits too. `bun add` saves exact
   versions.
 - The Pulumi component is the one exception. It declares the Pulumi SDKs as peer dependencies with a
@@ -92,6 +91,7 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 - The Agent SDK: `guests/conversation`. The SDK contract suite in `evals/` may import it too,
   because it checks the SDK itself.
 - imp's client: `adapters/sandbox-imp`.
+- atc's client: `adapters/coding-atc`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
 - ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
 - The CEL library: `modules/policy`.

@@ -12,12 +12,14 @@ export function buildTypedResult(
   const result = typed.result;
 
   // a result that reports its service's own failure holds that service's text, whatever the schema
-  if (typed.isError !== true && !registered.parseOutput(result).isValid) {
+  const checked = typed.isError === true ? null : registered.parseOutput(result);
+
+  if (checked !== null && !checked.isValid) {
     const messageOptions = actionID === null ? {} : { actionID };
 
     return buildMessage(
       'error',
-      `the tool ${registered.definition.name} returned a result outside its output schema`,
+      `the tool ${registered.definition.name} returned a result outside its output schema: ${checked.errors}`,
       messageOptions,
     );
   }

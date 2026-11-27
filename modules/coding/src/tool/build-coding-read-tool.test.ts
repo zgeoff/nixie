@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { StartedClaim } from '@heynixie/tasks';
+import { buildSchemaParser } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { startTestCoding } from '../test-utils/start-test-coding';
 
 async function setupTest() {
@@ -183,4 +185,29 @@ test('it gives an error outcome with the reason when the system refuses the read
     status: 'error',
     message: 'nixie could not read the session: timeout.',
   });
+});
+
+test('it gives a result that matches its own output schema, with a question, a long reply, a prompt and a tail', async () => {
+  const ctx = await setupTest();
+  const claim = await ctx.claimConversation();
+
+  ctx.adapter.addSession({
+    id: 'cloud.3f9a1c2e.7c1d0e55',
+    name: 'billing refactor',
+    state: 'waiting',
+    question: 'Which branch should I rebase on?',
+    lastReply: 'c'.repeat(3000),
+    prompt: 'Refactor the billing module.',
+    turns: [{ user: 'Refactor the billing module.', assistant: 'Done.', tools: ['Edit'] }],
+  });
+
+  const taskID = await ctx.joinSession(claim);
+  const read = await ctx.callTool(claim, 'coding.read', { task: taskID, prompt: true, tail: 1 });
+
+  const output = ctx.tools.get('coding.read')?.output;
+
+  invariant(output);
+  invariant(read.outcome.status === 'ok');
+
+  expect(buildSchemaParser(output)(read.outcome.result)).toStrictEqual({ isValid: true });
 });
