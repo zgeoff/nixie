@@ -21,6 +21,7 @@ export interface ErasureRunnerValues {
   readonly conversation_imp: Pick<ServerPartValues['conversation_imp'], 'cleanupSessions'>;
   readonly sandbox_runner: Pick<ServerPartValues['sandbox_runner'], 'cleanupSessions'>;
   readonly memory: Pick<ServerPartValues['memory'], 'finishEvidencePurges'>;
+  readonly phone: Pick<ServerPartValues['phone'], 'bindForget'>;
 }
 
 // The runner takes every forget through the same steps. Only the server reaches the sessions, the
