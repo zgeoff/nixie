@@ -1,6 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ConnectionAccount } from '../connection/open-connection-values';
 import { sealConnectionValues } from '../connection/open-connection-values';
+import { writeAddressVersion } from '../connection/write-address-version';
 import { connectedCodec } from '../record/connected-codec';
 import type { ServiceContext } from '../service-context';
 import type { ConnectionMissingScope, ConnectionRow, ConnectionTables } from '../types';
@@ -61,6 +62,13 @@ export async function writeNewConnection(
       .deleteFrom('consent_requests')
       .where('consent_id', '=', finished.consentID)
       .execute();
+
+    await writeAddressVersion(tx, {
+      addressRef: finished.credential.connection_id,
+      connectionID: finished.credential.connection_id,
+      accountSealed: sealed.account,
+      createdAt: context.now(),
+    });
 
     await writeRecordsInTransaction(tx, context.log, [
       {

@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { startTestLog } from '@heynixie/log/test-utils';
-import { knownContactsProjection, readKnownContacts } from '@heynixie/policy';
+import { knownContactsProjection, placesProjection, readKnownContacts } from '@heynixie/policy';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
 import { buildContactTool } from './build-contact-tool';
 
@@ -11,7 +11,7 @@ async function setupTest() {
 
   const log = {
     ...started.log,
-    projections: [...started.log.projections, knownContactsProjection],
+    projections: [...started.log.projections, knownContactsProjection, placesProjection],
   };
 
   const tool = buildContactTool(

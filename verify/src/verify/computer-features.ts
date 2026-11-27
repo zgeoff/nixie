@@ -27,4 +27,9 @@ export const computerFeatures = [
     summary: 'See that a nixie with no computer offers none',
     paths: featurePaths['computer-off'],
   },
+  {
+    name: 'trusted-places',
+    summary: 'Trust a site once',
+    paths: featurePaths['trusted-places'],
+  },
 ] as const;

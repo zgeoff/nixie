@@ -1,3 +1,4 @@
+import { toCanonicalDestination } from '../place/to-canonical-destination';
 import type { KnownContact } from '../types';
 
 export type IsTypedText = (text: string) => boolean;
@@ -12,9 +13,15 @@ export function isCodeCheckPassed(
 ): boolean {
   const named = collectTypedNames(contacts, isTypedName);
 
+  const namedDestinations = new Set(
+    named.flatMap((contact) =>
+      contact.destination === null ? [] : [toCanonicalDestination(contact.destination)],
+    ),
+  );
+
   return destinations.every(
     (destination) =>
-      isTyped(destination) || named.some((contact) => contact.destination === destination),
+      isTyped(destination) || namedDestinations.has(toCanonicalDestination(destination)),
   );
 }
 

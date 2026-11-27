@@ -6,6 +6,11 @@ import { z } from 'zod';
 
 // What a tool_called record holds that the decision point reads again.
 export interface StoredCall {
+  readonly callID: string;
+
+  // the sequence of the call's own record
+  readonly sequence: number;
+  readonly thread: string | null;
   readonly tool: string;
   readonly input: JSONObject;
   readonly destinations: readonly CallDestination[];
@@ -38,9 +43,13 @@ export async function readStoredCall(log: Log, sequence: number): Promise<Stored
   }
 
   const erasable = erasableSchema.parse(record.erasable.fields);
+  const called = toolCalledCodec.decode(record.payload);
 
   return {
-    tool: toolCalledCodec.decode(record.payload).tool,
+    callID: called.callID,
+    sequence,
+    thread: record.thread,
+    tool: called.tool,
     input: erasable.input,
     destinations: erasable.destinations,
     inputs,

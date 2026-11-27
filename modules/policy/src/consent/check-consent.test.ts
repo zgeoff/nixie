@@ -146,7 +146,17 @@ test.each(['timeout', 'error', 'unreadable'] as const)(
 test('it passes the code check for a typed name that matches exactly one known contact', async () => {
   const ctx = setupTest({
     messages: [buildTypedMessage(3, 'Mail Sam the report', 1_794_550_000_000)],
-    inputs: { contacts: [{ contactID: 'c1', name: 'Sam', destination: 'sam@example.org' }] },
+    inputs: {
+      places: [
+        {
+          placeID: 'c1',
+          shortID: 'c1',
+          key: { kind: 'raw', value: 'sam@example.org' },
+          trust: 'known',
+          name: 'Sam',
+        },
+      ],
+    },
   });
 
   const decided = await ctx.decide(
@@ -159,13 +169,51 @@ test('it passes the code check for a typed name that matches exactly one known c
   expect(decided.decision).toMatchObject({ outcome: 'allow', stage: 8 });
 });
 
+test('it passes the code check for a typed name when the destination spells the address in another case', async () => {
+  const ctx = setupTest({
+    messages: [buildTypedMessage(3, 'Mail Sam the report', 1_794_550_000_000)],
+    inputs: {
+      places: [
+        {
+          placeID: 'c1',
+          shortID: 'c1',
+          key: { kind: 'address', address: 'sam@example.org' },
+          trust: 'known',
+          name: 'Sam',
+        },
+      ],
+    },
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      turnMessageSequence: 3,
+      destinations: [{ value: 'Sam@Example.org', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'allow', stage: 8 });
+});
+
 test('it fails the code check for a typed name that two known contacts share', async () => {
   const ctx = setupTest({
     messages: [buildTypedMessage(3, 'Mail Sam the report', 1_794_550_000_000)],
     inputs: {
-      contacts: [
-        { contactID: 'c1', name: 'Sam', destination: 'sam@example.org' },
-        { contactID: 'c2', name: 'Sam', destination: 'sam@example.net' },
+      places: [
+        {
+          placeID: 'c1',
+          shortID: 'c1',
+          key: { kind: 'raw', value: 'sam@example.org' },
+          trust: 'known',
+          name: 'Sam',
+        },
+        {
+          placeID: 'c2',
+          shortID: 'c2',
+          key: { kind: 'raw', value: 'sam@example.net' },
+          trust: 'known',
+          name: 'Sam',
+        },
       ],
     },
   });
@@ -226,7 +274,17 @@ test('it shows the checker the call and marks a pasted span', async () => {
 test('it fails the code check for a contact name that is only the start of a longer typed word', async () => {
   const ctx = setupTest({
     messages: [buildTypedMessage(3, 'Send the parcel to Samson', 1_794_550_000_000)],
-    inputs: { contacts: [{ contactID: 'c1', name: 'Sam', destination: 'sam@example.org' }] },
+    inputs: {
+      places: [
+        {
+          placeID: 'c1',
+          shortID: 'c1',
+          key: { kind: 'raw', value: 'sam@example.org' },
+          trust: 'known',
+          name: 'Sam',
+        },
+      ],
+    },
   });
 
   const decided = await ctx.decide(

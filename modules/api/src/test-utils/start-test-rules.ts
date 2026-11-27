@@ -145,7 +145,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     readInputs: async (snapshot: string) => {
       const read = await readSnapshotPolicy(writer.db, snapshot);
 
-      return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
+      return { rules: read.rules, places: [], tools: read.tools };
     },
     findTaskDestinations: () => [],
   };

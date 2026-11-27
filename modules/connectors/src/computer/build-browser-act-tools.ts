@@ -6,7 +6,11 @@ import { buildIdleNote } from './build-idle-note';
 import type { ComputerState } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { findURLHost } from './find-url-host';
+import type { ClickReach } from './pick-click-reach';
+import { pickClickReach } from './pick-click-reach';
 import { refuseTabGone } from './refuse-tab-gone';
+import type { ComputerOutcome } from './run-computer-call';
 import {
   makeActionScans,
   refuseComputer,
@@ -74,6 +78,7 @@ export function buildBrowserActTools(
       declaration: {
         effects: ['send'],
         destinations: [],
+        requiresDestination: true,
         amount: null,
         content: ['value'],
         results: actResults,
@@ -102,8 +107,9 @@ export function buildBrowserActTools(
       },
       output: actOutput,
       declaration: {
-        effects: ['send'],
+        effects: ['fetch'],
         destinations: [],
+        requiresDestination: true,
         amount: null,
         content: [],
         results: actResults,
@@ -127,6 +133,8 @@ const prepareTimeoutMs = 30_000;
 
 // Reads the tab's URL, which becomes the destination and the URL the action expects, and keeps the
 // browser awake until the action runs or its approval lapses.
+const clickArguments = z.object({ tab: z.string().min(1), element: z.string().min(1) });
+
 async function prepareAct(
   options: ComputerToolOptions,
   state: ComputerState,
@@ -156,12 +164,59 @@ async function prepareAct(
 
   const url = outcome.reply.page.url;
   const key = buildActionKey(preparation.tool, preparation.input);
+  const host = findURLHost(url);
+
+  if (preparation.tool !== 'computer.browser_click') {
+    state.expectations.set(key, url);
+    state.holds.get(key)?.();
+    state.holds.set(key, options.computer.hold(actionProposalLapseMs));
+
+    return { destinations: host === null ? [] : [host], expectURL: url };
+  }
+
+  const element = clickArguments.parse(preparation.input).element;
+
+  const elementOutcome = await runComputerCall(options, {
+    run: preparation.context.run,
+    namedURL: null,
+    timeoutMs: prepareTimeoutMs,
+    request: { op: 'element', tab: guestTab, element },
+  });
+
+  const reach = pickClickOutcome(elementOutcome, url);
+
+  if (!('destinations' in reach)) {
+    return reach;
+  }
 
   state.expectations.set(key, url);
+
+  const earlier = state.clicks.get(key);
+  const isAgreed = earlier === undefined || earlier === reach.isPlainLink;
+  const click = isAgreed ? reach.isPlainLink : 'changed';
+
+  state.clicks.set(key, click);
   state.holds.get(key)?.();
   state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
-  return { destinations: [new URL(url).host], expectURL: url };
+  return {
+    destinations: [...reach.destinations],
+
+    // a plain link only loads a page; any other control acts on the tab's page
+    ...(reach.isPlainLink ? {} : { effects: ['send' as const] }),
+    expectURL: url,
+  };
+}
+
+// The reach of a click from the guest's answer about the control, or the refusal that ends the call.
+function pickClickOutcome(outcome: ComputerOutcome, tabURL: string): ClickReach | DirectResult {
+  if (outcome.kind === 'refused') {
+    return outcome.result;
+  }
+
+  return outcome.reply.kind === 'element'
+    ? pickClickReach(outcome.reply.element, tabURL)
+    : refuseComputer('COMPUTER_FAILED', 'the browser answered with the wrong kind of reply');
 }
 
 const fillArguments = z.object({
@@ -170,8 +225,6 @@ const fillArguments = z.object({
   value: z.string(),
   submit: z.boolean().optional(),
 });
-
-const clickArguments = z.object({ tab: z.string().min(1), element: z.string().min(1) });
 
 // The attempt of a queued fill or click: the same call against the page it was prepared for.
 export async function runBrowserAct(
@@ -199,6 +252,18 @@ export async function runBrowserAct(
     );
   }
 
+  const changed =
+    attempt.tool === 'computer.browser_click'
+      ? await refuseChangedClick(options, state, { attempt, guestTab, expectURL, key })
+      : null;
+
+  if (changed !== null) {
+    state.expectations.delete(key);
+    state.clicks.delete(key);
+
+    return changed;
+  }
+
   const acts =
     attempt.tool === 'computer.browser_fill'
       ? fillActs(fillArguments.parse(attempt.arguments))
@@ -211,6 +276,7 @@ export async function runBrowserAct(
   });
 
   state.expectations.delete(key);
+  state.clicks.delete(key);
 
   const sorted = sortCallResult(outcome);
 
@@ -243,4 +309,45 @@ function fillActs(input: z.infer<typeof fillArguments>) {
 
 function clickActs(input: z.infer<typeof clickArguments>) {
   return { acts: [{ kind: 'click' as const, element: input.element }], submit: false };
+}
+
+interface ClickRecheck {
+  readonly attempt: ComputerAttempt;
+  readonly guestTab: string;
+  readonly expectURL: string;
+  readonly key: string;
+}
+
+// A click runs only when its control still reaches what the owner allowed: a link that became a
+// button, or one that now points to another host, is a new question.
+async function refuseChangedClick(
+  options: ComputerToolOptions,
+  state: ComputerState,
+  recheck: ClickRecheck,
+): Promise<DirectResult | null> {
+  const element = clickArguments.parse(recheck.attempt.arguments).element;
+
+  const reply = await options.computer.call({
+    timeoutMs: prepareTimeoutMs,
+    ...makeActionScans(options),
+    request: { op: 'element', tab: recheck.guestTab, element },
+  });
+
+  const reach = pickClickOutcome(sortCallResult(reply), recheck.expectURL);
+
+  if (!('destinations' in reach)) {
+    return reach;
+  }
+
+  const isSame =
+    reach.isPlainLink === state.clicks.get(recheck.key) &&
+    reach.destinations.length === recheck.attempt.destinations.length &&
+    reach.destinations.every((host, index) => host === recheck.attempt.destinations[index]);
+
+  return isSame
+    ? null
+    : refuseComputer(
+        'PAGE_CHANGED',
+        'the control this call was prepared for reaches somewhere else now, so it was not clicked',
+      );
 }

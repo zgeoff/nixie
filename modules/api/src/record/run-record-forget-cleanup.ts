@@ -14,6 +14,7 @@ import { readForgetStartCalls } from '../forget/read-forget-start-calls';
 import { screenClickToolName } from '../proposal/read-screen-picture';
 import type { APIContext, APITables } from '../types';
 import { readRecordForget } from '../utils/read-record-forget';
+import { removePlaceKeys } from './remove-place-keys';
 
 export async function runRecordForgetCleanup(
   context: APIContext,
@@ -40,6 +41,10 @@ export async function runRecordForgetCleanup(
   // A code sandbox holds unencrypted copies of what a code call read and wrote, so it goes before
   // any key does.
   await context.readCodeCleanup?.()?.([recordSequence, ...startCalls]);
+
+  // The place's keys go first: a removal or an act names its place only in its own erasable fields,
+  // so the read of the place's later records needs the forgotten record's key.
+  await removePlaceKeys(context, recordSequence);
 
   const thread = await removeForgottenKey(context, recordSequence);
 
@@ -74,7 +79,11 @@ function buildForgottenQuery(sequence: number) {
   return { kind: 'record.forgotten', sequence } as const;
 }
 
-async function removeForgottenKey(context: APIContext, recordSequence: number): Promise<string> {
+// The thread of the record, or null for a record of a place, which belongs to no conversation.
+async function removeForgottenKey(
+  context: APIContext,
+  recordSequence: number,
+): Promise<string | null> {
   const target = await context.log.writer.db
     .$extendTables<APITables>()
     .selectFrom('records')
@@ -83,8 +92,8 @@ async function removeForgottenKey(context: APIContext, recordSequence: number): 
     .executeTakeFirst();
 
   invariant(
-    target !== undefined && target.thread !== null,
-    `the forgotten record ${String(recordSequence)} has no thread`,
+    target !== undefined,
+    `the forgotten record ${String(recordSequence)} is not in the log`,
   );
 
   if (target.key_id !== null) {
@@ -131,7 +140,7 @@ async function removeCallKey(context: APIContext, callSequence: number): Promise
 
 interface ForgottenTarget {
   readonly recordSequence: number;
-  readonly thread: string;
+  readonly thread: string | null;
 }
 
 function writeRecordForgotten(context: APIContext, target: ForgottenTarget): Promise<void> {
@@ -144,7 +153,7 @@ function writeRecordForgotten(context: APIContext, target: ForgottenTarget): Pro
       {
         kind: recordForgottenCodec.kind,
         definitions: context.definitions(),
-        thread: target.thread,
+        ...(target.thread === null ? {} : { thread: target.thread }),
         payload: recordForgottenCodec.encode({ recordSequence: target.recordSequence }),
       },
     ]);

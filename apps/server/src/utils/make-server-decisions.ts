@@ -6,9 +6,11 @@ import type {
   DecisionPoint,
   DecisionPointOptions,
   EffectDeclaration,
+  PolicyPlace,
   RunConsentCheck,
 } from '@heynixie/policy';
-import { checkConsent, makeDecisionPoint, readKnownContacts } from '@heynixie/policy';
+import { checkConsent, makeDecisionPoint, parsePlace } from '@heynixie/policy';
+import { readSnapshotPlaces } from './read-snapshot-places';
 
 // A decision point that rereads a stored call passes the consent answer the call recorded, because
 // the consent checker is a model.
@@ -28,9 +30,10 @@ export interface ServerDecisionsOptions {
   // the consent checker, which starts after the decision points do
   readonly readCheck: () => RunConsentCheck | null;
 
-  // the addresses that are you, such as each connected Google account's own: a mail to one needs no
-  // card, and forgetting the connection takes the address away
-  readonly readOwnerDestinations: () => Promise<readonly string[]>;
+  // The address of an account that is you, by the reference of one address a Google connection
+  // kept, which a renewal never changes. Null once the account is gone, and a forget of the
+  // connection takes every address away: the snapshot holds the reference, never the address.
+  readonly readOwnerAddress: (reference: string) => Promise<string | null>;
 }
 
 const unavailable: ConsentAnswer = { verdict: 'unsure', failure: 'error' };
@@ -41,14 +44,21 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
       findDeclaration,
       readInputs: async (snapshot) => {
         const read = await readSnapshotPolicy(options.log.writer.db, snapshot);
-        const contacts = await readKnownContacts(options.log, read.contactIDs);
+        const stored = await readSnapshotPlaces(options.log, snapshot);
 
-        return {
-          rules: read.rules,
-          contacts,
-          tools: read.tools,
-          ownerDestinations: await options.readOwnerDestinations(),
-        };
+        const held = new Set(stored.map((place) => place.placeID));
+
+        const references = read.places
+          .filter((place) => place.trust === 'self' && !held.has(place.placeID))
+          .map((place) => place.placeID);
+
+        const addresses = await Promise.all(
+          references.map((reference) => options.readOwnerAddress(reference)),
+        );
+
+        const places: readonly PolicyPlace[] = [...stored, ...buildOwnPlaces(addresses)];
+
+        return { rules: read.rules, places, tools: read.tools };
       },
       findTaskDestinations: () => [],
       readConsent:
@@ -66,4 +76,29 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
             facts,
           )),
     });
+}
+
+// Each account that is you is a place at self that holds no record, and a call decides under the
+// accounts its snapshot lists. Every one takes the same ID, because a decision stores the ID of each
+// place it used and an address must stay out of the log.
+const ownPlaceID = 'self';
+
+function buildOwnPlaces(addresses: readonly (string | null)[]): readonly PolicyPlace[] {
+  return addresses.flatMap((address) => {
+    if (address === null || address === '') {
+      return [];
+    }
+
+    const parsed = parsePlace(address);
+
+    return [
+      {
+        placeID: ownPlaceID,
+        shortID: 'self',
+        key: parsed?.kind === 'address' ? parsed : ({ kind: 'raw', value: address } as const),
+        trust: 'self' as const,
+        name: null,
+      },
+    ];
+  });
 }

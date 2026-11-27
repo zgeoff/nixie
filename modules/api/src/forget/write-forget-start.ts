@@ -2,6 +2,7 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import { recordForgetStartedCodec, writeRecordPurgeSet } from '@heynixie/memory';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import { readPlaceCascadeKeyIDs } from '../record/read-place-cascade-key-ids';
 import type { APIContext } from '../types';
 import { probeForgettableRecord } from '../utils/probe-forgettable-record';
 import { readRecordForget } from '../utils/read-record-forget';
@@ -30,6 +31,11 @@ export async function writeForgetStart(
     return begun.recordedAt;
   }
 
+  const cascadeKeyIDs = await readPlaceCascadeKeyIDs(
+    { ...context.log, writer: { ...context.log.writer, db: tx } },
+    input.sequence,
+  );
+
   const [record] = await writeRecordsInTransaction(tx, context.log, [
     {
       kind: recordForgetStartedCodec.kind,
@@ -38,6 +44,7 @@ export async function writeForgetStart(
       payload: recordForgetStartedCodec.encode({
         recordSequence: input.sequence,
         ...(startCallSequences.length === 0 ? {} : { startCallSequences: [...startCallSequences] }),
+        ...(cascadeKeyIDs.length === 0 ? {} : { cascadeKeyIDs: [...cascadeKeyIDs] }),
       }),
     },
   ]);

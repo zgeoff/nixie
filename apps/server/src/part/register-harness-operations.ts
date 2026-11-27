@@ -10,7 +10,8 @@ import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
 import type { NotebookStore } from '@heynixie/notebook';
 import type { FakePhoneProvider } from '@heynixie/phone/fake';
-import { readPendingActionProposals } from '@heynixie/policy';
+import type { PlaceContext } from '@heynixie/policy';
+import { readPendingActionProposals, writePlaceAdded } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
@@ -27,6 +28,7 @@ export interface HarnessParts {
   readonly phone: FakePhoneProvider | null;
   readonly notebook: NotebookStore;
   readonly runInForceSeed: () => Promise<unknown>;
+  readonly runInForce: PlaceContext['runInForce'];
   readonly readToolNames: () => readonly string[];
 }
 
@@ -167,6 +169,28 @@ export function registerHarnessOperations(
     }
 
     return answers.approved;
+  });
+
+  // The owner's trust in one site, which no page adds yet: the entry goes in the directory, and the
+  // next call decides under a snapshot that holds it. It returns the short ID of the entry.
+  link.registerOperation('trustPlace', schemas.trustPlace, async (request) => {
+    const added = await writePlaceAdded(
+      {
+        log: context.log,
+        definitions: context.definitions,
+        runInForce: parts.runInForce,
+      },
+      {
+        key: { kind: 'site', domain: request.domain, subdomains: false },
+        trust: request.trust,
+        name: null,
+        addedBy: 'you',
+      },
+    );
+
+    invariant(added.status === 'added', `the place was refused: ${JSON.stringify(added)}`);
+
+    return added.shortID;
   });
 
   link.registerOperation('readRegisteredTools', schemas.readRegisteredTools, () => [

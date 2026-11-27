@@ -1,7 +1,9 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { removeKey } from '../backend/mint-key';
-import { sealConnectionValues } from '../connection/open-connection-values';
+import type { ConnectionAccount } from '../connection/open-connection-values';
+import { openConnectionValues, sealConnectionValues } from '../connection/open-connection-values';
 import { readConnectionRowByID } from '../connection/read-connection-rows';
+import { writeAddressVersion } from '../connection/write-address-version';
 import { connectedCodec } from '../record/connected-codec';
 import type { ServiceContext } from '../service-context';
 import type { ConnectionRow, ConnectionTables } from '../types';
@@ -30,6 +32,8 @@ export async function writeRenewedConnection(
     return 'stale';
   }
 
+  const isAddressNew = await probeAddressNew(context, target, finished.account);
+
   const written = await withWriteTransaction(context.log.writer, async (tx) => {
     const tables = tx.$extendTables<ConnectionTables>();
 
@@ -41,7 +45,7 @@ export async function writeRenewedConnection(
 
     const current = await tables
       .selectFrom('connections')
-      .select(['binding', 'removal_counter', 'token_key_id', 'short_id'])
+      .select(['binding', 'removal_counter', 'token_key_id', 'short_id', 'account_sealed'])
       .where('connection_id', '=', targetID)
       .executeTakeFirst();
 
@@ -56,6 +60,25 @@ export async function writeRenewedConnection(
     }
 
     const counter = current.removal_counter + 1;
+
+    // A snapshot names an address by its reference, so a new address takes a new one and the
+    // address before keeps its own, the first address of a connection made before addresses were
+    // kept included.
+    if (isAddressNew && current.account_sealed !== null) {
+      await writeAddressVersion(tx, {
+        addressRef: targetID,
+        connectionID: targetID,
+        accountSealed: current.account_sealed,
+        createdAt: context.now(),
+      });
+
+      await writeAddressVersion(tx, {
+        addressRef: crypto.randomUUID(),
+        connectionID: targetID,
+        accountSealed: sealed.account,
+        createdAt: context.now(),
+      });
+    }
 
     await tables
       .updateTable('connections')
@@ -134,6 +157,19 @@ export async function writeRenewedConnection(
   }
 
   return 'written';
+}
+
+// true when the renewal reaches an address that the connection's account did not hold.
+async function probeAddressNew(
+  context: ServiceContext,
+  target: ConnectionRow,
+  account: ConnectionAccount,
+): Promise<boolean> {
+  const opened = await openConnectionValues(context.log, [target]);
+
+  const before = opened.get(target.connection_id)?.account?.email ?? null;
+
+  return before?.toLowerCase() !== account.email?.toLowerCase();
 }
 
 // The access token that the exchange kept in memory follows the token to its connection, under the

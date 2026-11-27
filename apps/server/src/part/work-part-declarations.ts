@@ -27,6 +27,7 @@ import invariant from 'tiny-invariant';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
 import { buildServerMailContext } from '../mail/build-server-mail-context';
+import { makePlaceSeed } from '../place/make-place-seed';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runServerReminderMoves } from '../reminder/run-server-reminder-moves';
@@ -419,6 +420,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           phone: reader.find('phone')?.fake ?? null,
           notebook: reader.get('notebook'),
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
+          runInForce: makePlaceSeed(parts, null),
           readToolNames: reader.get('tool_endpoint').readToolNames,
         });
 

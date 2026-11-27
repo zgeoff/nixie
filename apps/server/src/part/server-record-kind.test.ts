@@ -59,6 +59,10 @@ function setupTest() {
     'trigger.mail_arrived': ['from', 'subject', 'body'],
     'trigger.mail_woke': ['mails'],
     'trigger.task_input': ['event'],
+    'places.added': ['key', 'name'],
+    'places.changed': ['name'],
+    'places.removed': ['placeID'],
+    'places.acted': ['placeID', 'shortID'],
     'worker.run_ended': ['detail'],
     'worker.turn_ended': ['text'],
 

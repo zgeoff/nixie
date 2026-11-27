@@ -6,6 +6,7 @@ export type AttemptStep =
       readonly kind: 'go';
       readonly destinations: readonly string[];
       readonly replyTargets: readonly string[];
+      readonly writeActs?: () => Promise<void>;
     }
   | { readonly kind: 'deny'; readonly verdict: Extract<AttemptVerdict, { kind: 'deny' }> }
   | { readonly kind: 'hold'; readonly verdict: Extract<AttemptVerdict, { kind: 'ask' }> };
@@ -22,6 +23,7 @@ export function pickAttemptStep(
       kind: 'go',
       destinations: verdict.destinations,
       replyTargets: verdict.replyTargets ?? [],
+      ...(verdict.writeActs === undefined ? {} : { writeActs: verdict.writeActs }),
     };
   }
 

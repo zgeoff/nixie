@@ -40,6 +40,7 @@ async function setupTest() {
   });
 
   const parts: SeedParts = {
+    config: {},
     context: context.apiContext,
     source: createPathSource({ directory: root }),
     tasks: buildTestTaskSeed(),

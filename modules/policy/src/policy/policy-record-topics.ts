@@ -8,4 +8,8 @@ export const policyRecordTopics = {
   'policy.action_lapsed': ['approvals'],
   'policy.contact_marked_known': [],
   'policy.contact_unmarked': [],
+  'places.added': [],
+  'places.changed': [],
+  'places.removed': [],
+  'places.acted': [],
 } as const satisfies Record<PolicyRecordKind, readonly LiveTopic[]>;

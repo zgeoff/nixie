@@ -11,6 +11,9 @@ export interface PageFetch {
   readonly log: Pick<Log, 'writer'>;
   readonly readPage: FetchSandbox['readPage'];
 
+  // the short ID of the place you blocked that covers a URL, or null; absent when no place is blocked
+  readonly findBlockedPlace?: (url: string) => Promise<string | null>;
+
   // what the secret scan of this call needs
   readonly secretScan: SecretScanSetup;
   readonly session: PageSession;

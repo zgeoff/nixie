@@ -50,6 +50,7 @@ test('it starts a second seed over the same parts only after the first returns',
   const stub = buildStubHeldSource(createPathSource({ directory: ctx.root }));
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: stub.source,
     tasks: buildTestTaskSeed(),
@@ -84,6 +85,7 @@ test('it puts the seeded definitions in force', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -128,6 +130,7 @@ test('it writes one operator log line at startup that names each prompt with its
   const log = mock<SeedParts['log']>(() => {});
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -165,6 +168,7 @@ test('it writes the safety line once while the same definitions stay in force', 
   const log = mock<SeedParts['log']>(() => {});
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -205,6 +209,7 @@ test('it writes no safety line when every prompt keeps its safety part', async (
   const log = mock<SeedParts['log']>(() => {});
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -235,6 +240,7 @@ test('it runs the next seed over the same parts after one fails, and gives the f
   const logger = buildStubFailingLogger();
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),

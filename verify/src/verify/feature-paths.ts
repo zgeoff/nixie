@@ -147,6 +147,7 @@ export const featurePaths = {
   'computer-screen': buildFeatureGlobs(workspace, computer),
   'computer-watch': buildFeatureGlobs(workspace, joinReaches(computer, images)),
   'computer-off': buildFeatureGlobs(workspace, computer),
+  'trusted-places': buildFeatureGlobs(workspace, computer),
 } as const satisfies Record<string, readonly string[]>;
 
 interface Workspace {

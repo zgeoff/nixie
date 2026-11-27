@@ -47,6 +47,7 @@ test('it seeds a new revision and returns the definitions it put in force', asyn
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -74,6 +75,7 @@ test('it keeps the last good definitions in force when the source refuses a snap
   );
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),

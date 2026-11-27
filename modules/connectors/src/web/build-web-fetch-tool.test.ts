@@ -21,10 +21,30 @@ import { removeWebFetchThread } from './remove-web-fetch-thread';
 async function setupTest() {
   const clock = createFakeClock({ startMs: 1_000_000 });
 
+  const log = await startTestLog();
+
+  const backoff = makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock });
+
   return {
-    log: await startTestLog(),
+    log,
     clock,
-    backoff: makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock }),
+    backoff,
+    buildTool: (readPage: Parameters<typeof buildWebFetchTool>[0]) =>
+      buildWebFetchTool(readPage, {
+        log,
+        textBytes: 20_000,
+        linkPathChars: 24,
+        pageStoreBytes: 20_971_520,
+        imageLongEdge: 1568,
+        backoff,
+        backoffWaitMs: 5000,
+        cacheMs: 0,
+        findSecret: () => null,
+        isOwnerTyped: () => Promise.resolve(false),
+        logger: () => {},
+        secretTypedURLCovers: 'redirects',
+        clock,
+      }),
   };
 }
 
@@ -3256,4 +3276,101 @@ test('it refuses a fresh that is no boolean, and fetches nothing', async () => {
 
   expect(outcome).toStrictEqual({ status: 'error', message: 'fresh is true or false' });
   expect(readPage).not.toHaveBeenCalled();
+});
+
+test('it resolves the host of a URL as the destination of the call', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.buildTool(() => Promise.reject(new Error('no read expected')));
+
+  const run = {
+    runID: 'conversation',
+    thread: 'conversation',
+    logThread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  const resolved = await tool.resolveDestinations?.(
+    { url: 'https://Library.example.org:8443/x?q=1' },
+    { run },
+  );
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    destinations: [{ value: 'library.example.org', replyTarget: false }],
+  });
+});
+
+test('it resolves the host of a link that the session showed as the destination of the call', async () => {
+  const ctx = await setupTest();
+
+  const readPage = mock((url: string) =>
+    Promise.resolve<PageReply>({
+      kind: 'page',
+      retryAfterMs: null,
+      isGated: true,
+      url,
+      status: 200,
+      contentType: 'text/html',
+      text: 'A link \u{E000}0\u{E001}.',
+      links: ['https://other.test/bread'],
+      isTruncated: false,
+      blocked: null,
+    }),
+  );
+
+  const tool = ctx.buildTool(readPage);
+
+  const run = {
+    runID: 'conversation',
+    thread: 'conversation',
+    logThread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://bakery.test/news' },
+      toolUseID: null,
+    },
+    { callSequence: 1, run },
+  );
+
+  const resolved = await tool.resolveDestinations?.({ link: 'L1' }, { run });
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    destinations: [{ value: 'other.test', replyTarget: false }],
+  });
+});
+
+test('it resolves no destination for a stored page, and none for a URL that is no web address', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.buildTool(() => Promise.reject(new Error('no read expected')));
+
+  const run = {
+    runID: 'conversation',
+    thread: 'conversation',
+    logThread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  const resolved = await Promise.all([
+    tool.resolveDestinations?.({ page: 'abcdefghij' }, { run }),
+    tool.resolveDestinations?.({ url: 'ftp://files.example.org/x' }, { run }),
+  ]);
+
+  expect(resolved).toStrictEqual([
+    { status: 'ok', destinations: [] },
+    { status: 'ok', destinations: [] },
+  ]);
 });

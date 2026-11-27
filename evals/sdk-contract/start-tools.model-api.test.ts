@@ -24,7 +24,7 @@ async function setupTest() {
 
   // the coding runner reads its sessions from the gateway as nixie starts; a refusal leaves the tools
   network.use(
-    http.post('https://atc.example.test/mcp', () =>
+    http.post('https://atc.example.test/rpc/*', () =>
       HttpResponse.json({ error: 'refused' }, { status: 500 }),
     ),
   );
@@ -33,7 +33,7 @@ async function setupTest() {
     extraConfig: [
       'coding:',
       '  atc:',
-      '    url: https://atc.example.test/mcp',
+      '    url: https://atc.example.test',
       '    principal: service:nixie',
       '    token: deployment:atc_token',
       '    targets:',

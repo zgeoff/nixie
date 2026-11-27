@@ -1,3 +1,4 @@
+import type { PlaceRef } from '@heynixie/policy';
 import type { RuleInForce, SnapshotPolicy } from '../types';
 
 // Each rule enters with its revision, origin and runtime change, so a snapshot names exactly which
@@ -5,11 +6,15 @@ import type { RuleInForce, SnapshotPolicy } from '../types';
 export function addSeededRules(
   policy: SnapshotPolicy,
   inForce: readonly RuleInForce[],
-  contacts: readonly string[],
+  places: readonly PlaceRef[],
 ): SnapshotPolicy {
   return {
     ...policy,
-    contacts,
+    places: places.map((place) => ({
+      placeID: place.placeID,
+      trust: place.trust,
+      ...(place.nameSequence === undefined ? {} : { nameSequence: place.nameSequence }),
+    })),
     rules: [
       ...policy.rules,
       ...inForce.map((entry) => ({

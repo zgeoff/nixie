@@ -928,8 +928,12 @@ test('it lets no registered tool run a call that no rule in force allows', async
 
   gate.resolve();
 
+  // A tool whose prepare hook refuses before the decision, such as a screenshot that cannot read the
+  // window in front, never runs.
   const ran = answers.flatMap((answer, index) =>
-    answer.includes('"isError":true') || answer.includes('Waiting for approval')
+    answer.includes('"isError":true') ||
+    answer.includes('Waiting for approval') ||
+    answer.includes('"structuredContent":{"refused":')
       ? []
       : [`${names[index] ?? '?'}: ${answer}`],
   );

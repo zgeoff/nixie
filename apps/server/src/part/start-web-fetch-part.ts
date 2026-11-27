@@ -3,6 +3,7 @@ import type { Log } from '@heynixie/log';
 import { makeOwnerTypedCheck } from '@heynixie/memory';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { makeSecretFinder } from '@heynixie/secret-scan';
+import { makeBlockedPlaceFinder } from '../place/make-blocked-place-finder';
 import { getSandboxImage } from '../sandbox/get-sandbox-image';
 import type { ServerPartsOptions } from '../server/start-server';
 import type { WebFetch } from './start-web-fetch';
@@ -39,6 +40,7 @@ export async function startWebFetchPart(inputs: WebFetchPartInputs): Promise<Web
     isOwnerTyped: makeOwnerTypedCheck(inputs.log),
     isDeviceFetchOn: options.config.devices !== undefined,
     logger: options.log,
+    makeBlockedPlaceFinder: makeBlockedPlaceFinder(inputs.log),
     ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
   });
 

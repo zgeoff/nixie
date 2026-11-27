@@ -126,6 +126,12 @@ export interface NixieTables {
     readonly cursor: string;
     readonly written_at: number;
   };
+  readonly connection_addresses: {
+    readonly address_ref: string;
+    readonly connection_id: string;
+    readonly account_sealed: Uint8Array<ArrayBuffer>;
+    readonly created_at: number;
+  };
   readonly connections: {
     readonly connection_id: string;
     readonly short_id: string;
@@ -586,6 +592,25 @@ export interface NixieTables {
     readonly received_at: number;
     readonly record_sequence: number;
     readonly updated_sequence: number;
+  };
+  readonly place_removals: {
+    readonly place_id: string;
+    readonly removed_sequence: number;
+  };
+  readonly places: {
+    readonly place_id: string;
+    readonly short_id: string;
+    readonly origin: string;
+    readonly kind: string;
+    readonly trust: string;
+    readonly added_by: string;
+    readonly name: string | null;
+    readonly domain: string | null;
+    readonly subdomains: number | null;
+    readonly added_sequence: number;
+    readonly removed_sequence: number | null;
+    readonly name_sequence: number | null;
+    readonly last_used_at: number | null;
   };
   readonly projection_changes: {
     readonly sequence: number;

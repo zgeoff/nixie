@@ -1,8 +1,10 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
 import { createCallsProcedures } from '@heynixie/calls';
+import { readOwnerAddress } from '@heynixie/connections';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { buildDevicesFeatureProcedures } from '@heynixie/devices';
+import { writeChatChannels } from '@heynixie/policy';
 import { buildRunSettings } from '@heynixie/sessions';
 import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
@@ -10,6 +12,7 @@ import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-port';
 import { listFeaturesOn } from '../feature/list-features-on';
 import { createServerMail } from '../mail/create-server-mail';
+import { listChatChannels } from '../place/list-chat-channels';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -45,6 +48,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
     ],
     start: async (parts) => {
       const options = parts.get('inputs').options;
+
+      writeChatChannels(listChatChannels());
 
       const coding = buildServerCoding({
         config: options.config,
@@ -158,12 +163,12 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'decisions',
     needs: ['inputs', 'context'],
-    uses: ['checker', 'google_tools'],
+    uses: ['checker'],
     start: (parts) =>
       Promise.resolve(
         makeServerDecisions({
-          readOwnerDestinations: () =>
-            parts.find('google_tools')?.readAccounts() ?? Promise.resolve([]),
+          readOwnerAddress: (addressRef) =>
+            readOwnerAddress(parts.get('context').apiContext.log, addressRef),
           log: parts.get('context').apiContext.log,
           linkMaxAgeMs: parts.get('inputs').options.config.policy.consent.linkMaxAgeMs,
           readCheck: () => parts.find('checker')?.check ?? null,

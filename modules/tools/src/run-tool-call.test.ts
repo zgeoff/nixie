@@ -3,8 +3,12 @@ import type { BudgetsContext } from '@heynixie/budgets';
 import { buildBuiltInBudgets, readBudgetLedger } from '@heynixie/budgets';
 import { readRecordAttachments, readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
-import { buildActionHash } from '@heynixie/policy';
-import { readStarterDecisionPoint, readStarterRules } from '@heynixie/policy/test-utils';
+import { buildActionHash, readPlaces, writePlaceAdded } from '@heynixie/policy';
+import {
+  buildTestDecisionPoint,
+  readStarterDecisionPoint,
+  readStarterRules,
+} from '@heynixie/policy/test-utils';
 import type { ProposalConfig } from '@heynixie/proposals';
 import { defaultProposalConfig } from '@heynixie/proposals';
 import { waitForCondition } from '@heynixie/testing';
@@ -64,9 +68,8 @@ async function setupTest(config: SetupConfig) {
             readInputs: () =>
               Promise.resolve({
                 rules: [...readStarterRules(), ...(config.rules ?? [])],
-                contacts: [],
+                places: [],
                 tools: config.snapshotTools ?? new Map(),
-                ownerDestinations: [],
               }),
           }),
     }),
@@ -4080,6 +4083,52 @@ test('it asks a call whose prepare step adds the send effect, and records the pr
   });
 });
 
+test('it asks a call at a read place when its prepare step adds the send effect', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'image_draw',
+        declaration: { effects: ['fetch'] },
+        prepare: () =>
+          Promise.resolve({ destinations: ['library.example.org'], effects: ['fetch', 'send'] }),
+      }),
+    ],
+  });
+
+  const point = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'place-library',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: false },
+        trust: 'read',
+      },
+    ],
+    declaration: {
+      effects: ['fetch'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    },
+  });
+
+  await runToolCall(
+    { tool: 'image_draw', input: { query: 'a cove' }, toolUseID: 'toolu_p9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['image_draw'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide: point.decide },
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(called?.record.decision).toMatchObject({ outcome: 'ask' });
+});
+
 test('it runs a call direct when a rule allows the send its prepare step names', async () => {
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'drawn' } }));
 
@@ -4692,4 +4741,134 @@ test('it fences a result that holds no field, because its source map is empty', 
       },
     ],
   });
+});
+
+test.each([
+  ['an act place allows a note', 'act', ['note'], 1],
+  ['a blocked place denies a note', 'blocked', ['note'], 0],
+] as const)(
+  'it writes %s as one acted record and a last use',
+  async (_title, trust, effects, count) => {
+    const ctx = await setupTest({
+      tools: [
+        buildMockToolDefinition({
+          name: 'test.send',
+          input: { properties: { to: { type: 'string' } }, required: ['to'] },
+          declaration: { effects: [...effects], destinations: ['to'] },
+        }),
+      ],
+    });
+
+    const added = await writePlaceAdded(
+      {
+        log: ctx.log,
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+        runInForce: () => Promise.resolve(),
+      },
+      {
+        key: { kind: 'address', address: 'sam@example.org' },
+        trust,
+        name: null,
+        addedBy: 'you',
+      },
+    );
+
+    invariant(added.status === 'added');
+
+    const point = buildTestDecisionPoint({
+      places: [{ id: added.placeID, key: { kind: 'address', address: 'sam@example.org' }, trust }],
+      declaration: {
+        effects: [...effects],
+        destinations: ['to'],
+        amount: null,
+        content: [],
+        results: {},
+      },
+    });
+
+    await runToolCall(
+      { tool: 'test.send', input: { query: 'hi', to: 'sam@example.org' }, toolUseID: 'toolu_a1' },
+      {
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      { ...ctx.options, decide: point.decide },
+    );
+
+    const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+    const acted = entries.filter((entry) => entry.record.kind === 'places.acted');
+
+    const places = await readPlaces(ctx.log);
+
+    expect({ acted: acted.length, isUsed: places[0]?.lastUsedAt !== null }).toStrictEqual({
+      acted: count,
+      isUsed: count === 1,
+    });
+  },
+);
+
+test('it sets the last use of a known place whose permission a call that then asks recorded', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_share',
+        input: { properties: { to: { type: 'string' } }, required: ['to'] },
+        declaration: { effects: ['note'], destinations: ['to'] },
+      }),
+    ],
+  });
+
+  const added = await writePlaceAdded(
+    {
+      log: ctx.log,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      runInForce: () => Promise.resolve(),
+    },
+    {
+      key: { kind: 'address', address: 'sam@example.org' },
+      trust: 'known',
+      name: null,
+      addedBy: 'you',
+    },
+  );
+
+  invariant(added.status === 'added');
+
+  const point = buildTestDecisionPoint({
+    places: [
+      { id: added.placeID, key: { kind: 'address', address: 'sam@example.org' }, trust: 'known' },
+    ],
+    answer: { verdict: 'not_asserted', failure: null },
+    declaration: {
+      effects: ['note'],
+      destinations: ['to'],
+      amount: null,
+      content: [],
+      results: {},
+    },
+  });
+
+  await runToolCall(
+    { tool: 'notes_share', input: { query: 'hi', to: 'sam@example.org' }, toolUseID: 'toolu_a1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_share'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide: point.decide },
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+  const [place] = await readPlaces(ctx.log);
+
+  expect({
+    outcome: called?.record.decision?.outcome,
+    lastUsedAt: place?.lastUsedAt,
+  }).toStrictEqual({ outcome: 'ask', lastUsedAt: called?.record.recordedAt.getTime() });
 });

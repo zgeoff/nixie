@@ -48,6 +48,12 @@ export function buildConnectionErasable(
           })
           .where('connection_id', '=', target.targetID)
           .execute();
+
+        await tx
+          .$extendTables<ConnectionTables>()
+          .deleteFrom('connection_addresses')
+          .where('connection_id', '=', target.targetID)
+          .execute();
       });
     },
   };

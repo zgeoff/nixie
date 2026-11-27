@@ -81,6 +81,9 @@ export function buildNixieOperationSchemas() {
     // the owner's approval of each open mandate proposal, which takes a passkey on the page
     approveMandate: z.null(),
 
+    // a site that the owner trusts, which the places page will add when it exists
+    trustPlace: z.object({ domain: z.string(), trust: z.enum(['read', 'act']) }),
+
     // a mail that arrives at the assistant's own mailbox, on the in-memory host of a test build
     deliverMail: z.object({
       from: z.string(),

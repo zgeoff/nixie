@@ -50,6 +50,7 @@ test("it queues an approval's seed behind a definitions seed in flight, and the 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const plain: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),

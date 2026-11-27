@@ -59,8 +59,8 @@ test("it puts the coding runner's queued actions in the policy and the task tool
 });
 
 test.each([
-  ['Marisol', 'fd8e0ff7d42741ec02559311ce15fa2ad93c2334c2af4a6d85b41beb2ce0cb52'],
-  [null, '8484864dd6b00031bf2c1ee3c2bd1005016c52bf7d7363b4e4b7cdac9cfd7cd5'],
+  ['Marisol', '5992c8fb7f4cdcd0cf11bb468fde07ca8e2871cfb383164cd40f509b5d9c5673'],
+  [null, '963b739c5ad572789ee2bd1cf45a2e6cd05456762f4af11bd86389346a1607f3'],
 ])(
   'it builds the pinned policy hash from the built-in checker prompts for the owner name %s when no prompt has an override',
   (name, policyHash) => {
@@ -156,7 +156,7 @@ test.each([
   });
 
   expect(snapshot.policyHash).not.toBe(
-    'fd8e0ff7d42741ec02559311ce15fa2ad93c2334c2af4a6d85b41beb2ce0cb52',
+    '5992c8fb7f4cdcd0cf11bb468fde07ca8e2871cfb383164cd40f509b5d9c5673',
   );
 });
 
@@ -187,7 +187,7 @@ test('it keeps the policy hash when only a prompt other than the checkers has an
   });
 
   expect(snapshot.policyHash).toBe(
-    'fd8e0ff7d42741ec02559311ce15fa2ad93c2334c2af4a6d85b41beb2ce0cb52',
+    '5992c8fb7f4cdcd0cf11bb468fde07ca8e2871cfb383164cd40f509b5d9c5673',
   );
 });
 

@@ -47,6 +47,12 @@ export interface WebFetchOptions {
   // the server log
   readonly logger: Logger;
 
+  // starts the finder of one call, which finds the short ID of the place that the call's snapshot
+  // blocks and that covers a URL, for the tool's fetches and hops
+  readonly makeBlockedPlaceFinder?: (
+    callSequence: number,
+  ) => (url: string) => Promise<string | null>;
+
   // whether the devices feature is on, which alone gets a fetch sandbox for the pages of devices
   readonly isDeviceFetchOn?: boolean;
 }
@@ -171,6 +177,9 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       isOwnerTyped: options.isOwnerTyped,
       logger: options.logger,
       secretTypedURLCovers: config.secretTypedURLCovers,
+      ...(options.makeBlockedPlaceFinder === undefined
+        ? {}
+        : { makeBlockedPlaceFinder: options.makeBlockedPlaceFinder }),
     }),
     readSkillPage: skillSandbox.readPage,
     readHTML: fetchSandbox.readHTML,

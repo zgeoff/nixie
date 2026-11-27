@@ -26,6 +26,9 @@ export function toStoredDecision(detail: DecisionDetail, call: PolicyCall): Deci
     ...(detail.destinations.length > 0
       ? { permissions: detail.destinations.map((entry) => entry.permission) }
       : {}),
+    ...(detail.places === undefined
+      ? {}
+      : { places: detail.places.map((place) => ({ ...place })) }),
     ...(detail.consent === undefined
       ? {}
       : {

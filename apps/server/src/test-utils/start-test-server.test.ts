@@ -51,6 +51,7 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'notebook_versions',
     'notebook_links',
     'known_contacts',
+    'places',
     'proposals',
   ]);
 

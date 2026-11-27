@@ -1,4 +1,5 @@
-import type { BudgetDefinition, EffectOverride } from '@heynixie/policy';
+import type { BudgetDefinition, EffectOverride, PlaceFileEntry } from '@heynixie/policy';
+import { parsePlaceFile } from '@heynixie/policy';
 import { parseRuleDefinitions } from '../rule/parse-rule-definitions';
 import { definitionSections } from '../section/definition-sections';
 import type { DefinitionSection } from '../section/definition-sections';
@@ -23,6 +24,7 @@ import { parseEffectDefinitions } from './parse-effect-definitions';
 import { parseMcpDefinitions } from './parse-mcp-definitions';
 
 const personaPath = 'persona.md';
+const placesPath = 'places.yaml';
 
 // A null context leaves the task definitions unread, for a check that looks at other files.
 export function parseDefinitions(
@@ -68,6 +70,8 @@ export function parseDefinitions(
       ? parseMcpDefinitions(texts, overrides.partFiles)
       : { overrides: {}, paths: new Set<string>() };
 
+  const placesText = formatVersion >= definitionsFormats.places ? texts.get(placesPath) : undefined;
+  const places = parsePlaces(placesText);
   const readSections = sections.filter((section) => formatVersion >= section.minFormat);
 
   const parsedSections = readSections.map((section) => ({
@@ -112,6 +116,7 @@ export function parseDefinitions(
     .filter((path) => !rules.paths.has(path))
     .filter((path) => !effects.paths.has(path))
     .filter((path) => !mcp.paths.has(path))
+    .filter((path) => path !== placesPath || formatVersion < definitionsFormats.places)
     .filter((path) => !taskDefinitions.paths.has(path))
     .filter((path) => !parsedSections.some((entry) => entry.parsed.paths.has(path)))
     .toSorted();
@@ -137,6 +142,7 @@ export function parseDefinitions(
     budgets: budgets.budgets.map((entry) => toDefinitionBudget(entry.budget)),
     ruleWarnings: rules.warnings,
     effects: effects.effects,
+    places,
     mcp: mcp.overrides,
     tasks: taskDefinitions.definitions,
     taskWarnings: taskDefinitions.warnings,
@@ -268,6 +274,22 @@ function parsePersona(text: string | undefined): string {
   }
 
   return text;
+}
+
+function parsePlaces(text: string | undefined): readonly PlaceFileEntry[] {
+  if (text === undefined) {
+    return [];
+  }
+
+  const parsed = parsePlaceFile(text);
+
+  if (parsed.status === 'refused') {
+    throw new DefinitionsParseError(
+      parsed.problems.map((reason) => ({ path: placesPath, reason })),
+    );
+  }
+
+  return parsed.places;
 }
 
 interface SectionProblemInput {

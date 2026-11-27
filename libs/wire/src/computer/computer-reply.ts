@@ -78,6 +78,30 @@ const focusSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('other') }),
 ]);
 
+const tabURLReplySchema = z.strictObject({
+  kind: z.literal('tab-url'),
+  ok: isOk,
+  url: textSchema,
+});
+
+// What a click on a control reaches: role is link for a plain web link, and href is where it points
+const elementReplySchema = z.strictObject({
+  kind: z.literal('element'),
+  ok: isOk,
+  element: z.strictObject({
+    role: textSchema,
+    href: textSchema.nullable(),
+    isInForm: z.boolean(),
+    hasClickHandler: z.boolean(),
+  }),
+});
+
+const screenFocusReplySchema = z.strictObject({
+  kind: z.literal('screen-focus'),
+  ok: isOk,
+  focus: focusSchema,
+});
+
 const desktopReplySchema = z.strictObject({
   kind: z.literal('desktop'),
   ok: isOk,
@@ -172,6 +196,9 @@ export const computerReplySchema = z.discriminatedUnion('kind', [
   pageReplySchema,
   screenshotReplySchema,
   scrollReplySchema,
+  tabURLReplySchema,
+  elementReplySchema,
+  screenFocusReplySchema,
   desktopReplySchema,
   screenReplySchema,
   screenTargetReplySchema,
@@ -193,3 +220,5 @@ export type TakeoverNow = z.infer<typeof takeoverNowSchema>;
 export type TakeoverTab = z.infer<typeof takeoverTabSchema>;
 
 export type ComputerFocus = z.infer<typeof focusSchema>;
+
+export type ClickedElement = z.infer<typeof elementReplySchema>['element'];

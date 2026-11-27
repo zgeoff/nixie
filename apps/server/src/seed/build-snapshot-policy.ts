@@ -23,8 +23,9 @@ export function buildSnapshotPolicy(
       amount: tool.declaration.amount,
       content: [...tool.declaration.content],
       results: { ...tool.declaration.results },
+      ...(tool.declaration.requiresDestination === true ? { requiresDestination: true } : {}),
     })),
-    contacts: [],
+    places: [],
     consent,
   };
 }
