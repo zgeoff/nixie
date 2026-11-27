@@ -172,15 +172,17 @@ proposal fails the answer as `CONFLICT`, and the attempt as `ENTRY_CHANGED`.
 interface VaultEntry {
   entryID: string; // crypto.randomUUID(); keys the entry's erasure keys in the key store
   account: string; // short ID from createShortID; the only ID the model sees
-  label: string; // sealed under the entry's label key, which a lock never wraps
-  kind: 'password' | 'card'; // 'card' exists only while the wallet is on: see wallet.md
+  labelKeyID: string; // the key store entry of the label, sealed under the entry's label key, which
+  //   a lock never wraps; reads go through the key store
+  kind: 'password' | 'card'; // a card is added and used only while the wallet is on: see wallet.md
   groupID: string; // a vault_groups row's random ID; rules match it, and show its name
   isLocked: boolean; // the secret key is wrapped under your passkeys: see locked-entries.md
   isAssistantOwned: boolean; // true for a sign_up; you set it on vault.add
   origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget
   placeID: string | null; // the trusted place of the first origin's site; a card has none
   username: string | null; // kept after a forget
-  secret: SealedValue; // under the entry's secret key: a password, or a card's number, expiry and code
+  secretKeyID: string; // the key store entry of the secret, sealed under the entry's secret key: a
+  //   password, or a card's number, expiry and code
   version: number; // rises on every change to the secret, the group or the lock
   state: 'pending' | 'ready' | 'forgotten'; // a card starts ready
   // a card's fingerprint, frameOrigins, currency and budget: see the wallet design
@@ -190,8 +192,10 @@ interface VaultEntry {
 // takes a passkey check of a new challenge kind, vault_write, which the 10-minute passkey window
 // covers. Its binding is the SHA-256 of the request's canonical JSON with each secret field
 // replaced by an HMAC under a server key, so passkey.used never holds an unkeyed hash of a secret.
-// vault.reveal always asks for a fresh tap. vault.add of a card refuses FEATURE_OFF while the
-// wallet is off.
+// The calls that carry a prf (vault.lock, vault.unlock, vault.addLockPasskey, vault.reveal, and
+// vault.update of a locked entry's secret) take the locked_answer check of locked-entries.md
+// instead, which always asks for a fresh tap. vault.reveal of an unlocked entry takes it too, with
+// no prf. Card calls refuse FEATURE_OFF while the wallet is off.
 vault.add({
   kind: 'password',
   label: 'forum',
@@ -205,7 +209,8 @@ vault.update({ account: 'b5n2x8q1rw', group: 'nix', secret }); // either field; 
 //   locked entry also takes prf, as locked-entries.md says
 vault.lock({ account: 'b5n2x8q1rw', prf }); // and vault.unlock: see locked-entries.md
 vault.forget({ account: 'b5n2x8q1rw' }); // through the erasure runner; the row stays as 'forgotten'
-vault.list({}); // → every entry with its state, group and isLocked; a forgotten one shows "forgotten"
+vault.list({}); // → every entry with its state, group and isLocked; a forgotten one shows "forgotten";
+//   while the wallet is off, a card entry lists with its kind and label only, and stays stored
 vault.reveal({ account: 'a7q2m9x4kd', prf }); // → { password }; prf only for a locked entry; writes
 //   vault.revealed, with no secret
 

@@ -19,8 +19,9 @@ interface LockedWrapper {
   entryID: string;
   credentialID: string; // the passkey whose PRF output wraps this copy
   keyID: string; // crypto.randomUUID(); the key store entry that holds the wrapped secret key
+  salt: string; // the PRF input, as the credentials design keeps it on the wrapper row; every
+  //   wrapper of one entry holds the same salt, so each entry's wrapping key differs
 }
-// one salt per entry, on the vault_entries row: the PRF input, so each entry's wrapping key differs
 
 // contract lib: a locked check is a passkey check of the new locked_answer kind. The vault part
 // adds the kind to alwaysAskKinds, so the passkey window never covers it, and to the core list of
@@ -59,8 +60,8 @@ interface FreshTapCheck {
 // For a row whose check says yes:
 // - the window never covers its answer, and answerProposal takes the passkey every time;
 // - answerProposals refuses it with PASSKEY_REQUIRED, open window or not;
-// - a host command refuses a locked row, which needs a PRF output only a passkey makes, and
-//   answers a repeating purchase as it answers any row.
+// - a host command refuses it: a locked row needs a PRF output only a passkey makes, and a
+//   repeating purchase always takes a fresh tap.
 ```
 
 ## Constraints

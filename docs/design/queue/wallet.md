@@ -49,17 +49,18 @@ wallet.pay({
 //   The guest fills the card and reads the total again. It clicks submit only while the total
 //   still equals the expectTotal the approval bound, as Spending below says.
 //   A bank check that shows after the submit makes the guest wait up to 5 minutes for the page to
-//   leave the check, which the user approves in the bank's app. When it leaves, the guest reads the
-//   page and returns 'paid'. When it doesn't, the reply is bankCheck: 'timeout', and the call
-//   returns { status: 'unknown', purchase }: an unknown outcome, with the reason
-//   'bank_check_timeout', that the user settles.
+//   leave the check, which the user approves in the bank's app. When it leaves, the call returns
+//   'paid' only when the page after it holds no card field and no check; any other page returns
+//   { status: 'unknown', purchase } with the reason 'bank_check_unclear'. When the page doesn't
+//   leave the check, the reply is bankCheck: 'timeout', and the call returns the same unknown
+//   outcome with the reason 'bank_check_timeout'. The user settles each.
 
 wallet.read({});
 // → { cards: [{ card: 'c3w8p1z6mt', label: 'wallet', group: 'nix', isLocked: false,
 //              month: { liftBudget: '65.00 USD', liftSpent: '24.40 USD', left: '40.60 USD',
 //                       approvedSpent: '26.00 USD' } }],
 //     lifts: [{ card: 'c3w8p1z6mt', merchants: ['fonts.example.com'], perAction: '16.00 USD' }],
-//     purchases: [{ purchase: 'pq3z8w1n5v', at, merchant: 'fonts.example.com', amount: '8.00 USD',
+//     purchases: [{ purchase: 'pq3z8w1n5v', at, merchant: 'fonts.example.com', amount: '8.00 EUR',
 //                   charged: '8.98 USD', item: 'one font licence', approval: 'owner', repeats: 'monthly' }],
 //     subscriptions: [{ purchase: 'pq3z8w1n5v', merchant, item, repeats: 'monthly', charged: '8.98 USD' }],
 //     next: null }
@@ -133,9 +134,9 @@ vault.add({
 // budget ID and its limit, a vault_write check the passkey window covers. No definitions file sets
 // a card budget: the budget parser refuses a file whose ID starts with card-, so the wallet is the
 // one source of each card-<account> budget.
-// A card entry exists only while the wallet is on: the wallet part adds the card kind and these
-// fields to the vault's list of entry kinds, and the vault refuses card calls with FEATURE_OFF
-// without it.
+// The wallet part adds the card kind and these fields to the vault's list of entry kinds. While
+// the wallet is off, the vault keeps card entries as stored, as the switch rule keeps a feature's
+// records, lists each by its kind and label, and refuses every other card call with FEATURE_OFF.
 // vault.reveal of a card → { number, expiry, code }; it always asks for a passkey tap, from a
 // signed-in client's full session only
 ```
@@ -237,7 +238,8 @@ Spending:
   `canLift` true, while the card's budget covers `charged`. The ledger reserves the charge as it
   does for every lift, so two purchases at the card's last room can't both pass. Every other
   `wallet.pay` asks the user.
-- A one-off purchase approval is a passkey check that the 10-minute passkey window covers. A
+- A one-off purchase approval on an unlocked card is a passkey check that the 10-minute passkey
+  window covers. A purchase on a locked card takes a fresh tap, as every locked call does. A
   `wallet.pay` with `repeats` always asks for a fresh passkey tap, and its approval card says it
   repeats.
 - Adding a card makes its budget and no lift, so a new card never widens what another card's rule
@@ -250,7 +252,8 @@ Spending:
 - The action writes `purchase.submitting` before it asks the guest to submit. After a crash, an
   attempt with that record is an unknown outcome, and one without it credits the charge.
 - Every `wallet.pay` that clicks submit writes a `purchase.recorded` record. After a crash, the
-  answer `happened` writes it from the `purchase.submitting` record, with the page total unknown.
+  answers `happened` and `drop` both write it from the `purchase.submitting` record, with the page
+  total unknown, because the click may have happened. Only `didnt_happen` writes none.
 - A new card starts with a monthly budget of 65 USD and no lifting rule, so it lifts nothing until
   the user adds one.
 - This build changes `answerUnknownOutcome` and budgets.md for `spend` actions:

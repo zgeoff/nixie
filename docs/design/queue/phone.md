@@ -37,7 +37,8 @@ phone.send({ to: '+61400000000', body: 'Running 10 minutes late.' }); // → the
 // refusals: UNKNOWN_TEXT, BAD_NUMBER, TOO_LONG (over 640 characters), SEND_FAILED
 phone.wake_set({ from: ['Example'], body: 'code', expires: '30m', window: '1m' });
 // → { rule, expiresAt, window, replaced, recent }: the same arguments, result and rules as
-//   mail.wake_set, on the mailbox { kind: 'phone' }, with body in place of subject
+//   mail.wake_set, on the mailbox { kind: 'source', sourceID: 'phone' }, with body in place of
+//   subject. recent and the call's record take the tool calls form for copied text, as below.
 phone.wake_list(); // and phone.wake_cancel({ rule }), as mail.wake_list and mail.wake_cancel
 ```
 
@@ -48,17 +49,21 @@ phone.wake_list(); // and phone.wake_cancel({ rule }), as mail.wake_list and mai
 | `phone.send`                                  | `send` | queued | the number  |
 
 ```ts
-// triggers module: the wake rule contract in mail/wake-rules.md widens for the phone
-type Mailbox = { kind: 'mail' } | { kind: 'gmail'; connectionID: string } | { kind: 'phone' };
-// mailboxKey: 'phone' for the phone
+// triggers module: the wake rule contract in mail/wake-rules.md gains a generic text source, which
+// names no feature. A feature fills the core list of text sources with its own source ID.
+type Mailbox =
+  | { kind: 'mail' }
+  | { kind: 'gmail'; connectionID: string }
+  | { kind: 'source'; sourceID: string }; // the phone fills sourceID 'phone'
+// mailboxKey: 'source:<sourceID>'
 interface WakeMatch {
   // …existing fields
-  body?: string; // the phone only: a substring of the text, both sides in NFC and lowered
+  body?: string; // text sources only: a substring of the text, both sides in NFC and lowered
 }
-// TriggerEvent gains TextArrivalEvent, and TriggerSource.kind gains 'phone'
+// TriggerEvent gains TextArrivalEvent, and TriggerSource.kind gains 'text'
 interface TextArrivalEvent {
-  kind: 'phone';
-  mailbox: { kind: 'phone' };
+  kind: 'text';
+  mailbox: { kind: 'source'; sourceID: string }; // the core refuses a sourceID no feature filled
   dedupeKey: string; // the provider's message ID
   occurredAt: string;
   payload: { messageID: string; from: string; receivedAt: number; body: string }; // messageID: short ID
@@ -88,8 +93,8 @@ phone_send_claims      -- phone module; action ID → the provider's message ID 
 ## Constraints
 
 - The phone module owns `PhoneProvider`, and `adapters/phone-twilio` is its one adapter. No core
-  module names the phone or the provider. The phone part fills the triggers module's list of wake
-  sources with the `phone` source.
+  module names the phone or the provider. The phone part fills the triggers module's list of text
+  sources with the source ID `phone`.
 - The adapter names its secret with `resolveCredential` and calls the provider through the
   credential store's fetcher, bound to the provider's API origin. The fetcher adds the secret as
   HTTP Basic, with the API key SID as the user, so the adapter never holds the secret.
@@ -109,15 +114,18 @@ phone_send_claims      -- phone module; action ID → the provider's message ID 
   place.
 - A send reconciles an unknown outcome by looking for a message to the same number with the same
   body, created during the attempt. It settles `found` only when exactly one such message has no row
-  in `phone_send_claims`, and claims that message in the same transaction. With none, or with more
-  than one, it asks the user through `answerUnknownOutcome`.
+  in `phone_send_claims`, and no other open attempt sends the same body to the same number. Then it
+  claims that message in the same transaction. In every other case, including two overlapping
+  identical sends, it asks the user through `answerUnknownOutcome`, because a match can't show which
+  send made the message.
 - `phone.text_received` declares `from` and `body` in `ErasableRecordKinds`, the server record-kind
   map and one descriptor list. Forgetting a text erases nixie's copy and leaves the text at the
   provider.
-- `phone.list` and `phone.read` give their tool call records the form the
+- A forget of a text runs through the erasure runner as one `phone_text` kind. It captures the
+  text's record, its arrival, and every wake that showed it, so no copy stays readable.
+- `phone.list`, `phone.read` and `phone.wake_set` give their tool call records the form the
   [tool calls](../../architecture/connectors/tool-calls.md) doc sets for text another record guards,
-  so the call keeps no readable copy after a forget. A wake that showed the text keeps it in its own
-  erasable fields, which a forget of the wake erases, as the mail wakes do.
+  so a call keeps no readable copy after a forget.
 - When a sign-up asks for a phone number and the phone is on, the assistant gives its own number and
   reads the code from the text. With the phone off, it hands the step to the user.
 
