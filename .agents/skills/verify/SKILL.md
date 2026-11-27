@@ -17,12 +17,6 @@ record a verdict that it works. Put the report in the PR with step 10 of
 and given the **Reply** at the end. Leave `bun verify gate` to CI: it fails a PR that changes a
 feature with no verdict in its description.
 
-These cost the most time:
-
-- Until `bun verify doctor` passes, each command that touches the app fails with exit code 3.
-- After you edit the app's code while `up` runs it, the next app command fails with
-  `doctor-required`. Run `bun verify up --restart` and `doctor` again.
-
 ## Key rules
 
 - [Check a change](#check-a-change): for each changed feature, run its journey, check the end state,
@@ -91,12 +85,14 @@ These cost the most time:
 1. Run `bun verify report`. In `data.report.features`, a feature shows `changed: true` when a file
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
-2. Pick the target you were asked to use, or the first launch target in the
-   [targets table](references/targets.md). Run `bun verify use --target <target>` and the commands
-   in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
+2. Pick the target you were asked to use, or `local`, the registry's first target and the first row
+   of the [targets table](references/targets.md). Run `bun verify use --target <target>` and the
+   commands in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
-3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
-   `doctor` again.
+3. Run `bun verify doctor` before any other app command, which exits 3 until `doctor` passes.
+   Expect: `data.passed: true`. When a check fails, fix its cause, and run `doctor` again. After you
+   edit the app's code while `up` runs it, run `bun verify up --restart` and `doctor` again, or the
+   next app command fails with `doctor-required`.
 4. Run the journey from the feature's file, which the features table in [References](#references)
    links. Its first line, `use --feature`, records each later command under that feature. Expect:
    each command exits 0. When one fails, follow its row in [Exit codes](references/exit-codes.md).
@@ -121,7 +117,8 @@ These cost the most time:
    step 5. Redo steps 4 to 6 for each `stale` one.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
 10. Publish the report with [the publish steps](references/publish.md), even when you skipped a
-    feature. Expect: `ok: true` and `data.local` of 0.
+    feature, because the report in the PR description is the only one the gate reads. Expect:
+    `ok: true` and `data.local` of 0.
 11. Stop using the app: `bun verify down` after `up`, or `bun verify detach` after `attach`.
 
 ## Read the envelope
@@ -146,7 +143,7 @@ released code, so check a change you are still editing on a launch target.
 
 `bun verify use --target <target>` points every later command at a target, and saves the choice in
 this worktree's `.wringer/`. `--target` on one command points that command alone. A command with
-neither runs on the registry's first target.
+neither runs on the registry's first target, `local`.
 
 <!-- repo: targets -->
 

@@ -8,10 +8,10 @@ adapter that implements it. For the whole feature, see the
 [GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
 provider and the secrets file holds its credential. When the config has no `voice` section, calls
 are off. The server starts no calls part, offers the model no call tool, leaves `voice` out of
-`nixie.read`, and answers each `calls` procedure with `FEATURE_OFF` once the session checks out.
-When the secrets file lacks the `voice` section's credential, the server wires no adapter, and
-`calls.start` answers `SPEECH_UNAVAILABLE`. A test build wires the fake that the next section
-describes in place of the adapter.
+`nixie.read`, and answers each `calls` procedure with `FEATURE_OFF` to a signed-in session. When the
+secrets file lacks the `voice` section's credential, the server wires no adapter, and `calls.start`
+answers `SPEECH_UNAVAILABLE`. A test build wires the fake that the next section describes in place
+of the adapter.
 
 ## The speech layer
 
@@ -106,11 +106,14 @@ A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who 
 | `calls.hangUp`  | Ends the call with `endedBy: 'you'`, and answers with the call's `endedBy`. A call that the server ended first, as `budget` for one, answers with that reason, so the device never shows its own hang up for it. A second hang up of an ended call returns the same result.                                          |
 | `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                                                                                  |
 
-`calls.start` refuses with one of these errors, checked in this order:
+`calls.start` refuses with one of these errors, checked in this order. A server with no `voice`
+section never reaches the first one, because the API answers `FEATURE_OFF` before the call gets to
+the module. `VOICE_OFF` is the module's own check, for a module that runs without voice configured,
+as in a test.
 
 | Error                 | When                                                                               |
 | --------------------- | ---------------------------------------------------------------------------------- |
-| `VOICE_OFF`           | The config holds no `voice` section.                                               |
+| `VOICE_OFF`           | The module's config holds no `voice` section.                                      |
 | `SPEECH_UNAVAILABLE`  | The config holds `voice`, and the server wired no speech adapter.                  |
 | `VOICE_PRICE_MISSING` | `price_per_minute` is missing from `voice/voice.yaml`. The message names the file. |
 | `CALL_RUNNING`        | Another call has not ended.                                                        |

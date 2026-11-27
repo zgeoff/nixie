@@ -10,13 +10,13 @@ visit to `/device-view` shows the page that says the feature is off in this nixi
 Run this journey on `local` only, on an `up` of its own, because every device journey needs devices
 on:
 
-- On `local`, `NIXIE_VERIFY_NO_DEVICES=1 bun verify up` runs a test build of nixie with the
-  `devices` section taken out of the config.
+- On `local`, `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` runs a test build of nixie with
+  the `devices` section taken out of the config.
 - On `preview`, skip this journey, and list the feature as not verified there in your reply. The
   preview's config holds a `devices` section, so its devices are on.
 
-Before you start, run `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` and `bun verify doctor`,
-then [sign-in-enrol](feature-sign-in-enrol.md).
+Before you start, run that `up` and `bun verify doctor`, then
+[sign-in-enrol](feature-sign-in-enrol.md).
 
 ## Journey
 
@@ -54,5 +54,7 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
 - In step 2, the device view said that the feature is off in this nixie.
 - In step 3, the model's tool list held no `device.` tool.
 
-Once the end state matches, run `bun verify done`. Then run `bun verify up --restart` and
-`bun verify doctor`, so the next journey has devices on.
+Once the end state matches, run `bun verify done`. When a command fails, follow its row in
+[Exit codes](exit-codes.md), and skip `done` as step 5 of Check a change in [SKILL.md](../SKILL.md)
+says. Whether the journey passed or failed, run `bun verify up --restart` and `bun verify doctor`
+last, so the next journey has devices on.

@@ -114,11 +114,13 @@ sidecar's first checkout can, therefore seeds within seconds.
 
 ## Feature switches
 
-A feature is an optional part of nixie, such as the computer, calls or Google. Each is on only when
-its section is in the deployment config. A feature that is off starts none of its parts, needs none
-of its images and offers none of its tools or pages. Read
-[the design](../../design/queue/feature-switches.md) for the full rules, and
-[the ports doc](../ports.md) for the places where the code still breaks them.
+A feature is an optional part of nixie, such as the computer, calls, devices or Google. A feature is
+on only when its section is in the deployment config: `computer`, `google` and `devices` switch the
+feature of the same name, and the `voice` section switches calls, whose feature ID is `voice`. A
+feature that is off starts none of its parts, needs none of its images and offers none of its tools
+or pages. Read [the design](../../design/queue/feature-switches.md) for the full rules. The code
+still breaks them in a few places, which `apps/server/src/leak/leak-exceptions.ts` lists and
+[the ports doc](../ports.md) shows as a table.
 
 - `featureIDs` in `libs/contract` is the one list of features. Derive every union and schema that
   names a feature from it.

@@ -7,12 +7,13 @@ no call part, and leaves `voice` out of the features that `nixie.read` reports. 
 the Call entry of its menu, and a direct visit to `/call` shows the page that says the feature is
 off in this nixie.
 
-Run this journey on a plain `up`: a test build turns calls on only when `NIXIE_VERIFY_CALLS=1`. On
-`preview`, skip this journey and list the feature as not verified there in your reply, because the
-preview's config holds a `voice` section only when its deployment sets one.
+Run this journey on a plain `up`: a test build turns calls on only when `NIXIE_VERIFY_CALLS=1`, so
+leave that variable unset in the shell. On `preview`, skip this journey and list the feature as not
+verified there in your reply, because the preview's config holds a `voice` section only when its
+deployment sets one.
 
-Before you start, run `bun verify up --restart` and `bun verify doctor`, then
-[sign-in-enrol](feature-sign-in-enrol.md).
+Before you start, run `env -u NIXIE_VERIFY_CALLS bun verify up --restart` and `bun verify doctor`,
+then [sign-in-enrol](feature-sign-in-enrol.md).
 
 ## Journey
 
@@ -52,4 +53,7 @@ Before you start, run `bun verify up --restart` and `bun verify doctor`, then
 - In step 2, the call page said that the feature is off in this nixie.
 - In step 3, the model's tool list held no `call.` tool.
 
-Once the end state matches, run `bun verify done`.
+Once the end state matches, run `bun verify done`. When a command fails, follow its row in
+[Exit codes](exit-codes.md). When a command exits 0 but the app differs from the end state, such as
+a Call entry in the menu, a `/call` page that offers to start a call, or a `call_tools` above 0,
+skip `done` and follow step 5 of "Check a change" in the [verify skill](../SKILL.md).

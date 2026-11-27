@@ -43,8 +43,24 @@ bun add @heynixie/pulumi-k8s
 ## Configuration
 
 Pass the per-deployment values to `createNixie(name, args, opts)` in `args`, and your Kubernetes
-provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value. Add
-`computer: {}`, `code: {}`, `google: {}` and `devices: {}` to `config` to turn on those features.
+provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value.
+
+`args.config` is the text of nixie's `config.yaml`, which the component passes through unread. A
+feature is on only when its section is in that text, so a deployment that wants the assistant's
+computer, its code tool, Google and devices adds these sections to the YAML:
+
+```yaml
+computer: {}
+code: {}
+google: {}
+devices: {}
+```
+
+Calls stay on through their `voice` section, so keep it. A release that does not know a section
+ignores it and leaves that feature off, so bump to a release that reads it before you rely on it.
+
+`createNixie` returns the Services `api` and `web`. Point your ingress at them. `nixieAPIPort` and
+`nixieWebPort` are the ports they serve.
 
 ```ts
 import { createNixie, nixieAPIPort, nixieWebPort } from '@heynixie/pulumi-k8s';
