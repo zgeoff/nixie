@@ -21,6 +21,33 @@ const everyJourney = [
   'bun-serve-options.d.ts',
 ] as const;
 
+// The files the running app reads to show and steer a supervised coding session, listed one by one
+// so that no glob also matches a test, which `ignoredPaths` leaves out. Tests and the test-only
+// helpers under `test-utils` stay unmapped here.
+const codingSupervisionPaths = [
+  'apps/server/src/coding/build-server-coding.ts',
+  'apps/web/src/coding/format-session-event-time.ts',
+  'apps/web/src/coding/format-session-release.ts',
+  'apps/web/src/coding/format-session-state.ts',
+  'apps/web/src/coding/session-line.tsx',
+  'apps/web/src/coding/use-is-coding-on.ts',
+  'apps/web/src/components/task-controls.tsx',
+  'apps/web/src/components/task-dashboard.tsx',
+  'apps/web/src/components/task-summary.tsx',
+  'apps/web/src/mocks/read-mock-task-list.ts',
+  'apps/web/src/mocks/store.ts',
+  'apps/web/src/mocks/task-rows.ts',
+  'apps/web/src/mocks/write-mock-task-control.ts',
+  'apps/web/src/task/collect-dashboard-groups.ts',
+  'libs/contract/openapi.json',
+  'libs/contract/src/contract/listed-task-schema.ts',
+  'libs/contract/src/index.ts',
+  'modules/api/src/api/parse-listed-session.ts',
+  'modules/api/src/api/read-listed-tasks.ts',
+  'modules/coding/src/runner/build-coding-runner.ts',
+  'modules/tasks/src/index.ts',
+] as const;
+
 export const featurePaths = {
   'sign-in-enrol': [...everyJourney],
   'chat-turn': [...everyJourney],
@@ -28,7 +55,7 @@ export const featurePaths = {
   'policy-proposal': [...everyJourney],
   'task-control': [...everyJourney],
   'coding-session': [...everyJourney],
-  'coding-supervision': [...everyJourney],
+  'coding-supervision': [...codingSupervisionPaths],
   'call-hand-off': [...everyJourney],
   'call-screen': [...everyJourney],
   'call-device-show': [...everyJourney],
