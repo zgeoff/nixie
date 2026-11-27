@@ -918,6 +918,63 @@ test('it refuses to start when a pronoun names a settings entry the secrets file
   });
 });
 
+test('it refuses to start when the phone number names a settings entry the secrets file lacks, and exits 1', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'phone:',
+      '  number: deployment:phone_number',
+      '  twilio:',
+      '    account_sid: AC00000000000000000000000000000000',
+      '    api_key_sid: SK00000000000000000000000000000000',
+      '    credential: deployment:twilio',
+    ],
+    extraSecrets: ['connector_credentials:', '  twilio: not-a-real-secret'],
+  });
+
+  const exitCode = await nixie.exited;
+  const failure = await nixie.waitForLogEvent('command.failed');
+
+  expect(exitCode).toBe(1);
+
+  expect(failure).toMatchObject({
+    command: 'serve',
+    message: expect.toInclude(
+      'phone.number is deployment:phone_number, and the secrets file has no settings entry phone_number',
+    ),
+  });
+});
+
+test('it starts with the phone number and the Twilio IDs in the secrets file', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'phone:',
+      '  number: deployment:phone_number',
+      '  twilio:',
+      '    account_sid: deployment:twilio_account_sid',
+      '    api_key_sid: deployment:twilio_key_sid',
+      '    credential: deployment:twilio',
+      '    api_url: https://api.twilio.test',
+    ],
+    extraSecrets: [
+      'connector_credentials:',
+      '  twilio: not-a-real-secret',
+      'settings:',
+      '  phone_number: "+61411111111"',
+      '  twilio_account_sid: AC00000000000000000000000000000000',
+      '  twilio_key_sid: SK00000000000000000000000000000000',
+    ],
+  });
+
+  await nixie.waitForLogEvent('ready');
+
+  nixie.signalStop();
+
+  const exitCode = await nixie.exited;
+
+  expect(exitCode).toBe(0);
+  expect(JSON.stringify(nixie.readLogEvents())).not.toInclude('+61411111111');
+});
+
 test('it resets the running server through the reset command, which exits 0 with the server', async () => {
   const ctx = await setupTest();
 
