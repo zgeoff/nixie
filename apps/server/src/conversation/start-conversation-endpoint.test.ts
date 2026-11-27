@@ -944,7 +944,7 @@ test('it lets no registered tool run a call that no rule in force allows', async
 test('it offers the conversation both task.start and coding.start when the configuration sets a coding runner', async () => {
   // the runner reads its sessions from the gateway as nixie starts; a refusal leaves the tools
   network.use(
-    http.post('https://atc.example.test/mcp', () =>
+    http.post('https://atc.example.test/rpc/*', () =>
       HttpResponse.json({ error: 'refused' }, { status: 500 }),
     ),
   );
@@ -953,7 +953,7 @@ test('it offers the conversation both task.start and coding.start when the confi
     extraConfig: [
       'coding:',
       '  atc:',
-      '    url: https://atc.example.test/mcp',
+      '    url: https://atc.example.test',
       '    principal: service:nixie',
       '    token: deployment:atc_token',
       '    targets:',

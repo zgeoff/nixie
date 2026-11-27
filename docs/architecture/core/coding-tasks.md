@@ -8,9 +8,9 @@ module holds the runner, its tools, the trigger source that reads the session's 
 release of a session when its task ends. It reaches the other program only through the coding
 adapter interface, one adapter per program.
 
-The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's MCP gateway.
-[The atc adapter](../connectors/coding-atc.md) covers its calls and
-[the wiring section](#the-atc-adapter-and-the-server) covers how the server builds it.
+The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's typed fleet
+API. Read [the atc adapter](../connectors/coding-atc.md) for its calls and
+[the wiring section](#the-atc-adapter-and-the-server) for how the server builds it.
 
 A coding task runs no model and judges nothing about the session's work. An agent ends a turn while
 a background shell still runs, so an idle session is no sign that the work is done. The conversation
@@ -88,7 +88,9 @@ as a progress message. Any other event lands on the task's thread and wakes noth
 exceptions:
 
 - An `ended` state wakes the task whatever the wake set holds, so the task ends with its session.
-  The step forwards it only when the wake set lists `ended`.
+  The step forwards the `ended` event as a progress message only when the wake set lists `ended`.
+  Otherwise the task's report, which the step sends when it ends the task, is the only word of the
+  end that reaches the report target.
 - An answer to a note wakes the task, so the step can reply to the note's sender.
 
 ## Tools
@@ -111,10 +113,11 @@ then fails, and the next step tells the report target.
 ## The coding source
 
 Each adapter has one [trigger source](./triggers.md), with the ID `coding:<adapter ID>`, which reads
-the adapter's event trail from a cursor. The source drops each event of a session that no open
-coding task binds, and hands every other event to the trigger core as a task input on its task's
-thread, with a `wake` flag that follows the rules in [steps](#steps). The core keys each input by
-the event's own key, so an event that the source reads twice lands once.
+the adapter's event trail from a cursor: the backlog a page at a time, then the adapter's live event
+stream. The source drops each event of a session that no open coding task binds, and hands every
+other event to the trigger core as a task input on its task's thread, with a `wake` flag that
+follows the rules in [steps](#steps). The core keys each input by the event's own key, so an event
+that the source reads twice lands once.
 
 At its first start the source keeps only the cursor of its first read, so it never replays the whole
 trail. When a task binds a session after the cursor passed that session's earlier events, the source
@@ -208,12 +211,14 @@ them.
   the adapter's reason. Its default answer is the state, the pending question and the last reply cut
   to 2,000 characters, so a check costs little of the conversation's context. `prompt` adds the
   session's first prompt, cut to 2,000 characters, and `tail` adds the last 1 to 5 turns, whole
-  turns while they fit in 8,000 characters. A cut keeps the end of a reply and the newest turns. A
-  session whose agent has no transcript reader answers `tail: { unsupported: true }`.
+  turns while they fit in 8,000 characters, so a cut never leaves half a turn. A cut keeps the end
+  of a reply and the newest turns. A session whose agent has no transcript reader answers
+  `tail: { unsupported: true }`.
 - The wake events are `waiting`, `idle`, `ended`, `gone`, `progress`, `blocked` and `decision`.
-  `coding.watch` takes a whole set, and an empty set is valid: then only the session's end and the
-  report reach the conversation. The deployment's `coding.wake.started` and `coding.wake.joined`
-  hold the defaults.
+  `coding.watch` takes a whole set, and an empty set is valid: then the step forwards no event, and
+  the conversation hears of the session only through an answer to a note and through the task's
+  report when the session ends. The deployment's `coding.wake.started` and `coding.wake.joined` hold
+  the defaults.
 - The step forwards an event to the report target as a progress message and never summarises it. The
   message carries the event's kind, the state and the question or the note's text, and the
   conversation calls `coding.read` for more.
@@ -249,17 +254,16 @@ The server builds the coding runner, its tools, its source and its sweep only wh
 config holds a `coding.atc` block. Without the block, no coding tool or runner exists, and a
 deployment that predates the block loads unchanged.
 
-The block names the gateway's URL, the principal nixie acts as, the targets nixie may start sessions
-on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token lives in
-the `atc_token` entry of the secrets file, like every other secret, and a config that holds the
-block with no such entry stops the server at start. A deployment with no `coding.atc` block needs no
-`atc_token` entry, so the entry is required only with the block. The secret scan treats its value as
-one of nixie's own values.
+In the block, set the gateway's URL, the principal nixie acts as, the targets nixie may start
+sessions on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token
+lives in the `atc_token` entry of the secrets file, like every other secret, and a config that holds
+the block with no such entry stops the server at start. A deployment with no `coding.atc` block
+needs no `atc_token` entry. The secret scan treats its value as one of nixie's own values.
 
-The adapter keeps the state of each session it has seen in memory. The source's `events` call
-carries a read of the bound sessions, and the adapter reads the state of each bound session that has
-not ended every minute, and at once for a session it has not seen since it started. A state read
-that fails still counts as a read, so a failing session never makes the adapter poll without
+The adapter keeps the state of each session it has seen in memory. The trail records a session's
+activity but not always its state, so the adapter also reads the state of each bound session that
+has not ended once a minute, and at once for a session it has not seen since it started. A state
+read that fails still counts as a read, so a failing session never makes the adapter poll without
 waiting.
 
 A start stores the trail cursor it read in the `coding_start_cursors` table, under the action's
@@ -271,11 +275,16 @@ its cursor, because the key is spent. A cursor that a start kept stays for a day
 which the queue sends no replay, and the next store write drops it.
 
 A join refuses a session whose target the config does not list, even when a saved short ID names it.
-The adapter yields a page of the trail only when the page holds an event or the read caught up, so
-the source's catch-up never stops at a page of events that the adapter drops while more pages wait.
+While it reads the backlog, the adapter yields a page of the trail when the page holds an event and
+when the read caught up, and it yields no empty page while more pages wait. Once it holds the live
+stream open, it yields a page for each event that gives a session event, and an empty page after
+each quiet wait. The source's catch-up of a newly bound session therefore runs even when the fleet
+is quiet. A stream that ends, or a gateway that cannot be reached, makes the read fail, and the
+source backs off.
 
-The adapter calls the gateway only through its documented tools, refuses a gateway whose version it
-does not support, and maps each failure to a value of the adapter interface. A session's own text
+The adapter calls the gateway only through its typed fleet API, which it reaches at `/rpc` under the
+configured URL, dropping a trailing `/mcp` from that URL first. It refuses a gateway whose version
+it does not support, and maps each failure to a value of the adapter interface. A session's own text
 reaches nixie only as untrusted data.
 
 The server wires the module in four places:

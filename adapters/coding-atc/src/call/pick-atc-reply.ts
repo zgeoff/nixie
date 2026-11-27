@@ -7,7 +7,9 @@ export interface FailedCall {
 
   // the call sent an idempotency key
   readonly isKeyed: boolean;
-  readonly tool: string;
+
+  // the fleet procedure, such as `session.spawn`
+  readonly procedure: string;
 }
 
 type Failure = Exclude<AdapterReply<never>, { readonly status: 'ok' }>;
@@ -18,11 +20,12 @@ const retryableCodes = new Set([
   'timeout',
   'too_slow',
   'permission_pending',
+  'protocol_mismatch',
 ]);
 
 // One row of the table that maps atc's answers onto queue outcomes, in the design's order.
 export function pickATCReply(call: FailedCall): Failure {
-  if (call.code === 'outcome_unknown') {
+  if (call.code === 'outcome_unknown' || call.code === 'connection_lost') {
     return { status: 'unknown', reason: call.code };
   }
 
@@ -32,13 +35,13 @@ export function pickATCReply(call: FailedCall): Failure {
       : { status: 'refused', canClear: true, reason: call.code };
   }
 
-  if (call.code === 'no_such_session' && call.tool === 'atc_session_spawn') {
+  if (call.code === 'no_such_session' && call.procedure === 'session.spawn') {
     return { status: 'unknown', reason: call.code };
   }
 
   const canClear =
     retryableCodes.has(call.code) ||
-    (call.code === 'host_leased' && call.tool === 'atc_session_stop');
+    (call.code === 'host_leased' && call.procedure === 'session.kill');
 
   return { status: 'refused', canClear, reason: call.code };
 }

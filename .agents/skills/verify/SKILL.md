@@ -147,9 +147,6 @@ in this worktree's `.wringer/`. To point one command alone, pass `--target` to t
 command with neither runs on `local`.
 
 <!-- repo: targets -->
-
-Read [Targets](references/targets.md) for start commands and access.
-
 <!-- /repo -->
 
 ## Commands
@@ -173,9 +170,11 @@ target refuses each `[write]` command except `publish`, which writes no app data
 
 <!-- repo: registry -->
 
-Declare targets, actions, commands, checks and features in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts), and their globs
-in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
+Declare the registry in
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). List a new
+feature's packages, server files and web routes in
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts), and those that every journey runs
+in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
 
 <!-- /repo -->
 

@@ -1,11 +1,12 @@
 import type { NoteLabel, SessionEvent } from '@heynixie/coding';
-import type { z } from 'zod';
-import type { atcSchemas } from '../atc-schemas';
+import type { TrailEvent } from '../types';
+import type { EventText } from './read-event-texts';
 
-type TrailEvent = z.infer<typeof atcSchemas.trailEvent>;
-
-// The session events that one page of atc's trail holds. Every other kind of event is dropped.
-export function buildSessionEvents(trail: readonly TrailEvent[]): SessionEvent[] {
+// The session events that atc's trail holds. Every other kind of event is dropped.
+export function buildSessionEvents(
+  trail: readonly TrailEvent[],
+  texts: ReadonlyMap<string, EventText>,
+): SessionEvent[] {
   return trail.flatMap((event): SessionEvent[] => {
     const facts = {
       session: event.session,
@@ -14,7 +15,9 @@ export function buildSessionEvents(trail: readonly TrailEvent[]): SessionEvent[]
     };
 
     if (event.kind === 'message-answered' && event.message !== undefined) {
-      return [{ ...facts, kind: 'answered', messageRef: event.message, answer: toText(event) }];
+      return [
+        { ...facts, kind: 'answered', messageRef: event.message, answer: toText(event, texts) },
+      ];
     }
 
     if (event.kind === 'message-unanswered' && event.message !== undefined) {
@@ -29,7 +32,7 @@ export function buildSessionEvents(trail: readonly TrailEvent[]): SessionEvent[]
     }
 
     if (event.kind === 'note' && isNoteLabel(event.label)) {
-      return [{ ...facts, kind: 'note', label: event.label, text: toText(event) }];
+      return [{ ...facts, kind: 'note', label: event.label, text: toText(event, texts) }];
     }
 
     return [];
@@ -39,16 +42,18 @@ export function buildSessionEvents(trail: readonly TrailEvent[]): SessionEvent[]
 // The key stays the same whatever the gateway's merged cursor holds, because it names the daemon's
 // own place in its trail.
 function toEventKey(event: TrailEvent): string {
-  return event.origin === undefined
-    ? event.cursor
-    : `${event.origin.daemon}.${event.origin.incarnation}|${event.origin.cursor}`;
+  return `${event.origin.daemon}.${event.origin.incarnation}|${event.origin.cursor}`;
 }
 
 // The whole text, or atc's preview with a closing line that says atc cut it.
-function toText(event: TrailEvent): string {
-  const isCut = event.complete === false || event.textError !== undefined;
+function toText(event: TrailEvent, texts: ReadonlyMap<string, EventText>): string {
+  const read = texts.get(event.cursor);
 
-  return isCut ? `${event.detail ?? ''}\n[atc cut this text]` : (event.text ?? event.detail ?? '');
+  if (read !== undefined && 'text' in read && read.isComplete) {
+    return read.text;
+  }
+
+  return `${event.detail ?? ''}\n[atc cut this text]`;
 }
 
 const noteLabels = new Set<string>(['progress', 'blocked', 'decision']);

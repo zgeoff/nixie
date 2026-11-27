@@ -28,12 +28,12 @@ import { codingProjections } from '../projection/coding-projections';
 import { buildCodingRunner } from '../runner/build-coding-runner';
 import { buildCodingStartTool } from '../tool/build-coding-start-tool';
 import { buildCodingTools } from '../tool/build-coding-tools';
-import type { CodingContext } from '../types';
+import type { CodingAdapter, CodingContext } from '../types';
 import type { FakeCodingAdapter } from './build-fake-coding-adapter';
 import { buildFakeCodingAdapter } from './build-fake-coding-adapter';
 import { testCodingSettings } from './wire-test-coding';
 
-export interface TestCoding {
+export interface TestCoding<Adapter extends CodingAdapter = FakeCodingAdapter> {
   readonly clock: FakeClock;
   readonly log: Log;
 
@@ -42,7 +42,7 @@ export interface TestCoding {
   readonly context: TasksContext;
   readonly coding: CodingContext;
   readonly core: TriggerCoreContext;
-  readonly adapter: FakeCodingAdapter;
+  readonly adapter: Adapter;
   readonly definition: TaskRunnerDefinition;
   readonly tools: ReadonlyMap<string, ToolDefinition>;
 
@@ -80,7 +80,15 @@ const maxRuns = 50;
 
 // A tasks and actions log that folds the trigger and coding records too, with a conversation task
 // and a coding runner on a fake adapter.
-export async function startTestCoding(): Promise<TestCoding> {
+export function startTestCoding(): Promise<TestCoding> {
+  return startTestCodingOn(buildFakeCodingAdapter());
+}
+
+// The same wiring on an adapter of the caller's, such as the real adapter of atc against a gateway
+// double.
+export async function startTestCodingOn<Adapter extends CodingAdapter>(
+  adapter: Adapter,
+): Promise<TestCoding<Adapter>> {
   const base = await startTestActions();
 
   const log: Log = {
@@ -88,7 +96,6 @@ export async function startTestCoding(): Promise<TestCoding> {
     projections: [...base.context.log.projections, ...triggersProjections, ...codingProjections],
   };
 
-  const adapter = buildFakeCodingAdapter();
   const logged: { event: string; fields: unknown }[] = [];
   const definitions = base.context.definitions;
 
@@ -138,7 +145,7 @@ export async function startTestCoding(): Promise<TestCoding> {
     [...codingTools, startTool, codingStartTool].map((tool) => [tool.name, tool]),
   );
 
-  const callTool: TestCoding['callTool'] = async (claim, name, input) => {
+  const callTool: TestCoding<CodingAdapter>['callTool'] = async (claim, name, input) => {
     const tool = toolsByName.get(name);
 
     if (tool === undefined) {
@@ -230,7 +237,7 @@ export async function startTestCoding(): Promise<TestCoding> {
 const startedTaskSchema = z.object({ taskID: z.string() });
 
 async function startVia(
-  callTool: TestCoding['callTool'],
+  callTool: TestCoding<CodingAdapter>['callTool'],
   claim: StartedClaim,
   tool: string,
   input: object,
