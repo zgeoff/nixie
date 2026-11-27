@@ -266,16 +266,14 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         otherStep,
       );
 
-      await startRunners(
-        parts,
-        runStep,
-        () => reader.find('mcp'),
-        () => {
+      await startRunners(parts, runStep, {
+        readMcp: () => reader.find('mcp'),
+        stopCleanups: () => {
           reader.get('conversation_imp').stopCleanups();
           reader.get('sandbox_runner').stopCleanups();
         },
-        reader.find('calls') !== null,
-      );
+        hasCalls: reader.find('calls') !== null,
+      });
 
       parts.state.update({ areRunnersStarted: true });
     },
