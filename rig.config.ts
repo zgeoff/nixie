@@ -16,7 +16,7 @@ export default defineRig({
     'agent-sdk': { start: 'scripts/test-utils/prepare-agent-sdk-lane.ts' },
 
     // GPT-Live speaks about 18 characters a second, so its eval of a long answer runs past 2 minutes
-    'model-api': { limit: '300s' },
+    'gpt-live': { suffix: '.gpt-live', limit: '300s' },
     bundle: { limit: '15s', start: 'scripts/test-utils/prepare-bundle-lane.ts' },
   },
 

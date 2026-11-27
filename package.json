@@ -177,6 +177,7 @@
     "ci:release:tag-images": "bun scripts/release/tag-images.ts",
     "ci:release:write-release-notes": "bun scripts/release/write-release-notes.ts",
     "test:model-api": "rig model-api",
+    "test:gpt-live": "rig gpt-live",
     "test:imp": "rig imp --config=bunfig.imp.toml",
     "test:userns": "rig userns",
     "check:docs": "chex prose length links readmes skill",
