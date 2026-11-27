@@ -26,7 +26,7 @@ feature with no verdict in its description.
 - [Targets](#targets): check a change on a launch target, which `bun verify up` starts.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
-  registry, read the reference before you edit the skill, and run `lint`.
+  registry, and run `lint`.
 
 ## References
 
@@ -58,14 +58,14 @@ feature with no verdict in its description.
 | notebook-pages     | Browse notes, open a private one, forget one                      | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |
 | google-connections | Connect a Google account and forget it                            | [references/feature-google-connections.md](references/feature-google-connections.md) |
 | google-off         | Turn Google off                                                   | [references/feature-google-off.md](references/feature-google-off.md)                 |
-| calls-off          | Turn calls off                                                    | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
-| devices-off        | Turn devices off                                                  | [references/feature-devices-off.md](references/feature-devices-off.md)               |
 | mcp-servers        | Connect an MCP server, and approve a tool                         | [references/feature-mcp-servers.md](references/feature-mcp-servers.md)               |
 | computer-shell     | Write and read back a shell file                                  | [references/feature-computer-shell.md](references/feature-computer-shell.md)         |
 | computer-browser   | Open a page in the assistant's browser                            | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
 | computer-screen    | Click a point of the assistant's desktop                          | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
 | computer-watch     | Watch the assistant's desktop                                     | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
 | computer-off       | See that a nixie with no computer offers none                     | [references/feature-computer-off.md](references/feature-computer-off.md)             |
+| calls-off          | Turn calls off                                                    | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
+| devices-off        | Turn devices off                                                  | [references/feature-devices-off.md](references/feature-devices-off.md)               |
 | spend-routes       | Read each route's counts                                          | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
 | device-in-browser  | Open the browser's own device full screen                         | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
 | device-view        | Open the browser's own device                                     | [references/feature-device-view.md](references/feature-device-view.md)               |
@@ -89,10 +89,10 @@ feature with no verdict in its description.
    of the [targets table](references/targets.md). Run `bun verify use --target <target>` and the
    commands in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
-3. Run `bun verify doctor` before any other app command, which exits 3 until `doctor` passes.
-   Expect: `data.passed: true`. When a check fails, fix its cause, and run `doctor` again. After you
-   edit the app's code while `up` runs it, run `bun verify up --restart` and `doctor` again, or the
-   next app command fails with `doctor-required`.
+3. Run `bun verify doctor` before any other app command, because each of them exits 3 until `doctor`
+   passes. Expect: `data.passed: true`. When a check fails, fix its cause, and run `doctor` again.
+   After you edit the app's code while `up` runs it, run `bun verify up --restart` and `doctor`
+   again, or the next app command fails with `doctor-required`.
 4. Run the journey from the feature's file, which the features table in [References](#references)
    links. Its first line, `use --feature`, records each later command under that feature. Expect:
    each command exits 0. When one fails, follow its row in [Exit codes](references/exit-codes.md).
@@ -111,8 +111,8 @@ feature with no verdict in its description.
      for the feature that `use --feature` set. It never reads the end state, and fails with
      `check-failed` until a journey command has succeeded after `doctor`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
-   check, in the order of the features table in [References](#references). Run the part of a journey
-   that its feature's file marks as last after every other journey.
+   check, in the order of the features table. Run the part of a journey that its feature's file
+   marks as last after every other journey.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Redo steps 4 to 6 for each `stale` one.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
@@ -181,8 +181,8 @@ in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 Map each file your change adds in the registry: add a glob that matches it to a feature's `paths`,
 to `.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
 gate fails on a changed file that no glob matches. `bun verify features` lists the globs. Keep a
-feature's globs off the files `.ignore()` covers, such as tests, docs and skills: list the app's
-files one by one when a directory glob would also match a test.
+feature's globs off the files `.ignore()` covers; list the app's files one by one when a directory
+glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run

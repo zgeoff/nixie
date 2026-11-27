@@ -7,15 +7,15 @@ issues no code for a device session, and leaves `devices` out of the features th
 reports. The web client hides the Device view and Add a device entries of its menu, and a direct
 visit to `/device-view` shows the page that says the feature is off in this nixie.
 
-Run this journey on `local` only, on an `up` of its own, because every device journey needs devices
-on:
+Run this journey on `local` only, on an `up` of its own, because every other device journey needs
+devices on:
 
-- On `local`, `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` runs a test build of nixie with
-  the `devices` section taken out of the config.
-- On `preview`, skip this journey, and list the feature as not verified there in your reply. The
+- On `local`, run `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` to start a test build of nixie
+  with the `devices` section taken out of the config.
+- On `preview`, skip this journey and list the feature as not verified there in your reply. The
   preview's config holds a `devices` section, so its devices are on.
 
-Before you start, run that `up` and `bun verify doctor`, then
+Before you start, run that `up` and `bun verify doctor`, then do
 [sign-in-enrol](feature-sign-in-enrol.md).
 
 ## Journey
@@ -57,7 +57,7 @@ Before you start, run that `up` and `bun verify doctor`, then
 Once the end state matches, run `bun verify done`. When a command fails, follow its row in
 [Exit codes](exit-codes.md), and skip `done`. When every command exits 0 but the end state differs,
 such as a menu that still shows a device entry or a tool list that holds a `device.` tool, skip
-`done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md): fix the app's code when your
-change broke the feature, and otherwise list the feature in your reply with the end state you
-expected and the `data` you got. Whether the journey passed or failed, run `bun verify up --restart`
-and `bun verify doctor` last, so the next journey has devices on.
+`done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md). Fix the app's code when your
+change broke the feature. Otherwise list the feature in your reply with the end state you expected
+and the `data` you got. Whether the journey passed or failed, run `bun verify up --restart` and
+`bun verify doctor` last, so the next journey has devices on.

@@ -98,13 +98,13 @@ sequence logs the error and ends the process, so the container runtime restarts 
 leaving it live with no runners. A stop during the sequence ends it at the next step, and waits for
 the step in flight before any part closes.
 
-Each part's declaration names the parts it needs, which start before it, and the parts it uses,
-which it reads only later, such as the tool endpoint that the sandbox adapter resolves when a guest
-connects. Parts that need nothing of each other start in the order the server declares them. A
-declaration that names a part no declaration has, or a cycle of needs, stops the start before any
-part starts, and the error names the parts. A part that reads a used part before it starts finds it
-absent: the API leaves a forget pending until the conversation's session cleanup is ready, and a
-memory host command answers that memory has not started.
+Each part declares the parts it needs, which start before it, and the parts it uses, which it reads
+only later, such as the tool endpoint that the sandbox adapter resolves when a guest connects. Parts
+that need nothing of each other start in the order the server declares them. A declaration that
+names a part no declaration has, or a cycle of needs, stops the start before any part starts, and
+the error names the parts. A part that reads a used part before it starts finds it absent: the API
+leaves a forget pending until the conversation's session cleanup is ready, and a memory host command
+answers that memory has not started.
 
 A start whose database already holds a seed never waits on the definitions. When its seed is
 refused, the runners start on the definitions in force, the definitions part stays unready, and the
@@ -121,8 +121,8 @@ on only when its section is in the deployment config: `computer`, `google` and `
 feature of the same name, and the `voice` section switches calls, whose feature ID is `voice`. A
 feature that is off starts none of its parts, needs none of its images and offers none of its tools
 or pages. Read [the design](../../design/queue/feature-switches.md) for the full rules. The code
-still breaks them in a few places. `apps/server/src/leak/leak-exceptions.ts` lists each one, and
-[the ports doc](../ports.md) shows the same list as a table.
+still breaks them in a few places. Find each one in `apps/server/src/leak/leak-exceptions.ts`, or as
+a table in [the ports doc](../ports.md).
 
 - `featureIDs` in `libs/contract` is the one list of features. Derive every union and schema that
   names a feature from it.

@@ -9,10 +9,10 @@ assistant lists devices and shows markdown or an image on a screen that is on. O
 a long answer on the call's device. The camera, the speaker and the microphone are not built: a
 device record holds their capabilities, and every one of them stays off.
 
-The `devices` module owns the record, the screen state, the open streams and the tools. The
-[API](api.md) owns registration, enrolment and the session scope, and the [web client](client.md)
-owns device mode and the device view. Read this doc before you change the `devices` module, a device
-tool or device mode.
+Read this doc before you change the `devices` module, a device tool or device mode. The `devices`
+module holds the record, the screen state, the open streams and the tools. For registration,
+enrolment and the session scope, read the [API](api.md) doc. For device mode and the device view,
+read the [web client](client.md) doc.
 
 ## Enrolment and the session scope
 
@@ -37,8 +37,8 @@ keeps its name and screen.
 2. A browser with no session opens `/device`, and enrols with the code and a name. Enrolment writes
    the `devices` row in the same transaction as the session, for a full code and a device code, and
    for a cookie and a bearer session alike, so the phone app is a device too.
-3. A browser with a full session may call `devices.register({ clientActionID, name })`. The call is
-   for a `full` session only. It renames the session's row in one write transaction, leaves its
+3. A browser with a full session may call `devices.register({ clientActionID, name })`. A device
+   session may not call it. The call renames the session's row in one write transaction, leaves its
    screen as it is, and returns the device's short ID. It writes a client row when the session holds
    none. It issues no code, makes no session and never touches the cookie. A retry with the same
    client action ID and name returns the same ID, and the same ID with another name gets
@@ -619,6 +619,6 @@ devices.
 
 When the section is there, the server gives the API the device procedures, the device page routes
 and the device stream through its feature procedures, adds the device row's session hook, and adds
-the device inbox kinds and the package-install card reader to the core lists. The
-[feature switches](../deployment/server.md#feature-switches) section of the server doc defines the
-feature procedures and the core lists.
+the device inbox kinds and the package-install card reader to the core lists. For the feature
+procedures and the core lists, read the [feature switches](../deployment/server.md#feature-switches)
+section of the server doc.
