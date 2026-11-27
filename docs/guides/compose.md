@@ -16,13 +16,13 @@ secret reaches the container's configuration or its disk.
    harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
    list.
 3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
-   `definitions/rules/starter.yaml`. The pinned image reads definitions format 2, which leaves rule
-   files unapplied. When you run a release that applies rule files, set `format: 3` in
-   `definitions/nixie.yaml`. The next seed applies every rule in the files at once.
+   `definitions/rules/starter.yaml`. `definitions/nixie.yaml` holds format 2, which leaves rule
+   files unapplied. To apply them, set `format: 3`. The next seed applies every rule in the files at
+   once.
 
-   The pinned image keeps the assistant's computer and its code tool on, and refuses a `computer` or
-   `code` section. When you run a release that switches them by config, add `computer: {}` and
-   `code: {}` to `config.yaml` to keep them.
+   `config.yaml` holds `computer: {}`, which keeps the assistant's computer on. The pinned image
+   keeps the code tool on, and refuses a `code` section. When you run a release that switches the
+   code tool by config, add `code: {}` to `config.yaml` to keep it.
 
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape
