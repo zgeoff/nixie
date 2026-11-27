@@ -25,6 +25,9 @@ export interface ConversationImp {
   readonly runStep: RunStep;
 
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
+
+  // ends every wait of a session cleanup, so a shutdown never waits on a stalled turn
+  readonly stopCleanups: () => void;
 }
 
 export async function startConversationImp(
@@ -93,5 +96,6 @@ export async function startConversationImp(
   return {
     runStep: makeConversationReadinessStep(parts.state, conversation.runStep),
     cleanupSessions: conversation.cleanupSessions,
+    stopCleanups: conversation.stopCleanups,
   };
 }

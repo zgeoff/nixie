@@ -19,9 +19,11 @@ import {
 import { buildTaskSeeder, readTestTasks, seedDefinitionTask } from '@heynixie/tasks/test-utils';
 import {
   buildTestArmedDefinition,
+  buildTestMailEvent,
   buildTestTriggerEvent,
   readTestTriggerRows,
   seedArmedDefinitions,
+  seedWakeRule,
   startTestTriggers,
 } from '../test-utils';
 import type { TaskInputEvent } from '../types';
@@ -724,6 +726,120 @@ test('it writes nothing for a fire at an exempt task while the spending stop sta
   const rows = await readTestTriggerRows(ctx);
 
   expect([result, rows.keys]).toStrictEqual([{ delivered: 0 }, []]);
+});
+
+test('it leaves the watermark where it was, counts nothing and takes no key for a held fire while nixie is paused', async () => {
+  const ctx = await setupTest();
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: 'hash-1' });
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  const before = await readTestTriggerRows(ctx);
+
+  await ctx.pauseNixie();
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const after = await readTestTriggerRows(ctx);
+
+  expect(result.delivered).toBe(0);
+
+  expect(after.definitions.map((row) => row.after)).toStrictEqual(
+    before.definitions.map((row) => row.after),
+  );
+
+  expect(after.keys).toStrictEqual([]);
+});
+
+test('it takes the fire of an exempt task while nixie is paused', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.pauseNixie();
+  await ctx.exempt(taskID);
+
+  const result = await ctx.deliver([
+    {
+      scheduledFor: '2027-03-09T21:00:00.000Z',
+      dedupeKey: 'water-the-tomatoes|2027-03-10T08:00',
+    },
+  ]);
+
+  const records = await ctx.readTriggerRecords();
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(result).toStrictEqual({ delivered: 1 });
+
+  expect(
+    records.filter((record) => record.kind === 'trigger.fired').map((record) => record.thread),
+  ).toStrictEqual([taskID]);
+
+  expect(rows.keys.map((row) => row.source_key)).toStrictEqual([
+    'schedule\nwater-the-tomatoes|2027-03-10T08:00',
+  ]);
+});
+
+test('it delivers a mail arrival while nixie is paused', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  const rule = await seedWakeRule(ctx, { match: { from: ['@library.example.org'] } });
+
+  await ctx.pauseNixie();
+
+  ctx.clock.advance(1000);
+
+  const result = await deliverTriggerBatch(ctx.core, 'mail', {
+    cursor: null,
+    events: [buildTestMailEvent({ payload: { receivedAt: ctx.clock.now() } })],
+  });
+
+  const arrivals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['trigger.mail_arrived'],
+  });
+
+  const inbox = await readInbox(ctx.context, 'conversation');
+
+  expect(result).toStrictEqual({ delivered: 1 });
+  expect(arrivals).toHaveLength(1);
+
+  expect(
+    inbox.filter((record) => record.kind === 'trigger.mail_woke').map((record) => record.payload),
+  ).toStrictEqual([
+    {
+      taskID: 'conversation',
+      mails: [
+        {
+          arrived: expect.any(Number),
+          mailbox: 'mail',
+          messageID: 'mz4k8q2w7p',
+          threadID: 'th6p2k9w4x',
+          receivedAt: Date.parse('2027-03-09T00:00:01.000Z'),
+        },
+      ],
+      rules: [
+        {
+          ruleID: rule.ruleID,
+          shortID: rule.shortID,
+          match: { from: ['@library.example.org'] },
+          expiresAt: null,
+        },
+      ],
+    },
+  ]);
 });
 
 test('it delivers the same fire once the pause lifts, because its key stayed free', async () => {

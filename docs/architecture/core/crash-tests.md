@@ -62,26 +62,28 @@ so a rerun that sends the same arguments in another key order matches the action
 
 ## The harness link
 
-The test drives the child through one channel, and the child answers on the same channel. The link
-inside nixie owns these parts:
+The test drives the child, and the child answers, over one channel. The link inside nixie has these
+parts:
 
 - **The clock.** Every lease, timer, retry delay and poll in the child reads one test clock. It
   starts at the time the test passes and moves only when the test asks it to advance. The test
   carries the clock's time from one process to the next, so a restart never moves time backwards. No
   test sleeps to let time pass.
-- **The work tracker.** An advance can wait until the runners settle, so the test knows that they
-  finished the work that the advance made due. Each claim and run of a claim pool counts as work,
-  and so do each lease renewal and each read that turns a commit into a wake of the pools, so a
-  runner that another runner wakes keeps the advance waiting. A runner held at a fault point counts
-  as settled, because only the test moves it on. Work that waits on a reply the test holds back,
-  such as a gated provider call, never settles, and the advance reports that it did not settle.
+- **The work tracker.** The test can have an advance wait until the runners settle, and then knows
+  that they finished the work the advance made due. Each claim and run of a claim pool counts as
+  work, and so do each lease renewal and each read that turns a commit into a wake of the pools, so
+  a runner that another runner wakes keeps the advance waiting. A runner held at a fault point
+  counts as settled, because only the test moves it on. Work that waits on a reply the test holds
+  back, such as a gated provider call, never settles, and the advance reports that it did not
+  settle.
 - **The fault points.** The test arms a fault point at start, or later over the channel. An arm can
   name the kind of work, its ID, and how many times it holds. A runner that reaches an armed point
   reports its arrival and waits. Other runners carry on. The test then releases the runner or kills
   the process.
 - **Operations.** The test build registers operations that the test calls by name, such as sending a
   message to a thread or creating a task. The stale-writer test uses one that closes the process's
-  writer-lock descriptor without stopping it, as a bug would.
+  writer-lock descriptor without stopping it, as a bug would. Another writes a note and starts its
+  forget as a tool call does, so the forget's session cleanup runs beside the test's other work.
 
 A kill sends `SIGKILL` to the process and to every descendant, so a conversation guest dies with the
 nixie process that started it, as it does when a host reboots.
@@ -190,6 +192,22 @@ is open, and then releases it.
 `session.checked` sits behind the same flag, right after a session token passes its check in the
 API. A unit test of the page form of `live.follow` sets a handler that revokes the session there,
 and checks that the stream still ends with `UNAUTHORIZED`.
+
+## The graceful stop
+
+`sigterm.grace` sits behind the test-build flag, in the claim pool's stop, after the stop begins and
+while a step is still running. The graceful-stop suite, `stop-graceful.test.ts`, holds the stop
+there, sends `SIGTERM`, and advances the clock through the grace. It checks that a step which ends
+inside the grace commits once, and that a step still running at the deadline is left to the next
+start's restart sweep. Another test holds a turn at `turn.reply.after` and calls the harness
+operation that writes a note and starts its forget. The forget's session cleanup then waits on a
+turn that never ends. The test checks that nixie still exits with code 0 once the grace has passed
+and that no `model.session_cleanup_completed` record exists. A shutdown ends the cleanup's waits, so
+a stalled turn cannot hold the stop.
+
+The next start runs that cleanup again. The rerun of an aborted turn answers only the messages that
+the turn's kept reply had not read, as [Conversation turns](./conversation-turns.md) explains. The
+conversation runner's unit tests cover that rerun, and no crash test does.
 
 ## Coverage
 

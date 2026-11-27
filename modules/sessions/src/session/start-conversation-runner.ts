@@ -75,6 +75,9 @@ export interface ConversationRunner {
   readonly runStep: RunStep;
 
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
+
+  // ends every wait of a session cleanup, which the server calls when a shutdown begins
+  readonly stopCleanups: () => void;
   readonly stop: () => Promise<void>;
 }
 
@@ -127,6 +130,12 @@ export async function startConversationRunner(
     sandboxName: sandbox.id,
   });
 
+  const shutdown = new AbortController();
+
+  const stopCleanups = () => {
+    shutdown.abort(new Error('nixie is stopping'));
+  };
+
   const run: ConversationRun = {
     ...options,
     profile: routed.profile,
@@ -143,7 +152,7 @@ export async function startConversationRunner(
     defaultZone: options.defaultZone ?? 'UTC',
     messaging: options.messaging ?? defaultMessaging,
     imageBudget: options.imageBudget ?? sessionImageBudget,
-    session: makeSessionGuard(),
+    session: makeSessionGuard(shutdown.signal),
   };
 
   return {
@@ -157,6 +166,11 @@ export async function startConversationRunner(
       return runConversationStep(run, input);
     },
     cleanupSessions: (cause) => runSessionCleanup(run, cause),
-    stop: () => endpoint.stop(),
+    stopCleanups,
+    stop: () => {
+      stopCleanups();
+
+      return endpoint.stop();
+    },
   };
 }

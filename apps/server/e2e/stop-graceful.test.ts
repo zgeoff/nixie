@@ -130,3 +130,36 @@ test('it stops with a step still running at the deadline, which the next start s
     projectionDrift: [],
   });
 });
+
+test('it stops within the grace when a session cleanup waits on a turn that never ends', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start([{ point: 'sigterm.grace', kind: 'pool' }]);
+
+  await first.ready;
+
+  await first.request('arm', { point: 'turn.reply.after' });
+
+  ctx.nixie.model.addReplies({ text: 'Hi.' });
+  void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
+
+  await first.waitForArrival('turn.reply.after');
+  await first.request('forgetNoteBeside', null);
+
+  first.signal('SIGTERM');
+
+  const arrival = await first.waitForArrival('sigterm.grace');
+
+  first.release(arrival);
+
+  await ctx.nixie.harness.advance(30_000);
+
+  const exit = await first.exited;
+  const records = await ctx.nixie.readRecords();
+
+  expect(exit).toStrictEqual({ code: 0, signal: null });
+
+  expect(
+    records.filter((record) => record.kind === 'model.session_cleanup_completed'),
+  ).toStrictEqual([]);
+});

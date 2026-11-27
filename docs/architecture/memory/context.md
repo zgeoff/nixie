@@ -297,20 +297,20 @@ Each read returns a bounded number of entries. It decrypts 500 records a page, a
 no entry keeps reading the next 500, up to 5,000 records in one call, so most searches find their
 match in one call. An empty page costs little to return, and the reads stop at the first page that
 holds an entry, so a result stays one page of the usual size. A search that still finds nothing in
-those 5,000 records returns no entries with a cursor and a `note`. The note says the read stopped
-early, so the empty result does not show that no match exists, and gives the time span of the
-records it read. The model passes the cursor as `after` to go on, or narrows the range with `from`
-and `to`. Only a `null` cursor means the thread holds nothing more.
+those 5,000 records returns no entries with a cursor and a `note`. The note says that the read
+stopped early, so a match may still exist, and gives the time span of the records it read. The model
+passes the cursor as `after` to go on, or narrows the range with `from` and `to`. Only a `null`
+cursor means the thread holds nothing more.
 
 A list clips each entry's text at 2,000 characters and marks the entry `isCut`. A read with
 `record`, the event ID of one entry, returns that entry whole, in pages under the same byte limit as
-`memory.recall`, and the `next` cursor of each page is the offset of the one after it, and a cursor
-inside a character is refused. A read with `record` refuses an entry outside the log thread it
+`memory.recall`. The `next` cursor of each page is the offset of the page after it, and the tool
+refuses a cursor inside a character. A read with `record` refuses an entry outside the log thread it
 reads, with the same answer as for an entry that does not exist. The tool reads only the log thread
-of the caller: the caller's own thread, or the conversation's thread for a
+of the caller: a task's own thread, or the conversation's thread for the conversation and for a
 [task with the log grant](../core/started-tasks.md#start-options). Each entry keeps its role, so a
-granted task tells the user's words from a task report. It declares only a read, so the starter rule
-`allow-reads` allows it.
+granted task tells the user's words from a task report. The tool declares only a read, so the
+starter rule `allow-reads` allows it.
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns
@@ -328,12 +328,12 @@ A tool entry shows the call's `result` or its `message` alone, so a field the to
 `hidden` never reaches the model, and `moment.read` prints a tool result the same way. A stored
 result of an earlier release can hold a UUID under `momentID`, `itemID`, `momentIDs` or `itemIDs`,
 so the entry prints that UUID's short ID, read from the live row. A UUID under `proposalID` prints
-the short ID derived from it, with no row read. It leaves the key out when no live row gives one:
-the item has no row, or the moment was destroyed. An element of `momentIDs` or `itemIDs` with no
-short ID leaves the list. A word search matches the printed text, so it finds the short ID and never
-the UUID. A failed row read fails the call and never falls back to the UUID. The call's record holds
-only the event IDs it returned, so a forget leaves no readable copy of what the model read, and a
-forgotten message reads with no text and never matches a search.
+the short ID derived from it, with no row read. The entry leaves the key out when no live row gives
+a short ID: the item has no row, or the moment was destroyed. An element of `momentIDs` or `itemIDs`
+with no short ID leaves the list. A word search matches the printed text, so it finds the short ID
+and never the UUID. A failed row read fails the call and never falls back to the UUID. The call's
+record holds only the event IDs it returned, so a forget leaves no readable copy of what the model
+read, and a forgotten message reads with no text and never matches a search.
 
 The model opens one image with the `log.read_image` tool, by the event ID of the user's message that
 holds it and the image's number in that message, which comes from the message's `<dropped-image>`
@@ -353,8 +353,8 @@ be a message the user sent on the thread the caller may read (its own, or the co
 the log grant), and the quote must lie in text the user typed. A reply or a tool result never backs
 a write, because nobody typed it, so a quote that only a fetched page holds becomes a proposal. The
 token check and the checker run as for any other write
-([the content gate](./writes.md#the-content-gate)). An uncited quote from a task with the grant
-searches the task's own thread, so it becomes a proposal with `no_quote`.
+([the content gate](./writes.md#the-content-gate)). For an uncited quote from a task with the grant,
+the gate searches the task's own thread, so the quote becomes a proposal with `no_quote`.
 
 ## Forgetting and the live session
 
@@ -396,11 +396,24 @@ through those tools.
 
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a
-step over after its lease expired must not wait on the turn the stale runner still holds. Every step
-is safe to run twice, so a crash mid-cleanup leaves the item forgetting with its `erasure.started`
-record open, and the erasure catch-up at the server's start runs the cleanup again before any runner
-claims work. The aborted turn's step fails and runs again after its retry delay, and that rerun
-finds the invalidated record and rebuilds the session.
+step over after its lease expired must not wait on the turn the stale runner still holds. A crash
+mid-cleanup leaves the item forgetting with its `erasure.started` record open, and the erasure
+catch-up at the server's start runs the cleanup again before any runner claims work. Every step is
+safe to run twice. The aborted turn's step fails and runs again after its retry delay, and that
+rerun finds the invalidated record and rebuilds the session.
+
+The user may have read a reply that the aborted turn wrote, so the turn keeps it and writes no void
+([conversation turns](../core/conversation-turns.md#records-of-a-turn)). Each reply names the
+messages that the turn had read when it wrote the reply. The conversation's rerun acknowledges those
+messages as answered, so the user never gets a second answer, and runs no turn when no other message
+waits. The rerun answers every other message, including one that landed before the reply but that
+the turn had not read. A rerun that starts while the cleanup still waits voids no lost reply until
+the cleanup ends, so it sees the invalidated record and leaves the kept reply alone.
+
+A shutdown ends each wait of a cleanup: for a turn to end, even a stalled one, for a step to commit
+and for the guest purge to answer. The runners stop before the notebook and the memory store, which
+wait for the cleanups in flight, so the server ends those waits as the runners begin to stop. A
+cleanup that ends this way fails, and the next start runs it again.
 
 Backups and the memory export leave out the SDK transcript, a cache in the sandbox, so the purge in
 step 6 removes every copy of it.

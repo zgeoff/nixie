@@ -8,6 +8,7 @@ import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
+import type { NotebookStore } from '@heynixie/notebook';
 import type { FakePhoneProvider } from '@heynixie/phone/fake';
 import { readPendingActionProposals } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
@@ -24,6 +25,7 @@ export interface HarnessParts {
   // the in-memory hosts that a journey puts mail and texts in, each null while its feature is off
   readonly mail: MemoryMailHost | null;
   readonly phone: FakePhoneProvider | null;
+  readonly notebook: NotebookStore;
   readonly runInForceSeed: () => Promise<unknown>;
 }
 
@@ -132,6 +134,24 @@ export function registerHarnessOperations(
     }
 
     return answers.approved;
+  });
+
+  link.registerOperation('forgetNoteBeside', schemas.forgetNoteBeside, async () => {
+    const written = await parts.notebook.write(
+      { writer: 'conversation', model: 'harness' },
+      { title: 'Boiler notes', body: 'The boiler trips after a cold night.' },
+    );
+
+    invariant(written.status === 'written', 'the harness note was not written');
+
+    const begun = await parts.notebook.forgetBeside(
+      { note: written.shortID },
+      { thread: 'harness' },
+    );
+
+    invariant(begun.status === 'begun', 'the harness note forget did not begin');
+
+    return null;
   });
 
   link.registerOperation('approveMandate', schemas.approveMandate, async () => {

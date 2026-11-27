@@ -14,8 +14,8 @@ type CleanupRun = Pick<
 >;
 
 export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
-  return run.session.withInvalidation(async (lastStep) => {
-    await waitForStepEnd(run.context, conversationTaskID, lastStep);
+  return run.session.withInvalidation(async (lastStep, stopping) => {
+    await waitForStepEnd(run.context, conversationTaskID, lastStep, stopping);
 
     run.clearFetchPauses();
 

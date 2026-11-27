@@ -1,4 +1,6 @@
 import type { RunningStep } from '@heynixie/tasks';
+import { raceStop } from './race-stop';
+import { SessionInvalidatedError } from './session-invalidated-error';
 
 export interface SessionGuard {
   // step: the step whose turn this is, which a later cleanup waits for until it commits
@@ -8,8 +10,9 @@ export interface SessionGuard {
   ) => Promise<T>;
 
   // lastStep: the step of the last turn that started, whose commit can still be on its way
+  // stopping: aborts at a shutdown, which ends the cleanup's waits for a turn or a step
   readonly withInvalidation: (
-    cleanup: (lastStep: RunningStep | undefined) => Promise<void>,
+    cleanup: (lastStep: RunningStep | undefined, stopping: AbortSignal) => Promise<void>,
   ) => Promise<void>;
 }
 
@@ -18,7 +21,12 @@ interface CleanupGate {
   pending: number;
 }
 
-export function makeSessionGuard(): SessionGuard {
+// shutdown: aborts when nixie stops. A cleanup then stops waiting for a turn that never ends or for
+// its own work, such as a guest purge that never answers, and rejects, so neither holds the
+// shutdown. The next start runs the cleanup again.
+export function makeSessionGuard(
+  shutdown: AbortSignal = new AbortController().signal,
+): SessionGuard {
   const gate: CleanupGate = { current: Promise.resolve(), pending: 0 };
 
   const active = new Map<AbortController, Promise<void>>();
@@ -28,7 +36,7 @@ export function makeSessionGuard(): SessionGuard {
   return {
     withTurn: async (run, step) => {
       while (gate.pending > 0) {
-        await gate.current;
+        await raceStop(gate.current, shutdown);
       }
 
       // Lease generations only grow, so a turn of an older claim that starts late must not hide
@@ -51,10 +59,12 @@ export function makeSessionGuard(): SessionGuard {
       }
     },
     withInvalidation: (cleanup) => {
-      const ran = runAfter([gate.current, ...active.values()], () => cleanup(turns.last));
+      const ran = runAfter([gate.current, ...active.values()], shutdown, () =>
+        cleanup(turns.last, shutdown),
+      );
 
       for (const controller of active.keys()) {
-        controller.abort(new Error('a forget invalidated the session'));
+        controller.abort(new SessionInvalidatedError());
       }
 
       gate.pending += 1;
@@ -67,11 +77,11 @@ export function makeSessionGuard(): SessionGuard {
 
 async function runAfter(
   before: readonly Promise<void>[],
+  shutdown: AbortSignal,
   cleanup: () => Promise<void>,
 ): Promise<void> {
-  await Promise.all(before);
-
-  await cleanup();
+  await raceStop(Promise.all(before), shutdown);
+  await raceStop(cleanup(), shutdown);
 }
 
 async function waitForCleanup(gate: CleanupGate, cleanup: Promise<void>): Promise<void> {

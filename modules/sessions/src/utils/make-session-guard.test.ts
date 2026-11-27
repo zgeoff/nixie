@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { makeSessionGuard } from './make-session-guard';
 
 test('it runs a second turn while the first still runs', async () => {
@@ -187,4 +187,69 @@ test('it runs the next turn after a cleanup that failed', async () => {
 
   expect(failed).rejects.toThrow('the guest exited');
   expect(next).toBe('ran');
+});
+
+test('it rejects a cleanup that waits on a turn that never ends once the shutdown begins', async () => {
+  const shutdown = new AbortController();
+
+  const guard = makeSessionGuard(shutdown.signal);
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  const turn = guard.withTurn(() => held.promise);
+  const cleanup = guard.withInvalidation(() => Promise.resolve());
+
+  shutdown.abort(new Error('nixie is stopping'));
+
+  expect(cleanup).rejects.toThrow('nixie is stopping');
+
+  held.resolve();
+
+  await turn;
+});
+
+test('it lets a turn that waits behind a stalled cleanup go once the shutdown begins', async () => {
+  const shutdown = new AbortController();
+
+  const guard = makeSessionGuard(shutdown.signal);
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  const blocker = guard.withTurn(() => held.promise);
+  const cleanup = guard.withInvalidation(() => Promise.resolve());
+  const later = guard.withTurn(() => Promise.resolve('ran'));
+
+  shutdown.abort(new Error('nixie is stopping'));
+
+  expect(later).rejects.toThrow('nixie is stopping');
+  expect(cleanup).rejects.toThrow('nixie is stopping');
+
+  held.resolve();
+
+  await blocker;
+});
+
+test('it rejects a cleanup whose own work never ends once the shutdown begins', async () => {
+  const shutdown = new AbortController();
+
+  const guard = makeSessionGuard(shutdown.signal);
+  const entered = Promise.withResolvers<void>();
+
+  const cleanup = guard.withInvalidation(() => {
+    entered.resolve();
+
+    return Promise.withResolvers<void>().promise;
+  });
+
+  await entered.promise;
+
+  shutdown.abort(new Error('nixie is stopping'));
+
+  expect(cleanup).rejects.toThrow('nixie is stopping');
 });

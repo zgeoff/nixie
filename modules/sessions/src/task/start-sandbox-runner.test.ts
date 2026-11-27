@@ -417,6 +417,7 @@ test('it refuses to end a task turn that holds a message from you silently, and 
       model: 'claude-test-errands',
       profile: 'errands',
       messageID: expect.any(String),
+      readSequences: [expect.any(Number)],
       runID: expect.any(String),
     },
     erasable: { status: 'readable', fields: { text: 'The morning tide is at 06:10.' } },

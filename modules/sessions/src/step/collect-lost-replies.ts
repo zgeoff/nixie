@@ -1,9 +1,14 @@
 import type { LogRecord } from '@heynixie/log';
-import { modelReplyCodec, modelReplyVoidedCodec } from '@heynixie/models';
+import {
+  modelReplyCodec,
+  modelReplyVoidedCodec,
+  modelSessionInvalidatedCodec,
+} from '@heynixie/models';
 import type { DroppedReplies } from '../utils/build-reply-voids';
 
 // The records run newest first, down to the thread's last step commit. A reply after that commit
-// that no void names belongs to an attempt that died, so no step commit kept it.
+// that no void names belongs to an attempt that died, so no step commit kept it. A cleanup's
+// session-invalidated record ends the read: the replies before it belong to an aborted turn.
 export function collectLostReplies(
   records: Iterable<LogRecord>,
   fallbackRunID: string,
@@ -12,7 +17,10 @@ export function collectLostReplies(
   const lost = new Map<string, number[]>();
 
   for (const record of records) {
-    if (record.kind === 'task.step_committed') {
+    if (
+      record.kind === 'task.step_committed' ||
+      record.kind === modelSessionInvalidatedCodec.kind
+    ) {
       break;
     }
 
