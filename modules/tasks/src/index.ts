@@ -89,6 +89,7 @@ export { buildTasksRunsTool } from './run/build-tasks-runs-tool';
 export type { ListedTaskState } from './task/pick-listed-task-state';
 export { pickListedTaskState } from './task/pick-listed-task-state';
 export { readListedNextRun } from './task/read-listed-next-run';
+export { readListedRunnerFields } from './task/read-listed-runner-fields';
 export { readOwnerMessageTakers } from './owner/read-owner-message-takers';
 export { readTaskBrief } from './task/read-task-brief';
 export { readTaskBriefs } from './task/read-task-briefs';

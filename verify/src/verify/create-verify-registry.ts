@@ -12,6 +12,7 @@ import { buildHostCLIArgv } from './build-host-cli-argv';
 import { calendarWrittenCommand } from './calendar-written-command';
 import { callFeatures, callStepSummary } from './call-features';
 import { checkHarness } from './check-harness';
+import { codingFeatures } from './coding-features';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { driveFilesCommand } from './drive-files-command';
@@ -181,6 +182,16 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.deliverGmail.input,
       data: controlRoutes.deliverGmail.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.deliverGmail, input),
+    })
+    .action({
+      name: 'set-session-state',
+      summary:
+        "Set the state of every session on the coding gateway double to --state: running, needs_you (the session waits on you) or done (the agent finished its turn). nixie reads the state within a second or two, and the task's session state moves. Needs a start with NIXIE_VERIFY_CODING=1",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.setSessionState.input,
+      data: controlRoutes.setSessionState.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.setSessionState, input),
     })
     .action({
       name: 'show-on-device',
@@ -471,6 +482,7 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Start a coding session from chat',
         paths: featurePaths['coding-session'],
       },
+      ...codingFeatures,
       ...callFeatures,
       {
         name: 'drawing',

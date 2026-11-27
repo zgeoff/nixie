@@ -9,9 +9,14 @@ release of a session when its task ends. It reaches the other program only throu
 adapter interface, one adapter per program.
 
 The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's MCP gateway.
-[The wiring section](#the-atc-adapter-and-the-server) covers it. The
-[coding session runner design](../../design/queue/coding-session-runner/README.md) covers the
-choices behind it.
+[The atc adapter](../connectors/coding-atc.md) covers its calls and
+[the wiring section](#the-atc-adapter-and-the-server) covers how the server builds it.
+
+A coding task runs no model and judges nothing about the session's work. An agent ends a turn while
+a background shell still runs, so an idle session is no sign that the work is done. The conversation
+reads the session and decides whether it is done, waits on the user or needs a steer. Each task run
+spans the whole binding: the start or the join opens it, and only the session's end, a failed start,
+a stop, a close or a failure ends it.
 
 Read this doc before you change the coding module or write an adapter for it. Read
 [tasks](./tasks.md) for the state machine, the inbox and the controls that a coding task shares with
@@ -145,6 +150,99 @@ of sessions, or join it by calling `coding.start` with its session ID. A later s
 finished report target does, the record still stands, and the sweep logs
 `coding.lost_session_unreported` once.
 
+## Records and the sessions row
+
+Every record of a coding task sits on the task's thread. The step writes `coding.session_bound` when
+it reads the spawn's done outcome, and a join writes it in the start's transaction. Each record
+below changes the session's row:
+
+| Record                   | Written when                                          | Changes the row                                |
+| ------------------------ | ----------------------------------------------------- | ---------------------------------------------- |
+| `coding.session_bound`   | the session is bound                                  | creates it                                     |
+| `coding.steered`         | the step reads a steer's done outcome                 | `hop`                                          |
+| `coding.delivered`       | the step reads a note's done outcome                  | `hop`, the held answers                        |
+| `coding.answer_held`     | an answer reaches the inbox before its note's outcome | the held answers                               |
+| `coding.wake_set`        | `coding.watch` replaces the wake set                  | `wake`                                         |
+| `coding.session_unbound` | the task lets go of the session                       | `unbound_at`                                   |
+| `trigger.task_input`     | the coding source lands an event                      | `last_event_at`, and `state` for a state event |
+
+The `coding_sessions` table has one row per coding task, keyed by the task ID, with an index on the
+adapter and session ID that finds a session's open binding. Its `state` is the session's state as
+the task last saw it. The row holds no erasable field, so a forget never reaches it. Because the
+projection folds `trigger.task_input` in the transaction that appends it, a session event that lands
+on the thread changes the row in the same commit.
+
+## Policy
+
+The coding module adds the effect name `coding_start`, which the start, the join and a stop of a
+started session declare. It needs an effect of its own because a start acts on a coding session
+outside nixie, which nixie does not see call by call, and `code_run` covers only code in nixie's own
+sandbox.
+
+| Starter rule                  | What it does                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| `ask-coding-sessions`         | asks before every `coding.start`, a join included, even when the user asked for it |
+| `allow-coding-spawns`         | allows `coding.spawn`, because the start call already met the user's rules         |
+| `allow-stop-started-sessions` | allows a `coding.stop` whose origin is `started`                                   |
+| `allow-coding-input`          | allows `coding.steer` and `coding.message` to the destinations `atc:*`             |
+
+A start therefore asks the user for approval at most once, because `coding.spawn` never asks. When a
+spawn's outcome is unknown, the user gets a separate question, whether the session started. That
+question is no request for approval and does not count toward the one approval. `coding.read` and
+`coding.sessions` declare `read`, and `coding.watch` declares `note`, so the starter rules allow
+them.
+
+## Tool limits
+
+- `coding.steer`, `coding.message`, `coding.read` and `coding.watch` refuse a task that is not a
+  coding task, has no bound session, or is done, failed or closed, with one sentence the model
+  reads. A steer and a note sit on the task's thread, so a pause holds them and a stop cancels them
+  before their first attempt.
+- A steer types the whole text as one paste, newlines included, then presses Enter. The tools refuse
+  text over 32,000 characters. A steer declares `none` reconciliation, so its unknown outcome goes
+  to the user at once, because a resend types the line again. The step tells the report target when
+  a steer fails or its outcome is unknown. A steer carries no label of its sender.
+- The hop of a steer or a note is the hop of the turn that called the tool. The step writes it into
+  the session's row when it reads the done outcome.
+- `coding.read` makes one adapter read and never throws: a failed read gives a refusal sentence with
+  the adapter's reason. Its default answer is the state, the pending question and the last reply cut
+  to 2,000 characters, so a check costs little of the conversation's context. `prompt` adds the
+  session's first prompt, cut to 2,000 characters, and `tail` adds the last 1 to 5 turns, whole
+  turns while they fit in 8,000 characters. A cut keeps the end of a reply and the newest turns. A
+  session whose agent has no transcript reader answers `tail: { unsupported: true }`.
+- The wake events are `waiting`, `idle`, `ended`, `gone`, `progress`, `blocked` and `decision`.
+  `coding.watch` takes a whole set, and an empty set is valid: then only the session's end and the
+  report reach the conversation. The deployment's `coding.wake.started` and `coding.wake.joined`
+  hold the defaults.
+- The step forwards an event to the report target as a progress message and never summarises it. The
+  message carries the event's kind, the state and the question or the note's text, and the
+  conversation calls `coding.read` for more.
+
+## Supervising in the live view
+
+A coding task shows in the live view like any task, and `tasks.list` adds its session to the
+listing. Keep these true when you change it:
+
+- Read the session only from the sessions row and the `tasks` topic. The runner's list fields give
+  `tasks.list` and `tasks.read` a `session` for each task that binds one: the session's origin, its
+  state, the time of its last event (null before the first event) and whether the task let go of the
+  session at a stop, a close or a failure. A task that binds no session lists none. No other stream
+  carries the session.
+- The web client shows the session on the dashboard and on the task's page only when the `coding`
+  feature is on, as [the client doc](../channels/client.md#the-task-dashboard) describes. The state
+  moves without a reload because every record that changes the row marks the `tasks` topic, and the
+  client reads the list again on that topic, as [live updates](../channels/live-updates.md#topics)
+  describes.
+- A session in atc that nixie never started or joined has no row, so the source drops its events and
+  it never shows. A task that started its session shows in the group "Coding sessions", and a
+  finished task stays there with its session's last state until the user closes it. A task that
+  joined a session shows in its ordinary group. `tasks.list` still gives it a `session`, but the web
+  client draws no session line for it, because the user already watches that session in atc.
+- A coding runner offers pause, resume, stop and close, with no restart or interrupt, so a stopped
+  coding task can only be closed. When nixie started the session, the stop and close confirmations
+  tell the user that the session stops. They mention no session for a task that joined one, or for a
+  close after a stop has let go of the session.
+
 ## The atc adapter and the server
 
 The server builds the coding runner, its tools, its source and its sweep only when the deployment's
@@ -153,9 +251,10 @@ deployment that predates the block loads unchanged.
 
 The block names the gateway's URL, the principal nixie acts as, the targets nixie may start sessions
 on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token lives in
-the `atc_token` entry of the secrets file, like every other secret, and a config that names it with
-no such entry stops the server at start. The secrets file's `atc_token` entry is optional, and the
-secret scan treats its value as one of nixie's own values.
+the `atc_token` entry of the secrets file, like every other secret, and a config that holds the
+block with no such entry stops the server at start. A deployment with no `coding.atc` block needs no
+`atc_token` entry, so the entry is required only with the block. The secret scan treats its value as
+one of nixie's own values.
 
 The adapter keeps the state of each session it has seen in memory. The source's `events` call
 carries a read of the bound sessions, and the adapter reads the state of each bound session that has

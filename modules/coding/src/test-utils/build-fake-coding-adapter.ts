@@ -54,6 +54,9 @@ export interface FakeCodingAdapter extends CodingAdapter {
   // appends events to the trail that `events` reads
   readonly emit: (events: readonly SessionEvent[]) => void;
 
+  // true while a read of the trail waits for an event, so an event emitted now reaches it
+  readonly isWaitingForEvents: () => boolean;
+
   // runs while the next start is in its attempt, such as a stop of the task
   readonly runDuringNextStart: (run: () => Promise<void>) => void;
 }
@@ -116,6 +119,7 @@ export function buildFakeCodingAdapter(): FakeCodingAdapter {
         wake();
       }
     },
+    isWaitingForEvents: () => waiters.size > 0,
     runDuringNextStart: (run) => {
       duringStart.push(run);
     },

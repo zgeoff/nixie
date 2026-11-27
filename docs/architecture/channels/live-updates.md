@@ -11,9 +11,11 @@ backup notice marks its topic in the transaction that writes it, and the spend w
 its `changed` event, and reads every topic again when a stream opens, because `changed` has no event
 ID and a closed stream misses it.
 
-Two reads change with no write and have no topic of their own, so the tab reads them again on a
-timer: the task list, at the time its own answer gives, and the stuck forgets. Roots such as
-`sessions` and `devices` have no topic at all. See [Topics](#topics) for each.
+Two changes happen with no write, so the tab reads again on a timer. A task that comes due changes
+the task list, so the tab reads the list at the `changesAt` time the list returns, as well as on the
+`tasks` topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the stuck
+forgets on a timer alone. Roots such as `sessions` and `devices` have no topic either. See
+[Topics](#topics) for each.
 
 ```mermaid
 flowchart LR
@@ -109,15 +111,20 @@ of a transaction, and a transaction that rolls back drops them. `publishChanged(
 announces a change that no write made. The spend watcher calls it when the stop it reads, or whether
 the gateway answers, differs from its last read.
 
+A coding session's state has no topic of its own. The coding source lands each event of a session on
+the task's thread as a record, and that record marks `tasks`, so the task list's `session` moves
+through the same stream as any task change. A change to the coding source must keep that, because a
+state change that lands no record on the task's thread never reaches an open tab.
+
 Each topic has a test that makes the change and asserts that an open stream receives `changed` with
 that topic.
 
 A call has no stream of its own. The `calls` topic reaches a tab through the same stream as every
 other topic, and the client reads `calls.get` again on it.
 
-A task that comes due on a schedule changes the task list with no write, so no topic announces it.
-`tasks.list` returns `changesAt`, the earliest next run of a listed task, and the client reads the
-list again at that time, besides reading it on the `tasks` topic.
+A task that comes due on a schedule changes the task list with no write, so the `tasks` topic never
+fires for it. `tasks.list` returns `changesAt`, the earliest next run of a listed task, and the
+client reads the list again at that time, besides reading it on the `tasks` topic.
 
 A forget turns stuck once it stays open long enough, with no write. The `erasure` root has no topic,
 and the web client reads `erasure.readStuck` again on a timer.

@@ -90,8 +90,10 @@ The conversation view merges three sources into one list:
 - the records the live stream delivers after that page, each sequence shown once
 - the messages this device sent that the list does not show yet, from the outbox
 
-The page never refetches while the view shows: the live stream keeps it current from the sequence it
-was read at, and a dropped stream reconnects from the last sequence it delivered. Leaving the view
+The conversation read sits under no topic, so a `changed` event, a first open and a reconnect leave
+it alone, and the page never refetches it while the view shows. The live stream keeps it current
+from the sequence it was read at, and a dropped stream reconnects from the last sequence it
+delivered. Only a `log_reset` record makes the view read the conversation again. Leaving the view
 drops the page with the stream's records, so a return reads a fresh page and never shows the text of
 a message forgotten in between.
 
@@ -197,10 +199,13 @@ gives the time of the next try, or says that the turn waits for the user's retry
 conversation, next to the newest message, with a Retry button that runs the failed turn again at
 once. The notice goes once a step commits or the user retries. The page reads all of it from the
 failed step's record, which holds the errors in a row, the limit, the reason and the retry time, or
-that the step waits for a retry. A long step can push that record off the newest page, so the page
-read also returns the thread's newest step end, and the notice reads it beside the records. A failed
-compaction gets a notice of its own, with the count of failures in a row, because turns go on while
-it fails and the conversation stops only once the context is full
+that the step waits for a retry.
+
+A long step can push that record off the newest page, so the page read also returns the thread's
+newest step end, and the notice reads it beside the records.
+
+A failed compaction gets a notice of its own, with the count of failures in a row, because turns go
+on while it fails and the conversation stops only once the context is full
 ([compaction](../core/compaction.md#failure-and-overflow)). The notice goes once a summary commits,
 a forget invalidates the session or a new session opens.
 
@@ -240,15 +245,16 @@ forgets once. A forget that fails after its start record dropped the text keeps 
 error, so the user can confirm again and finish the cleanup. A message whose text is gone for
 another reason, such as a
 [reset of the conversation](../core/event-log.md#resetting-the-conversation) or a key that fails to
-decrypt, leaves the view with no placeholder. The view drops a message's text when a forget record
-that names it arrives, and shows the message as removed on every device, such as "nixie — removed",
-with no text and no forget control. A read shows the same line for a record the server marks
-removed. A tool call whose record is removed shows its name with "removed" and its result line,
-without its input or content, and the view drops the input and the content of a tool record when the
-forget record that names it arrives. After a forget, one line takes the place of the control and
-states the key backup state of the forget: off, pending, failed, complete or unknown, worded as the
-[host commands](../deployment/host-commands.md#the-reset) word a reset's line. The removed record
-stays in view with that line until the view reloads.
+decrypt, leaves the view with no placeholder.
+
+The view drops a message's text when a forget record that names it arrives, and shows the message as
+removed on every device, such as "nixie — removed", with no text and no forget control. A read shows
+the same line for a record the server marks removed. A tool call whose record is removed shows its
+name with "removed" and its result line, without its input or content, and the view drops the input
+and the content of a tool record when the forget record that names it arrives. After a forget, one
+line takes the place of the control and states the key backup state of the forget: off, pending,
+failed, complete or unknown, worded as the [host commands](../deployment/host-commands.md#the-reset)
+word a reset's line. The removed record stays in view with that line until the view reloads.
 
 A reply that a void record names, or that sits in a step which ended in an error or an interruption,
 shows muted, with the label "Not sent: this attempt failed, and Nix tried again" and the step's
@@ -279,13 +285,16 @@ The view fills the window, and the message box stays in view below the list. The
 end. When a record or a message arrives, the view moves to the end if the user was at or near it
 when they last scrolled, and stays in place if they scrolled up to read. A view at its end stays
 there when it shrinks, such as when the message box grows, because a resize moves no scroll
-position. The user's own message always brings the view to the end. Below the list, a small spinner
-shows while nixie works: from a sent message until a reply follows it or a step fails or stops, and
-while any step runs. The spinner keeps its slot when it goes, so the list never jumps. A message
-that failed to send stops the spinner, because it waits on the user and not on nixie. Styles come
-from Panda CSS with its own presets, and they set only what reading needs: a readable column width,
-spacing between records, wrapping for a long word or link, and the colours of a light and a dark
-theme.
+position. The user's own message always brings the view to the end.
+
+Below the list, a small spinner shows while nixie works: from a sent message until a reply follows
+it or a step fails or stops, and while any step runs. The spinner keeps its slot when it goes, so
+the list never jumps. A message that failed to send stops the spinner, because it waits on the user
+and not on nixie.
+
+Styles come from Panda CSS with its own presets, and they set only what reading needs: a readable
+column width, spacing between records, wrapping for a long word or link, and the colours of a light
+and a dark theme.
 
 The theme follows the system's light or dark setting until the user picks light or dark in the theme
 picker, and the device keeps that choice in local storage. The colours are tokens with a light and a
@@ -302,9 +311,10 @@ once, when the user taps it. The control opens the microphone, stops every track
 nothing. It shows the permission's state, which it reads from the browser and follows as it changes:
 on, not asked, or blocked with the steps to unblock it. Chrome refuses with the same error when the
 user blocks the prompt and when they only close it, so after a refusal the control reads the
-permission again to tell the two apart. An installed app shares the site's permissions in Chrome, so
-one grant covers the app and the browser tab, and the web server sends no Permissions-Policy header
-that could block the microphone.
+permission again to tell the two apart.
+
+An installed app shares the site's permissions in Chrome, so one grant covers the app and the
+browser tab, and the web server sends no Permissions-Policy header that could block the microphone.
 
 ### Worker runs and large payloads
 
@@ -621,34 +631,53 @@ Deferred group is collapsed.
 
 ## The task dashboard
 
-The dashboard at `/tasks` lists every open task in three groups: the conversation, the working tasks
-and the held tasks. The conversation is the task with the ID `conversation`, and it stays in its own
-group in every state, a pause of nixie included. The other tasks group by their listed state, the
-state that the API's `tasks.list` gives in `listedState`. Working holds `ready`, `running`,
-`waiting`, `idle`, `asleep` and `finished`, and Held holds `paused`, `stopped` and `failed`. A
-`done` or `closed` task leaves the list. A task from a server that gives no listed state groups and
+The dashboard at `/tasks` lists every open task in up to four groups: the conversation, the working
+tasks, the held tasks and the coding sessions. The conversation is the task with the ID
+`conversation`, and it stays in its own group in every state, a pause of nixie included. The other
+tasks group by their listed state, the state that the API's `tasks.list` gives in `listedState`.
+Working holds `ready`, `running`, `waiting`, `idle`, `asleep` and `finished`, and Held holds
+`paused`, `stopped` and `failed`. A `done` or `closed` task leaves those two groups. The coding
+sessions group below keeps a `done` task. A task from a server that gives no listed state groups and
 shows by its stored state.
+
+The coding sessions group follows the `coding` feature, so it shows only while that feature is on.
+It holds each task whose session nixie started, in any state but closed, so a finished or `done`
+task stays there with its session's last state until the user closes it. Under its heading it says
+that the sessions run in another program, outside nixie. A task that joined a session, which nixie
+did not start, groups by its state like any task and shows no session line, because the user watches
+that session in atc. The group shows only when it has a task, and the filters below apply to it too.
 
 Each task shows its name, which links to its page, its state, the time of its last activity, its
 brief, the task it waits on, the tasks that wait on it, and how many of its actions are queued and
 started. The page also adds these lines, in the browser's time zone:
 
-- On a definition's task with a fire, "Scheduled" and the scheduled time. For a catch-up fire, the
-  line adds how late the fire fired, from `firedAt` less `scheduledFor`. A task that a held state
-  holds shows the fire of its newest task run. A task run that a poll fired shows no fire, because a
-  poll has no schedule to be late against.
-- On an `asleep` task with a `nextRunAt`, "Next run" and that time.
-- On a `finished` task, "Sent its report".
+- A definition's task with a fire shows "Scheduled" and the scheduled time. For a catch-up fire, the
+  line adds how late the fire fired, from `firedAt` less `scheduledFor`. A task in a held state
+  shows the fire of its newest task run. A task run that a poll fired shows no fire, because a poll
+  has no schedule to be late against.
+- An `asleep` task with a `nextRunAt` shows "Next run" and that time.
+- A `finished` task shows "Sent its report".
 
-The dashboard filters by definition and by state. Each filter is one select with an All option, so
-it takes one value. The route keeps them as the search parameters `definition` and `state`, so a
-reload or a shared link keeps them, and it drops a state that is not one of the 11 listed states.
-The definition filter lists each definition that has a task, by its name, from
-`definitions.listTasks`. It shows only while a listed task has a `definitionID` or a filter is set,
-so a server that gives no `definitionID` shows no definition filter. The filters go into the
-`tasks.list` input, so the server filters before its cap. With a filter set, the dashboard shows
-only the groups that hold a match, and a Clear filters button. With no match, it shows the
-empty-group text.
+A task whose session nixie started also shows a session line, on the dashboard and on the task's
+page: "Coding session, outside nixie: started by nixie", the session's state and the time of its
+last event. The state reads Running, Waiting for you, Idle, Ended or Out of reach, from the
+`session` that `tasks.list` and `tasks.read` give, as [the API](./api.md#reading-tasks) describes.
+The time reads "No event yet" before the first event and shows once the page hydrates, because it
+uses the browser's time zone. While the task is paused, a second line says the session keeps
+running, because a pause holds only the task. The session line needs no stream of its own: each
+event that lands on the task's thread marks the `tasks` topic, so the read that the topic
+invalidates carries the new state, as [live updates](./live-updates.md#topics) describes. The
+[coding task design](../core/coding-tasks.md#supervising-in-the-live-view) covers what the server
+gives.
+
+The dashboard filters by definition and by state. Each filter is a select with an All option and
+takes one value. The route keeps them as the search parameters `definition` and `state`, so a reload
+or a shared link keeps them, and it drops a state that is not one of the 11 listed states. The
+definition filter lists each definition that has a task, by its name, from `definitions.listTasks`.
+It shows only while a listed task has a `definitionID` or a filter is set, so a server that gives no
+`definitionID` shows no definition filter. The filters go into the `tasks.list` input, so the server
+filters before its cap. With a filter set, the dashboard shows only the groups that hold a match,
+and a Clear filters button. With no match, it shows the empty-group text.
 
 The dashboard reads the task list again on each `changed` event of the `tasks` topic, and when the
 page comes to the front. A task that wakes on a schedule changes with no write, so no topic
@@ -659,10 +688,15 @@ read that a topic covers.
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a
 retry after a failure sends the same client action ID. A pause of a running task shows as requested
-until its step ends. A stop first lists the actions it cancels and the started ones that run to
-their outcome. The dashboard offers the confirm only once that list loads, so the user never cancels
-an action unseen. A close asks first too, because a closed task takes no more messages. The
-conversation offers no close.
+until its step ends.
+
+A stop first lists the actions it cancels and the started ones that run to their outcome. The
+dashboard offers the confirm only once that list loads, so the user never cancels an action unseen.
+A close asks first too, because a closed task takes no more messages. The conversation offers no
+close. While the coding feature is on, the stop and the close confirmations of a task with a coding
+session add a line, "This also stops its coding session.", when nixie started the session, and none
+when the task joined one or has let go of it at a stop. A coding task offers no restart and no
+interrupt, so a stopped one offers only Close.
 
 While nixie is paused, every signed-in page shows a banner with the cause in words, a restore, you
 or the spending limit, and since when, beside a Resume nixie button that acts at once. A restore
@@ -680,7 +714,7 @@ A task's page at `/tasks/<task_id>` shows that task's thread in the conversation
 header with the task's name, state and controls. The page reads that task on its own and never from
 the task list, which keeps only the most recently active tasks. Its composer sends to that thread,
 so a message sent there lands in the task's inbox and never in the conversation's. The composer
-shows only once the task's read succeeds, so a closed task's page keeps its thread readable with no
+shows only once the task's read succeeds. A closed task's page keeps its thread readable with no
 composer, and a failed read shows the failure with a retry.
 
 The header shows the task's brief, the prompt the task started with, cut to 2 lines, and a button
@@ -690,16 +724,19 @@ A [task message](../core/task-messages.md) shows in both the sender's thread and
 conversation view shows each message that the conversation sent or received as one line, such as
 "Received a message from Garden plan", which links to the message in the other task's thread. A
 task's page shows each message as a framed block with the other task's name, the message's kind, its
-hop and its whole text, and with a mark when the message woke nobody. The message record lands only
-in the receiver's thread, so the sender's thread shows the message from the sender's call of the
-message tool, whose input holds the receiver and the text and whose result holds the message ID. A
-received message whose text a forget erased shows as forgotten, and a sent message whose call input
-a forget erased leaves the thread. The exchange notice that the hop limit writes on the sender's
-thread shows who waits on whom, with a link that opens the receiver's page at the message that woke
-nobody, or the conversation's page when the conversation receives it. That page reads earlier pages
-of its thread until it holds the message, because its first page holds only the newest records, and
-then scrolls to the message. A failed read stops the reading and offers a retry, and only that retry
-reads the page again. A stop shows as a marker that lists the actions it cancelled.
+hop and its whole text, and with a mark when the message woke nobody.
+
+The message record lands only in the receiver's thread, so the sender's thread shows the message
+from the sender's call of the message tool, whose input holds the receiver and the text and whose
+result holds the message ID. A received message whose text a forget erased shows as forgotten, and a
+sent message whose call input a forget erased leaves the thread.
+
+The exchange notice that the hop limit writes on the sender's thread shows who waits on whom, with a
+link that opens the receiver's page at the message that woke nobody, or the conversation's page when
+the conversation receives it. That page reads earlier pages of its thread until it holds the
+message, because its first page holds only the newest records, and then scrolls to the message. A
+failed read stops the reading and offers a retry, and only that retry reads the page again. A stop
+shows as a marker that lists the actions it cancelled.
 
 ## The outbox
 
@@ -756,6 +793,7 @@ box. Both pickers stay disabled until React hydrates the page, because the serve
 before the page listens for a pick. Each path passes the file through one normalizer before the
 composer holds it. The normalizer decodes the image in the browser, scales its long edge down to the
 contract's limit, and encodes it again, as PNG for a PNG, GIF or WebP and as JPEG for anything else.
+
 Encoding again drops the EXIF data, a photo's location included, and the device keeps only the
 scaled copy. A HEIC photo converts only where the browser decodes HEIC, as Safari does; elsewhere
 the composer leaves the image out and says so. The composer refuses an image past the contract's

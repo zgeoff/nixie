@@ -3448,6 +3448,49 @@
                           "runner": {
                             "type": "string"
                           },
+                          "session": {
+                            "type": "object",
+                            "properties": {
+                              "isReleased": {
+                                "type": "boolean"
+                              },
+                              "lastEventAt": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "x-native-type": "date"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "origin": {
+                                "enum": [
+                                  "started",
+                                  "joined"
+                                ],
+                                "type": "string"
+                              },
+                              "state": {
+                                "enum": [
+                                  "running",
+                                  "waiting",
+                                  "idle",
+                                  "ended",
+                                  "gone"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "isReleased",
+                              "lastEventAt",
+                              "origin",
+                              "state"
+                            ]
+                          },
                           "state": {
                             "enum": [
                               "ready",
@@ -3734,6 +3777,49 @@
                     },
                     "runner": {
                       "type": "string"
+                    },
+                    "session": {
+                      "type": "object",
+                      "properties": {
+                        "isReleased": {
+                          "type": "boolean"
+                        },
+                        "lastEventAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "x-native-type": "date"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "origin": {
+                          "enum": [
+                            "started",
+                            "joined"
+                          ],
+                          "type": "string"
+                        },
+                        "state": {
+                          "enum": [
+                            "running",
+                            "waiting",
+                            "idle",
+                            "ended",
+                            "gone"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "isReleased",
+                        "lastEventAt",
+                        "origin",
+                        "state"
+                      ]
                     },
                     "state": {
                       "enum": [
@@ -6653,6 +6739,49 @@
                           },
                           "runner": {
                             "type": "string"
+                          },
+                          "session": {
+                            "type": "object",
+                            "properties": {
+                              "isReleased": {
+                                "type": "boolean"
+                              },
+                              "lastEventAt": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "x-native-type": "date"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "origin": {
+                                "enum": [
+                                  "started",
+                                  "joined"
+                                ],
+                                "type": "string"
+                              },
+                              "state": {
+                                "enum": [
+                                  "running",
+                                  "waiting",
+                                  "idle",
+                                  "ended",
+                                  "gone"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "isReleased",
+                              "lastEventAt",
+                              "origin",
+                              "state"
+                            ]
                           },
                           "state": {
                             "enum": [

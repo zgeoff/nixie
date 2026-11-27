@@ -52,14 +52,21 @@ async function readSessionFields(
   const rows = await context.log.writer.db
     .$extendTables<CodingTables>()
     .selectFrom('coding_sessions')
-    .select(['task_id', 'origin', 'state', 'last_event_at'])
+    .select(['task_id', 'origin', 'state', 'last_event_at', 'unbound_at'])
     .where('task_id', 'in', [...taskIDs])
     .execute();
 
   return new Map(
     rows.map((row) => [
       row.task_id,
-      { session: { origin: row.origin, state: row.state, lastEventAt: row.last_event_at } },
+      {
+        session: {
+          origin: row.origin,
+          state: row.state,
+          lastEventAt: row.last_event_at,
+          isReleased: row.unbound_at !== null,
+        },
+      },
     ]),
   );
 }

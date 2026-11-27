@@ -7,6 +7,9 @@ import { callsProjection } from '@heynixie/calls';
 import type { TestCallsContext, TestCallsOptions } from '@heynixie/calls/test-utils';
 import { buildTestCallsContext } from '@heynixie/calls/test-utils';
 import type { Clock } from '@heynixie/clock';
+import { codingProjections } from '@heynixie/coding';
+import type { WiredTestCoding } from '@heynixie/coding/test-utils';
+import { wireTestCoding } from '@heynixie/coding/test-utils';
 import type { ConnectionsPort } from '@heynixie/connections';
 import { computerTakeoverRecordTopics } from '@heynixie/connectors';
 import {
@@ -23,7 +26,12 @@ import { notebookProjections } from '@heynixie/notebook';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import type { ReadDefinitionVersion } from '@heynixie/tasks';
-import { tasksProjections } from '@heynixie/tasks';
+import {
+  buildTaskRunnerRegistry,
+  conversationRunner,
+  sandboxRunner,
+  tasksProjections,
+} from '@heynixie/tasks';
 import type { TestDefinitionStore } from '@heynixie/tasks/test-utils';
 import {
   buildTestDefinitionStore,
@@ -105,6 +113,9 @@ interface TestAPI {
   // the calls context on a fake speech layer, which the context holds only when the test turns calls on
   readonly calls: TestCallsContext | null;
 
+  // the coding runner on a fake adapter, which the context holds only when the test turns coding on
+  readonly coding: WiredTestCoding | null;
+
   readonly url: string;
 }
 
@@ -123,6 +134,9 @@ interface TestAPIOptions {
 
   // the features that nixie.read reports as on, none when unset
   readonly features?: APIContext['features'];
+
+  // runs a coding runner on a fake adapter, and folds the coding and trigger records
+  readonly isCodingOn?: boolean;
 }
 
 export async function startTestAPI(
@@ -186,6 +200,7 @@ export async function startTestAPI(
     isGatewayMetered: options.isGatewayMetered === true,
     calls: options.calls ?? null,
     features: options.features ?? [],
+    isCodingOn: options.isCodingOn === true,
   });
 
   const context = created.context;
@@ -200,6 +215,7 @@ export async function startTestAPI(
     context,
     spendGateway,
     calls: created.calls,
+    coding: created.coding,
     definitionStore,
     url: served.url,
     setMemory: served.setMemory,
@@ -247,6 +263,7 @@ interface TestContextDeps {
   readonly isGatewayMetered: boolean;
   readonly calls: TestCallsOptions | null;
   readonly features: APIContext['features'];
+  readonly isCodingOn: boolean;
 }
 
 async function createTestContext(
@@ -257,6 +274,7 @@ async function createTestContext(
 ): Promise<{
   readonly context: APIContext & { readonly clock: FakeClock };
   readonly calls: TestCallsContext | null;
+  readonly coding: WiredTestCoding | null;
 }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
@@ -284,6 +302,7 @@ async function createTestContext(
       ...spendProjections,
       ...budgetProjections,
       callsProjection,
+      ...(deps.isCodingOn ? [...codingProjections] : []),
     ],
   };
 
@@ -292,7 +311,7 @@ async function createTestContext(
 
   const clock = createFakeClock({ startMs: 1_000_000 });
 
-  const context = {
+  const base = {
     log,
     clock,
     logger: deps.logger,
@@ -326,7 +345,6 @@ async function createTestContext(
     readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
     readDefinitionNextFire: definitionStore.readDefinitionNextFire,
     readDefinitionVersion: readStoredVersion,
-    runners: buildTestTaskRunners(),
     settings,
     features: deps.features,
     passkeys: createPasskeyState(),
@@ -342,7 +360,20 @@ async function createTestContext(
     readMcp: deps.readMcp,
   };
 
-  return { context, calls };
+  const coding = deps.isCodingOn ? wireTestCoding(base) : null;
+
+  const context = {
+    ...base,
+    runners:
+      coding === null
+        ? buildTestTaskRunners()
+        : buildTaskRunnerRegistry({
+            definitions: [conversationRunner, sandboxRunner, coding.definition],
+            defaultRunner: sandboxRunner,
+          }),
+  };
+
+  return { context, calls, coding };
 }
 
 function readTestDefinitions() {

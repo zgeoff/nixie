@@ -55,6 +55,7 @@ These cost the most time:
 | policy-proposal    | Approve a call that an ask rule held unrun                        | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
 | task-control       | Pause and resume a task                                           | [references/feature-task-control.md](references/feature-task-control.md)             |
 | coding-session     | Start a coding session from chat                                  | [references/feature-coding-session.md](references/feature-coding-session.md)         |
+| coding-supervision | Supervise a coding session from the live view                     | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |
 | call-hand-off      | Hand a question off in a call, and hear the answer                | [references/feature-call-hand-off.md](references/feature-call-hand-off.md)           |
 | call-screen        | Start a call, see its proposal card, and hang up                  | [references/feature-call-screen.md](references/feature-call-screen.md)               |
 | call-device-show   | Show an answer on the call's device                               | [references/feature-call-device-show.md](references/feature-call-device-show.md)     |
@@ -180,7 +181,9 @@ in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 Map each file your change adds in the registry: add a glob that matches it to a feature's `paths`,
 to `.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
-gate fails on a changed file that no glob matches. `bun verify features` lists the globs.
+gate fails on a changed file that no glob matches. `bun verify features` lists the globs. Keep a
+feature's globs off the files `.ignore()` covers, such as tests, docs and skills: list the app's
+files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run

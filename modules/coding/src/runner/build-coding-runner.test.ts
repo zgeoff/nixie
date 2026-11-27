@@ -254,7 +254,10 @@ test('it lists the session of each coding task for tasks.list, and no meters', a
   expect({ meters: ctx.definition.meters, fields }).toStrictEqual({
     meters: [],
     fields: new Map([
-      [taskID, { session: { origin: 'started', state: 'running', lastEventAt: null } }],
+      [
+        taskID,
+        { session: { origin: 'started', state: 'running', lastEventAt: null, isReleased: false } },
+      ],
     ]),
   });
 });

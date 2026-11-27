@@ -254,6 +254,17 @@ export const controlRoutes = {
     input: z.strictObject({ from: z.string().min(1), subject: z.string().min(1) }),
     output: z.strictObject({ delivered: z.literal(true) }),
   },
+  setSessionState: {
+    method: 'POST',
+    path: '/control/set-session-state',
+
+    // the coding gateway's own states: running, needs_you (the session waits on you) and done (the
+    // agent finished its turn, so the session is idle)
+    input: z.strictObject({ state: z.enum(['running', 'needs_you', 'done']) }),
+
+    // how many sessions of the gateway took the state
+    output: z.strictObject({ sessions: z.int().nonnegative() }),
+  },
   modelReceived: {
     method: 'POST',
     path: '/control/model-received',

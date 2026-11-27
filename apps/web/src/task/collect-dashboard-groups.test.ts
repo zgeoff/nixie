@@ -12,14 +12,20 @@ test('it puts the conversation first, then the working and the held tasks, and l
   const closed = buildMockListedTask({ state: 'closed', taskID: 'b6fy4kc2xn' });
 
   expect(
-    collectDashboardGroups([running, conversation, paused, done, waiting, closed, failed]),
-  ).toStrictEqual({ conversation, held: [paused, failed], working: [running, waiting] });
+    collectDashboardGroups([running, conversation, paused, done, waiting, closed, failed], true),
+  ).toStrictEqual({
+    conversation,
+    held: [paused, failed],
+    supervised: [],
+    working: [running, waiting],
+  });
 });
 
 test('it gives no conversation when the list does not hold it', () => {
-  expect(collectDashboardGroups([])).toStrictEqual({
+  expect(collectDashboardGroups([], true)).toStrictEqual({
     conversation: undefined,
     held: [],
+    supervised: [],
     working: [],
   });
 });
@@ -34,16 +40,17 @@ test.each([
 ] as const)('it puts a task listed %s in %s', (listedState, group) => {
   const task = buildMockListedTask({ listedState, state: 'waiting', taskID: 'k3vq8m2xpa' });
 
-  expect(collectDashboardGroups([task])[group]).toStrictEqual([task]);
+  expect(collectDashboardGroups([task], true)[group]).toStrictEqual([task]);
 });
 
 test('it leaves out a task listed done or closed', () => {
   const done = buildMockListedTask({ listedState: 'done', state: 'done' });
   const closed = buildMockListedTask({ listedState: 'closed', state: 'closed' });
 
-  expect(collectDashboardGroups([done, closed])).toStrictEqual({
+  expect(collectDashboardGroups([done, closed], true)).toStrictEqual({
     conversation: undefined,
     held: [],
+    supervised: [],
     working: [],
   });
 });
@@ -51,7 +58,7 @@ test('it leaves out a task listed done or closed', () => {
 test('it groups a task with no listed state by its stored state', () => {
   const task = buildMockListedTask({ state: 'paused' });
 
-  expect(collectDashboardGroups([task]).held).toStrictEqual([task]);
+  expect(collectDashboardGroups([task], true).held).toStrictEqual([task]);
 });
 
 test('it keeps the conversation in its own group while nixie holds it paused', () => {
@@ -61,9 +68,79 @@ test('it keeps the conversation in its own group while nixie holds it paused', (
     taskID: 'conversation',
   });
 
-  expect(collectDashboardGroups([conversation])).toStrictEqual({
+  expect(collectDashboardGroups([conversation], true)).toStrictEqual({
     conversation,
     held: [],
+    supervised: [],
     working: [],
   });
+});
+
+test.each(['running', 'waiting', 'paused', 'stopped', 'failed', 'done'] as const)(
+  'it puts a task that supervises a session in the coding group, whatever its state %s',
+  (listedState) => {
+    const supervised = buildMockListedTask({
+      listedState,
+      session: { isReleased: false, lastEventAt: null, origin: 'started', state: 'running' },
+      state: 'waiting',
+      taskID: 'k3vq8m2xpa',
+    });
+
+    expect(collectDashboardGroups([supervised], true)).toStrictEqual({
+      conversation: undefined,
+      held: [],
+      supervised: [supervised],
+      working: [],
+    });
+  },
+);
+
+test('it groups a task that supervises a session with the working tasks while coding is off', () => {
+  const supervised = buildMockListedTask({
+    listedState: 'waiting',
+    session: { isReleased: false, lastEventAt: null, origin: 'started', state: 'running' },
+    taskID: 'k3vq8m2xpa',
+  });
+
+  expect(collectDashboardGroups([supervised], false)).toStrictEqual({
+    conversation: undefined,
+    held: [],
+    supervised: [],
+    working: [supervised],
+  });
+});
+
+test('it keeps a finished task in the coding group, with the ended state of its session', () => {
+  const finished = buildMockListedTask({
+    listedState: 'done',
+    session: { isReleased: false, lastEventAt: null, origin: 'started', state: 'ended' },
+    state: 'done',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  expect(collectDashboardGroups([finished], true).supervised).toStrictEqual([finished]);
+});
+
+test('it leaves out a closed task that supervised a session', () => {
+  const closed = buildMockListedTask({
+    listedState: 'closed',
+    session: { isReleased: true, lastEventAt: null, origin: 'started', state: 'ended' },
+    state: 'closed',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  expect(collectDashboardGroups([closed], true).supervised).toStrictEqual([]);
+});
+
+test('it keeps a task that joined a session in its ordinary group', () => {
+  const joined = buildMockListedTask({
+    listedState: 'waiting',
+    session: { isReleased: false, lastEventAt: null, origin: 'joined', state: 'idle' },
+    taskID: 'k3vq8m2xpa',
+  });
+
+  const groups = collectDashboardGroups([joined], true);
+
+  expect(groups.supervised).toStrictEqual([]);
+  expect(groups.working).toStrictEqual([joined]);
 });

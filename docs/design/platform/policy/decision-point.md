@@ -11,11 +11,18 @@ ask, the prompt cause. It runs a fixed pipeline of deterministic stages, and a c
 settles asks you, or goes to auto-mode once auto-mode is on. Every decision is part of a record in
 the [event log](../core/event-log.md).
 
+Read this before you add a tool, an effect or a rule, or change the pipeline, whether you are the
+owner or an agent. Follow the steps for your change in
+[What to do when you change it](#what-to-do-when-you-change-it), and find what this doc leaves out
+in [Where to go next](#where-to-go-next).
+
 ## The pipeline
 
 The stages run in a fixed order, and the first stage that decides returns. Every stage that can deny
-or hold back a call runs before any stage that can allow one, so an allow never skips a check. The
-last stage always decides, so every call gets exactly one decision.
+or hold back a call runs before any stage that can allow one, so an allow never skips a check. Every
+call gets exactly one decision, from the first stage that decides it. Stage 9 always decides, so a
+call that stages 1 to 8 leave open gets its decision there. A call with the `memory_write` effect
+that stages 1 to 7 leave open gets its decision from the memory gate in place of stages 8 and 9.
 
 | Stage              | Decides                                                          | Outcome | Prompt cause       |
 | ------------------ | ---------------------------------------------------------------- | ------- | ------------------ |
@@ -29,26 +36,27 @@ last stage always decides, so every call gets exactly one decision.
 | 8. Consent         | Your own message asked for this call                             | Allow   | None               |
 | 9. No rule matched | Nothing above decided                                            | Ask     | No rule matched    |
 
-Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters, as
-[rules](rules.md#evaluation-order) covers.
+Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters (see
+[rules](rules.md#evaluation-order)).
 
 A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
 decides it, the memory gate decides it in their place, and the write applies at once or becomes a
-memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
-covers. **Why:** the gate's checks are the default for a memory write, so consent never lets a
-direct "remember that" skip them.
+memory proposal (see the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)).
+**Why:** the gate's checks are the default for a memory write, so consent never lets a direct
+"remember that" skip them.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
-for a worker, so delegation only narrows. A connector tool on the list names the connections it may
-use, and stage 2 denies a call whose connection is not among them. Stage 2 also denies a call that
-creates a job whose tool list pins a connection the caller may not use for that tool. The tools
+for a worker, so delegation only narrows. A connector tool on the list comes with the connections it
+may use, and stage 2 denies a call whose connection is not among them. Stage 2 also denies a call
+that creates a job whose tool list pins a connection the caller may not use for that tool. The tools
 endpoint resolves every connector call to one connection before stage 1, as the
 [connection argument](../connectors/connector.md#the-connection-argument) defines, so a rule can
-check `connection` on any call. A denied call returns the rule's ID and sentence to the model as the
-tool result, so the model can take another path, and no prompt reaches you. A queued action runs
-through the pipeline again before each attempt, so a rule that narrowed after its approval still
-applies; [actions](../../../architecture/core/actions.md) covers how an approval answers each
-outcome.
+check `connection` on any call.
+
+A denied call returns the rule's ID and sentence to the model as the tool result, so the model can
+take another path, and no prompt reaches you. A queued action runs through the pipeline again before
+each attempt, so a rule that narrowed after its approval still applies. See
+[actions](../../../architecture/core/actions.md) for how an approval answers each outcome.
 
 ## The slice 1 rule
 
@@ -90,13 +98,17 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 
 A tool's effects are fixed per tool and never depend on its arguments, except through a declared
 discriminator that picks a registered variant, such as the sandbox runner of `task.start`. Each
-variant has a fixed declaration and a rule name of its own, such as `task.start/sandbox`, as
-[the coding session runner](../../queue/coding-session-runner/runner.md#the-start-the-join-and-the-policy)
-sets out. Any other capability whose effects differ by argument splits into tools: moving an email
-to the trash is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for
-every call of a tool, and the tool's name tells you its risk. Creating a job carries `schedule` plus
-the effects of every tool on the job's list, so your rules decide which jobs nixie schedules on its
-own.
+variant has a fixed declaration and a rule name of its own, such as `task.start/sandbox`. A runner
+whose input cannot share the tool's starts from a tool of its own, such as `coding.start`, whose
+[policy](../../../architecture/core/coding-tasks.md#policy) is in the coding tasks doc. Split any
+other capability whose effects differ by argument into separate tools: moving an email to the trash
+is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for every call of a
+tool, and you can judge a tool's risk from its name.
+
+One call is decided on more than its tool's own effects: a call that creates a job. Its tool
+declares `schedule`, and the call is decided on `schedule` plus the effects of every tool on the job
+list it passes. **Why:** the list is what the job may later do, so you decide with your rules which
+jobs nixie schedules on its own.
 
 A tool also declares which arguments are destinations, which argument holds the amount for a
 `spend`, which arguments are free-text content, and the source of each field of its result. Effect
@@ -104,15 +116,15 @@ declarations are policy data that you can read and edit. Removing an effect from
 counts as a widening, because it can move a call out of the always-ask set or past an ask rule.
 
 Every `code_run` call, from the conversation, a task or a worker, gets a fresh sandbox with no
-network and no grants, as [the code tool](../../../architecture/connectors/code-tool.md) sets out.
-The sandbox record holds its spec, so the log shows that the program ran with no grant. A program
-holds no credential, so `code_run` never reaches a budget.
+network and no grants (see [the code tool](../../../architecture/connectors/code-tool.md)). The
+sandbox record holds its spec, so the log shows that the program ran with no grant. A program holds
+no credential, so `code_run` never reaches a budget.
 
 ### The always-ask set and narrowing changes
 
 `spend`, `policy_widen` and `budget_raise` form the always-ask set. Stage 4 asks for any call with
-one of them unless a lifting rule covers the call and its budget has room, as
-[budgets](budgets.md#lifting-rules) covers. A deny rule can still refuse such a call at stage 3.
+one of them unless a lifting rule covers the call and its budget has room (see
+[budgets](budgets.md#lifting-rules)). A deny rule can still refuse such a call at stage 3.
 
 `policy_narrow` and `budget_lower` apply at once, with a record and an undo in the client. Undoing a
 narrowing is a widening, so the undo is an always-ask approval.
@@ -137,18 +149,20 @@ build.
 
 ### Consent
 
-Your own direct message can carry consent for a call. Consent needs 2 checks, and both must pass:
+You can consent to a call in your own direct message. Consent needs 2 checks, and both must pass:
 
 1. Code checks that every destination appears word for word in text you typed in the message that
    started the current turn, or that a name you typed matches exactly one saved contact with that
    destination. A pasted span never counts.
-2. The consent checker, a checker model that nixie runs always, confirms that you asked for this
+2. The consent checker, a checker model that nixie always runs, confirms that you asked for this
    call. It sees your message with its pasted spans marked and the call as structured fields, never
    any tool output, so injected content cannot reach it.
 
-A call with no destination, such as turning on a light, rests on the checker alone. Consent
-satisfies stage 5 and allows a call at stage 8. It never overrides a deny rule, the always-ask set
-or your ask rule. A checker that refuses, is unsure or cannot be reached counts as no consent.
+A call with no destination, such as turning on a light, rests on the checker alone. Stage 5 counts
+consent as standing permission, so it does not ask for a consented call. The call then passes stages
+6 and 7, and stage 8 allows it when neither decides it. Consent never overrides a deny rule, the
+always-ask set or your ask rule. A checker that refuses, is unsure or cannot be reached counts as no
+consent.
 
 ## Taint in the first build
 
@@ -223,3 +237,29 @@ The scripted scenarios in the [policy rules spike](../../../../research/policy-r
 calls, messages and answers through the decision point with the starter rule set and auto-mode off,
 and fail on any prompt the script does not expect. CI runs them on every change to the starter rule
 set or the pipeline.
+
+## What to do when you change it
+
+- **Add a tool.** Declare its [effects](#effects), then its destinations, its amount argument, its
+  free-text arguments and the source of each result field, all in the tool registry. A tool without
+  an effect declaration is denied at stage 1.
+- **Add an effect.** Add a row to the effects table, then decide whether it joins the always-ask
+  set, and write every rule that must match it.
+- **Add or change a rule.** Follow [rules](rules.md): its format, its evaluation order and the
+  widening check. Then run the scripted scenarios in the
+  [policy rules spike](../../../../research/policy-rules/).
+- **Change the pipeline.** Keep every stage that can deny or hold back a call before any stage that
+  can allow one, and keep one decision per call. Update the stage table here and run the scripted
+  scenarios.
+
+## Where to go next
+
+- Read [Rules](rules.md) for evaluation order, the snapshot hash, and gaps and proposed rules.
+- Read [Budgets](budgets.md) for lifting rules and budget limits.
+- Read [Memory writes](../memory/writes.md) for the memory gate.
+- Read [Connectors](../connectors/connector.md) for the connection argument.
+- Read [Tasks](../core/tasks.md) for job runs and their definitions.
+- Read [Actions](../../../architecture/core/actions.md) for how an approval answers each outcome.
+- Read [Coding tasks](../../../architecture/core/coding-tasks.md#policy) for the policy of
+  `coding.start`.
+- Read [The code tool](../../../architecture/connectors/code-tool.md) for `code_run`.

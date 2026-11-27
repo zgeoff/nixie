@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useIsCodingOn } from '../coding/use-is-coding-on';
 import { css } from '../styled-system/css';
 import { collectDashboardGroups } from '../task/collect-dashboard-groups';
 import type { ListedTask } from '../task/use-live-task-list';
@@ -39,7 +40,7 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
   });
 
   const definitions = useTaskDefinitions();
-  const groups = collectDashboardGroups(listed.tasks);
+  const groups = collectDashboardGroups(listed.tasks, useIsCodingOn());
   const isFiltered = filters.definition !== undefined || filters.state !== undefined;
 
   // The state filter hides tasks, so a list with none of a definition says nothing of whether
@@ -48,7 +49,10 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
     isFiltered || listed.tasks.some((task) => task.definitionID !== undefined);
 
   const hasMatch =
-    groups.conversation !== undefined || groups.working.length > 0 || groups.held.length > 0;
+    groups.conversation !== undefined ||
+    groups.working.length > 0 ||
+    groups.held.length > 0 ||
+    groups.supervised.length > 0;
 
   const isGroupShown = (count: number) => !isFiltered || !hasMatch || count > 0;
 
@@ -82,6 +86,14 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
       {isGroupShown(groups.working.length) ? (
         <TaskGroup label="Working" tasks={groups.working} listed={listed.tasks} />
       ) : null}
+      {groups.supervised.length > 0 ? (
+        <TaskGroup
+          label="Coding sessions"
+          note="These sessions run in another program, outside nixie."
+          tasks={groups.supervised}
+          listed={listed.tasks}
+        />
+      ) : null}
       {isGroupShown(groups.held.length) ? (
         <TaskGroup label="Held" tasks={groups.held} listed={listed.tasks} />
       ) : null}
@@ -91,6 +103,7 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
 
 interface TaskGroupProps {
   readonly label: string;
+  readonly note?: string;
   readonly listed: readonly ListedTask[];
   readonly tasks: readonly ListedTask[];
 }
@@ -102,6 +115,7 @@ function TaskGroup(props: TaskGroupProps): ReactNode {
   return (
     <section aria-label={props.label}>
       <h2 className={heading}>{props.label}</h2>
+      {props.note === undefined ? null : <p className={notice}>{props.note}</p>}
       {props.tasks.length === 0 ? (
         <p className={notice}>No tasks here.</p>
       ) : (

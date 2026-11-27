@@ -1,26 +1,36 @@
 # The live view and the dashboard
 
-The dashboard shows every task's state and what it waits on, and the live view extends it with
-finished tasks and what each did and why. Both read the same projections as the conversation's
-`tasks.list` tool, so you and the conversation see the same state. The
-[event log design](../core/event-log.md) owns the projections, and [tasks](../core/tasks.md) owns
-the conversation's task tools and task states.
+The dashboard shows every task's state and what it waits on, and the finished ones from the last 7
+days. The live view adds the history of tasks that finished earlier, and what each task did and why.
+Both read the same projections as the conversation's `tasks.list` tool, so you and the conversation
+see the same state. Read the projections in the [event log design](../core/event-log.md), and the
+conversation's task tools and task states in [tasks](../core/tasks.md).
 
-| Tier | View      | Holds                                                                      |
-| ---- | --------- | -------------------------------------------------------------------------- |
-| 1    | Dashboard | Every task's row, a task opened as a conversation, and the task controls   |
-| 2    | Live view | Finished-task history, the skipped or late trigger report, and raw records |
+Read this before you build or change the dashboard, a task's view, the task controls or the stream
+the client follows. Then read [the client architecture](../../../architecture/channels/client.md),
+which describes what is built, before you change code.
 
-Tier 2 adds views over the same projections and no new data model.
+| Tier | View      | Holds                                                                                                   |
+| ---- | --------- | ------------------------------------------------------------------------------------------------------- |
+| 1    | Dashboard | Every task's row, a task opened as a conversation, and the task controls                                |
+| 2    | Live view | History of tasks finished over 7 days ago, the trigger report of skipped and late runs, and raw records |
+
+Tier 2 adds views over the same projections and no new data model. With one source of state, the
+dashboard, the live view and the conversation can never disagree about a task, and tier 2 needs no
+new storage or migration. When a tier 2 view needs data the projections lack, change the
+[event log design](../core/event-log.md) and add no store in the client.
 
 ## The dashboard
 
 The dashboard lists the conversation first, then every task in 4 groups: needs you, working, held
-(`paused`, `stopped`, `failed`) and finished in the last 7 days. Each row shows the title, state,
-last update and what the task waits on, such as "approval: send email". A job run also shows its
-scheduled time and whether it is a catch-up. The dashboard filters by job and state.
-[The task dashboard](../../../architecture/channels/client.md#the-task-dashboard) describes what is
-built, which keeps 3 groups, Conversation, Working and Held.
+(`paused`, `stopped`, `failed`) and finished in the last 7 days. A fifth group, labelled as outside
+nixie and not a task group, holds the coding sessions that nixie supervises through atc. Each row
+shows the title, state, last update and what the task waits on, such as "approval: send email". A
+job run also shows its scheduled time and whether it is a catch-up. The trigger report lists the
+scheduled times a job run skipped or ran late; [tasks](../core/tasks.md) holds a job run's trigger
+details. The dashboard filters by job and state. For what is built, which keeps 3 groups,
+Conversation, Working and Held, read
+[the task dashboard](../../../architecture/channels/client.md#the-task-dashboard).
 
 ## A task as a conversation
 
@@ -28,8 +38,13 @@ An open task reads like the conversation: its brief, your messages, the model's 
 reports. Each step's work shows as a compact line that expands. A tool call shows the policy
 decision and its rule, a worker its question, answer and sources, a proposal its
 [card](approvals.md), an action its recorded outcome, and a memory read or write its items and
-versions. A record with no renderer still shows by its kind, and no line offers its raw record.
-Payloads over 4 KB load on demand. The
+versions. A record with no renderer still shows by its kind. No line in a task's view offers its raw
+record, because the raw record is a debugging view and belongs to the live view in tier 2. A raw
+record is the stored event-log record as written, with all its fields.
+
+Payloads over 4 KB load on demand, which keeps a long task's page small; the cut size is
+`payloadClipBytes`, set in the
+[API's large payloads](../../../architecture/channels/api.md#large-payloads). The
 [client architecture](../../../architecture/channels/client.md#worker-runs-and-large-payloads)
 describes the worker line and the load on demand.
 
@@ -48,9 +63,15 @@ each a checked action:
 ## How the client stays current
 
 The client reads the projections it shows and follows the event log from their sequence. Each stream
-event carries one record and the projection rows its transaction changed, so the client never folds
-the log itself. The stream covers every thread, with full payloads only for the thread on screen. A
-payload whose key is destroyed arrives as a gap.
+event carries one record and the projection rows its transaction changed. The client never folds the
+log itself, because a folded log can drift from the server's projections; it replaces its rows with
+the ones the server sends. The stream covers every thread, so a task you have not opened still
+updates its dashboard row, with full payloads only for the thread on screen. A payload whose key is
+destroyed arrives as a gap.
 
-Coding sessions that nixie supervises through atc show later as a fifth dashboard group, labelled as
-outside nixie.
+## After reading
+
+Build tier 1 first: the dashboard, a task as a conversation and the controls. Build tier 2 as views
+over the same projections. For the coding-session group, its controls and its stream events, read
+[the client doc](../../../architecture/channels/client.md#the-task-dashboard) and
+[supervising in the live view](../../../architecture/core/coding-tasks.md#supervising-in-the-live-view).
