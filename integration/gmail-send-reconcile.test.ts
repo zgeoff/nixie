@@ -75,7 +75,7 @@ test('it settles an unknown Gmail send as done once the Sent folder holds it, wi
   expect([
     outcomes.map((outcome) => outcome['status']),
     gmail.site.gmail.sent.length,
-  ]).toStrictEqual([['done', 'done'], 1]);
+  ]).toStrictEqual([['done'], 1]);
 });
 
 test('it brings an unknown Gmail send to the owner when the Sent folder lacks it, and sends nothing again', async () => {
@@ -103,5 +103,5 @@ test('it brings an unknown Gmail send to the owner when the Sent folder lacks it
   expect([
     outcomes.map((outcome) => outcome['status']),
     gmail.site.gmail.sent.length,
-  ]).toStrictEqual([['done', 'unknown'], 0]);
+  ]).toStrictEqual([['unknown'], 0]);
 });

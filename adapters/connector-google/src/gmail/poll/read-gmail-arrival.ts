@@ -1,5 +1,4 @@
-import type { ConnectorContext } from '@heynixie/connections';
-import type { MailArrivalEvent } from '@heynixie/triggers';
+import type { ConnectionArrivalEvent, ConnectorContext } from '@heynixie/connections';
 import { readGmailMessage } from '../read-gmail-message';
 import { buildGmailArrivalEvent } from './build-gmail-arrival-event';
 import { GmailPollError } from './gmail-poll-error';
@@ -16,7 +15,7 @@ interface ArrivalRead {
 export async function readGmailArrival(
   run: PollRun,
   request: ArrivalRead,
-): Promise<MailArrivalEvent | null> {
+): Promise<ConnectionArrivalEvent | null> {
   const read = await readGmailMessage(run.input.hosts, request.context, {
     id: request.id,
     format: 'metadata',

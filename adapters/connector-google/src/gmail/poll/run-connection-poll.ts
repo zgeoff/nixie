@@ -1,4 +1,4 @@
-import type { MailArrivalEvent } from '@heynixie/triggers';
+import type { ConnectionArrivalEvent } from '@heynixie/connections';
 import { buildAbortableContext } from './build-abortable-context';
 import { pickReplayStart } from './pick-replay-start';
 import { readGmailArrival } from './read-gmail-arrival';
@@ -42,7 +42,7 @@ export async function runConnectionPoll(
 
   const changes = await readGmailChanges(hosts, context, { entry, rewindMs });
 
-  const events: MailArrivalEvent[] = [];
+  const events: ConnectionArrivalEvent[] = [];
 
   for (const id of changes.ids) {
     const event = await readGmailArrival(run, { connection, context, id });

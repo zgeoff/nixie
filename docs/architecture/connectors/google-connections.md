@@ -8,7 +8,9 @@ sealed value, and [the credential store](credentials.md) covers the token exchan
 The connections module knows no provider. It owns the `Connector` interface, which holds a
 provider's OAuth endpoints, scopes, setup steps, tools and scope check, and it takes the connector
 from the server when it starts. The `connector-google` adapter holds Google's connector, with its
-Gmail, Calendar and Drive tools and the Gmail arrival source.
+Gmail, Calendar and Drive tools and the Gmail arrival source. The connections module also passes on
+what a connector may use of the triggers, policy and tasks modules, such as the wake rules, so the
+adapter reaches those modules through it.
 
 ## The switch
 
@@ -25,6 +27,12 @@ still has `gmail` at the top level fails to load. With no `google` section, nixi
   erasable registers with the connections part;
 - `nixie.read` leaves `google` out of `features`, the web client hides the Connections menu entry,
   and the connections pages show the page that says the feature is off;
+- an action of a Gmail, Calendar or Drive tool that was queued before nixie stopped stays pending
+  with no attempt, because the action runner holds each tool name that starts with `gmail.`,
+  `calendar.` or `drive.`, and a Gmail match that a wake rule held stays held, because the flush
+  reads only the connection mailboxes of the sources that run;
+- the web client's `/connections/google/return` route answers the page that says the feature is off,
+  and finishes no consent;
 - the credential store's database backend still starts, because the MCP proxy keeps its credentials
   in it.
 

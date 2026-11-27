@@ -17,10 +17,7 @@
     "@heynixie/connectors": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
-    "@heynixie/policy": "workspace:*",
-    "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
-    "@heynixie/triggers": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
@@ -30,6 +27,9 @@
   "devDependencies": {
     "@heynixie/egress": "workspace:*",
     "@heynixie/memory": "workspace:*",
+    "@heynixie/policy": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
     "@zgeoff/testing": "catalog:"
   }
 }

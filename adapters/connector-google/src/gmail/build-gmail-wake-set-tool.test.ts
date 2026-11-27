@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
+import { readWakeRules } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { eraseGmailMailbox, readWakeRules } from '@heynixie/triggers';
+import { eraseConnectionMailbox } from '@heynixie/triggers';
 import { startTestTriggers } from '@heynixie/triggers/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { startGmailTools } from '../test-utils/start-gmail-tools';
+import { buildGmailMailbox } from './build-gmail-mailbox';
 import { readGmailBodyFields } from './read-gmail-body-fields';
 
 async function setupTest() {
@@ -52,7 +54,7 @@ async function setupTest() {
 
   const readRules = (connectionID = tools.site.context.connectionID) =>
     readWakeRules(triggers.writer.db, {
-      mailbox: { kind: 'gmail', connectionID },
+      mailbox: buildGmailMailbox(connectionID),
       at: triggers.clock.now(),
     });
 
@@ -241,7 +243,7 @@ test('it writes no rule for a connection that was forgotten after the call read 
 
   ctx.site.forget(connectionID);
 
-  await eraseGmailMailbox(ctx.deps.wake.context(), connectionID);
+  await eraseConnectionMailbox(ctx.deps.wake.context(), buildGmailMailbox(connectionID));
 
   hold.release();
 

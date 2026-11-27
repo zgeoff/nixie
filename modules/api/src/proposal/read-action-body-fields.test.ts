@@ -101,10 +101,23 @@ test('it asks each reader on the list in turn and answers the first card that on
   expect(fields).toStrictEqual({ status: 'fields', fields: { from: 'second' } });
 });
 
-test('it adds no field to a tool that no reader on the list owns', async () => {
+test('it asks every reader on the list about a tool and adds no field when none owns it', async () => {
   const memory = await startTestMemory();
 
-  bodyFieldReaders.set([() => Promise.resolve({ status: 'none' })]);
+  const asked: string[] = [];
+
+  bodyFieldReaders.set([
+    (_log, request) => {
+      asked.push(`first:${request.tool}`);
+
+      return Promise.resolve({ status: 'none' });
+    },
+    (_log, request) => {
+      asked.push(`second:${request.tool}`);
+
+      return Promise.resolve({ status: 'none' });
+    },
+  ]);
 
   onTestFinished(() => {
     bodyFieldReaders.set([]);
@@ -117,5 +130,8 @@ test('it adds no field to a tool that no reader on the list owns', async () => {
     'UTC',
   );
 
-  expect(fields).toStrictEqual({ status: 'none' });
+  expect([fields, asked]).toStrictEqual([
+    { status: 'none' },
+    ['first:other.tool', 'second:other.tool'],
+  ]);
 });

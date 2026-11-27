@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { buildForwardHeaders } from './build-forward-headers';
 import { handleMcpReturn } from './handle-mcp-return';
 import { renderReturnError } from './render-return-error';
+import { renderReturnFeatureOff } from './render-return-feature-off';
 
 export const googleReturnPath = '/connections/google/return';
 const returnHeaders = { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } as const;
@@ -30,6 +31,16 @@ export async function handleGoogleReturn(apiURL: string, request: Request): Prom
       url: `${apiURL}/rpc`,
     }),
   );
+
+  try {
+    const nixie = await client.nixie.read();
+
+    if (!nixie.features.includes('google')) {
+      return renderReturnFeatureOff('google');
+    }
+  } catch (error) {
+    return toReturnErrorResponse(error);
+  }
 
   const state = query.get('state');
 

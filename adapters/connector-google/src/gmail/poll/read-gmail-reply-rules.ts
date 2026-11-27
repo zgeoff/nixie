@@ -1,6 +1,7 @@
-import type { WakeRule } from '@heynixie/triggers';
-import { readWakeRules } from '@heynixie/triggers';
+import type { WakeRule } from '@heynixie/connections';
+import { readWakeRules } from '@heynixie/connections';
 import type { Kysely } from 'kysely';
+import { buildGmailMailbox } from '../build-gmail-mailbox';
 
 export interface ReplyRulesRequest {
   readonly connectionID: string;
@@ -15,7 +16,7 @@ export async function readGmailReplyRules(
   request: ReplyRulesRequest,
 ): Promise<readonly WakeRule[]> {
   const rules = await readWakeRules(db, {
-    mailbox: { kind: 'gmail', connectionID: request.connectionID },
+    mailbox: buildGmailMailbox(request.connectionID),
     at: request.at,
   });
 

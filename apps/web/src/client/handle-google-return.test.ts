@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { featureStore } from '../mocks/feature-store';
 import { store } from '../mocks/store';
 import { startStubAPI } from '../test-utils/start-stub-api';
 import { handleGoogleReturn } from './handle-google-return';
@@ -28,6 +29,7 @@ test('it forwards the session of the browser to the API as a bearer token', asyn
   await ctx.handleReturn('?state=abc&code=4%2F0Ab', ctx.cookie);
 
   expect(ctx.api.requests).toStrictEqual([
+    { authorization: `Bearer ${ctx.token}`, cookie: null, path: '/rpc/nixie/read' },
     {
       authorization: `Bearer ${ctx.token}`,
       cookie: null,
@@ -62,7 +64,8 @@ test('it answers 400 without calling the API when the state is missing', async (
   const ctx = await setupTest();
   const response = await ctx.handleReturn('?code=4%2F0Ab', ctx.cookie);
 
-  expect([response.status, ctx.api.requests]).toStrictEqual([400, []]);
+  expect(response.status).toBe(400);
+  expect(ctx.api.requests.map((request) => request.path)).toStrictEqual(['/rpc/nixie/read']);
 });
 
 test('it finishes the sign-in of an MCP server when the state carries the MCP prefix', async () => {
@@ -77,4 +80,20 @@ test('it finishes the sign-in of an MCP server when the state carries the MCP pr
       path: '/rpc/mcp/finishSignIn',
     },
   ]);
+});
+
+test('it answers the feature-off page, and never finishes a consent, when google is off', async () => {
+  const ctx = await setupTest();
+
+  await featureStore.featuresOff.create({ feature: 'google' });
+
+  const response = await ctx.handleReturn('?state=abc&code=4%2F0Ab', ctx.cookie);
+  const page = await response.text();
+
+  expect([
+    response.status,
+    page.includes('This feature is off in this nixie'),
+    page.includes('4/0Ab'),
+    ctx.api.requests.map((request) => request.path),
+  ]).toStrictEqual([404, true, false, ['/rpc/nixie/read']]);
 });

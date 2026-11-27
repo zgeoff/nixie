@@ -1,7 +1,8 @@
+import { endWakeRuleInTransaction, readWakeRules } from '@heynixie/connections';
 import { withWriteTransaction } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
-import { endWakeRuleInTransaction, readWakeRules } from '@heynixie/triggers';
 import { z } from 'zod';
+import { buildGmailMailbox } from './build-gmail-mailbox';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
 import type { GmailDeps } from './types';
@@ -42,7 +43,7 @@ export function buildGmailWakeCancelTool(deps: GmailDeps): ToolDefinition {
 
       for (const context of live) {
         const rules = await readWakeRules(deps.log.writer.db, {
-          mailbox: { kind: 'gmail', connectionID: context.connectionID },
+          mailbox: buildGmailMailbox(context.connectionID),
           at: deps.clock.now(),
         });
 

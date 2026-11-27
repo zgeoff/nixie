@@ -1,7 +1,6 @@
 import type { Clock } from '@heynixie/clock';
-import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorContext, WakeRuleContext } from '@heynixie/connections';
 import type { Log } from '@heynixie/log';
-import type { WakeRuleContext } from '@heynixie/triggers';
 import type { FetchReply } from '@heynixie/wire';
 import type { Transaction } from 'kysely';
 import type { GoogleHosts } from '../connector/google-hosts';

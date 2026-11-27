@@ -7,15 +7,25 @@ import {
 import type { TriggerCoreContext, TriggersTables } from '../types';
 import { buildMailWokeInput } from './build-mail-woke-input';
 import type { WokeMail } from './build-mail-woke-input';
+import { collectLiveHeld } from './collect-live-held';
 import { collectReadyWakes } from './collect-ready-wakes';
 import { endRulesOfEndedTasks } from './end-rules-of-ended-tasks';
 import { readHeldWakeRules } from './read-held-wake-rules';
 import { removeSpentArrivalKeys } from './remove-spent-arrival-keys';
 
+export interface WakeFlushOptions {
+  // The IDs of the sources of connection mailboxes that run. A held match of a connection at a
+  // source that does not run stays held, and wakes once the source runs again.
+  readonly liveSources: readonly string[];
+}
+
 // One tick of the flush: ends the rules of ended tasks, wakes each target with a ready match once,
 // and removes the keys that no held match needs. It decides inside the write transaction that writes
 // the wakes, so a concurrent arrival cannot wake a rule twice in its window. Returns the wakes written.
-export async function runWakeFlush(core: TriggerCoreContext): Promise<number> {
+export async function runWakeFlush(
+  core: TriggerCoreContext,
+  options: WakeFlushOptions,
+): Promise<number> {
   await removeSpentArrivalKeys(core);
 
   const held = await core.log.writer.db
@@ -41,11 +51,15 @@ export async function runWakeFlush(core: TriggerCoreContext): Promise<number> {
     const rules = await readHeldWakeRules(tx, [...new Set(rows.map((row) => row.rule_id))]);
 
     const wakes = collectReadyWakes(
-      rows.map((row) => ({
-        ruleID: row.rule_id,
-        targetTaskID: row.target_task_id,
-        arrivedSeq: row.arrived_seq,
-      })),
+      collectLiveHeld(
+        rows.map((row) => ({
+          ruleID: row.rule_id,
+          targetTaskID: row.target_task_id,
+          arrivedSeq: row.arrived_seq,
+        })),
+        rules,
+        options.liveSources,
+      ),
       rules,
       core.clock.now(),
     );

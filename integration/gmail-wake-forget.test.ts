@@ -1,10 +1,14 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { startGoogleConnections } from '@heynixie/connections/test-utils';
-import { buildGmailArrivalSource } from '@heynixie/connector-google';
+import { buildGmailArrivalSource, buildGmailMailbox } from '@heynixie/connector-google';
 import { startFakeGmailSite } from '@heynixie/connector-google/test-utils';
 import { readRecords } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { eraseGmailMailbox, readGmailWakeRecords, startTriggerSources } from '@heynixie/triggers';
+import {
+  eraseConnectionMailbox,
+  readConnectionWakeRecords,
+  startTriggerSources,
+} from '@heynixie/triggers';
 import { seedWakeRule, startTestTriggers } from '@heynixie/triggers/test-utils';
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
@@ -17,9 +21,10 @@ async function setupTest() {
 
   const google = await startGoogleConnections({
     sharedLog: { log: triggers.context.log, dataDir: triggers.writer.dataDir },
-    eraseDependents: (connectionID) => eraseGmailMailbox(triggers.core, connectionID),
+    eraseDependents: (connectionID) =>
+      eraseConnectionMailbox(triggers.core, buildGmailMailbox(connectionID)),
     readWakes: async (tx, connectionID) => {
-      const wakes = await readGmailWakeRecords(tx, connectionID);
+      const wakes = await readConnectionWakeRecords(tx, buildGmailMailbox(connectionID));
 
       return wakes.map((wake) => ({ sequence: wake.sequence, thread: wake.thread }));
     },
@@ -64,7 +69,7 @@ test('it erases the subject of a Gmail mail from its wake record, and hands the 
   });
 
   await seedWakeRule(ctx, {
-    mailbox: { kind: 'gmail', connectionID: ctx.connectionID },
+    mailbox: buildGmailMailbox(ctx.connectionID),
     match: { from: ['@library.example.org'] },
   });
 

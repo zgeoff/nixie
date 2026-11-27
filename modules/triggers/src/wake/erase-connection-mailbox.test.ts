@@ -8,7 +8,7 @@ import {
   seedWakeRule,
   startTestTriggers,
 } from '../test-utils';
-import { eraseGmailMailbox } from './erase-gmail-mailbox';
+import { eraseConnectionMailbox } from './erase-connection-mailbox';
 import { readWakeRules } from './read-wake-rules';
 import { runWakeFlush } from './run-wake-flush';
 
@@ -18,12 +18,14 @@ async function setupTest() {
   return {
     ...triggers,
     taskSeed: buildTaskSeeder({ context: triggers.context }),
+    connection: (connectionID: string) =>
+      ({ kind: 'connection', source: 'example', connectionID }) as const,
     deliver: (connectionID: string, dedupeKey: string) =>
-      deliverTriggerBatch(triggers.core, 'gmail', {
+      deliverTriggerBatch(triggers.core, 'example', {
         cursor: null,
         events: [
           buildTestMailEvent({
-            mailbox: { kind: 'gmail', connectionID },
+            mailbox: { kind: 'connection', source: 'example', connectionID },
             dedupeKey: `${connectionID}|${dedupeKey}`,
             payload: { receivedAt: triggers.clock.now(), subject: 'Your invoice' },
           }),
@@ -40,23 +42,25 @@ async function setupTest() {
   };
 }
 
-test('#eraseGmailMailbox ends the rules of the connection and erases the text of its wakes', async () => {
+test('#eraseConnectionMailbox ends the rules of the connection and erases the text of its wakes', async () => {
   const ctx = await setupTest();
 
   await ctx.taskSeed.conversationStep();
 
-  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-1' } });
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
+  });
 
   ctx.clock.advance(1000);
 
   await ctx.deliver('conn-1', 'm1');
 
-  await eraseGmailMailbox(ctx.core, 'conn-1');
+  await eraseConnectionMailbox(ctx.core, ctx.connection('conn-1'));
 
   const [woke] = await ctx.readWakes();
 
   const rules = await readWakeRules(ctx.writer.db, {
-    mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
     at: ctx.clock.now(),
   });
 
@@ -64,13 +68,13 @@ test('#eraseGmailMailbox ends the rules of the connection and erases the text of
   expect(woke?.erasable.status).not.toBe('readable');
 });
 
-test('#eraseGmailMailbox drops the held matches of the connection and keeps no arrival key', async () => {
+test('#eraseConnectionMailbox drops the held matches of the connection and keeps no arrival key', async () => {
   const ctx = await setupTest();
 
   await ctx.taskSeed.conversationStep();
 
   await seedWakeRule(ctx, {
-    mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
     windowMs: 600_000,
   });
 
@@ -82,34 +86,36 @@ test('#eraseGmailMailbox drops the held matches of the connection and keeps no a
 
   await ctx.deliver('conn-1', 'm2');
 
-  await eraseGmailMailbox(ctx.core, 'conn-1');
+  await eraseConnectionMailbox(ctx.core, ctx.connection('conn-1'));
 
   ctx.clock.advance(600_000);
 
-  const flushed = await runWakeFlush(ctx.core);
+  const flushed = await runWakeFlush(ctx.core, { liveSources: ['example'] });
   const rows = await readTestTriggerRows(ctx);
 
   expect(flushed).toBe(0);
   expect(rows.held).toStrictEqual([]);
 });
 
-test('#eraseGmailMailbox leaves the rules and wakes of another connection', async () => {
+test('#eraseConnectionMailbox leaves the rules and wakes of another connection', async () => {
   const ctx = await setupTest();
 
   await ctx.taskSeed.conversationStep();
 
-  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-2' } });
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-2' },
+  });
 
   ctx.clock.advance(1000);
 
   await ctx.deliver('conn-2', 'm1');
 
-  await eraseGmailMailbox(ctx.core, 'conn-1');
+  await eraseConnectionMailbox(ctx.core, ctx.connection('conn-1'));
 
   const [woke] = await ctx.readWakes();
 
   const rules = await readWakeRules(ctx.writer.db, {
-    mailbox: { kind: 'gmail', connectionID: 'conn-2' },
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-2' },
     at: ctx.clock.now(),
   });
 

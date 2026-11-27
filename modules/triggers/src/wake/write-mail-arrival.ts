@@ -13,6 +13,7 @@ import { buildTargetTaskID } from './build-target-task-id';
 import { collectArrivalMatches } from './collect-arrival-matches';
 import { endRulesOfEndedTasks } from './end-rules-of-ended-tasks';
 import { pickArrivalPlan } from './pick-arrival-plan';
+import { pickMailboxSource } from './pick-mailbox-source';
 import { readLiveWakeRules } from './read-live-wake-rules';
 
 // One mail arrival in the deliver transaction. It is dropped when its key is held, its mailbox is not
@@ -33,7 +34,7 @@ export async function writeMailArrival(
     .where('source_key', '=', sourceKey)
     .executeTakeFirst();
 
-  if (key !== undefined || event.mailbox.kind !== sourceID) {
+  if (key !== undefined || pickMailboxSource(event.mailbox) !== sourceID) {
     return false;
   }
 

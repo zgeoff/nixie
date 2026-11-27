@@ -12,7 +12,7 @@ async function setupTest() {
   return { ...journey, api };
 }
 
-test('it hides the Connections menu entry of a nixie with no google section, and says so on a visit to its page', async () => {
+test('it hides the Connections menu entry of a nixie with no google section, and says so on a visit to its page and to its return route', async () => {
   const ctx = await setupTest();
 
   await ctx.view.navigate(`${ctx.appURL}/tasks`);
@@ -29,6 +29,14 @@ test('it hides the Connections menu entry of a nixie with no google section, and
   );
 
   await ctx.view.navigate(`${ctx.appURL}/settings/connections`);
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('This feature is off in this nixie')",
+  );
+
+  // Google's return route is the one page of this feature that a browser reaches from outside nixie
+  await ctx.view.navigate(`${ctx.appURL}/connections/google/return?state=abc&code=4%2F0Ab`);
 
   await waitForPage(
     ctx.view,

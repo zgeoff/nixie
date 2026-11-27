@@ -36,6 +36,9 @@ export interface ConnectionsHarnessOptions {
   // how long a consent waits for the Forget of its account, in ms; 200 by default
   readonly forgetWaitMs?: number;
 
+  // the connector's ID; google by default
+  readonly connectorID?: string;
+
   // the actions that the connector holds; none by default
   readonly actions?: Connector['actions'];
 
@@ -113,6 +116,7 @@ export async function startConnectionsHarness(
 
   const connector: Connector = {
     ...base,
+    id: options.connectorID ?? base.id,
     actions: options.actions ?? base.actions,
     check: options.wrapCheck?.(base.check) ?? base.check,
   };

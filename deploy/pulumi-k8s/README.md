@@ -44,8 +44,7 @@ bun add @heynixie/pulumi-k8s
 
 Pass the per-deployment values to `createNixie(name, args, opts)` in `args`, and your Kubernetes
 provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value. Add
-`computer: {}`, `code: {}` and `google: {}` to `config` to turn on the assistant's computer, its
-code tool and its Google tools.
+`computer: {}`, `code: {}` and `google: {}` to `config` to turn on those features.
 
 ```ts
 import { createNixie, nixieAPIPort, nixieWebPort } from '@heynixie/pulumi-k8s';

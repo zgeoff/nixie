@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
+import { readWakeRules } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { readWakeRules } from '@heynixie/triggers';
 import { seedWakeRule, startTestTriggers } from '@heynixie/triggers/test-utils';
 import { startGmailTools } from '../test-utils/start-gmail-tools';
+import { buildGmailMailbox } from './build-gmail-mailbox';
 
 async function setupTest() {
   const triggers = await startTestTriggers();
@@ -33,7 +34,7 @@ async function setupTest() {
 
   const readRules = () =>
     readWakeRules(triggers.writer.db, {
-      mailbox: { kind: 'gmail', connectionID: tools.site.context.connectionID },
+      mailbox: buildGmailMailbox(tools.site.context.connectionID),
       at: triggers.clock.now(),
     });
 
@@ -44,7 +45,7 @@ test('it cancels a rule of a connection by its ID', async () => {
   const ctx = await setupTest();
 
   const rule = await seedWakeRule(ctx.triggers, {
-    mailbox: { kind: 'gmail', connectionID: ctx.site.context.connectionID },
+    mailbox: buildGmailMailbox(ctx.site.context.connectionID),
     match: { subject: 'invoice' },
   });
 

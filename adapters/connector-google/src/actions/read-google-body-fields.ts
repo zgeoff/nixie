@@ -1,5 +1,5 @@
+import type { BodyFields, BodyFieldsRequest } from '@heynixie/connections';
 import type { Log } from '@heynixie/log';
-import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import { readCalendarBodyFields } from '../calendar/read-calendar-body-fields';
 import { readDriveBodyFields } from '../drive/read-drive-body-fields';
 import { readGmailBodyFields } from '../gmail/read-gmail-body-fields';

@@ -527,3 +527,34 @@ test('it reaches the revoked fault point after the revoke step and before the ke
 
   expect(keysAfter).toStrictEqual(keyIDs);
 });
+
+test('it leaves open an erasure of a kind nothing registered and finishes the rest', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.register('note', 'image', [{ id: 'a', keyIDs: [], childIDs: [] }]);
+  const credential = ctx.register('credential', 'image', [{ id: 'c', keyIDs: [], childIDs: [] }]);
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+  await credential.begin({ id: 'c' }, { by: 'user' });
+
+  const restarted = makeErasureRunner({
+    log: ctx.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    effects: ctx.effects,
+  });
+
+  restarted.register(
+    buildTestErasable({
+      kind: 'note',
+      childKind: 'image',
+      targets: [{ id: 'a', keyIDs: [], childIDs: [] }],
+      events: [],
+    }),
+  );
+
+  await restarted.finishOpen();
+
+  const open = await readOpenErasures(ctx.log);
+
+  expect(open.map((erasure) => erasure.started.kind)).toStrictEqual(['credential']);
+});

@@ -1,5 +1,5 @@
 import { parseDuration } from '@heynixie/clock';
-import { maxWakeDurationMs, minWakeDurationMs } from '@heynixie/triggers';
+import { maxWakeDurationMs, minWakeDurationMs } from '@heynixie/connections';
 
 // How long the reply rule of a send stands: `off` registers none, a duration from 1m to 3650d sets
 // the length, and no value takes the deployment's reply expiry. Bad for text that is neither.

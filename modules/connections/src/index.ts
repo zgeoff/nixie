@@ -56,3 +56,30 @@ export type { SetupPlaceholders } from './connector/fill-setup-steps';
 export { fillSetupSteps } from './connector/fill-setup-steps';
 export type { DefaultLabelOptions } from './connector/pick-default-label';
 export { pickDefaultLabel } from './connector/pick-default-label';
+
+// What a connector may use of the triggers, policy and tasks modules, so an adapter depends on this
+// module alone.
+export type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
+export { conversationTaskID } from '@heynixie/tasks';
+
+export type {
+  ConnectionArrivalEvent,
+  ConnectionMailbox,
+  SetWakeRule,
+  TriggerContext,
+  TriggerSource,
+  WakeRule,
+  WakeRuleContext,
+  WakeRuleInput,
+} from '@heynixie/triggers';
+
+export {
+  endWakeRuleInTransaction,
+  formatDurationText,
+  maxWakeDurationMs,
+  minWakeDurationMs,
+  pickWakeTiming,
+  readWakeRules,
+  resolveWakeTarget,
+  setWakeRuleInTransaction,
+} from '@heynixie/triggers';

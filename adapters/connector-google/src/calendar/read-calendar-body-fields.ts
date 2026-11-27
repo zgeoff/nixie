@@ -1,7 +1,7 @@
+import type { BodyFields, BodyFieldsRequest } from '@heynixie/connections';
 import { readMessageTimeZone } from '@heynixie/connectors';
 import type { JSONObject, Log } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
-import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import type { GmailCard } from '../gmail/gmail-card';
 import { joinCardList, parseCardAttachment } from '../gmail/gmail-card';
 import { readDestinationPermissions } from '../gmail/read-destination-permissions';

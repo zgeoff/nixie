@@ -11,6 +11,7 @@ import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { startFakeGmailSite } from '../../test-utils/fake-gmail/start-fake-gmail-site';
 import { startGmailTools } from '../../test-utils/start-gmail-tools';
+import { buildGmailMailbox } from '../build-gmail-mailbox';
 import { buildGmailArrivalSource } from './build-gmail-arrival-source';
 import { parseGmailSourceCursor } from './gmail-source-cursor';
 import type { GmailConnection } from './types';
@@ -77,7 +78,7 @@ async function setupTest() {
     startSources,
     buildSource,
     addRule: (overrides: Parameters<typeof seedWakeRule>[1] = {}) =>
-      seedWakeRule(triggers, { mailbox: { kind: 'gmail', connectionID }, ...overrides }),
+      seedWakeRule(triggers, { mailbox: buildGmailMailbox(connectionID), ...overrides }),
 
     // the first poll stores the cursor, and the source then sleeps until the next one
     start: async () => {

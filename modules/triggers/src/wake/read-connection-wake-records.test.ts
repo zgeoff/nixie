@@ -3,7 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { deliverTriggerBatch } from '../core/deliver-trigger-batch';
 import { buildTestMailEvent, seedWakeRule, startTestTriggers } from '../test-utils';
-import { readGmailWakeRecords } from './read-gmail-wake-records';
+import { readConnectionWakeRecords } from './read-connection-wake-records';
 import { runWakeFlush } from './run-wake-flush';
 
 async function setupTest() {
@@ -13,12 +13,14 @@ async function setupTest() {
 
   return {
     ...triggers,
+    connection: (connectionID: string) =>
+      ({ kind: 'connection', source: 'example', connectionID }) as const,
     deliver: (connectionID: string, subject: string) =>
-      deliverTriggerBatch(triggers.core, 'gmail', {
+      deliverTriggerBatch(triggers.core, 'example', {
         cursor: null,
         events: [
           buildTestMailEvent({
-            mailbox: { kind: 'gmail', connectionID },
+            mailbox: { kind: 'connection', source: 'example', connectionID },
             dedupeKey: `${connectionID}|${subject}`,
             payload: { receivedAt: triggers.clock.now(), subject },
           }),
@@ -35,11 +37,16 @@ async function setupTest() {
   };
 }
 
-test('#readGmailWakeRecords finds the wakes that show mail of the connection, and none of another', async () => {
+test('#readConnectionWakeRecords finds the wakes that show mail of the connection, and none of another', async () => {
   const ctx = await setupTest();
 
-  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-1' } });
-  await seedWakeRule(ctx, { mailbox: { kind: 'gmail', connectionID: 'conn-2' } });
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
+  });
+
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-2' },
+  });
 
   ctx.clock.advance(1000);
 
@@ -47,8 +54,8 @@ test('#readGmailWakeRecords finds the wakes that show mail of the connection, an
   await ctx.deliver('conn-2', 'Invoice 8120 for bee hives');
 
   const [first, second] = await ctx.readWakeSequences();
-  const one = await readGmailWakeRecords(ctx.writer.db, 'conn-1');
-  const two = await readGmailWakeRecords(ctx.writer.db, 'conn-2');
+  const one = await readConnectionWakeRecords(ctx.writer.db, ctx.connection('conn-1'));
+  const two = await readConnectionWakeRecords(ctx.writer.db, ctx.connection('conn-2'));
 
   expect([one, two]).toStrictEqual([
     [{ sequence: first ?? 0, thread: 'conversation', keyID: expect.any(String) }],
@@ -56,16 +63,16 @@ test('#readGmailWakeRecords finds the wakes that show mail of the connection, an
   ]);
 });
 
-test('#readGmailWakeRecords finds the one wake of a target that shows the mail of 2 mailboxes, for each of them', async () => {
+test('#readConnectionWakeRecords finds the one wake of a target that shows the mail of 2 mailboxes, for each of them', async () => {
   const ctx = await setupTest();
 
   await seedWakeRule(ctx, {
-    mailbox: { kind: 'gmail', connectionID: 'conn-1' },
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-1' },
     windowMs: 600_000,
   });
 
   await seedWakeRule(ctx, {
-    mailbox: { kind: 'gmail', connectionID: 'conn-2' },
+    mailbox: { kind: 'connection', source: 'example', connectionID: 'conn-2' },
     windowMs: 600_000,
   });
 
@@ -81,11 +88,11 @@ test('#readGmailWakeRecords finds the one wake of a target that shows the mail o
 
   ctx.clock.advance(600_000);
 
-  await runWakeFlush(ctx.core);
+  await runWakeFlush(ctx.core, { liveSources: ['example'] });
 
   const sequences = await ctx.readWakeSequences();
-  const one = await readGmailWakeRecords(ctx.writer.db, 'conn-1');
-  const two = await readGmailWakeRecords(ctx.writer.db, 'conn-2');
+  const one = await readConnectionWakeRecords(ctx.writer.db, ctx.connection('conn-1'));
+  const two = await readConnectionWakeRecords(ctx.writer.db, ctx.connection('conn-2'));
 
   expect([
     sequences,

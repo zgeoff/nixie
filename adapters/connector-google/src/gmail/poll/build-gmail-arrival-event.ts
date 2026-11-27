@@ -1,4 +1,5 @@
-import type { MailArrivalEvent } from '@heynixie/triggers';
+import type { ConnectionArrivalEvent } from '@heynixie/connections';
+import { buildGmailMailbox } from '../build-gmail-mailbox';
 import { buildItemID } from '../build-item-id';
 import { collectAddresses } from '../collect-addresses';
 import { decodeHeaderWords } from '../decode-header-words';
@@ -19,7 +20,7 @@ export interface GmailArrivalInput {
 
 // The arrival of one new message, or null for a message that is no arrival. The message ID is the
 // one that gmail.read takes, and the thread ID is Gmail's own, which a rule's thread matches.
-export function buildGmailArrivalEvent(input: GmailArrivalInput): MailArrivalEvent | null {
+export function buildGmailArrivalEvent(input: GmailArrivalInput): ConnectionArrivalEvent | null {
   const message = input.message;
 
   if (message.labels.some((label) => skippedLabels.has(label))) {
@@ -30,7 +31,7 @@ export function buildGmailArrivalEvent(input: GmailArrivalInput): MailArrivalEve
 
   return {
     kind: 'mail',
-    mailbox: { kind: 'gmail', connectionID: input.connectionID },
+    mailbox: buildGmailMailbox(input.connectionID),
     dedupeKey: `${input.connectionID}|${message.id}`,
     occurredAt: input.occurredAt,
     payload: {

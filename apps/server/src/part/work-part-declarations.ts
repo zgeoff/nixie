@@ -5,7 +5,11 @@ import {
 } from '@heynixie/api';
 import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
-import { buildGmailArrivalSource, collectGmailConnections } from '@heynixie/connector-google';
+import {
+  buildGmailArrivalSource,
+  collectGmailConnections,
+  gmailSourceID,
+} from '@heynixie/connector-google';
 import {
   endTakeoverCutByRestart,
   makeTakeoverRecords,
@@ -181,7 +185,9 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       await parts.cleanup.defer(() => sources.stop());
 
       // the held matches of a wake rule wake their target here, once a rule's window is over
-      const flush = startWakeFlush(core);
+      const flush = startWakeFlush(core, {
+        liveSources: parts.config.google === undefined ? [] : [gmailSourceID],
+      });
 
       await parts.cleanup.defer(() => flush.stop());
     },

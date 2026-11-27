@@ -154,7 +154,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const withMail = addMailConnectors(withCoding, mail, mailContext);
 
       return Promise.resolve(
-        addGoogleConnectors(withMail, parts.find('google_tools')?.actions ?? []),
+        addGoogleConnectors(withMail, parts.find('google_tools')?.actions ?? null),
       );
     },
   },

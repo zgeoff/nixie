@@ -1,7 +1,10 @@
 import type { Clock } from '@heynixie/clock';
-import type { ConnectorContext } from '@heynixie/connections';
+import type {
+  ConnectionArrivalEvent,
+  ConnectorContext,
+  TriggerContext,
+} from '@heynixie/connections';
 import type { Logger } from '@heynixie/logger';
-import type { MailArrivalEvent, TriggerContext } from '@heynixie/triggers';
 import type { Kysely } from 'kysely';
 import type { GoogleHosts } from '../../connector/google-hosts';
 import type { GmailSourceCursor } from './gmail-source-cursor';
@@ -50,7 +53,7 @@ export interface PollRun {
 export interface PollDelivery {
   readonly historyID: string;
   readonly startedAt: number;
-  readonly events: readonly MailArrivalEvent[];
+  readonly events: readonly ConnectionArrivalEvent[];
 
   // the ID of each reply rule that the poll read the mail of again, or that it found read already
   readonly replayed: string[];

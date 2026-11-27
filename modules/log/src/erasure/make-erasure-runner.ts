@@ -92,16 +92,28 @@ export function makeErasureRunner(options: ErasureRunnerOptions): ErasureRunnerC
           await entry.beginLegacy();
         }
 
+        // A kind that nothing registered, such as a feature that is off, stays open until it is on.
+        const skipped = new Set<string>();
+
         for (;;) {
           const open = await readOpenErasures(options.log);
 
-          const [first] = open;
+          const first = open.find(
+            (erasure) =>
+              entries.has(erasure.started.kind) && !skipped.has(erasure.started.erasureID),
+          );
 
           if (first === undefined) {
             return;
           }
 
-          await runErasureTree(context, pickTopmost(open, first));
+          const root = pickTopmost(open, first);
+
+          if (entries.has(root.started.kind)) {
+            await runErasureTree(context, root);
+          } else {
+            skipped.add(first.started.erasureID);
+          }
         }
       }),
     readStuck: async (query) => {

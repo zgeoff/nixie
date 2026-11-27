@@ -2,9 +2,10 @@ import { triggerMailWokeCodec } from '@heynixie/tasks';
 import type { QueryExecutorProvider } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import type { ConnectionMailbox } from '../types';
 import { buildMailboxKey } from './build-mailbox-key';
 
-export interface GmailWakeRecord {
+export interface ConnectionWakeRecord {
   readonly sequence: number;
 
   // the thread of the woken task
@@ -20,13 +21,13 @@ const rowSchema = z.object({
   key_id: z.string().nullable(),
 });
 
-// The wakes that show mail of one Gmail connection, from the one that woke first. A wake that shows
+// The wakes that show mail of one connection, from the one that woke first. A wake that shows
 // mail of other mailboxes too is one of them, because its mails share one key.
-export async function readGmailWakeRecords(
+export async function readConnectionWakeRecords(
   executor: QueryExecutorProvider,
-  connectionID: string,
-): Promise<readonly GmailWakeRecord[]> {
-  const mailbox = buildMailboxKey({ kind: 'gmail', connectionID });
+  connection: ConnectionMailbox,
+): Promise<readonly ConnectionWakeRecord[]> {
+  const mailbox = buildMailboxKey(connection);
 
   const result = await sql`
     select sequence, thread, key_id

@@ -13,6 +13,21 @@ test('it decodes a stored revocation record that names the provider error after 
     connection: 'connection-1',
     outcome: 'refused',
     status: 400,
+    providerError: 'invalid_token',
+  });
+});
+
+test('it decodes a stored revocation record that has no provider error as none', () => {
+  expect(
+    revocationRecordedCodec.decode({
+      connection: 'connection-1',
+      outcome: 'unknown',
+      status: null,
+    }),
+  ).toStrictEqual({
+    connection: 'connection-1',
+    outcome: 'unknown',
+    status: null,
     providerError: null,
   });
 });

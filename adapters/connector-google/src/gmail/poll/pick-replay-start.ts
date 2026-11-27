@@ -1,4 +1,4 @@
-import type { WakeRule } from '@heynixie/triggers';
+import type { WakeRule } from '@heynixie/connections';
 
 // The earliest start among the reply rules that no committed poll has read the mail of again, or
 // null when none is left. A reply that arrived before its rule existed was dropped, so the poll

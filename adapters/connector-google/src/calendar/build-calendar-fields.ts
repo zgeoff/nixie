@@ -1,5 +1,5 @@
+import type { BodyFields } from '@heynixie/connections';
 import type { DestinationPermission } from '@heynixie/log';
-import type { BodyFields } from '@heynixie/policy';
 import { match } from 'ts-pattern';
 import { annotateRecipients } from '../gmail/annotate-recipients';
 import type { GmailCard } from '../gmail/gmail-card';

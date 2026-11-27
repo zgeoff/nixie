@@ -1,6 +1,5 @@
 import type { ActionAttempt, ConnectorContext } from '@heynixie/connections';
-import { conversationTaskID } from '@heynixie/tasks';
-import { resolveWakeTarget } from '@heynixie/triggers';
+import { conversationTaskID, resolveWakeTarget } from '@heynixie/connections';
 import { z } from 'zod';
 import { gmailToolNames } from './gmail-tool-names';
 import { pickReplyExpiry } from './pick-reply-expiry';

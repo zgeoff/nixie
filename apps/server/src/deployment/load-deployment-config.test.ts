@@ -624,7 +624,10 @@ test.each([
 
   const config = await loadDeploymentConfig(ctx.path);
 
-  expect(config.google).toStrictEqual(row.google);
+  expect({ google: config.google, gmail: config.gmail }).toStrictEqual({
+    google: row.google,
+    gmail: undefined,
+  });
 });
 
 test('it refuses a gmail section outside the google section, and says where it moved', async () => {

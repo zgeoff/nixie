@@ -1,10 +1,12 @@
 import { expect, test } from 'bun:test';
 import type { ActionAttempt } from '@heynixie/connections';
+import { readWakeRules } from '@heynixie/connections';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { eraseGmailMailbox, readWakeRules } from '@heynixie/triggers';
+import { eraseConnectionMailbox } from '@heynixie/triggers';
 import { startTestTriggers } from '@heynixie/triggers/test-utils';
 import invariant from 'tiny-invariant';
 import { startGmailTools } from '../test-utils/start-gmail-tools';
+import { buildGmailMailbox } from './build-gmail-mailbox';
 
 async function setupTest() {
   const triggers = await startTestTriggers();
@@ -50,7 +52,7 @@ async function setupTest() {
 
   const readRules = () =>
     readWakeRules(triggers.writer.db, {
-      mailbox: { kind: 'gmail', connectionID: ctx.site.context.connectionID },
+      mailbox: buildGmailMailbox(ctx.site.context.connectionID),
       at: ctx.clock.now(),
     });
 
@@ -232,7 +234,7 @@ test('it writes no second rule when the check of a send runs after its reply rul
   });
 
   const rules = await readWakeRules(ctx.triggers.writer.db, {
-    mailbox: { kind: 'gmail', connectionID: ctx.site.context.connectionID },
+    mailbox: buildGmailMailbox(ctx.site.context.connectionID),
     at: sentAt,
   });
 
@@ -251,7 +253,7 @@ test('it writes no rule for a connection that was forgotten after the send read 
 
   ctx.site.forget(connectionID);
 
-  await eraseGmailMailbox(ctx.deps.wake.context(), connectionID);
+  await eraseConnectionMailbox(ctx.deps.wake.context(), buildGmailMailbox(connectionID));
 
   hold.release();
 

@@ -18631,7 +18631,7 @@
                 "type": "object",
                 "properties": {
                   "connector": {
-                    "type": "string"
+                    "const": "google"
                   },
                   "origin": {
                     "type": "string",
@@ -18986,7 +18986,7 @@
                     "format": "uuid"
                   },
                   "connector": {
-                    "type": "string"
+                    "const": "google"
                   },
                   "clientID": {
                     "type": "string",
@@ -20091,7 +20091,7 @@
                     "format": "uuid"
                   },
                   "connector": {
-                    "type": "string"
+                    "const": "google"
                   },
                   "connection": {
                     "anyOf": [

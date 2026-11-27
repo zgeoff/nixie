@@ -1,6 +1,7 @@
+import type { SetWakeRule, WakeRuleInput } from '@heynixie/connections';
+import { setWakeRuleInTransaction } from '@heynixie/connections';
 import { withWriteTransaction } from '@heynixie/log';
-import type { SetWakeRule, WakeRuleInput } from '@heynixie/triggers';
-import { setWakeRuleInTransaction } from '@heynixie/triggers';
+import { buildGmailMailbox } from './build-gmail-mailbox';
 import type { GmailDeps } from './types';
 
 export interface GmailWakeRuleRequest extends Omit<WakeRuleInput, 'mailbox'> {
@@ -23,7 +24,7 @@ export function writeGmailWakeRule(
 
     return setWakeRuleInTransaction(tx, deps.wake.context(), {
       ...rule,
-      mailbox: { kind: 'gmail', connectionID },
+      mailbox: buildGmailMailbox(connectionID),
     });
   });
 }

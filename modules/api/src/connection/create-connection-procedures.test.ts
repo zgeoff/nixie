@@ -765,3 +765,44 @@ test.each(['list', 'readSetup', 'checkPicked'] as const)(
     });
   },
 );
+
+test.each(['readSetup', 'registerClient', 'startConsent'] as const)(
+  'it refuses a connector that nixie has none of in connections.%s, and calls nothing',
+  async (procedure) => {
+    const ctx = await setupTest();
+
+    ctx.setConnections(ctx.port);
+
+    const answers = {
+      readSetup: () =>
+        ctx.client.connections.readSetup({
+          // @ts-expect-error -- the test sends a connector that the contract refuses
+          connector: 'unsupported',
+          origin: ctx.origin,
+        }),
+      registerClient: () =>
+        ctx.client.connections.registerClient({
+          clientActionID: crypto.randomUUID(),
+          // @ts-expect-error -- the test sends a connector that the contract refuses
+          connector: 'unsupported',
+          clientID: 'client-1.apps.example',
+          clientSecret: 'secret-value-1',
+          origin: ctx.origin,
+        }),
+      startConsent: () =>
+        ctx.client.connections.startConsent({
+          clientActionID: crypto.randomUUID(),
+          // @ts-expect-error -- the test sends a connector that the contract refuses
+          connector: 'unsupported',
+          connection: null,
+        }),
+    };
+
+    const answer = answers[procedure]();
+
+    await Promise.allSettled([answer]);
+
+    expect(answer).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(ctx.calls).toStrictEqual([]);
+  },
+);

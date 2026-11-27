@@ -1,4 +1,5 @@
-import type { TriggerSource } from '@heynixie/triggers';
+import type { TriggerSource } from '@heynixie/connections';
+import { gmailSourceID } from '../build-gmail-mailbox';
 import { parseGmailSourceCursor } from './gmail-source-cursor';
 import { runPollLoop } from './run-poll-loop';
 import type { GmailArrivalSourceInput } from './types';
@@ -11,7 +12,7 @@ export function buildGmailArrivalSource(input: GmailArrivalSourceInput): Trigger
   let loop: Promise<unknown> | null = null;
 
   return {
-    id: 'gmail',
+    id: gmailSourceID,
     kind: 'mail',
     start: (trigger) => {
       const running = new AbortController();

@@ -1,5 +1,5 @@
+import type { BodyFields } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
-import type { BodyFields } from '@heynixie/policy';
 import { formatCardNames } from './format-card-names';
 
 // The approval card of a wake rule: the match in a sentence.

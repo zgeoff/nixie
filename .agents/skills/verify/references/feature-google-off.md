@@ -41,7 +41,16 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
    Expect: both commands exit 0. The snapshot shows the text that the feature is off, and no button
    named "Connect a Google account".
 
-3. Check that nixie wrote no record of a Google connection:
+3. Check the tools that nixie gave the model at its start:
+
+   ```bash
+   bun verify db query "select (select count(*) from records r, json_each(r.payload, '$.given.tools') t where r.kind = 'server.started' and (t.value like 'gmail.%' or t.value like 'calendar.%' or t.value like 'drive.%')) as google_tools, (select count(*) from records r, json_each(r.payload, '$.given.tools') t where r.kind = 'server.started' and t.value = 'task.start') as task_start_tools"
+   ```
+
+   Expect: one row, with `google_tools` 0 and `task_start_tools` 1. The second count shows that the
+   list holds the other tools, so the first is no empty read.
+
+4. Check that nixie wrote no record of a Google connection:
 
    ```bash
    bun verify db query "select count(*) as connection_records from records where kind like 'connection.%'"
@@ -53,7 +62,13 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
 
 - In step 1, the menu held no Connections entry.
 - In step 2, the connections page said that the feature is off in this nixie.
-- In step 3, nixie held no `connection.` record.
+- In step 3, the model's tool list held no `gmail.`, `calendar.` or `drive.` tool.
+- In step 4, nixie held no `connection.` record.
+
+A fresh nixie holds no connection, so a Gmail poll that wrongly ran would have no mail to read, and
+show nothing here. The `runtime-google-off` end-to-end suite keeps a connection across a restart
+with no `google` section, and checks that no poll reaches Gmail. List the poll as covered by that
+suite, not by this journey.
 
 Once the end state matches, run `bun verify done`. Then run `bun verify up --restart` and
 `bun verify doctor`, so the next journey has Google on.

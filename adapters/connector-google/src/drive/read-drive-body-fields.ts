@@ -1,6 +1,6 @@
+import type { BodyFields, BodyFieldsRequest } from '@heynixie/connections';
 import type { JSONObject, Log } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
-import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import { parseCardAttachment } from '../gmail/gmail-card';
 import { driveToolNames } from './drive-tool-names';
 

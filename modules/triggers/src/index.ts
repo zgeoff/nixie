@@ -53,6 +53,8 @@ export type {
   TriggerCoreContext,
   MailArrival,
   MailArrivalEvent,
+  ConnectionArrivalEvent,
+  ConnectionMailbox,
   Mailbox,
   ScheduleTriggerEvent,
   TaskInputEvent,
@@ -79,8 +81,8 @@ export type { WakeRulesConfig } from './wake/wake-rules-config-schema';
 export { maxWakeDurationMs, minWakeDurationMs } from './wake/constants';
 export { wakeRulesConfigSchema } from './wake/wake-rules-config-schema';
 export { buildMailboxKey } from './wake/build-mailbox-key';
-export { eraseGmailMailbox } from './wake/erase-gmail-mailbox';
-export { readGmailWakeRecords } from './wake/read-gmail-wake-records';
+export { eraseConnectionMailbox } from './wake/erase-connection-mailbox';
+export { readConnectionWakeRecords } from './wake/read-connection-wake-records';
 export { formatDurationText } from './wake/format-duration-text';
 export type { WakeTiming, WakeTimingRequest } from './wake/pick-wake-timing';
 export { pickWakeTiming } from './wake/pick-wake-timing';

@@ -85,7 +85,7 @@ test('#collectReadyWakes wakes a target once with the ready matches of two mailb
 
   const rules = new Map([
     ctx.buildRule('a', 0),
-    ctx.buildRule('b', 0, { kind: 'gmail', connectionID: 'c1' }),
+    ctx.buildRule('b', 0, { kind: 'connection', source: 'example', connectionID: 'c1' }),
   ]);
 
   const wakes = collectReadyWakes(

@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { startConnectionsHarness } from '../test-utils/start-connections-harness';
 
-async function setupTest() {
+async function setupTest(options: { connectorID?: string } = {}) {
   const origin = 'https://nixie.example.org';
 
-  const harness = await startConnectionsHarness();
+  const harness = await startConnectionsHarness(options);
 
   const register = (input: { origin?: string; headerOrigin?: string | undefined } = {}) =>
     harness.connections.registerClient({
@@ -124,4 +124,18 @@ test('it saves the registration and the step that stores its outcome in one tran
   const setup = await ctx.connections.readSetup(ctx.origin);
 
   expect(setup.client).toBeNull();
+});
+
+test('it registers a client of a connector other than google and reads it back from its setup', async () => {
+  const ctx = await setupTest({ connectorID: 'plum' });
+  const result = await ctx.register();
+  const setup = await ctx.connections.readSetup(ctx.origin);
+  const [clientID] = await ctx.readClientIDs();
+  const row = await ctx.readClientRow(clientID ?? '');
+
+  expect([result.kind, setup.client?.clientID, row?.connector_id]).toStrictEqual([
+    'registered',
+    'client-123.apps.test',
+    'plum',
+  ]);
 });

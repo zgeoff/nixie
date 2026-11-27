@@ -1,12 +1,16 @@
 import type { Mailbox } from '../types';
 
-const gmailPrefix = 'gmail:';
-
 // The mailbox that a stored key names, the inverse of buildMailboxKey.
 export function parseMailboxKey(key: string): Mailbox {
-  if (key.startsWith(gmailPrefix)) {
-    return { kind: 'gmail', connectionID: key.slice(gmailPrefix.length) };
+  const separator = key.indexOf(':');
+
+  if (separator === -1) {
+    return { kind: 'mail' };
   }
 
-  return { kind: 'mail' };
+  return {
+    kind: 'connection',
+    source: key.slice(0, separator),
+    connectionID: key.slice(separator + 1),
+  };
 }

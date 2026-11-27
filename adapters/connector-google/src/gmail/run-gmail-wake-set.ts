@@ -1,5 +1,5 @@
 import type { ActionAttempt, ProviderResponse } from '@heynixie/connections';
-import { formatDurationText, pickWakeTiming, resolveWakeTarget } from '@heynixie/triggers';
+import { formatDurationText, pickWakeTiming, resolveWakeTarget } from '@heynixie/connections';
 import { readCallContext } from './read-call-context';
 import type { GmailDeps } from './types';
 import { wakeSetArgumentsSchema } from './wake-set-arguments-schema';

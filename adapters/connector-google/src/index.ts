@@ -25,3 +25,5 @@ export { gmailConfigSchema } from './gmail/gmail-config-schema';
 export { readPickedFiles } from './drive/read-picked-files';
 export type { PickedFile } from './drive/read-picked-files';
 export { googleConfigSchema } from './connector/google-config-schema';
+export { googleToolPrefixes } from './actions/google-tool-prefixes';
+export { buildGmailMailbox, gmailSourceID } from './gmail/build-gmail-mailbox';

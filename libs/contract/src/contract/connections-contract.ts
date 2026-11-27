@@ -12,7 +12,7 @@ const connectionsProcedure = signedIn.errors(featureOffErrors).errors({
 });
 
 const checkedAction = connectionsProcedure.errors(reusedIDErrors);
-const connectorSchema = z.string();
+const connectorSchema = z.literal('google');
 const clientNotFound = { message: 'No registered client has this ID', status: 404 } as const;
 const connectionNotFound = { message: 'No connection has this ID', status: 404 } as const;
 const erasureSchema = z.enum(['pending', 'done']);

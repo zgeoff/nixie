@@ -1,6 +1,7 @@
+import { formatDurationText, readWakeRules } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
-import { formatDurationText, readWakeRules } from '@heynixie/triggers';
+import { buildGmailMailbox } from './build-gmail-mailbox';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';
@@ -36,7 +37,7 @@ export function buildGmailWakeListTool(deps: GmailDeps): ToolDefinition {
       }
 
       const rules = await readWakeRules(deps.log.writer.db, {
-        mailbox: { kind: 'gmail', connectionID: context.connectionID },
+        mailbox: buildGmailMailbox(context.connectionID),
         at: deps.clock.now(),
       });
 
