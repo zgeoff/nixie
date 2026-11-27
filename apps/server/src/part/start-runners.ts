@@ -16,6 +16,7 @@ export async function startRunners(
   parts: ServerParts,
   runStep: RunStep,
   readMcp: () => Mcp | null,
+  stopCleanups: () => void,
 ): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
@@ -72,6 +73,10 @@ export async function startRunners(
   });
 
   await parts.cleanup.defer(async () => {
+    // The runners stop before the notebook and the memory store, which wait for each session
+    // cleanup in flight, so a cleanup that waits on a stalled turn ends here and not at the limit.
+    stopCleanups();
+
     await Promise.all([tasks.stop(), actions.stop()]);
   });
 }

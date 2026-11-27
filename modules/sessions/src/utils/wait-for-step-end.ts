@@ -5,11 +5,12 @@ const stepEndPollMs = 25;
 
 // Only a step whose turn started: one still waiting to start waits for the cleanup in turn.
 // Resolves once that step commits, fails or loses its lease, because a step whose turn ended can
-// still commit a session summary that the cleanup must then erase.
+// still commit a session summary that the cleanup must then erase. Rejects at a shutdown.
 export async function waitForStepEnd(
   context: Pick<TasksContext, 'log' | 'clock'>,
   taskID: string,
   step: RunningStep | undefined,
+  stopping: AbortSignal,
 ): Promise<void> {
   if (step === undefined) {
     return;
@@ -18,6 +19,8 @@ export async function waitForStepEnd(
   let current = await readRunningStep(context, taskID);
 
   while (isSameStep(current, step)) {
+    stopping.throwIfAborted();
+
     await Bun.sleep(stepEndPollMs);
 
     current = await readRunningStep(context, taskID);
