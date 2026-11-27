@@ -125,17 +125,20 @@ Before you start:
 8. Check the turn that the approval started. It reads the call's outcome, and it must commit with no
    step error. Both queries follow the approved call through the `usedBy` action ID of its
    `proposals.settled` record, so a step of another task, or an outcome of an earlier export, never
-   matches. The turn takes a few seconds:
+   matches. The first query returns only the first `task.step_committed` or `task.step_errored`
+   record after that record, so it shows an error that comes before the outcome, and never a later
+   turn. The turn takes a few seconds:
 
    ```bash
-   bun verify db query "select kind from records where kind in ('task.step_committed', 'task.step_errored') and json_extract(payload, '$.taskID') = (select json_extract(payload, '$.taskID') from records where kind = 'action.queued' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) and sequence > (select sequence from records where kind = 'action.outcome' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) order by sequence"
+   bun verify db query "select kind, json_extract(payload, '$.reason') as reason from records where kind in ('task.step_committed', 'task.step_errored') and json_extract(payload, '$.taskID') = (select json_extract(payload, '$.taskID') from records where kind = 'action.queued' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')) and sequence > (select sequence from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action') order by sequence limit 1"
    bun verify db query "select json_extract(payload, '$.status') as status, json_extract(payload, '$.reason') as reason from records where kind = 'action.outcome' and json_extract(payload, '$.actionID') = (select json_extract(payload, '$.usedBy') from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action')"
    ```
 
-   Expect: the first query returns one row, with `kind` `task.step_committed`. The second returns
-   one row, with `status` `failed` and `reason` `refused`. When the first query returns no row, run
-   it again, up to 5 runs in all. A row with `task.step_errored` fails the journey: skip `done`, and
-   report the record with its `reason`.
+   Expect: the first query returns one row, with `kind` `task.step_committed` and `reason` `null`.
+   The second returns one row, with `status` `failed` and `reason` `refused`. When the first query
+   returns no row, run it again, up to 5 runs in all. Either of these fails the journey: a row with
+   `task.step_errored`, or no row after 5 runs. Then skip `done`, and report the row with its
+   `reason`, or the empty result.
 
 ## End state
 
