@@ -46,6 +46,7 @@ import { runEnrolCode } from './run-enrol-code';
 import { runHostCLI } from './run-host-cli';
 import { runPauseFromHost } from './run-pause-from-host';
 import { sessionsSchema } from './sessions-schema';
+import { startFeatures } from './start-features';
 import { throwRefusal } from './throw-refusal';
 import { waitForProposals } from './wait-for-proposals';
 
@@ -448,31 +449,7 @@ export function createVerifyRegistry(): Wringer {
           .otherwise(() => checkHarness(ctx.drivers.http)),
     })
     .feature(
-      {
-        name: 'sign-in-enrol',
-        summary: 'Sign a browser in with an enrol code',
-        paths: featurePaths['sign-in-enrol'],
-      },
-      {
-        name: 'chat-turn',
-        summary: 'Send a message, and see the reply after it',
-        paths: featurePaths['chat-turn'],
-      },
-      {
-        name: 'memory-approval',
-        summary: 'Approve a proposed memory',
-        paths: featurePaths['memory-approval'],
-      },
-      {
-        name: 'policy-proposal',
-        summary: 'Approve a call that an ask rule held unrun',
-        paths: featurePaths['policy-proposal'],
-      },
-      {
-        name: 'rule-condition',
-        summary: 'Approve a rule with a condition, and see it match and not match',
-        paths: featurePaths['rule-condition'],
-      },
+      ...startFeatures,
       {
         name: 'task-control',
         summary: 'Pause and resume a task',
