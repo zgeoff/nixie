@@ -34,6 +34,9 @@ test.each([
   ['TEXT_TOO_LONG', 'The memory text is too long, so nothing changed.'],
   ['WRONG_STATE', 'This memory is not in a state that takes this answer, so nothing changed.'],
   ['a_newer_reason', 'The host refused this answer, so nothing changed.'],
+  ['constructor', 'The host refused this answer, so nothing changed.'],
+  ['toString', 'The host refused this answer, so nothing changed.'],
+  ['__proto__', 'The host refused this answer, so nothing changed.'],
 ])('it words the refusal reason %s in plain text', (reason, sentence) => {
   expect(formatRefusalReason(reason)).toBe(sentence);
 });
