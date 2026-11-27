@@ -11,9 +11,10 @@ on it and the questions still open. Start the design with a `Status` line: `draf
 approves it, then `agreed`. Give every design in this folder a row in the table.
 
 When the work is built, move the design's lasting facts to
-[`docs/architecture/`](../../architecture/) and delete the design. A built design left here would
-describe code that has since changed, and a reader could not tell it from one still to build. When
-only part is built, move the built part's facts and trim the design to what is still to build.
+[`docs/architecture/`](../../architecture/) then delete the design and its row in the table. A built
+design left here would describe code that has since changed, and a reader could not tell it from one
+still to build. When only part is built, move the built part's facts and trim the design to what is
+still to build.
 
 | Area            | Designs                                                                                       |
 | --------------- | --------------------------------------------------------------------------------------------- |
@@ -23,7 +24,8 @@ only part is built, move the built part's facts and trim the design to what is s
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                         |
 | The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md) |
 | Web             | [the hop gate](hop-gate.md)                                                                   |
-| Approvals       | [the approval record](../../architecture/policy/approvals.md)                                 |
+| Vault           | [trusted places](trusted-places.md), [locked entries](locked-entries.md)                      |
+| Forgetting      | [one way to forget](erasure.md)                                                               |
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                       |
 | Policy          | [the decision point cutover](decision-point-cutover.md)                                       |
 | Mail            | [mail and wake rules](mail/README.md)                                                         |
