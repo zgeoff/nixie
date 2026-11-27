@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { ruleBodySchema } from '../rule/rule-body-schema';
 import type { Rule } from '../types';
 import { hasQueuedEffect } from '../utils/has-queued-effect';
+import { toCanonicalText } from '../utils/to-canonical-text';
 import { actionAnsweredCodec } from './action-answered-codec';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
@@ -51,6 +52,19 @@ export interface ApprovedActionFacts {
 
   // true for a tool that runs inside the turn, which the task's step runs after the approval
   readonly runsInStep: boolean;
+}
+
+export interface HeldActionRequest {
+  readonly actionID: string;
+  readonly proposalID: string;
+}
+
+// The action that a reopened ask holds, as its own queue stored it.
+export interface HeldActionFacts {
+  readonly actionHash: string;
+
+  // null once a forget has shredded them
+  readonly arguments: JSONObject | null;
 }
 
 export interface BodyFieldsRequest {
@@ -110,6 +124,13 @@ export interface ActionHandlerDeps {
     tx: Transaction<unknown>,
     approved: ApprovedActionFacts,
   ) => Promise<string>;
+
+  // Reads the action that the row holds, with the hash it is queued under and the arguments it
+  // stores. Null when no action waits behind the row.
+  readonly readHeldAction: (
+    tx: Transaction<unknown>,
+    request: HeldActionRequest,
+  ) => Promise<HeldActionFacts | null>;
 
   // Fails the action that a declined or lapsed row held, in the same transaction.
   readonly failHeld: (
@@ -473,18 +494,13 @@ async function queueAction(
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'arguments_gone' } };
   }
 
-  const hash = buildActionHash({
-    tool: toCalledTool(payload.tool),
-    input: toJSONObject(erasable.input),
-    destinations: erasable.destinations.map((destination) => destination.value),
-    deadlineAt: payload.deadlineAt ?? null,
-    expectURL: payload.expectURL,
-    expectWindow:
-      payload.expectWindow === undefined ? undefined : parseJSONObject(payload.expectWindow),
-  });
+  const refusal =
+    payload.actionID === undefined
+      ? checkRebuiltHash(row, payload, erasable)
+      : await checkHeldAction(deps, tx, { row, actionID: payload.actionID, erasable });
 
-  if (hash !== row.actionHash) {
-    return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'action_changed' } };
+  if (refusal !== null) {
+    return { status: 'refused', refusal };
   }
 
   const actionID = await deps.queueApproved(tx, {
@@ -504,10 +520,65 @@ async function queueAction(
   return { status: 'queued', actionID };
 }
 
+type ProposedFields = NonNullable<ReturnType<typeof findErasable>>;
+
+// An ask that a call made holds no action yet, so its approval rebuilds the hash that the call
+// was hashed under.
+function checkRebuiltHash(
+  row: SharedProposal,
+  payload: QueueRequest['payload'],
+  erasable: ProposedFields,
+): ProposalRefusal | null {
+  const hash = buildActionHash({
+    tool: toCalledTool(payload.tool),
+    input: toJSONObject(erasable.input),
+    destinations: erasable.destinations.map((destination) => destination.value),
+    deadlineAt: payload.deadlineAt ?? null,
+    expectURL: payload.expectURL,
+    expectWindow:
+      payload.expectWindow === undefined ? undefined : parseJSONObject(payload.expectWindow),
+  });
+
+  return hash === row.actionHash ? null : { error: 'NOT_ALLOWED', reason: 'action_changed' };
+}
+
 // A proposal names the variant that the call's input picked, as `<tool>/<variant>`. The call, its
 // hash and its action carry the tool's own name.
 function toCalledTool(proposed: string): string {
   const slash = proposed.indexOf('/');
 
   return slash === -1 ? proposed : proposed.slice(0, slash);
+}
+
+interface HeldCheck {
+  readonly row: SharedProposal;
+  readonly actionID: string;
+  readonly erasable: ProposedFields;
+}
+
+// An ask that reopens an action answers that action, whose queue hashed it its own way. The
+// approval stands only while the action still holds the hash and the arguments that the card showed.
+async function checkHeldAction(
+  deps: ActionHandlerDeps,
+  tx: Transaction<unknown>,
+  check: HeldCheck,
+): Promise<ProposalRefusal | null> {
+  const held = await deps.readHeldAction(tx, {
+    actionID: check.actionID,
+    proposalID: check.row.id,
+  });
+
+  if (held === null) {
+    return { error: 'NOT_ALLOWED', reason: 'held_action_gone' };
+  }
+
+  if (held.arguments === null) {
+    return { error: 'NOT_ALLOWED', reason: 'arguments_gone' };
+  }
+
+  const isSame =
+    held.actionHash === check.row.actionHash &&
+    toCanonicalText(held.arguments) === toCanonicalText(toJSONObject(check.erasable.input));
+
+  return isSame ? null : { error: 'NOT_ALLOWED', reason: 'action_changed' };
 }

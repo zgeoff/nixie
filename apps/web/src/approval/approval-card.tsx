@@ -20,6 +20,7 @@ import type { DeferSettings } from './build-defer-times';
 import { formatApprovalCause } from './format-approval-cause';
 import { formatApprovalState } from './format-approval-state';
 import { formatLapsesIn } from './format-lapses-in';
+import { formatRefusalReason } from './format-refusal-reason';
 import type { ApprovalOutcome } from './use-approval-answer';
 import { useApprovalAnswer } from './use-approval-answer';
 
@@ -242,11 +243,6 @@ interface OutcomeLineProps {
   readonly isFailed: boolean;
 }
 
-const refusals: Readonly<Record<string, string>> = {
-  not_found: 'This proposal is gone, so nothing changed.',
-  choice: 'This answer is not offered for this proposal, so nothing changed.',
-};
-
 function OutcomeLine(props: OutcomeLineProps): ReactNode {
   if (props.isFailed) {
     return <p role="alert">The answer did not finish. Answer again to retry it.</p>;
@@ -272,11 +268,7 @@ function OutcomeLine(props: OutcomeLineProps): ReactNode {
   }
 
   if (outcome?.status === 'refused') {
-    return (
-      <p role="alert">
-        {refusals[outcome.reason] ?? 'The host refused this answer, so nothing changed.'}
-      </p>
-    );
+    return <p role="alert">{formatRefusalReason(outcome.reason)}</p>;
   }
 
   return null;

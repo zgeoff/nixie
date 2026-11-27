@@ -137,6 +137,8 @@ export type {
   ApprovedActionFacts,
   BodyFields,
   BodyFieldsRequest,
+  HeldActionFacts,
+  HeldActionRequest,
 } from './action/make-action-proposal-handler';
 
 export { makeActionProposalHandler } from './action/make-action-proposal-handler';

@@ -4,12 +4,14 @@ import { startTestLog } from '@heynixie/log/test-utils';
 import { buildMockSharedProposal } from '@heynixie/proposals/test-utils';
 import { buildActionHash } from './build-action-hash';
 import { buildActionProposalInput } from './build-action-proposal-input';
+import type { HeldActionFacts } from './make-action-proposal-handler';
 import { makeActionProposalHandler } from './make-action-proposal-handler';
 
 async function setupTest() {
   const started = await startTestLog();
 
   const queuedTools: string[] = [];
+  const held: { current: HeldActionFacts | null } = { current: null };
 
   const handler = makeActionProposalHandler({
     log: started.log,
@@ -32,6 +34,7 @@ async function setupTest() {
 
       return Promise.resolve('action-1');
     },
+    readHeldAction: () => Promise.resolve(held.current),
     failHeld: () => Promise.resolve(),
     runAfterRule: () => Promise.resolve(),
     writeSuggestedRuleDecline: () => Promise.resolve(),
@@ -78,6 +81,44 @@ async function setupTest() {
             choice: 'approve',
             identityID: 'identity-1',
           },
+        ),
+      );
+    },
+    approveReopened: async (heldAction: HeldActionFacts | null) => {
+      held.current = heldAction;
+
+      const input = { name: 'Fix the login test', brief: 'Find why it fails.' };
+
+      // a runner hashes its action by its own parts, which the ask keeps
+      const actionHash = 'sha256:runner-spawn';
+
+      const proposed = buildActionProposalInput({
+        definitions: { snapshotHash: 'snapshot-1' },
+        thread: 'conversation',
+        callSequence: 1,
+        tool: 'coding.spawn',
+        actionHash,
+        effects: ['coding_start'],
+        cause: 'ask_rule',
+        input,
+        destinations: [],
+        reopen: { proposalID: crypto.randomUUID(), actionID: 'action-1' },
+      });
+
+      const [written] = await writeRecords(started.log, [proposed.record]);
+
+      const row = buildMockSharedProposal({
+        id: proposed.proposalID,
+        thread: 'conversation',
+        createdSequence: written?.sequence ?? 0,
+        actionHash,
+      });
+
+      return withWriteTransaction(started.writer, (tx) =>
+        handler.approve(
+          { tx, guard: () => Promise.resolve(), settle: () => Promise.resolve() },
+          row,
+          { proposalID: row.id, actionHash, choice: 'approve', identityID: 'identity-1' },
         ),
       );
     },
@@ -228,3 +269,47 @@ test('it queues the approval of a variant call under the tool that the call name
     queued: ['task.start'],
   });
 });
+
+test('it queues the approval of a reopened ask under the hash its own queue gave the action', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.approveReopened({
+    actionHash: 'sha256:runner-spawn',
+    arguments: { brief: 'Find why it fails.', name: 'Fix the login test' },
+  });
+
+  expect({ status: outcome.status, queued: ctx.queuedTools }).toStrictEqual({
+    status: 'done',
+    queued: ['coding.spawn'],
+  });
+});
+
+test.each([
+  {
+    held: {
+      actionHash: 'sha256:other',
+      arguments: { name: 'Fix the login test', brief: 'Find why it fails.' },
+    },
+    reason: 'action_changed',
+  },
+  {
+    held: {
+      actionHash: 'sha256:runner-spawn',
+      arguments: { name: 'Fix the login test', brief: 'Delete it.' },
+    },
+    reason: 'action_changed',
+  },
+  { held: { actionHash: 'sha256:runner-spawn', arguments: null }, reason: 'arguments_gone' },
+  { held: null, reason: 'held_action_gone' },
+])(
+  'it refuses the approval of a reopened ask with $reason when the held action is $held',
+  async (row) => {
+    const ctx = await setupTest();
+    const outcome = await ctx.approveReopened(row.held);
+
+    expect({ outcome, queued: ctx.queuedTools }).toStrictEqual({
+      outcome: { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: row.reason } },
+      queued: [],
+    });
+  },
+);
