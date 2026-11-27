@@ -1,6 +1,7 @@
 import { deviceStore } from './device-store';
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { mockImplementer } from './mock-implementer';
+import { readMockFeatures } from './read-mock-features';
 import { requireMockSession } from './require-mock-session';
 
 const os = mockImplementer;
@@ -85,6 +86,10 @@ export const mockDeviceProcedures = {
   }),
 
   setCapability: os.devices.setCapability.handler(async (options) => {
+    if (!readMockFeatures().includes('devices')) {
+      throw options.errors.FEATURE_OFF({ data: { feature: 'devices' } });
+    }
+
     const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
     if (!deviceStore.hasDevice(session.sessionID)) {

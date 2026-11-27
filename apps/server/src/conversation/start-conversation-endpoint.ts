@@ -131,11 +131,12 @@ export interface ConversationEndpointTools {
   // feature is off
   readonly deviceStreams: DeviceStreams | null;
 
-  // the fetch sandbox, backoff and registry that device pages reach the web through
+  // the fetch sandbox, backoff and registry that device pages reach the web through; null while the
+  // devices feature is off
   readonly deviceFetch: Pick<
     DeviceFetchingOptions,
     'fetch' | 'registry' | 'backoff' | 'checkAddress' | 'findSecret' | 'logger'
-  >;
+  > | null;
 
   // absent when the deployment sets no worker role
   readonly worker: WorkerTool | null;
@@ -341,20 +342,25 @@ export async function startConversationEndpoint(
 
   const registryHolder: { current: ToolRegistry | null } = { current: null };
 
-  const fetching = makeDeviceFetching({
-    ...tools.deviceFetch,
-    log: options.context.log,
-    definitions: options.context.definitions,
-    clock: options.context.clock,
-    makeDecide: tools.makeDecide,
-    findDeclaration: (name) =>
-      registryHolder.current === null ? null : findToolDeclaration(registryHolder.current, name),
-  });
+  const fetching =
+    tools.deviceFetch === null
+      ? null
+      : makeDeviceFetching({
+          ...tools.deviceFetch,
+          log: options.context.log,
+          definitions: options.context.definitions,
+          clock: options.context.clock,
+          makeDecide: tools.makeDecide,
+          findDeclaration: (name) =>
+            registryHolder.current === null
+              ? null
+              : findToolDeclaration(registryHolder.current, name),
+        });
 
   const deviceStreams = tools.deviceStreams;
 
   const deviceOptions: DeviceToolOptions | null =
-    deviceStreams === null
+    deviceStreams === null || fetching === null
       ? null
       : {
           log: options.context.log,
@@ -464,7 +470,7 @@ export async function startConversationEndpoint(
 
   // the fetches that device pages declare run while the tools are up, and an approved package that
   // lost its files comes back from the registry
-  if (deviceStreams !== null) {
+  if (deviceStreams !== null && fetching !== null) {
     const stopFetches = startPageFetches({
       log: options.context.log,
       clock: options.context.clock,

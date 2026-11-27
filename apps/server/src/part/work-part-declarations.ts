@@ -274,6 +274,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           reader.get('conversation_imp').stopCleanups();
           reader.get('sandbox_runner').stopCleanups();
         },
+        reader.find('calls') !== null,
       );
 
       parts.state.update({ areRunnersStarted: true });

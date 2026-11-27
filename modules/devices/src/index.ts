@@ -24,6 +24,7 @@ export type { WaitingShowsOptions } from './stream/start-waiting-shows';
 export type { DeviceWakesOptions } from './stream/start-device-wakes';
 export { writeDevice } from './device/write-device';
 export { removeDevice } from './device/remove-device';
+export { reconcileDevices } from './device/reconcile-devices';
 export { removeDevicePointers } from './device/remove-device-pointers';
 export { writeSessionDevice } from './device/write-session-device';
 export { updateDeviceName } from './device/update-device-name';

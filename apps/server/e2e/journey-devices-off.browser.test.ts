@@ -37,3 +37,38 @@ test('it hides the Device view menu entry of a nixie with no devices section, an
 
   expect(hasDeviceEntry).toBe(false);
 });
+
+test('it shows the feature-off page on the device page of a nixie with no devices section', async () => {
+  const ctx = await setupTest();
+
+  await ctx.view.navigate(`${ctx.appURL}/device`);
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('This feature is off in this nixie')",
+  );
+
+  const hasFailure = await ctx.view.evaluate(
+    "document.body.innerText.includes('could not reach nixie')",
+  );
+
+  expect(hasFailure).toBe(false);
+});
+
+test('it shows the feature-off page, not the enrolment form, to a signed-out visit of the device page', async () => {
+  const ctx = await setupTest();
+
+  await ctx.view.cdp('Network.clearBrowserCookies');
+  await ctx.view.navigate(`${ctx.appURL}/device`);
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('This feature is off in this nixie')",
+  );
+
+  const hasEnrolForm = await ctx.view.evaluate(
+    "document.body.innerText.includes('Enrol this browser')",
+  );
+
+  expect(hasEnrolForm).toBe(false);
+});

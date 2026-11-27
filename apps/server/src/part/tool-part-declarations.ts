@@ -21,6 +21,7 @@ import { buildActions } from '../test/build-actions';
 import { buildStubImageProviders } from '../test/build-stub-image-providers';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
+import { buildDeviceFetch } from './build-device-fetch';
 import { buildImageProviders } from './build-image-providers';
 import { collectHostHeldNames } from './collect-host-held-names';
 import { makeLazyToolSource } from './make-lazy-tool-source';
@@ -96,7 +97,9 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    // The sandbox that draws the preview of a device page.
     name: 'render',
+    feature: 'devices',
     needs: ['inputs', 'sandbox_adapter'],
     optionalImages: () => ['render'],
     start: (parts) =>
@@ -161,8 +164,9 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'tool_endpoint',
-    needs: ['inputs', 'context', 'web_fetch', 'render', 'worker', 'actions', 'decisions'],
+    needs: ['inputs', 'context', 'web_fetch', 'worker', 'actions', 'decisions'],
     uses: [
+      'render',
       'calls',
       'device_streams',
       'computer',
@@ -200,7 +204,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         {
           webFetch: parts.get('web_fetch').tool,
           computer: parts.find('computer')?.tools ?? [],
-          render: parts.get('render'),
+          render: parts.find('render') ?? null,
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
           google: parts.find('google_tools')?.actions.map((action) => action.tool) ?? [],
@@ -214,14 +218,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             stuckAfterMs: options.config.erasure.stuckAfterMs,
           }),
           deviceStreams: parts.find('device_streams'),
-          deviceFetch: {
-            fetch: parts.get('web_fetch').deviceFetch,
-            registry: parts.get('web_fetch').packageRegistry,
-            backoff: parts.get('web_fetch').backoff,
-            checkAddress: parts.get('web_fetch').checkAddress,
-            findSecret: parts.get('web_fetch').findSecret,
-            logger: parts.get('web_fetch').logger,
-          },
+          deviceFetch: buildDeviceFetch(parts.get('web_fetch')),
           worker: parts.get('worker'),
           search:
             options.search === null

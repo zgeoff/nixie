@@ -9,7 +9,7 @@ async function setupTest() {
 
   const api = await createTestClient(server);
 
-  return { nixie, api };
+  return { nixie, api, server };
 }
 
 test('it offers the model no call tool when the config has no voice section', async () => {
@@ -45,16 +45,10 @@ test('it answers a procedure of the calls with FEATURE_OFF', async () => {
   expect(started).rejects.toMatchObject({ code: 'FEATURE_OFF', data: { feature: 'voice' } });
 });
 
-test('it starts no part of the calls, so no call record is ever written', async () => {
+test('it starts no calls part, so the test build can place no call', async () => {
   const ctx = await setupTest();
 
-  ctx.nixie.model.addReplies({ text: 'Plum-reply-7QF1' });
+  const placed = ctx.server.request('placeHarnessCall', null);
 
-  await sendClientMessage(ctx.api.client, { text: 'Quince-message-2PE8' }, 'Plum-reply-7QF1', {
-    timeoutMs: 30_000,
-  });
-
-  const records = await ctx.nixie.readRecords();
-
-  expect(records.filter((record) => record.kind.startsWith('call.'))).toStrictEqual([]);
+  expect(placed).rejects.toThrow(/holds no calls/u);
 });

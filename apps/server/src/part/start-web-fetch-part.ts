@@ -37,6 +37,7 @@ export async function startWebFetchPart(inputs: WebFetchPartInputs): Promise<Web
       }),
     ),
     isOwnerTyped: makeOwnerTypedCheck(inputs.log),
+    isDeviceFetchOn: options.config.devices !== undefined,
     logger: options.log,
     ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
   });

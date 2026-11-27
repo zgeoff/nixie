@@ -2,9 +2,10 @@ import { buildIdentitySeeder } from '@heynixie/api/test-utils';
 import type { IdentitySeederDeps } from '@heynixie/api/test-utils';
 import { systemClock } from '@heynixie/clock';
 import { buildConnectorSeeder } from '@heynixie/connectors/test-utils';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { readTestRecordRows } from '@heynixie/log/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
+import { writeCallTask } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import type { BegunPurgeOptions } from './seed-begun-purge';
@@ -38,6 +39,14 @@ export function buildBootSeeder(files: BootSeederFiles) {
   return {
     begunPurge: (options?: BegunPurgeOptions) => seedBegunPurge(files, options),
     heldTasks: () => seedHeldTasks(files),
+
+    // the task of a call that a nixie with voice left ready, as a restart finds it
+    callTask: () =>
+      runInDataLog(files, (context) =>
+        withWriteTransaction(context.log.writer, (tx) =>
+          writeCallTask(tx, context, { callID: 'plum-call-2', seedThrough: 0 }),
+        ),
+      ),
     openHandover: () => seedOpenHandover(files),
     openTakeover: () => seedOpenTakeover(files),
     ruleConflict: () => seedRuleConflict(files),

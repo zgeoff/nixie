@@ -157,8 +157,14 @@ of its images and offers none of its tools or pages. Read
   `fillInboxKinds` fills the inbox kinds of the computer, calls and devices, and `fillCallsLists`
   fills the definitions module's sections with the voice folder. The root also fills the API's
   session hooks, which keep each feature's rows in step with a session, and its feature procedures,
-  which supply the calls and devices procedures. A list is global to the process, so a test that
-  sets one resets it when the test ends.
+  which supply the calls and devices procedures. The inbox kinds of calls and devices decide which
+  of their records are in the inbox and which wake a task, so core names none of them. A list is
+  global to the process, so a test that sets one resets it when the test ends.
+- A feature that is off leaves its parts out of the plan, and the parts that serve it: the call
+  claim pool of the task runners starts only with calls, the device fetch sandbox only with devices,
+  and the render sandbox is a devices part. A session that is revoked or renamed while devices are
+  off leaves its device row behind, so the devices part brings the rows in step with the sessions at
+  each start.
 - List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
   work item whose retrofit removes it. Only the leak test reads the file, and the test fails when an
   exception matches nothing.

@@ -37,9 +37,10 @@ export function createDevicesOffProcedures(context: APIContext) {
       throw options.errors.FEATURE_OFF({ data: { feature: 'devices' } });
     }),
 
-    setCapability: apiImplementer.devices.setCapability.handler(async (options) => {
-      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
-
+    // The device page asks this first, with or without a session, so it answers before the session
+    // check: the page then shows the feature-off page instead of an enrolment form that no code
+    // can fill.
+    setCapability: apiImplementer.devices.setCapability.handler((options) => {
       throw options.errors.FEATURE_OFF({ data: { feature: 'devices' } });
     }),
 

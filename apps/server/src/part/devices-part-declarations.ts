@@ -2,9 +2,11 @@ import { sessionHooks } from '@heynixie/api';
 import {
   buildDeviceSessionHook,
   createDeviceStreams,
+  reconcileDevices,
   startDeviceWakes,
   startWaitingShows,
 } from '@heynixie/devices';
+import { withWriteTransaction } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
 import { conversationTaskID, writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { AnyPartDeclaration } from '../types';
@@ -13,12 +15,19 @@ import type { ServerPartValues } from './server-part-values';
 export const devicesPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     // The open streams of each device, which the API's device calls and the tools share, and the
-    // device row that each session keeps.
+    // device row that each session keeps. A start first brings the rows in step with the sessions
+    // that changed while the feature was off.
     name: 'device_streams',
     feature: 'devices',
     needs: ['inputs', 'context'],
     start: async (reader) => {
       const inputs = reader.get('inputs');
+      const apiContext = reader.get('context').apiContext;
+
+      await withWriteTransaction(apiContext.log.writer, (tx) =>
+        reconcileDevices(tx, apiContext.clock.now()),
+      );
+
       const earlier = sessionHooks.list();
 
       sessionHooks.set([...earlier, buildDeviceSessionHook()]);

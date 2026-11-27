@@ -58,3 +58,12 @@ test('it refuses a code for a device session', async () => {
 
   expect(issued).rejects.toMatchObject({ code: 'FEATURE_OFF', data: { feature: 'devices' } });
 });
+
+test('it serves no page frame route, so a frame request falls through to the API checks', async () => {
+  const ctx = await setupTest();
+
+  // a nixie with devices on answers a frame path with its own 404, before the client header check
+  const response = await fetch(`${ctx.api.url}/rpc/device/frames/plum-ticket`);
+
+  expect(response.status).toBe(403);
+});

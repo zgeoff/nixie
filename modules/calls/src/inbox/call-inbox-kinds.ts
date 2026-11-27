@@ -19,6 +19,9 @@ export const callInboxKinds: readonly InboxKind[] = [
     read: readCallThreadExtra,
     render: renderCallThreadLine,
   },
+
+  // what the speech layer said: read with the next hand-off, which alone starts a turn
+  { kind: 'call.spoke', wakes: () => false, render: renderNoLine },
   {
     kind: 'call.heard_cut',
     wakes: () => false,
@@ -41,4 +44,9 @@ async function readCallThreadExtra(
     cut: await readHeardCut(context, record),
     smallTalk: await readSmallTalk(context, record),
   };
+}
+
+// A turn takes a spoken record and shows no text for it, so the line is empty.
+function renderNoLine(): string {
+  return '';
 }

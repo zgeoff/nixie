@@ -1,4 +1,5 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { inboxKinds } from './inbox-kinds';
 import { isInboxRecord } from './is-inbox-record';
 
 test.each([
@@ -33,15 +34,48 @@ test.each([
   { title: 'with its wake kept', payload: { wake: true }, expected: true },
   { title: 'with no wake', payload: { wake: false }, expected: false },
   { title: 'with no payload', payload: undefined, expected: false },
-])('it reads a page event $title as inbox: $expected', (row) => {
+])(
+  'it reads a record of a kind that is in the inbox only on its payload $title as inbox: $expected',
+  (row) => {
+    onTestFinished(() => {
+      inboxKinds.set([]);
+    });
+
+    inboxKinds.set([
+      {
+        kind: 'ops.event',
+        isInbox: (payload) => payload['wake'] === true,
+        wakes: () => true,
+        render: () => 'event',
+      },
+    ]);
+
+    expect(
+      isInboxRecord({
+        // @ts-expect-error -- tasks depends on no feature, so it does not see the kind that a feature adds
+        kind: 'ops.event',
+        thread: 'conversation',
+        ...(row.payload === undefined ? {} : { payload: row.payload }),
+      }),
+    ).toBe(row.expected);
+  },
+);
+
+test.each([
+  'call.started',
+  'call.handed_off',
+  'call.spoke',
+  'device.status_changed',
+  'device.page_event',
+])('it reads a %s record as outside the inbox while no feature added its kind', (kind) => {
   expect(
     isInboxRecord({
-      // @ts-expect-error -- tasks depends on no device, so it does not see the kind that devices registers
-      kind: 'device.page_event',
+      // @ts-expect-error -- tasks depends on no feature, so it does not see the kind that a feature adds
+      kind,
       thread: 'conversation',
-      ...(row.payload === undefined ? {} : { payload: row.payload }),
+      payload: { wake: true },
     }),
-  ).toBe(row.expected);
+  ).toBe(false);
 });
 
 test.each([

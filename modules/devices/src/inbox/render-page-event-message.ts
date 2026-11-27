@@ -16,7 +16,20 @@ export function renderPageEventMessage(record: LogRecord, context: InboxRenderCo
   });
 }
 
-// The inbox record of a page event. Only an event whose wake was kept is in the inbox, and it wakes.
+// The generic line for a device that went online or offline, which names the record and its fields.
+export function renderDeviceStatusMessage(record: LogRecord): string {
+  return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
+}
+
+// The inbox records of the devices. A page event is in the inbox only when its wake was kept: one
+// without it waits in the events block of the conversation's next turn, which would otherwise show
+// it twice.
 export const deviceInboxKinds: readonly InboxKind[] = [
-  { kind: 'device.page_event', wakes: () => true, render: renderPageEventMessage },
+  { kind: 'device.status_changed', wakes: () => true, render: renderDeviceStatusMessage },
+  {
+    kind: 'device.page_event',
+    isInbox: (payload) => payload['wake'] === true,
+    wakes: () => true,
+    render: renderPageEventMessage,
+  },
 ];

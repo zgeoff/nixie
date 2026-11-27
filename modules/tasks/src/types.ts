@@ -253,6 +253,9 @@ export interface InboxRenderContext {
 // The feature fills the list; the inbox names none.
 export interface InboxKind {
   readonly kind: string;
+
+  // whether a record of the kind is in the inbox at all, when only some are; absent means each is
+  readonly isInbox?: (payload: LogRecord['payload']) => boolean;
   readonly wakes: (payload: LogRecord['payload']) => boolean;
 
   // reads what the message shows beside its record, such as an earlier record

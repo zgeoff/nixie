@@ -17,6 +17,7 @@ export async function startRunners(
   runStep: RunStep,
   readMcp: () => Mcp | null,
   stopCleanups: () => void,
+  hasCalls: boolean,
 ): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
@@ -32,10 +33,16 @@ export async function startRunners(
       runStep: parts.tools.actions.trackSteps(runStep),
       size: parts.config.tasks.startedClaimLoops,
     },
-    call: {
-      runStep: parts.tools.actions.trackSteps(runStep),
-      size: parts.config.tasks.callClaimLoops,
-    },
+
+    // Without the calls feature, no runner handles a call task, so no pool claims one.
+    ...(hasCalls
+      ? {
+          call: {
+            runStep: parts.tools.actions.trackSteps(runStep),
+            size: parts.config.tasks.callClaimLoops,
+          },
+        }
+      : {}),
     onStepErrored: (errored) => {
       logStepError(errored);
       markConversationFailure(errored);

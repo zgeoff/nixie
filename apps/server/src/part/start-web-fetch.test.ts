@@ -529,11 +529,12 @@ test('it sends a declared fetch with a limit of 3 redirects', async () => {
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
+    isDeviceFetchOn: true,
   });
 
   ctx.stack.defer(() => webFetch.stop());
 
-  await webFetch.deviceFetch.readBody('https://tides.test/today');
+  await webFetch.deviceFetch?.readBody('https://tides.test/today');
 
   const [frame] = received;
 
