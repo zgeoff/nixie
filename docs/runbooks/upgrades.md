@@ -1,10 +1,9 @@
 # Upgrade and roll back
 
-An upgrade or a rollback by one release is one merged pull request in your deployment repo that
-moves the pinned images: nixie, web, and backup when the deployment runs a backup job. These steps
-cover the pull request and the deploy, on Compose, on Kubernetes with the reference manifests, and
-on Kubernetes with the Pulumi component. [Upgrades](../design/platform/deployment/upgrades.md) gives
-the design.
+To upgrade or roll back by one release, merge one pull request in your deployment repo that moves
+the pinned images: nixie, web, and backup when the deployment runs a backup job. Then deploy, on
+Compose, on Kubernetes with the reference manifests, or on Kubernetes with the Pulumi component. See
+[Upgrades](../design/platform/deployment/upgrades.md) for the design.
 
 ## Before an upgrade
 
@@ -19,9 +18,9 @@ the design.
    allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
    call, so a join of a coding session needs no approval.
 4. Open the rules files in your deployment repo's `definitions/rules/` folder. When a rule has a
-   `cel` key and no `note`, add a `note`: one plain sentence that says what the condition checks.
-   The next seed refuses the whole rules file when it holds such a rule. Only a rule you write by
-   hand in that folder needs this. A rule that arrives through a proposal carries its own note. See
+   `cel` key and no `note`, add a `note`: one plain sentence on what the condition checks. The next
+   seed refuses the whole rules file when it holds such a rule. Only a rule you write by hand in
+   that folder needs this. A rule that arrives through a proposal carries its own note. See
    [rule conditions](../architecture/policy/rule-conditions.md) for what a condition reads.
 
 ## Upgrade
@@ -35,8 +34,8 @@ notes, and move every pin together.
      recipe runs no backup job, as [backups](../architecture/deployment/backups.md) says.
    - Kubernetes manifests: the image in `nixie.yaml` and the image in `web.yaml`.
    - Pulumi component: the nixie image and the web image arguments, and the `@heynixie/pulumi-k8s`
-     version. The version carries the release's backup image, unless `backup.image` names one. In
-     that case move `backup.image` too.
+     version. The version brings the release's backup image. When `backup.image` names one, move
+     `backup.image` too.
 2. Merge the pull request.
 3. Deploy in this order: the backup job, then nixie, then web. **Why:** the backup job reads the
    snapshot set format of its own release and of the one before. The web client then only calls an

@@ -115,7 +115,7 @@ These cost the most time:
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
    check, in the order of the features table in [References](#references). Run the part of a journey
    that its feature's file marks as last after every other journey, because that part needs an `up`
-   with different settings, and it restarts the app.
+   with different settings and restarts the app.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Repeat steps 4 to 6 for each `stale` feature.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.

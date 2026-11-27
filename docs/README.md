@@ -328,7 +328,7 @@ The durable layer, the sandbox boundary, the database and compaction.
 - [0019: Possibly-sent actions](decisions/0019-never-retry-a-possibly-sent-action-blindly.md) — an
   action that may have reached its provider is never sent again without a key, a check or the user
 - [0022: A busy task's fires](decisions/0022-a-busy-task-skips-a-fire.md) — a trigger that fires
-  while the task is still busy is skipped, never queued
+  while the task is still busy is skipped
 - [0024: Undoing a definition change](decisions/0024-only-the-user-undoes-a-definition-change.md) —
   only the user undoes one, and the agent has no tool for it
 - [0015: Compaction](decisions/0015-own-compaction.md) — nixie's own compactor with the summary in

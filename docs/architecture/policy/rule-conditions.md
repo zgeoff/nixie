@@ -61,7 +61,7 @@ receiver is no list ends the evaluation with an error.
 
 `checkCondition` runs in this order and stops at the first fault:
 
-1. The note: a rule with `cel` needs a `note`, else `condition_note_missing`.
+1. A rule with `cel` needs a `note`, else `condition_note_missing`.
 2. The length limit on the raw text, before any normalization, else `condition_too_large`.
 3. The library's parse, which enforces the node limit, else `condition_syntax` or
    `condition_too_large`. Each string literal is then put in NFC, after the parser decoded its
@@ -100,10 +100,10 @@ error, as CEL defines.
   makes every condition on the call error with `input_too_large`. A unit test times the costliest
   condition over the largest input.
 - A deny that errors never refuses a call unseen. The deny stage sets it aside, and the ask-rule
-  stage counts it as an ask rule, so a deny that errors and a missing argument ask where the deny
-  meant to refuse, whatever the order of the rule IDs. A deny that matches wins over one that
-  errored. To refuse a call that omits an argument, write the condition so a missing argument gives
-  true, such as `!has(args.to) || …`.
+  stage counts it as an ask rule. A deny that errors therefore asks where it meant to refuse,
+  whatever the order of the rule IDs. A deny that matches wins over one that errored. To refuse a
+  call that omits an argument, write the condition so a missing argument gives true, such as
+  `!has(args.to) || …`.
 - The decision lists each rule that errored in `conditionErrors`, with the rule ID, its revision and
   the code, and never the library's message, which can quote argument text. The approval card shows
   each entry, and the call's result tells the model the rule's ID and the code. For an allow rule
@@ -132,9 +132,9 @@ A card for a mandate with several rules shows each condition under its own rule.
 list carries the condition of each version of a changed rule.
 
 The approval card, the rule notice after an answer, the mandates page and the `rules.list` tool show
-all 4 parts. `nixie rules list` and `nixie proposals list` print only the note and the words, never
-the raw CEL. No client form edits a condition: the web client's rule form calls `rules.editRule`,
-which keeps a rule's condition as it is.
+all 4 parts. `nixie rules list` and `nixie proposals list` print only the note and the words. No
+client form edits a condition: the web client's rule form calls `rules.editRule`, which keeps a
+rule's condition as it is.
 
 ## How a rule with a condition arrives
 

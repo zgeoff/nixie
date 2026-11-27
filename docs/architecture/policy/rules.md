@@ -45,11 +45,11 @@ A rule with `cel` and no `note` fails the check with `condition_note_missing`, a
 
 The parser refuses an empty list, a pattern with a space and an unknown field inside a check, and
 lists each fault with its file. A rule that holds an unknown top-level field fails closed, so a
-newer release's field never stops an older release from seeding: the seed skips an allow rule whole,
-so it matches nothing, and drops only the field from an ask or a deny rule, so the rule matches
-more. The seed logs a warning with the rule and the field. Each release publishes the format as a
-JSON Schema, the `definitions-rules.schema.json` asset, generated from the schema that the parser
-uses. After a change to the format, run `bun run --cwd modules/policy rules-schema` to rewrite the
+newer release's field never stops an older release from seeding. The seed skips an allow rule whole,
+so it matches nothing. It drops only the field from an ask or a deny rule, so the rule matches more.
+The seed logs a warning with the rule and the field. Each release publishes the format as a JSON
+Schema, the `definitions-rules.schema.json` asset, generated from the schema that the parser uses.
+After a change to the format, run `bun run --cwd modules/policy rules-schema` to rewrite the
 committed file. A test fails while the two differ.
 
 A pattern uses `*` as its only wildcard and matches the whole text, so `*@example.com` matches every
@@ -132,12 +132,12 @@ one, and widens otherwise. A looser outcome widens.
 The check never reports a widening as a narrowing. When the check tests whether pattern A lies
 inside pattern B, a wildcard in A counts as covered only by a wildcard in B, so the check returns
 "not inside" for a pair it cannot prove. An edit that adds, removes or changes a condition widens,
-because the check cannot read CEL, so it cannot tell whether the new condition is looser than the
-old one. An edit that keeps the condition text and the outcome is classed by the other fields,
-because the same condition holds on both sides. Dropping a destination pattern narrows an allow,
-which then covers fewer calls, and widens an ask or a deny, which then catches fewer calls. For a
-change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and never access. A
-seed applies every edit whatever its class, as [rules in force](#rules-in-force) describes.
+because the check cannot read CEL and cannot tell whether the new condition is looser than the old
+one. An edit that keeps the condition text and the outcome is classed by the other fields, because
+the same condition holds on both sides. Dropping a destination pattern narrows an allow, which then
+covers fewer calls, and widens an ask or a deny, which then catches fewer calls. For a change made
+inside nixie, a wrong answer therefore costs a prompt or a refusal and gives no access. A seed
+applies every edit whatever its class, as [rules in force](#rules-in-force) describes.
 
 ## Rules in force
 
@@ -165,7 +165,7 @@ A widening that starts inside nixie asks the user first. Always allow on an appr
 device calls that change a rule refuse a widening, as
 [narrowing a rule from the client](#narrowing-a-rule-from-the-client) describes.
 
-Trusting the repo has 3 consequences:
+Because the seed trusts the repo:
 
 - A budget raise or a lift rule from the repo goes in force with no
   [passkey check](passkeys.md#which-answers-take-the-passkey). The same change made inside nixie
@@ -196,8 +196,7 @@ and the revision that decided it. A log reset keeps the rule store, and the seed
 restores the rules of the snapshot in force, as [seeding](../core/definitions.md#seeding) describes.
 
 The [snapshot hash](../core/definitions.md#the-snapshot-hash) covers each rule in force with its
-revision, its origin and its runtime change, so each snapshot holds the revision of every rule in
-force.
+revision, its origin and its runtime change.
 
 ## Proposed rules
 

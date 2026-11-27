@@ -8,15 +8,13 @@ definitions in force, and a replay rebuilds the decision from that record. The o
 decision is a call to a listed tool whose input breaks the tool's input schema: the
 [tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first and rejects it,
 so it never reaches the decision point. `modules/policy` owns the decision point and the effect
-declarations. [Tool calls](../connectors/tool-calls.md) covers how a call reaches it, and the
-[decision point design](../../design/platform/policy/decision-point.md) covers what is still to
-build.
+declarations. For how a call reaches it, read [Tool calls](../connectors/tool-calls.md). For what is
+still to build, read the [decision point design](../../design/platform/policy/decision-point.md).
 
 ## The stages
 
-The stages run in order, and the first that decides returns. Each call reads one snapshot: the rules
-in force, the known contact IDs and the tool declarations of the snapshot the call runs under, never
-the latest.
+The stages run in order, and the first that decides returns. Each call reads the rules in force, the
+known contact IDs and the tool declarations from the one snapshot it runs under.
 
 | Stage          | Decides when                                                  | Outcome |
 | -------------- | ------------------------------------------------------------- | ------- |
@@ -29,11 +27,11 @@ the latest.
 | 7. Allow rules | An allow rule matches                                         | Allow   |
 | 8. Consent     | You asked for the call in typed words, and the checker agrees | Allow   |
 |                | The call is a memory write that no earlier stage decided      | Gate    |
-| 9. No rule     | Always, because nothing else decided                          | Ask     |
+| 9. No rule     | Nothing else decided                                          | Ask     |
 
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
-outcome `gate` at stage 8, as [memory writes](#memory-writes) says. `memory.retopic` is the
-exception that asks at stage 9.
+outcome `gate` at stage 8 (see [memory writes](#memory-writes)). `memory.retopic` is the exception
+that asks at stage 9.
 
 The caller's tool list is the run's own: the task definition's list for a task run of a definition,
 and the subset its caller passed for a worker. A tool that the registry knows but the run was not
@@ -173,10 +171,10 @@ covers ([the definitions](../core/definitions.md#the-snapshot-hash)).
 
 ## The code rules
 
-Two rules live in code, after the rules in your definitions. The queue check rule allows the
-log-only connector's tool at stage 7, so the [queue check](../core/actions.md#the-queue-check)
-reaches the action queue on every start. A test build adds a rule that allows the crash tests' send
-tool. The bundler drops it from the release bundle.
+Code adds rules after the rules in your definitions. The queue check rule allows the log-only
+connector's tool at stage 7, so the [queue check](../core/actions.md#the-queue-check) reaches the
+action queue on every start. A test build adds a rule that allows the crash tests' send tool. The
+bundler drops it from the release bundle.
 
 With no rule of yours in force, stages 3, 6 and 7 never match. A call that stages 1 and 2 do not
 deny and consent does not allow then asks at stage 9, except a memory write, which gets `gate`. The

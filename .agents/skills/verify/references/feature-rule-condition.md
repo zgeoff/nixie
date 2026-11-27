@@ -12,9 +12,9 @@ once per `up`, after [sign-in-enrol](feature-sign-in-enrol.md), because it needs
 signed-in user. The test build's scripted model proposes a mandate whose one allow rule covers
 `memory.remember` under a condition on its `subject` argument. A memory item that the user's own
 words do not state waits for approval unless an allow rule covers the write. The starter rules cover
-no memory write, so a write that the condition does not cover waits, and a write that it covers is
-kept at once. The scripted call leaves `subject` out, so the subject is `owner`. The first condition
-is never true and the second always is.
+no memory write, so a write waits unless the condition covers it, and then nixie keeps it at once.
+The scripted call leaves `subject` out, so the subject is `owner`. The first condition is never true
+and the second always is.
 
 Before you start:
 
@@ -55,12 +55,11 @@ Before you start:
    ```
 
    Expect: the "Always asks" list holds "Allow memory.remember, until <time>, when its condition
-   holds." The `<time>` is the end of the mandate's term on the test build's clock. Check that it is
-   a timestamp, and don't compare its value. Expand it to see the card, which shows "nixie's note:"
-   with "Only for facts about shared things.", "The condition:" with "`args.subject` is "shared"",
-   and a "Show the expression" control that holds `args.subject == "shared"`. They sit under the
-   rule they belong to. To expand the item, click the line that holds the rule's sentence and
-   `[cursor=pointer]` by its `ref`.
+   holds." The `<time>` is the end of the mandate's term on the test build's clock. Check only that
+   it is a timestamp. To expand the item, click the line that holds the rule's sentence and
+   `[cursor=pointer]`, using its `ref`. The expanded card shows "nixie's note:" with "Only for facts
+   about shared things.", "The condition:" with "`args.subject` is "shared"", and a "Show the
+   expression" control that holds `args.subject == "shared"`, each under the rule it belongs to.
 
 4. Approve the mandate. The approvals page asks for a passkey, which a journey cannot give, so the
    action answers with the exemption that a host answer has.

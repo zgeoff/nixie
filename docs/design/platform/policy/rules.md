@@ -7,14 +7,14 @@ A rule is plain data in nixie's own format: it matches a tool call by its tool, 
 arguments and destinations, and gives one outcome: allow, ask or deny. Rules live in nixie's
 database, seeded from your definitions, and the [decision point](decision-point.md) reads them at 3
 of its stages. Among the rules that match a call, the strictest outcome wins. Each rule keeps one ID
-for its life and a revision per edit, and code tells whether an edit widens access.
+for its life and a revision per edit, and code checks whether an edit widens access.
 
-This design is for the owner and for an agent that builds or changes rule matching, rule identity,
-the snapshot hash, the widening check or the starter rule set. The owner approves it by reading the
-rule format, the widening check and the starter rule set, and by objecting to any **Why** that does
-not hold. An agent checks a change against it before the change lands. To build, start from the rule
-format and matching, then rule identity, the snapshot hash and the widening check, and follow the
-links to the decision point and the architecture docs for the parts around them.
+If you are the owner, approve this design by reading the rule format, the widening check and the
+starter rule set, and object to any **Why** that does not hold. If you are an agent that builds or
+changes rule matching, rule identity, the snapshot hash, the widening check or the starter rule set,
+check your change against it before the change lands. To build, start from the rule format and
+matching, then rule identity, the snapshot hash and the widening check, and follow the links to the
+decision point and the architecture docs for the parts around them.
 
 ## The rule format
 
@@ -38,8 +38,8 @@ Every field except the ID and the outcome is optional, and a missing match field
 | `note`         | Your own words about the rule                                                                                                            |
 
 Rule files in the definitions repo are YAML, checked against a JSON Schema that nixie generates from
-the rule format, both when the repo seeds the database and when nixie exports runtime rules. The
-[architecture doc](../../../architecture/policy/rules.md) names the published schema file.
+the rule format, both when the repo seeds the database and when nixie exports runtime rules. For the
+published schema file, see the [architecture doc](../../../architecture/policy/rules.md).
 
 The checks are `eq` against one value, `in` against a list, and `matches` against a pattern. Strings
 compare in Unicode NFC on both sides. A pattern uses `*` as its only wildcard and matches the whole
@@ -51,10 +51,10 @@ consent check matches as literal text between word boundaries.
 A rule with a CEL condition matches only when its fixed fields match and the condition is true. The
 condition is valid only when the fixed checks cannot express the rule, and the policy module checks
 it when the rule is written and refuses a rule that fails. No starter rule uses CEL. Adding or
-changing a condition is a widening, so it always needs approval, and a rule that holds one is never
-compared field by field: the widening check treats any edit to it as a widening. A condition that
-errors never lets a deny rule refuse a call unseen: the call asks. For the library, the subset, the
-limits and the card, see [Rule conditions](../../../architecture/policy/rule-conditions.md).
+changing a condition is a widening and always needs approval. The widening check never compares such
+a rule field by field and treats any edit to it as a widening. A condition that errors never lets a
+deny rule refuse a call unseen: the call asks. For the library, the subset, the limits and the card,
+see [Rule conditions](../../../architecture/policy/rule-conditions.md).
 
 Each rule also carries metadata outside its match: its source (a definitions commit, or the approval
 that created it), who proposed it (you, or nixie from a task), when it was created, and when it last
