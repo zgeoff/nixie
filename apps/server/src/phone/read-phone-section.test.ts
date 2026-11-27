@@ -6,10 +6,17 @@ import { phoneSectionSchema } from './phone-section-schema';
 import { readPhoneSection } from './read-phone-section';
 
 function setupTest() {
-  return { startNixie: startInProcessNixie };
+  return {
+    startNixie: startInProcessNixie,
+    readSection: readPhoneSection,
+    readSetting,
+    parseSection: (input: unknown) => phoneSectionSchema.safeParse(input),
+  };
 }
 
 test('it keeps a section of plain values as it is', () => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -17,7 +24,8 @@ test('it keeps a section of plain values as it is', () => {
     settings: {},
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: '+61411111111',
@@ -28,10 +36,12 @@ test('it keeps a section of plain values as it is', () => {
     },
   });
 
-  expect(readPhoneSection(section, read)).toStrictEqual(section);
+  expect(ctx.readSection(section, read)).toStrictEqual(section);
 });
 
 test('it returns no section for a config with none', () => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -39,12 +49,15 @@ test('it returns no section for a config with none', () => {
     settings: {},
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
-  expect(readPhoneSection(undefined, read)).toBeUndefined();
+  expect(ctx.readSection(undefined, read)).toBeUndefined();
 });
 
 test('it reads the number from the settings entry that its reference names', () => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -52,7 +65,8 @@ test('it reads the number from the settings entry that its reference names', () 
     settings: { phone_number: '+61422222222' },
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: 'deployment:phone_number',
@@ -63,10 +77,12 @@ test('it reads the number from the settings entry that its reference names', () 
     },
   });
 
-  expect(readPhoneSection(section, read)?.number).toBe('+61422222222');
+  expect(ctx.readSection(section, read)?.number).toBe('+61422222222');
 });
 
 test('it reads the account SID from the settings entry that its reference names', () => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -74,7 +90,8 @@ test('it reads the account SID from the settings entry that its reference names'
     settings: { account_sid: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: '+61411111111',
@@ -85,12 +102,14 @@ test('it reads the account SID from the settings entry that its reference names'
     },
   });
 
-  expect(readPhoneSection(section, read)?.twilio.account_sid).toBe(
+  expect(ctx.readSection(section, read)?.twilio.account_sid).toBe(
     'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   );
 });
 
 test('it reads the API key SID from the settings entry that its reference names', () => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -98,7 +117,8 @@ test('it reads the API key SID from the settings entry that its reference names'
     settings: { key_sid: 'SKbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' },
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: '+61411111111',
@@ -109,7 +129,7 @@ test('it reads the API key SID from the settings entry that its reference names'
     },
   });
 
-  expect(readPhoneSection(section, read)?.twilio.api_key_sid).toBe(
+  expect(ctx.readSection(section, read)?.twilio.api_key_sid).toBe(
     'SKbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
   );
 });
@@ -134,6 +154,8 @@ test.each([
     apiKey: 'deployment:missing',
   },
 ])('it names $key when its reference has no settings entry', (row) => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -141,20 +163,23 @@ test.each([
     settings: { other: '+61433333333' },
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: row.number,
     twilio: { account_sid: row.account, api_key_sid: row.apiKey, credential: 'deployment:twilio' },
   });
 
-  expect(() => readPhoneSection(section, read)).toThrowWithMessage(
+  expect(() => ctx.readSection(section, read)).toThrowWithMessage(
     MissingCredentialError,
     `${row.key} is deployment:missing, and the secrets file has no settings entry missing`,
   );
 });
 
 test('it refuses a settings entry that is no number, without quoting the entry', () => {
+  const ctx = setupTest();
+
   const file: SecretsFile = {
     deployment_key: 'not-a-real-key',
     model_credentials: {},
@@ -162,7 +187,8 @@ test('it refuses a settings entry that is no number, without quoting the entry',
     settings: { phone_number: 'not-a-number-0411' },
   };
 
-  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
+  const read = (reference: string, configKey: string) =>
+    ctx.readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: 'deployment:phone_number',
@@ -173,14 +199,16 @@ test('it refuses a settings entry that is no number, without quoting the entry',
     },
   });
 
-  expect(() => readPhoneSection(section, read)).toThrowWithMessage(
+  expect(() => ctx.readSection(section, read)).toThrowWithMessage(
     Error,
     'phone.number is deployment:phone_number, and its settings entry is not a valid value',
   );
 });
 
 test('it refuses a number that is neither a number nor a reference', () => {
-  const result = phoneSectionSchema.safeParse({
+  const ctx = setupTest();
+
+  const result = ctx.parseSection({
     number: 'phone_number',
     twilio: {
       account_sid: 'AC00000000000000000000000000000000',
