@@ -3,8 +3,8 @@ import { readCleanedTaskIDs } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 
-// A note, a memory item, a moment and a connection forget on the erasure runner, which removes
-// their turn inputs itself. Only a record forget is left.
+// A note, a memory item, a moment, a connection and a text forget on the erasure runner, which
+// removes their turn inputs itself. Only a record forget is left.
 type TurnInputForgetCause = Extract<SessionCleanupCause, { readonly recordSequence: number }>;
 
 export interface TurnInputForgetOptions {

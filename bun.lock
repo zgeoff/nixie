@@ -105,6 +105,22 @@
         "msw": "catalog:",
       },
     },
+    "adapters/phone-twilio": {
+      "name": "@heynixie/phone-twilio",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/phone": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@faker-js/faker": "catalog:",
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/mock-server": "workspace:*",
+        "@msw/data": "catalog:",
+        "msw": "catalog:",
+      },
+    },
     "adapters/rates-frankfurter": {
       "name": "@heynixie/rates-frankfurter",
       "version": "0.0.0",
@@ -254,6 +270,8 @@
         "@heynixie/models": "workspace:*",
         "@heynixie/notebook": "workspace:*",
         "@heynixie/ops": "workspace:*",
+        "@heynixie/phone": "workspace:*",
+        "@heynixie/phone-twilio": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",
@@ -1075,6 +1093,28 @@
       "devDependencies": {
         "@heynixie/log": "workspace:*",
         "@heynixie/testing": "workspace:*",
+        "@zgeoff/testing": "catalog:",
+      },
+    },
+    "modules/phone": {
+      "name": "@heynixie/phone",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
         "@zgeoff/testing": "catalog:",
       },
     },
@@ -1924,6 +1964,10 @@
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
     "@heynixie/periods": ["@heynixie/periods@workspace:libs/periods"],
+
+    "@heynixie/phone": ["@heynixie/phone@workspace:modules/phone"],
+
+    "@heynixie/phone-twilio": ["@heynixie/phone-twilio@workspace:adapters/phone-twilio"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
 

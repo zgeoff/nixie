@@ -99,6 +99,7 @@ export type {
 export type { WriteTransaction } from './record/with-write-transaction';
 export { withWriteTransaction } from './record/with-write-transaction';
 export { queueCommitHook } from './record/queue-commit-hook';
+export { buildTransactionLog } from './record/build-transaction-log';
 export { writeRecords } from './record/write-records';
 export { writeRecordsInTransaction } from './record/write-records-in-transaction';
 export { WriterLockHeldError } from './writer/writer-lock-held-error';

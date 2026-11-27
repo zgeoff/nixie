@@ -23,8 +23,18 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   {
     name: 'erasure',
     needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
-    uses: ['memory'],
-    start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
+    uses: ['memory', 'phone'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const runner = startErasureRunner(parts, reader);
+      const phone = reader.find('phone');
+
+      if (phone !== null && phone !== undefined) {
+        await parts.cleanup.defer(() => phone.forgetter.stop());
+      }
+
+      return runner;
+    },
   },
   {
     // The credential store's database backend, which the connections and the MCP proxy keep their

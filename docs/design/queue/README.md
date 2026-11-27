@@ -33,7 +33,7 @@ still to build.
 | Google tools    | [the Google tool rules and the Gmail tools not built yet](gmail-calendar-drive-tools.md)      |
 | Channels        | [the push notice](push-notice.md)                                                             |
 | Devices         | [the camera, the speaker and the microphone](devices.md)                                      |
-| Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [the phone](phone.md)           |
+| Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md)                                  |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone and has no row here. The decision records these designs follow are in

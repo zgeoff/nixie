@@ -14,6 +14,9 @@ export interface WokeMail {
   readonly receivedAt: number;
   readonly from: string;
   readonly subject: string;
+
+  // a text's body, which a mail lacks
+  readonly body?: string;
 }
 
 export interface MailWake {
@@ -55,6 +58,7 @@ export function buildMailWokeInput(
         arrived: mail.arrived,
         from: mail.from,
         subject: mail.subject,
+        ...(mail.body === undefined ? {} : { body: mail.body }),
       })),
     },
   };
