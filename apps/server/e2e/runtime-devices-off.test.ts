@@ -1,5 +1,11 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, sendClientMessage, startE2ENixie } from '@heynixie/server/test-utils';
+import { join } from 'node:path';
+import {
+  createTestClient,
+  runHostCommand,
+  sendClientMessage,
+  startE2ENixie,
+} from '@heynixie/server/test-utils';
 
 async function setupTest() {
   // a config with no devices section, so the devices feature is off
@@ -66,4 +72,33 @@ test('it serves no page frame route, so a frame request falls through to the API
   const response = await fetch(`${ctx.api.url}/rpc/device/frames/plum-ticket`);
 
   expect(response.status).toBe(403);
+});
+
+test('it needs no render image when the config has no devices section, because no render part is planned', async () => {
+  const ctx = await setupTest();
+
+  const run = await runHostCommand(ctx.nixie.configPath, [
+    'sandbox-manifest',
+    '--needed',
+    '--manifest',
+    join(ctx.nixie.directory, 'sandbox-manifest.json'),
+  ]);
+
+  expect({ exitCode: run.exitCode, keys: Object.keys(JSON.parse(run.stdout)) }).toStrictEqual({
+    exitCode: 0,
+    keys: expect.not.arrayContaining(['render']),
+  });
+});
+
+test('it needs the render image when the config has a devices section, so the check above can fail', async () => {
+  const nixie = await startE2ENixie({});
+
+  const run = await runHostCommand(nixie.configPath, [
+    'sandbox-manifest',
+    '--needed',
+    '--manifest',
+    join(nixie.directory, 'sandbox-manifest.json'),
+  ]);
+
+  expect(Object.keys(JSON.parse(run.stdout))).toContain('render');
 });
