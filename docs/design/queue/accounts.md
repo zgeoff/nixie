@@ -303,8 +303,8 @@ Filling:
 - `sign_in` asks unless a rule allows it. An "always allow" rule scopes it by site place and pins
   the account.
 - A site place at `act` in [trusted places](trusted-places.md) lets `sign_in` through with no card.
-  `sign_up` and `add_origin` still ask at `act`, and the fill still goes only to the entry's exact
-  origins.
+  `sign_up` and `add_origin` still ask at `act`, a call on a locked entry still asks for a fresh
+  tap, and the fill still goes only to the entry's exact origins.
 - The guest compares `expectOrigin` with the live top frame's origin right before it fills, and
   fills nothing when they differ.
 - A password goes only into an `<input type=password>` in a frame of the same origin as the top
