@@ -1636,3 +1636,17 @@ test('it gives no idle reason for a tab that never existed', async () => {
     result: { refused: { message: expect.stringMatching(/^(?![\s\S]*idle)/u) } },
   });
 });
+
+test('it requires a destination of a click and of typing on the desktop, and of no read tool', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  const required = ['computer.screen_click', 'computer.screen_type', 'computer.browser_open'].map(
+    (name) => [name, ctx.tool(name).declaration.requiresDestination === true],
+  );
+
+  expect(required).toStrictEqual([
+    ['computer.screen_click', true],
+    ['computer.screen_type', true],
+    ['computer.browser_open', false],
+  ]);
+});

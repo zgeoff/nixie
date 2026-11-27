@@ -1,5 +1,5 @@
-import { readPlaceRefs } from '@heynixie/policy';
-import type { EffectOverride } from '@heynixie/policy';
+import type { EffectOverride, PlacesSeedPlan } from '@heynixie/policy';
+import { applyPlacesSeedPlan, readPlaceRefs } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import { addSeededRules } from '../rule/add-seeded-rules';
 import type { RuleInForce, SnapshotPolicy } from '../types';
@@ -9,6 +9,9 @@ export interface SeedPolicyInput {
   readonly base: SnapshotPolicy;
   readonly overrides: ReadonlyMap<string, EffectOverride>;
   readonly rules: readonly RuleInForce[];
+
+  // the sites that the seed adds to the directory and the ones it removes
+  readonly places: PlacesSeedPlan;
 }
 
 export type SeedPolicy =
@@ -27,7 +30,9 @@ export async function readSeedPolicy(
     return { status: 'refused', error: new Error(effects.reason) };
   }
 
-  const places = await readPlaceRefs(tx);
+  const refs = await readPlaceRefs(tx);
+
+  const places = applyPlacesSeedPlan(refs, input.places);
 
   return {
     status: 'built',

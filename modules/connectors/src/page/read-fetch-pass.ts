@@ -5,6 +5,7 @@ import type { StoredPage } from '../web/write-web-fetch-page';
 import { makeHopScan } from './make-hop-scan';
 import type { PageFetch } from './page-fetch';
 import { readHostPause } from './read-host-pause';
+import { refuseBlockedPlace } from './refuse-blocked-place';
 import { refuseFetchURL } from './refuse-fetch-url';
 import type { SecretScan } from './secret-scan';
 import { setReplyPause } from './set-reply-pause';
@@ -29,7 +30,10 @@ export async function readFetchPass(
   // whether the pass answers from a page the session stored lately; only the first pass does
   readsCache: boolean,
 ): Promise<PassOutcome> {
-  const refusal = await refuseFetchURL(url, scan);
+  const secretRefusal = await refuseFetchURL(url, scan);
+  const placeRefusal = await refuseBlockedPlace(fetching, url);
+
+  const refusal = secretRefusal ?? placeRefusal;
 
   if (refusal !== null) {
     return { kind: 'ended', reason: refusal };
@@ -49,7 +53,7 @@ export async function readFetchPass(
     return paused;
   }
 
-  const reply = await fetching.readPage(url, { scanHop: makeHopScan(scan) });
+  const reply = await fetching.readPage(url, { scanHop: makeHopScan(scan, fetching) });
 
   if (reply.kind === 'refused' || reply.kind === 'failed') {
     return { kind: 'ended', reason: reply.reason };

@@ -87,6 +87,7 @@ export async function seedInForceInTransaction(
     base: options.buildPolicy(inForce.prompts),
     overrides: lists.effects,
     rules: revisions.inForce,
+    places: { adds: [], removes: [] },
   });
 
   if (policy.status === 'refused') {
@@ -164,6 +165,7 @@ export async function seedInForceInTransaction(
     withdrawnProposalIDs: pending.map((entry) => entry.proposal.proposalID),
     built,
     repoTasks,
+    placeRecords: [],
     taskRecords: buildTaskSeedRecords(taskPlan, {
       snapshotHash: built.snapshotHash,
       personaVersion: built.personaVersion,

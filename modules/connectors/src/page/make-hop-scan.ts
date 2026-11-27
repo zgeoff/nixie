@@ -1,10 +1,21 @@
 import type { HopScan } from './gate-page-hops';
+import type { PageFetch } from './page-fetch';
+import { refuseBlockedPlace } from './refuse-blocked-place';
 import { secretRefusalEvent } from './refuse-fetch-url';
 import type { SecretScan } from './secret-scan';
 
 // The scan of each redirect hop, for the hop gate.
-export function makeHopScan(scan: SecretScan): HopScan {
+export function makeHopScan(
+  scan: SecretScan,
+  fetching: Pick<PageFetch, 'findBlockedPlace'> = {},
+): HopScan {
   return async (hop) => {
+    const blocked = await refuseBlockedPlace(fetching, hop.url);
+
+    if (blocked !== null) {
+      return { kind: 'refuse', reason: `${hop.sentBy} redirected to a site: ${blocked}` };
+    }
+
     const found = scan.findSecret(hop.url);
 
     if (found === null) {

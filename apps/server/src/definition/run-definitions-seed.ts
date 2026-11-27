@@ -1,11 +1,18 @@
 import type { SeedResult } from '@heynixie/definitions';
 import { runSeed } from '@heynixie/definitions';
+import { writeOwnPlaces } from '@heynixie/policy';
 import { readArmedReminders } from '@heynixie/reminders';
+import { listOwnPlaceSources } from '../place/list-own-place-sources';
 import type { SeedParts } from '../seed/run-queued-seed';
 import { runQueuedSeed } from '../seed/run-queued-seed';
 
 export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, async () => {
+    await writeOwnPlaces(
+      { log: parts.context.log, definitions: parts.context.definitions },
+      listOwnPlaceSources(),
+    );
+
     const result = await runSeed({
       log: parts.context.log,
       onRuleWarning: (warning) => {

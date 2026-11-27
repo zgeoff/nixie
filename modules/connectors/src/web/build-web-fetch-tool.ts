@@ -1,8 +1,8 @@
 import type { Clock } from '@heynixie/clock';
-import type { Log } from '@heynixie/log';
+import type { JSONObject, Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { SecretFinder } from '@heynixie/secret-scan';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { DestinationResolution, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import type { FetchBackoff } from '../fetch/make-fetch-backoff';
 import type { FetchSandbox } from '../fetch/start-fetch-sandbox';
@@ -135,6 +135,9 @@ export interface WebFetchToolOptions {
 
   // whether the exemption of a typed URL covers its redirects
   readonly secretTypedURLCovers: 'named_url' | 'redirects';
+
+  // the short ID of the place you blocked that covers a URL, which ends a fetch of it or of a hop
+  readonly findBlockedPlace?: (url: string) => Promise<string | null>;
 }
 
 export function buildWebFetchTool(
@@ -196,11 +199,16 @@ export function buildWebFetchTool(
       },
     },
     execution: 'direct',
+    resolveDestinations: (input, context) =>
+      resolveFetchDestinations(log, getPageSession(context.run).sessionKey, input),
     run: (call, context) =>
       runWebFetchCall(
         {
           log,
           readPage,
+          ...(options.findBlockedPlace === undefined
+            ? {}
+            : { findBlockedPlace: options.findBlockedPlace }),
           secretScan: {
             findSecret: options.findSecret,
             isOwnerTyped: options.isOwnerTyped,
@@ -220,6 +228,34 @@ export function buildWebFetchTool(
         parseWebFetchRequest(call.input),
       ),
   };
+}
+
+// The host of the page a call names, before any known-site rewrite. A stored page, a link this
+// session never showed and a URL that is no web address name none.
+async function resolveFetchDestinations(
+  log: Pick<Log, 'writer'>,
+  sessionKey: string,
+  input: JSONObject,
+): Promise<DestinationResolution> {
+  const request = parseWebFetchRequest(input);
+
+  const target = await match(request)
+    .with({ kind: 'url' }, (url) => Promise.resolve(url.url))
+    .with({ kind: 'link' }, (link) => readLinkTarget(log, { sessionKey, number: link.number }))
+    .otherwise(() => Promise.resolve(null));
+
+  const host = target === null ? null : readURLHost(target);
+
+  return {
+    status: 'ok',
+    destinations: host === null ? [] : [{ value: host, replyTarget: false }],
+  };
+}
+
+function readURLHost(target: string): string | null {
+  const parsed = URL.parse(target);
+
+  return parsed === null || !/^https?:$/u.test(parsed.protocol) ? null : parsed.hostname;
 }
 
 function runWebFetchCall(fetching: PageFetch, request: WebFetchRequest): Promise<ToolOutcome> {

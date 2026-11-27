@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { placesProjection, readPlaceRefs } from '@heynixie/policy';
 import { buildProposalsProjection } from '@heynixie/proposals';
 import { tasksProjections } from '@heynixie/tasks';
 import { writeTestTriggerFire } from '@heynixie/tasks/test-utils';
@@ -493,7 +494,7 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 test('it refuses a first snapshot that fails to parse and leaves no seed', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 7\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 8\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const result = await runSeed({
@@ -3267,4 +3268,32 @@ test('it seeds a repo whose voice file is not text, below the format that reads 
   });
 
   expect([result.status, reported]).toStrictEqual(['seeded', ['voice/voice.yaml']]);
+});
+
+test('it adds the sites of places.yaml to the directory and the snapshot, and removes one the file drops', async () => {
+  const ctx = await setupTest({ projections: [placesProjection] });
+
+  const policy = { rules: [{ id: 'allow-reads' }], tools: [] };
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 7\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'places.yaml'), '- place: example.org\n  trust: read\n');
+
+  const options = { tasks: buildTestTaskSeed(), log: ctx.log, source: ctx.source };
+
+  await runSeed({ ...options, buildPolicy: () => policy });
+
+  const seeded = await readPlaceRefs(ctx.writer.db);
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  await writeFile(join(ctx.root, 'places.yaml'), '[]\n');
+  await runSeed({ ...options, buildPolicy: () => policy });
+
+  const dropped = await readPlaceRefs(ctx.writer.db);
+
+  expect({
+    seeded: seeded.map((place) => place.trust),
+    inSnapshot: inForce?.snapshotHash === undefined ? null : seeded.length,
+    dropped: dropped.length,
+  }).toStrictEqual({ seeded: ['read'], inSnapshot: 1, dropped: 0 });
 });

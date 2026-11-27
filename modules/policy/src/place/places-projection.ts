@@ -156,7 +156,7 @@ async function foldUsed(
 
   const placeIDs = [
     ...new Set(
-      (decision?.permissions ?? []).flatMap((permission) =>
+      (decision?.outcome === 'allow' ? (decision.permissions ?? []) : []).flatMap((permission) =>
         typeof permission === 'object' && permission !== null && permission.by === 'place'
           ? [permission.placeID]
           : [],

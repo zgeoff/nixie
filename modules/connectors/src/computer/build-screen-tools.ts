@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { ComputerState, ScreenPrepared } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { pickScreenDestinations } from './pick-screen-destinations';
 import {
   makeActionScans,
   refuseComputer,
@@ -287,6 +288,7 @@ function buildClickTool(options: ComputerToolOptions, state: ComputerState): Too
     declaration: {
       effects: ['send'],
       destinations: [],
+      requiresDestination: true,
       amount: null,
       content: [],
       results: actResults,
@@ -373,7 +375,7 @@ async function prepareScreenAct(
   state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
   return {
-    destinations: pickDestinations(binding),
+    destinations: pickScreenDestinations(binding),
     expectWindow,
     ...(picture === null ? {} : { attachments: [new Uint8Array(picture.bytes)] }),
   };
@@ -386,11 +388,6 @@ function toBindingObject(binding: ScreenBinding): JSONObject {
     ...(binding.tab === undefined ? {} : { tab: binding.tab }),
     ...(binding.url === undefined ? {} : { url: binding.url }),
   };
-}
-
-// A browser tab's host is the destination, and any other window has none.
-function pickDestinations(binding: ScreenBinding): string[] {
-  return binding.kind === 'browser' && binding.url !== undefined ? [new URL(binding.url).host] : [];
 }
 
 const maxTypedChars = 1000;
@@ -423,6 +420,7 @@ function buildTypeTool(options: ComputerToolOptions, state: ComputerState): Tool
     declaration: {
       effects: ['send'],
       destinations: [],
+      requiresDestination: true,
       amount: null,
       content: ['text'],
       results: actResults,
@@ -514,7 +512,7 @@ async function runPreparedAct(
 ): Promise<DirectResult> {
   const binding = prepared.binding;
 
-  if (!isSameList(pickDestinations(binding), attempt.destinations)) {
+  if (!isSameList(pickScreenDestinations(binding), attempt.destinations)) {
     return refuseComputer(
       'SCREEN_CHANGED',
       'the window this call was prepared for is not the one the owner allowed',

@@ -6,6 +6,7 @@ import type {
   BudgetPeriod,
   EffectOverride,
   McpOverrides,
+  PlaceFileEntry,
   RuleFileEntry,
   RuleFileWarning,
   RuleForm,
@@ -106,6 +107,9 @@ export interface ParsedDefinitions {
   readonly budgets: readonly DefinitionBudget[];
   readonly ruleWarnings: readonly RuleFileWarning[];
   readonly effects: ReadonlyMap<string, EffectOverride>;
+
+  // the sites and mail domains that places.yaml sets, with their levels
+  readonly places: readonly PlaceFileEntry[];
 
   // the override files of the MCP proxy, by server ID
   readonly mcp: McpOverrides;

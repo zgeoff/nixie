@@ -2,6 +2,7 @@ import type { VoiceFileProblem } from '@heynixie/calls';
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { RuleFileWarning } from '@heynixie/policy';
+import { buildPlacesSeedPlan, buildPlacesSeedRecords, readSeedPlaceRows } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import { buildDefinitionRule } from '../definition/build-definition-rule';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
@@ -123,10 +124,15 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     const revisions = buildRuleRevisions(store.current, rules.inForce);
     const now = options.log.writer.clock.now();
 
+    const placeRows = await readSeedPlaceRows(tx);
+
+    const placesPlan = buildPlacesSeedPlan(read.parsed.places, placeRows);
+
     const policy = await readSeedPolicy(tx, {
       base: options.buildPolicy(read.parsed.prompts),
       overrides: read.parsed.effects,
       rules: revisions.inForce,
+      places: placesPlan,
     });
 
     if (policy.status === 'refused') {
@@ -209,6 +215,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       withdrawnProposalIDs: pending.map((entry) => entry.proposal.proposalID),
       built,
       repoTasks,
+      placeRecords: buildPlacesSeedRecords(placesPlan, { snapshotHash: built.snapshotHash }),
       taskRecords: buildTaskSeedRecords(taskPlan, {
         snapshotHash: built.snapshotHash,
         personaVersion: built.personaVersion,
