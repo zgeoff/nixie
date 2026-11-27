@@ -13,8 +13,10 @@ export function toCLIListing(value: unknown): unknown {
     return value;
   }
 
+  const entries: [string, unknown][] = Object.entries(value);
+
   return Object.fromEntries(
-    Object.entries(value).flatMap(([key, item]) => {
+    entries.flatMap(([key, item]) => {
       if (key === 'condition' && typeof item === 'object' && item !== null) {
         const fields: [string, unknown][] = Object.entries(item);
 
