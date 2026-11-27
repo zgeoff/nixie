@@ -7,9 +7,11 @@ adapter that implements it. For the whole feature, see the
 [voice design](../../design/platform/channels/voice.md). The server wires the
 [GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
 provider and the secrets file holds its credential. When the config has no `voice` section, calls
-are off, and `calls.start` answers `VOICE_OFF`. When the secrets file lacks the `voice` section's
-credential, the server wires no adapter, and `calls.start` answers `SPEECH_UNAVAILABLE`. A test
-build wires the fake that the next section describes in place of the adapter.
+are off: the server starts no calls part, offers the model no call tool, leaves `voice` out of
+`nixie.read`, and answers each `calls` procedure with `FEATURE_OFF` once the session checks out.
+When the secrets file lacks the `voice` section's credential, the server wires no adapter, and
+`calls.start` answers `SPEECH_UNAVAILABLE`. A test build wires the fake that the next section
+describes in place of the adapter.
 
 ## The speech layer
 
@@ -347,3 +349,15 @@ unapplied and logs `definitions.voice_file_skipped` with the file and its fault.
 defaults, which hold no price, until the file is fixed. A file that is not UTF-8 text is reported
 the same way, whatever the format, and a `price_per_minute` above 1000 dollars counts as a fault,
 because its micros no longer add up exactly.
+
+## What the server adds when voice is on
+
+`modules/api` and the core modules name no call. The server fills these from the calls module only
+when the config has a `voice` section:
+
+- the calls procedures, through the API's feature procedures; while voice is off, the API answers
+  each one with `FEATURE_OFF`;
+- the `voice` folder of the definitions, through the definitions module's section list;
+- the call kinds of the tasks inbox, through the tasks module's inbox kinds;
+- the hang-up of a running call when its session signs out, through the API's session hooks;
+- the call's step hooks and the call rule of the sandbox task runner.

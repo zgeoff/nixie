@@ -4,6 +4,16 @@ import { featurePaths } from './feature-paths';
 // registry lists after the others.
 export const lastFeatures = [
   {
+    name: 'calls-off',
+    summary: 'Turn calls off',
+    paths: featurePaths['calls-off'],
+  },
+  {
+    name: 'devices-off',
+    summary: 'Turn devices off',
+    paths: featurePaths['devices-off'],
+  },
+  {
     name: 'spend-routes',
     summary: "Read each route's counts",
     paths: featurePaths['spend-routes'],

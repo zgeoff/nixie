@@ -64,6 +64,8 @@ These cost the most time:
 | notebook-pages     | Browse notes, open a private one, forget one                      | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |
 | google-connections | Connect a Google account and forget it                            | [references/feature-google-connections.md](references/feature-google-connections.md) |
 | google-off         | Turn Google off                                                   | [references/feature-google-off.md](references/feature-google-off.md)                 |
+| calls-off          | Turn calls off                                                    | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
+| devices-off        | Turn devices off                                                  | [references/feature-devices-off.md](references/feature-devices-off.md)               |
 | mcp-servers        | Connect an MCP server, and approve a tool                         | [references/feature-mcp-servers.md](references/feature-mcp-servers.md)               |
 | computer-shell     | Write and read back a shell file                                  | [references/feature-computer-shell.md](references/feature-computer-shell.md)         |
 | computer-browser   | Open a page in the assistant's browser                            | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |

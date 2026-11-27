@@ -152,9 +152,13 @@ of its images and offers none of its tools or pages. Read
 - Keep each list that a feature adds to in a core module, and fill it from the composition root. The
   computer fills the tasks module's inbox kinds and the policy module's tool shapes in
   `fillComputerLists`, which runs at the start of each server and leaves both empty when the
-  computer is off. Google fills the API module's body-field readers, which word the card of a Gmail,
-  Calendar or Drive call, in `fillGoogleLists`. A list is global to the process, so a test that sets
-  one resets it when the test ends.
+  computer is off. `fillBodyFieldReaders` fills the API module's body-field readers, which word the
+  card of a Gmail, Calendar, Drive or package-install call, from the google and devices sections.
+  `fillInboxKinds` fills the inbox kinds of the computer, calls and devices, and `fillCallsLists`
+  fills the definitions module's sections with the voice folder. The root also fills the API's
+  session hooks, which keep each feature's rows in step with a session, and its feature procedures,
+  which supply the calls and devices procedures. A list is global to the process, so a test that
+  sets one resets it when the test ends.
 - List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
   work item whose retrofit removes it. Only the leak test reads the file, and the test fails when an
   exception matches nothing.

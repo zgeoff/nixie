@@ -119,6 +119,9 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_NO_COMPUTER=1 leaves the computer's section out of the config.
   const isComputerOff = process.env['NIXIE_VERIFY_NO_COMPUTER'] === '1';
 
+  // A start with NIXIE_VERIFY_NO_DEVICES=1 leaves the devices section out of the config.
+  const isDevicesOff = process.env['NIXIE_VERIFY_NO_DEVICES'] === '1';
+
   // A start with NIXIE_VERIFY_NO_GOOGLE=1 connects the fake Google account, then takes the google
   // section out of the config and starts nixie again on the same data, so a stored connection meets
   // a nixie that has no Google.
@@ -126,6 +129,7 @@ export async function runVerifyHarness(): Promise<void> {
 
   const nixie = await createSpawnedNixie(stack, {
     ...(isComputerOff ? { isComputerOff: true } : {}),
+    ...(isDevicesOff ? { isDevicesOff: true } : {}),
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     googleURL: google.url,
     fetchSiteURL: deviceSite.url,
