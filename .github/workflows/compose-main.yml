@@ -37,6 +37,7 @@ jobs:
         adapters/**
         apps/**
         deploy/compose/**
+        deploy/kubernetes/**
         guests/**
         libs/**
         modules/**
@@ -91,6 +92,10 @@ jobs:
       - name: Check each pinned tag against its digest
         if: ${{ env.RECIPE_CHANGED == 'true' && needs.pins.outputs.changed != 'false' }}
         run: bun run --silent ci:compose:check-pinned-digests
+
+      - name: Check that the config schema accepts each shipped config
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
+        run: bun run --silent ci:compose:check-shipped-configs
 
       - name: Set up Buildx
         if: ${{ env.RECIPE_CHANGED == 'true' }}

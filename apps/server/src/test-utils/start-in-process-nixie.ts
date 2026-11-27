@@ -51,6 +51,11 @@ export interface InProcessNixieOptions {
   // own.
   readonly hasStarterRules?: boolean;
 
+  // Leave the section of the computer or the code tool out of the config, and its image out of the
+  // manifest.
+  readonly isComputerOff?: boolean;
+  readonly isCodeOff?: boolean;
+
   // Pages that web_fetch serves, because the fetch guest refuses every address a test can serve.
   // With none, a fetch sandbox goes to the stub guest like any other.
   readonly fetchPages?: readonly FetchPage[];
@@ -184,6 +189,8 @@ async function startFirstRun(
     secrets: options.extraSecrets ?? [],
     definitions: options.extraDefinitions ?? [],
     hasStarterRules: options.hasStarterRules ?? true,
+    ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
+    ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
     ...(options.roleModelURLs === undefined ? {} : { roleModelURLs: options.roleModelURLs }),
     ...(options.selectableModelURLs === undefined

@@ -66,12 +66,12 @@ test('it leaves a take-over that was open when nixie stopped open, because no re
 
   await server.ready;
 
-  await server.kill();
+  await server.sendStopSignal();
 
-  const records = await nixie.readRecords();
+  const run = await server.waitForExit();
 
   expect(
-    records.map((record) => record.kind).filter((kind) => kind.startsWith('computer.')),
+    run.records.map((record) => record.kind).filter((kind) => kind.startsWith('computer.')),
   ).toStrictEqual(['computer.takeover_started']);
 });
 
@@ -80,15 +80,18 @@ test('it leaves an ask for a take-over that expired while nixie was stopped open
 
   await seedOpenHandover(nixie);
 
+  // an ask stands for 1 hour, so this one has expired by the time nixie starts
+  await nixie.harness.advance(3_600_000);
+
   const server = nixie.harness.start();
 
   await server.ready;
 
-  await server.kill();
+  await server.sendStopSignal();
 
-  const records = await nixie.readRecords();
+  const run = await server.waitForExit();
 
   expect(
-    records.map((record) => record.kind).filter((kind) => kind.startsWith('computer.')),
+    run.records.map((record) => record.kind).filter((kind) => kind.startsWith('computer.')),
   ).toStrictEqual(['computer.handover_asked']);
 });

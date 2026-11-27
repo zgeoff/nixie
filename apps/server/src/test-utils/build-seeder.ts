@@ -5,6 +5,7 @@ import { buildConnectorSeeder } from '@heynixie/connectors/test-utils';
 import { writeRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
+import invariant from 'tiny-invariant';
 import type { BegunPurgeOptions } from './seed-begun-purge';
 import { seedBegunPurge } from './seed-begun-purge';
 import { seedDefinitionConflict } from './seed-definition-conflict';
@@ -55,6 +56,24 @@ export function buildBootSeeder(files: BootSeederFiles) {
           },
         ]);
       }),
+
+    // a call of the code tool, whose forget destroys the sandbox that the call's ID owns; returns the
+    // call record's sequence
+    codeCall: (thread: string, callID: string) =>
+      runInDataLog(files, async (context) => {
+        const [call] = await writeRecords(context.log, [
+          {
+            kind: 'tool_called',
+            definitions: { snapshotHash: 'sha256:test' },
+            thread,
+            payload: { callID, runID: `${thread}:1@1`, toolUseID: null, tool: 'code.run' },
+          },
+        ]);
+
+        invariant(call !== undefined, 'the call record was written');
+
+        return call.sequence;
+      }),
     goneHolderLease: (taskID: string) =>
       runInDataLog(files, (context) => buildTaskSeeder({ context }).goneHolderLease(taskID)),
   };
@@ -62,14 +81,14 @@ export function buildBootSeeder(files: BootSeederFiles) {
 
 export type BootSeeder = ReturnType<typeof buildBootSeeder>;
 
-async function runInDataLog(
+async function runInDataLog<Result>(
   files: DataFiles,
-  run: (context: TasksContext) => Promise<void>,
-): Promise<void> {
+  run: (context: TasksContext) => Promise<Result>,
+): Promise<Result> {
   const testLog = await startDataLog({ ...files, clock: systemClock });
 
   try {
-    await run(testLog.context);
+    return await run(testLog.context);
   } finally {
     await testLog.writer.stop();
   }
