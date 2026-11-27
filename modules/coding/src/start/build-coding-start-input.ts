@@ -13,8 +13,8 @@ export function buildCodingStartInput(settings: CodingSettings): JSONObject {
         minLength: 1,
         maxLength: 8000,
         description:
-          "with repo: the session's first user turn, which the coding agent works from; with " +
-          'session: your own note on the task, which the session never gets',
+          'with repo: what the coding agent works from; with session: a note on the task, which ' +
+          'the session never gets',
       },
       repo: {
         type: 'object',

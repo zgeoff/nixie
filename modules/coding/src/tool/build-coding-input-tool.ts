@@ -20,9 +20,7 @@ const inputSchema = z.strictObject({
 
 const descriptions: Readonly<Record<CodingInputKind, string>> = {
   steer: "Tells a coding task's session what to work on next.",
-  message:
-    "Sends a coding task's session a side note, and the coding agent's answer comes back to you " +
-    'as a message. Use it to ask a question without changing what the session works on.',
+  message: "Asks a coding task's session a side question, without changing what it works on.",
 };
 
 // coding.steer and coding.message. Each queues its action on the coding task's thread, caused by

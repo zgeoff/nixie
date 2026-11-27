@@ -19,7 +19,7 @@ export function buildCodingWatchTool(
 ): ToolDefinition {
   return {
     name: codingToolNames.watch,
-    description: 'Chooses which events of a coding task wake you. Pass the whole set you want.',
+    description: 'Chooses which events of a coding task wake you.',
     input: {
       type: 'object',
       properties: {
@@ -27,6 +27,7 @@ export function buildCodingWatchTool(
         wake: {
           type: 'array',
           items: { type: 'string', enum: [...wakeEvents] },
+          description: 'the whole set of events that wake you',
           uniqueItems: true,
         },
       },
