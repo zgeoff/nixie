@@ -51,7 +51,7 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
    ```
 
    Expect: one row, with `google_tools` 0 and `task_start_tools` 1. The second count shows that the
-   list holds the other tools, so the first is no empty read.
+   list holds other tools, so a `google_tools` of 0 does not mean an empty list.
 
 4. Check that the connection is still stored, so the next step meets a connection that a poll could
    read:

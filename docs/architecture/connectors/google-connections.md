@@ -5,12 +5,14 @@ connections module owns the client, the consent that makes a connection, and the
 client calls. [The credential database](credential-database.md) covers where the module keeps each
 sealed value, and [the credential store](credentials.md) covers the token exchange and the refresh.
 
-The connections module knows no provider. It owns the `Connector` interface, which holds a
+The connections module knows no provider. It owns the
+[`Connector`](../../../modules/connections/src/connector/types.ts) interface, which holds a
 provider's OAuth endpoints, scopes, setup steps, tools and scope check, and it takes the connector
 from the server when it starts. The `google` feature module builds Google's connector, with its
 Gmail, Calendar and Drive tools and the Gmail arrival source, and reaches the triggers, policy,
 tasks, tools and log modules itself. The `connector-google` adapter gives it Google's hosts, OAuth
-consent, setup steps and scope check through the module's `GoogleProvider` interface.
+consent, setup steps and scope check through the module's
+[`GoogleProvider`](../../../modules/google/src/types.ts) interface.
 
 ## The switch
 
