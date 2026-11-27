@@ -402,6 +402,16 @@ record open, and the erasure catch-up at the server's start runs the cleanup aga
 claims work. The aborted turn's step fails and runs again after its retry delay, and that rerun
 finds the invalidated record and rebuilds the session.
 
+The user may have read a reply that the aborted turn wrote, so the turn keeps it and writes no void
+([conversation turns](../core/conversation-turns.md#records-of-a-turn)). The conversation's rerun
+reads each message before the newest kept reply as answered. It acknowledges those messages without
+a turn, and answers only the messages after that reply.
+
+A shutdown ends each wait of a cleanup, for a turn to end and for a step to commit. The runners stop
+before the notebook and the memory store, which wait for the cleanups in flight, so the server ends
+those waits as the runners begin to stop. A cleanup that ends this way fails, and the next start
+runs it again.
+
 Backups and the memory export leave out the SDK transcript, a cache in the sandbox, so the purge in
 step 6 removes every copy of it.
 

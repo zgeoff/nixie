@@ -426,7 +426,9 @@ lookup. The reasons mean:
 
 - `attempt_failed`: the attempt threw, and its own runner wrote the void before it rethrew;
 - `attempt_lost`: the runner died, and the next run of the step found the reply after the thread's
-  last step commit with no void, and voided it before it did anything else;
+  last step commit with no void, and voided it before it did anything else. A reply that sits before
+  a session-invalidated record is no such reply: a cleanup aborted its turn, and the turn keeps the
+  reply ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session));
 - `turn_dropped`: the reply came after the last result of the turn, or the turn's session was lost
   or overflowed, so the step starts the turn again from the boundary.
 

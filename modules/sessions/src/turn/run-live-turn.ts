@@ -28,6 +28,7 @@ import type { TurnSilence } from '../utils/build-turn-silence';
 import { buildTurnSilence } from '../utils/build-turn-silence';
 import type { AssistantFrame } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
+import { SessionInvalidatedError } from '../utils/session-invalidated-error';
 import { pickWaitTelling } from './pick-wait-telling';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
@@ -118,7 +119,11 @@ export async function runLiveTurn(
       ...(gaps === undefined ? {} : { gaps }),
     });
   } catch (error) {
-    await voidFailedAttempt(run, input, live.written, error);
+    // A turn that a cleanup aborted keeps its replies: the user read them, and its rerun skips the
+    // messages they answer.
+    if (!(plan.signal.reason instanceof SessionInvalidatedError)) {
+      await voidFailedAttempt(run, input, live.written, error);
+    }
 
     throw error;
   } finally {
