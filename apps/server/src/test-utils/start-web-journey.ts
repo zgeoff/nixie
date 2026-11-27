@@ -22,7 +22,7 @@ export interface WebJourney {
 }
 
 export interface WebJourneyOptions {
-  // gives nixie calls, priced at this many dollars a minute, on the test build's fake speech layer
+  // prices calls at this many dollars a minute, on the test build's fake speech layer
   readonly voicePricePerMinute?: number;
 
   // leaves the computer and the code tool's sections out of nixie's config
@@ -30,6 +30,9 @@ export interface WebJourneyOptions {
   readonly isCodeOff?: boolean;
   readonly isGoogleOff?: boolean;
   readonly isDevicesOff?: boolean;
+
+  // leaves the voice section out of nixie's config
+  readonly isVoiceOff?: boolean;
 
   // a script that every page runs first, such as a microphone stand-in
   readonly headScript?: string;
@@ -44,6 +47,7 @@ export async function startWebJourney(options: WebJourneyOptions = {}): Promise<
     ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
     ...(options.isGoogleOff === true ? { isGoogleOff: true } : {}),
     ...(options.isDevicesOff === true ? { isDevicesOff: true } : {}),
+    ...(options.isVoiceOff === true ? { isVoiceOff: true } : {}),
   };
 
   const nixie = await startSpawnedNixie(nixieOptions);
