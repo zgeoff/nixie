@@ -2521,10 +2521,18 @@ test('it answers a message that landed before the kept reply but was not read, a
   });
 
   const replied = Promise.withResolvers<void>();
+  const landed = Promise.withResolvers<number>();
 
   ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    guest.emit?.([{ type: 'read', uuids: turn.input.map((message) => message.uuid) }]);
+
+    const [second] = await ctx.writeMessage('And a biscuit?');
+
+    invariant(second);
+
+    landed.resolve(second.sequence);
+
     guest.emit?.([
-      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
       { type: 'assistant', messageID: crypto.randomUUID(), text: 'It is tea.', toolUses: [] },
     ]);
 
@@ -2533,8 +2541,6 @@ test('it answers a message that landed before the kept reply but was not read, a
 
       return replies.length === 1;
     });
-
-    await ctx.writeMessage('And a biscuit?');
 
     replied.resolve();
 
@@ -2555,6 +2561,14 @@ test('it answers a message that landed before the kept reply but was not read, a
       runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' }),
     ),
   ]);
+
+  const [secondSequence, replies] = await Promise.all([
+    landed.promise,
+    ctx.readKinds('model.reply'),
+  ]);
+
+  expect(replies).toSatisfyAll((reply) => reply.sequence > secondSequence);
+  expect(replies).toHaveLength(1);
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'A biscuit, yes.' })));
   ctx.clock.advance(30_000);
