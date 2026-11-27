@@ -8,7 +8,7 @@ function setupTest() {
     config: {
       coding: codingConfigSchema.parse({
         atc: {
-          url: 'https://atc.example.net/mcp',
+          url: 'https://atc.example.net',
           principal: 'service:nixie',
           token: 'deployment:atc_token',
           targets: [{ daemon: 'cloud', target: 'cloud' }],

@@ -48,6 +48,7 @@
             "evals/memory-writer/run-memory-writer-eval.ts"
           ],
           "imp-client": ["adapters/sandbox-imp/**"],
+          "atc-client": ["adapters/coding-atc/**"],
           "db": ["libs/db/**"],
           "onnx-runtime": ["adapters/encoder-onnx/**"],
           "cel": ["modules/policy/**"]
@@ -64,6 +65,12 @@
             "modules": ["@impz/client"],
             "allow": ["imp-client"],
             "reason": "only adapters/sandbox-imp imports imp's client"
+          },
+          {
+            "name": "atc-client",
+            "modules": ["@atcx/client", "@atcx/client/connection", "@atcx/client/gateway"],
+            "allow": ["atc-client"],
+            "reason": "only adapters/coding-atc imports atc's client"
           },
           {
             "name": "sqlite",

@@ -1727,12 +1727,44 @@ test("it returns a tool's error as an error and records it as outside content", 
   expect(entries[1]?.record.contentSource).toBe('untrusted');
 });
 
-test('it refuses a typed result outside the output schema', async () => {
+test.each([
+  {
+    field: 'text',
+    output: {},
+    results: {},
+    result: { text: 3 },
+    text: 'the tool notes_read returned a result outside its output schema: data/text must be string',
+  },
+  {
+    field: 'tail/turns/0/tools/1',
+    output: {
+      properties: {
+        tail: {
+          type: 'object',
+          properties: {
+            turns: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: { tools: { type: 'array', items: { type: 'string' } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    results: { tail: 'untrusted' as const },
+    result: { text: 'a note', tail: { turns: [{ tools: ['Edit: a.ts', 7] }] } },
+    text: 'the tool notes_read returned a result outside its output schema: data/tail/turns/0/tools/1 must be string',
+  },
+])('it refuses a typed result outside the output schema at $field', async (row) => {
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
         name: 'notes_read',
-        run: () => Promise.resolve({ status: 'ok', result: { text: 3 } }),
+        output: row.output,
+        declaration: { results: row.results },
+        run: () => Promise.resolve({ status: 'ok', result: row.result }),
       }),
     ],
   });
@@ -1749,12 +1781,7 @@ test('it refuses a typed result outside the output schema', async () => {
     ctx.options,
   );
 
-  expect(result).toStrictEqual({
-    content: [
-      { type: 'text', text: 'the tool notes_read returned a result outside its output schema' },
-    ],
-    isError: true,
-  });
+  expect(result).toStrictEqual({ content: [{ type: 'text', text: row.text }], isError: true });
 });
 
 test('it writes a result record for a tool that throws, as outside content', async () => {

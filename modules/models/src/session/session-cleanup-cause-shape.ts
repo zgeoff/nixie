@@ -6,4 +6,5 @@ export const sessionCleanupCauseShape = {
   momentID: z.string().exactOptional(),
   noteID: z.string().exactOptional(),
   connectionID: z.string().exactOptional(),
+  textID: z.string().exactOptional(),
 };

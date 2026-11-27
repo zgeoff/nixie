@@ -88,6 +88,9 @@ export function buildNixieOperationSchemas() {
       references: z.array(z.string()).exactOptional(),
     }),
 
+    // a text that arrives at the assistant's own number, on the in-memory phone of a test build
+    deliverText: z.object({ from: z.string(), body: z.string() }),
+
     connectCredential: credentialProviderSchema,
     refreshCredential: credentialProviderSchema,
     readCredentialStatus: credentialProviderSchema,

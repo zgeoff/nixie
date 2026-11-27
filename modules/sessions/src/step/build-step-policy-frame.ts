@@ -41,9 +41,16 @@ function collectArrivedMails(records: readonly LogRecord[]): readonly string[] {
   const ids = records
     .filter((record) => record.kind === triggerMailWokeCodec.kind)
     .flatMap((record) => triggerMailWokeCodec.tryDecodePartial(record.payload)?.mails ?? [])
+    .filter((mail) => !isTextMailbox(mail.mailbox))
     .map((mail) => mail.messageID);
 
   return [...new Set(ids)].toSorted();
+}
+
+// Only a mail's sender can be a reply target. A text's sender is a number or a name, which no reply
+// reaches.
+function isTextMailbox(mailbox: string): boolean {
+  return mailbox.startsWith('source:');
 }
 
 function collectLinkedMessages(records: readonly LogRecord[]): readonly number[] {

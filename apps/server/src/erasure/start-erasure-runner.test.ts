@@ -41,6 +41,7 @@ async function setupTest() {
     conversation_imp: { cleanupSessions: mock(() => Promise.resolve()) },
     sandbox_runner: { cleanupSessions: mock(() => Promise.resolve()) },
     memory: { finishEvidencePurges: mock(() => Promise.resolve()) },
+    phone: { bindForget: mock(() => {}) },
   };
 
   const reader: PartReader<ErasureRunnerValues> = {

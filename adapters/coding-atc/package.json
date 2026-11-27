@@ -12,13 +12,14 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@atcx/client": "catalog:",
+    "@atcx/contract": "catalog:",
     "@heynixie/coding": "workspace:*",
     "@heynixie/logger": "workspace:*",
-    "@modelcontextprotocol/client": "catalog:",
-    "ts-pattern": "catalog:",
-    "zod": "catalog:"
+    "ts-pattern": "catalog:"
   },
   "devDependencies": {
-    "@modelcontextprotocol/server": "catalog:"
+    "@heynixie/testing": "workspace:*",
+    "@orpc/server": "catalog:"
   }
 }

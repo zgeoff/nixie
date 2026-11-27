@@ -10,11 +10,11 @@
 
 The assistant gets accounts of its own, and signs in to them in its browser without ever seeing a
 password. Its [mailbox](mail/README.md) is each account's username and way back in, and its
-[phone](phone.md) takes a site's text codes. Each account's secret sits in a vault that only the
-server reads. When the assistant asks to sign in, the request passes your rules like any other
-action, and on allow the server sends the secret over the browser guest's private channel, where it
-goes straight into the page's password field. [The wallet](wallet.md) keeps cards in the same vault
-and fills them the same way.
+[phone](../../architecture/connectors/phone.md) takes a site's text codes. Each account's secret
+sits in a vault that only the server reads. When the assistant asks to sign in, the request passes
+your rules like any other action, and on allow the server sends the secret over the browser guest's
+private channel, where it goes straight into the page's password field. [The wallet](wallet.md)
+keeps cards in the same vault and fills them the same way.
 
 Each entry sits in a group that you name, such as `nix` or `household`, and rules match a group the
 way they match a host. An entry can be [locked](locked-entries.md), so each use waits for a fresh

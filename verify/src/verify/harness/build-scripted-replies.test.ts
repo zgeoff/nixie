@@ -564,6 +564,70 @@ test('it queues the wake rule call of the mailbox before the reply', () => {
   ]);
 });
 
+test('it queues the wake rule call of the phone before the reply', () => {
+  expect(
+    buildScriptedReplies({
+      text: 'I will watch for it.',
+      phoneWatch: { from: '+61422222222' },
+    }),
+  ).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__phone_wake_set',
+        input: { from: ['+61422222222'], window: '1m' },
+      },
+    },
+    { text: 'I will watch for it.' },
+  ]);
+});
+
+test('it queues the text of the phone before the reply', () => {
+  expect(
+    buildScriptedReplies({
+      text: 'I answered.',
+      phoneSend: { to: '+61422222222', body: 'On my way.' },
+    }),
+  ).toStrictEqual([
+    {
+      toolUse: {
+        name: 'mcp__nixie__phone_send',
+        input: { to: '+61422222222', body: 'On my way.' },
+      },
+    },
+    { text: 'I answered.' },
+  ]);
+});
+
+test('it opens the text that the list of texts named', () => {
+  const replies = buildScriptedReplies({
+    text: 'I read it.',
+    phoneRead: { from: '+61422222222' },
+  });
+
+  const [, open] = replies;
+  const openCall = open !== undefined && 'toolUse' in open ? open.toolUse : null;
+  const readInput = openCall?.input;
+
+  const listed = {
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_list',
+            content: JSON.stringify({ texts: [{ text: 'k3x9a2m1', at: 'now' }] }),
+          },
+        ],
+      },
+    ],
+  };
+
+  const opened = typeof readInput === 'function' ? readInput(listed) : readInput;
+
+  expect(opened).toStrictEqual({ text: 'k3x9a2m1' });
+});
+
 test('it keeps the Gmail wake rule call and the reply for a request that offers the wake tool', () => {
   const replies = buildScriptedReplies({
     text: 'I will watch for it.',

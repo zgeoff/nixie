@@ -24,6 +24,8 @@ export interface ControlHandlers {
   ) => Promise<z.input<typeof controlRoutes.callStep.output>>;
   readonly deliverMail: (mail: z.output<typeof controlRoutes.deliverMail.input>) => Promise<void>;
 
+  readonly deliverText: (text: z.output<typeof controlRoutes.deliverText.input>) => Promise<void>;
+
   readonly deliverGmail: (mail: z.output<typeof controlRoutes.deliverGmail.input>) => void;
 
   readonly setSessionState: (
@@ -118,6 +120,13 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       [controlRoutes.deliverMail.path]: {
         POST: makeRouteHandler(controlRoutes.deliverMail, async (mail) => {
           await handlers.deliverMail(mail);
+
+          return { delivered: true as const };
+        }),
+      },
+      [controlRoutes.deliverText.path]: {
+        POST: makeRouteHandler(controlRoutes.deliverText, async (text) => {
+          await handlers.deliverText(text);
 
           return { delivered: true as const };
         }),

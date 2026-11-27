@@ -118,3 +118,19 @@ GEO-2879: POST /connections/finishConsent added `subschema #1, subschema #2` to 
 GEO-2879: POST /connections/readSetup the `connector` request property `type` changed from `any` to `string`
 GEO-2879: POST /connections/registerClient the `connector` request property `type` changed from `any` to `string`
 GEO-2879: POST /connections/startConsent the `connector` request property `type` changed from `any` to `string`
+# GEO-2883: a client of the last release still works. The computer and connections calls share the FEATURE_OFF schema, which only gains the phone value, and none of them answers with it. nixie.read lists phone only when the config has a phone section, and the web client comes from the same build as the API and reads the features without checking them against its own list.
+GEO-2883: POST /computer/handBack added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /computer/readHandover added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /computer/takeOver added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /computer/watch added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/checkPicked added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/finishConsent added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/forget added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/list added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/readForgetStatus added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/readSetup added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/registerClient added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/removeClient added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/setPicker added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /connections/startConsent added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+GEO-2883: POST /nixie/read added the new `phone` enum value to the `features/items/` response property for the response status `200`

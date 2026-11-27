@@ -12,6 +12,8 @@ minimumReleaseAge = 604800
 # Renovate bumps @zgeoff and @impz packages as soon as they publish, so each
 # one nixie uses needs an entry here, or bun install refuses the bump.
 minimumReleaseAgeExcludes = [
+  "@atcx/client",
+  "@atcx/contract",
   "@impz/client",
   "@impz/testing",
   "@wringer/browser",
@@ -57,6 +59,7 @@ preload = [
   "./modules/policy/src/mocks/test-preload.ts",
   "./adapters/definitions-repo-github/src/mocks/test-preload.ts",
   "./adapters/search-kagi/src/mocks/test-preload.ts",
+  "./adapters/phone-twilio/src/mocks/test-preload.ts",
   "./adapters/sandbox-imp/src/mocks/test-preload.ts",
   "./apps/server/src/mocks/test-preload.ts",
 ]
