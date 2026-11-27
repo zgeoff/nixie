@@ -133,7 +133,7 @@ export async function runVerifyHarness(): Promise<void> {
   const nixie = await createSpawnedNixie(stack, {
     ...(isComputerOff ? { isComputerOff: true } : {}),
     ...(isDevicesOff ? { isDevicesOff: true } : {}),
-    ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
+    ...(isCallsOn ? { voicePricePerMinute: 0.05 } : { isVoiceOff: true }),
     googleURL: google.url,
     fetchSiteURL: deviceSite.url,
     googleAPI: google.api,
