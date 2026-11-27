@@ -21,3 +21,7 @@ export const zonedFunctionNames: Readonly<Record<TimePart, string>> = {
   month: 'zonedMonth',
   year: 'zonedYear',
 };
+
+// The function that a macro's receiver passes through, so a map receiver fails the evaluation
+// instead of looping over its keys.
+export const listReceiverFunctionName = 'listReceiver';

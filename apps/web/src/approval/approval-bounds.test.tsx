@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { Window } from 'happy-dom';
 import { renderToString } from 'react-dom/server';
 import { ApprovalBounds } from './approval-bounds';
 
@@ -6,6 +7,13 @@ function setupTest() {
   return {
     render: (body: Parameters<typeof ApprovalBounds>[0]['body']) =>
       renderToString(<ApprovalBounds body={body} />).replaceAll('<!-- -->', ''),
+    parse: (markup: string) => {
+      const window = new Window();
+
+      window.document.body.innerHTML = markup;
+
+      return window.document;
+    },
   };
 }
 
@@ -28,12 +36,15 @@ test('it shows the condition under its own rule when only the second rule has on
     ],
   });
 
-  const second = markup.indexOf('Allow sends.');
-  const condition = markup.indexOf('Only in the working day.');
+  const [, first, second] = ctx.parse(markup).querySelectorAll('dl > div');
 
-  expect(markup.indexOf('Allow reads.')).toBeLessThan(second);
-  expect(second).toBeLessThan(condition);
-  expect(markup.match(/data-testid="rule-condition"/gu)).toHaveLength(1);
+  expect(first?.textContent).toContain('Allow reads.');
+  expect(first?.querySelector('[data-testid="rule-condition"]')).toBeNull();
+  expect(second?.textContent).toContain('Allow sends.');
+
+  expect(second?.querySelector('[data-testid="rule-condition"]')?.textContent).toContain(
+    'Only in the working day.',
+  );
 });
 
 test('it shows a condition of a rule that has no field of its own after the fields', () => {

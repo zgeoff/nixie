@@ -157,7 +157,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --rule-condition it first proposes a mandate with an allow rule for memory.export that holds a condition and its note, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --gmail-watch it first sets a wake rule on the connected Google account's mail for mail from that address, with --gmail-reply it first searches the connected Google account's mail, opens the first mail and replies to it, with --calendar-invite it first lists the connected Google account's events and invites a guest to a new one, with --drive-create it first searches the connected Google account's files and creates a text file, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --rule-condition it first proposes a mandate with an allow rule for memory.remember that holds a condition and its note, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --gmail-watch it first sets a wake rule on the connected Google account's mail for mail from that address, with --gmail-reply it first searches the connected Google account's mail, opens the first mail and replies to it, with --calendar-invite it first lists the connected Google account's events and invites a guest to a new one, with --drive-create it first searches the connected Google account's files and creates a text file, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -213,6 +213,15 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.layoutOnDevice.input,
       data: controlRoutes.layoutOnDevice.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.layoutOnDevice, input),
+    })
+    .action({
+      name: 'approve-held-mandate',
+      summary: 'Approve the pending mandate cards as the owner would, with no passkey',
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.approveHeldMandate.input,
+      data: controlRoutes.approveHeldMandate.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.approveHeldMandate, input),
     })
     .action({
       name: 'approve-held-mcp',

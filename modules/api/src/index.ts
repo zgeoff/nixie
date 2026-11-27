@@ -30,6 +30,7 @@ export { runActionProposalAnswer } from './proposal/run-action-proposal-answer';
 export { runMcpProposalAnswer } from './proposal/run-mcp-proposal-answer';
 export type { BodyFieldReader } from './utils/body-field-readers';
 export { bodyFieldReaders } from './utils/body-field-readers';
+export { runMandateProposalAnswer } from './proposal/run-mandate-proposal-answer';
 export { runPendingRecordForgets } from './record/run-pending-record-forgets';
 export { updateSessionLabel } from './session/update-session-label';
 export { writeKeptSessions } from './kept/write-kept-sessions';

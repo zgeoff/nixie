@@ -32,20 +32,24 @@ test('it queues the mandate call with its condition and note before the reply', 
   expect(
     buildScriptedReplies({
       text: 'The mandate waits for you.',
-      ruleCondition: { title: 'Exports today', cel: 'args.format == "json"', note: 'Json only.' },
+      ruleCondition: {
+        title: 'Memory today',
+        cel: 'args.subject == "owner"',
+        note: 'Owner facts only.',
+      },
     }),
   ).toStrictEqual([
     {
       toolUse: {
         name: 'mcp__nixie__rules_propose_mandate',
         input: {
-          title: 'Exports today',
+          title: 'Memory today',
           rules: [
             {
               outcome: 'allow',
-              tools: ['memory.export'],
-              cel: 'args.format == "json"',
-              note: 'Json only.',
+              tools: ['memory.remember'],
+              cel: 'args.subject == "owner"',
+              note: 'Owner facts only.',
             },
           ],
         },

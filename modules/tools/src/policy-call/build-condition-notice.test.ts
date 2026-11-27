@@ -45,6 +45,22 @@ test('it names a missing key that needs quotes in a condition', () => {
   );
 });
 
+test('it fences a missing key that holds a backtick with a longer run of backticks', () => {
+  expect(
+    buildConditionNotice([
+      {
+        ruleID: 'allow-term-mail',
+        outcome: 'allow',
+        revision: 1,
+        code: 'no_such_key',
+        missing: 'cc`address',
+      },
+    ]),
+  ).toBe(
+    'The rule `allow-term-mail` would allow this call, but its condition failed with the error no_such_key: the call left out the argument `` cc`address ``. Call again with it.',
+  );
+});
+
 test('it names a missing key of an ask rule by its code alone', () => {
   expect(
     buildConditionNotice([

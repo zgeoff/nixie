@@ -66,6 +66,15 @@ test('it refuses an undeclared variable with condition_type', () => {
   expect(ctx.check('user.name == "a"')).toMatchObject({ fault: 'condition_type' });
 });
 
+test.each(['tool.exists(x, x == "a")', 'definition.all(x, x == "a")', 'now.exists(x, x)'])(
+  'it refuses a macro over a name that is no list with condition_type: %s',
+  (cel) => {
+    const ctx = setupTest();
+
+    expect(ctx.check(cel)).toMatchObject({ fault: 'condition_type' });
+  },
+);
+
 test('it refuses a type error with condition_type', () => {
   const ctx = setupTest();
 

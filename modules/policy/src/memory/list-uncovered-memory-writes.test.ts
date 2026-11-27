@@ -265,14 +265,24 @@ test.each<[string, Rule]>([
   }
 });
 
-test('#listUncoveredMemoryWrites counts a condition as an error, so a rule with one covers nothing', () => {
+test('#listUncoveredMemoryWrites leaves a new fact uncovered for a rule whose condition is always true', () => {
   const rule: Rule = {
     id: 'allow-conditional-memory',
     outcome: 'allow',
     effects: ['memory_write'],
-    cel: 'now.getFullYear("UTC") > 2000',
-    note: 'Only after the year 2000.',
+    cel: '1 == 1',
+    note: 'Always true.',
   };
 
   expect(listUncoveredMemoryWrites(rule)).toContain('a new fact');
+});
+
+test('#listUncoveredMemoryWrites covers a new fact for the same rule without its condition', () => {
+  const rule: Rule = {
+    id: 'allow-memory',
+    outcome: 'allow',
+    effects: ['memory_write'],
+  };
+
+  expect(listUncoveredMemoryWrites(rule)).not.toContain('a new fact');
 });

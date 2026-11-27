@@ -166,6 +166,16 @@ test.each([
     'args.name.exists(word, word == "a")',
     { kind: 'error', code: 'invalid_comprehension_range' },
   ],
+  [
+    'exists, error on a nested map',
+    'args.to.exists(key, key == "address")',
+    { kind: 'error', code: 'invalid_comprehension_range' },
+  ],
+  [
+    'all, error on an indexed nested map',
+    'args["to"].all(key, key == "address")',
+    { kind: 'error', code: 'invalid_comprehension_range' },
+  ],
   ['all, true', 'args.words.all(word, word.size() > 3)', { kind: 'true' }],
   ['all, false', 'args.words.all(word, word == "Annual")', { kind: 'false' }],
   [
@@ -286,16 +296,16 @@ test('it normalises a string literal of the condition to NFC in the rule', () =>
 
 test('it normalises an escaped decomposed literal to match the NFC text of the call', () => {
   const ctx = setupTest();
-  const call = { args: { name: 'é' } };
+  const call = { args: { name: '\u00E9' } };
 
-  expect(ctx.evaluate(String.raw`args.name == "é"`, call)).toStrictEqual({ kind: 'true' });
+  expect(ctx.evaluate(String.raw`args.name == "e\u0301"`, call)).toStrictEqual({ kind: 'true' });
 });
 
 test('it matches a decomposed argument to an escaped composed literal', () => {
   const ctx = setupTest();
-  const call = { args: { name: 'é' } };
+  const call = { args: { name: 'e\u0301' } };
 
-  expect(ctx.evaluate(String.raw`args.name == "é"`, call)).toStrictEqual({ kind: 'true' });
+  expect(ctx.evaluate(String.raw`args.name == "\u00e9"`, call)).toStrictEqual({ kind: 'true' });
 });
 
 test.each([
@@ -389,7 +399,7 @@ test.each([
 // clocks go from 02:00 to 03:00. 2026-11-01T05:30:00Z is 01:30 in New York, which occurs twice
 // that day, and 05:30 in UTC.
 test.each(
-  ['UTC', 'America/New_York'].flatMap((hostZone) =>
+  ['UTC', 'America/New_York', 'Pacific/Auckland'].flatMap((hostZone) =>
     (
       [
         ['hour in the gap of New York', '2026-03-08T02:30:00Z', 'now.getHours("UTC") == 2'],
@@ -422,6 +432,69 @@ test.each(
           'hour of New York at the second 01:30',
           '2026-11-01T06:30:00Z',
           'now.getHours("America/New_York") == 1',
+        ],
+        ['hour in the gap of Auckland', '2026-09-27T02:30:00Z', 'now.getHours("UTC") == 2'],
+        ['minute in the gap of Auckland', '2026-09-27T02:30:00Z', 'now.getMinutes("UTC") == 30'],
+        ['date in the gap of Auckland', '2026-09-27T02:30:00Z', 'now.getDate("UTC") == 27'],
+        [
+          'minute of New York before the gap',
+          '2026-03-08T06:30:00Z',
+          'now.getMinutes("America/New_York") == 30',
+        ],
+        [
+          'weekday of New York before the gap',
+          '2026-03-08T06:30:00Z',
+          'now.getDayOfWeek("America/New_York") == 0',
+        ],
+        [
+          'date of New York before the gap',
+          '2026-03-08T06:30:00Z',
+          'now.getDate("America/New_York") == 8',
+        ],
+        [
+          'month of New York before the gap',
+          '2026-03-08T06:30:00Z',
+          'now.getMonth("America/New_York") == 2',
+        ],
+        [
+          'year of New York before the gap',
+          '2026-03-08T06:30:00Z',
+          'now.getFullYear("America/New_York") == 2026',
+        ],
+        [
+          'minute of New York after the gap',
+          '2026-03-08T07:30:00Z',
+          'now.getMinutes("America/New_York") == 30',
+        ],
+        [
+          'minute of New York at the second 01:30',
+          '2026-11-01T06:30:00Z',
+          'now.getMinutes("America/New_York") == 30',
+        ],
+        [
+          'date of New York at the first 01:30',
+          '2026-11-01T05:30:00Z',
+          'now.getDate("America/New_York") == 1',
+        ],
+        [
+          'weekday of New York at the second 01:30',
+          '2026-11-01T06:30:00Z',
+          'now.getDayOfWeek("America/New_York") == 0',
+        ],
+        [
+          'month of New York at the second 01:30',
+          '2026-11-01T06:30:00Z',
+          'now.getMonth("America/New_York") == 10',
+        ],
+        [
+          'year, month, date and weekday of New York just before the new year',
+          '2027-01-01T04:59:00Z',
+          'now.getFullYear("America/New_York") == 2026 && now.getMonth("America/New_York") == 11 && now.getDate("America/New_York") == 31 && now.getDayOfWeek("America/New_York") == 4',
+        ],
+        [
+          'year, month, date and weekday of New York at the new year',
+          '2027-01-01T05:00:00Z',
+          'now.getFullYear("America/New_York") == 2027 && now.getMonth("America/New_York") == 0 && now.getDate("America/New_York") == 1 && now.getDayOfWeek("America/New_York") == 5',
         ],
         [
           'day in a zone that is a day ahead',
@@ -546,6 +619,16 @@ test('it reports the argument that a call left out', () => {
     kind: 'error',
     code: 'no_such_key',
     missing: 'to',
+  });
+});
+
+test('it names a missing key that holds a backtick', () => {
+  const ctx = setupTest();
+
+  expect(ctx.evaluate('args["cc`address"] == 1')).toStrictEqual({
+    kind: 'error',
+    code: 'no_such_key',
+    missing: 'cc`address',
   });
 });
 

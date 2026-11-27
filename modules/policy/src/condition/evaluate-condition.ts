@@ -58,9 +58,8 @@ function toFalseOrError(value: unknown): ConditionResult {
   return value === false ? { kind: 'false' } : { kind: 'error', code: 'not_bool' };
 }
 
-// a key that names an argument, quoted or not; one with a control character or a backtick is not
-// named
-const missingKeyPattern = /^No such key: (?<key>[^\p{C}`]{1,64})$/u;
+// a key that names an argument, quoted or not; one with a control character is not named
+const missingKeyPattern = /^No such key: (?<key>[^\p{C}]{1,64})$/u;
 
 function toErrorResult(error: unknown): ConditionResult {
   const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;

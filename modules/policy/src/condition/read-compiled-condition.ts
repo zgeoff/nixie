@@ -1,12 +1,13 @@
 import type { ParseResult } from '@marcbachmann/cel-js';
 import { buildConditionView } from './build-condition-view';
-import { maxConditionChars, maxConditionDepth } from './constants';
+import { maxConditionChars, maxConditionDepth, maxConditionNodes } from './constants';
 import { getConditionDepth } from './get-condition-depth';
 import { makeConditionEnvironment } from './make-condition-environment';
 import { normalizeConditionLiterals } from './normalize-condition-literals';
 import { pickRefusedConstruct } from './pick-refused-construct';
 import { rewriteTimeMethods } from './rewrite-time-methods';
 import type { ConditionCheck, ConditionSource } from './types';
+import { wrapMacroReceivers } from './wrap-macro-receivers';
 
 export interface CompiledCondition {
   readonly check: ConditionCheck;
@@ -41,6 +42,10 @@ export function readCompiledCondition(source: ConditionSource): CompiledConditio
 }
 
 const environment = makeConditionEnvironment();
+
+// Each macro adds one wrapper node, and the node limit bounds the macros, so the node limit again is
+// room enough. The wrapper adds at most one level, and the room in depth covers it.
+const runEnvironment = makeConditionEnvironment(maxConditionNodes);
 
 // The steps run in this order and stop at the first fault.
 function compile(text: string, hasNote: boolean): CompiledCondition {
@@ -78,17 +83,20 @@ function compile(text: string, hasNote: boolean): CompiledCondition {
 
   rewriteTimeMethods(parsed.ast);
 
-  const checked = parsed.check();
+  const refused = pickTypeRefusal(parsed.check());
 
-  if (!checked.valid) {
-    return refuse('condition_type', checked.error?.summary ?? 'the type check failed');
+  if (refused !== null) {
+    return refused;
   }
 
-  if (checked.type !== 'bool') {
-    return refuse('condition_type', `the condition gives ${checked.type}, and it must give bool`);
-  }
+  const runnable = runEnvironment.parse(wrapMacroReceivers(text, parsed.ast));
 
-  return { check: { ok: true, view }, run: parsed };
+  normalizeConditionLiterals(runnable.ast);
+  rewriteTimeMethods(runnable.ast);
+
+  const wrapped = pickTypeRefusal(runnable.check());
+
+  return wrapped ?? { check: { ok: true, view }, run: runnable };
 }
 
 function refuse(
@@ -114,4 +122,18 @@ function describeError(error: unknown): string {
     typeof error.summary === 'string'
     ? error.summary
     : 'the condition does not parse';
+}
+
+// The type check runs on the text as written, which holds each macro's receiver at its own type, and
+// again on the text that runs.
+function pickTypeRefusal(checked: ReturnType<ParseResult['check']>): CompiledCondition | null {
+  if (!checked.valid) {
+    return refuse('condition_type', checked.error?.summary ?? 'the type check failed');
+  }
+
+  if (checked.type !== 'bool') {
+    return refuse('condition_type', `the condition gives ${checked.type}, and it must give bool`);
+  }
+
+  return null;
 }

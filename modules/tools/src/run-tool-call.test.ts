@@ -2080,6 +2080,103 @@ test('it runs a memory write that an ask rule decides with the ask verdict, and 
   });
 });
 
+test('it runs a memory write that an allow rule with a condition on the subject covers with the allow verdict', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'], content: ['query'] },
+        resolvePolicyFacts: (input) =>
+          Promise.resolve({
+            status: 'ok',
+            sources: ['outside'],
+            args: { ...input, subject: 'owner' },
+          }),
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'allow-owner-facts',
+        revision: 3,
+        rule: {
+          id: 'allow-owner-facts',
+          outcome: 'allow',
+          tools: ['memory.remember'],
+          cel: 'args.subject == "owner"',
+          note: 'Facts about the user only.',
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([
+    { kind: 'rule-allow', rules: [{ id: 'allow-owner-facts', revision: 3, checks: [] }] },
+  ]);
+});
+
+test('it asks on the action card for a memory write whose ask rule errors, and the card names that rule and its code', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+      }),
+    ],
+    rules: [
+      {
+        id: 'ask-big-memory',
+        revision: 3,
+        rule: {
+          id: 'ask-big-memory',
+          outcome: 'ask',
+          effects: ['memory_write'],
+          cel: 'args.count > 5',
+          note: 'Ask about the big memory writes.',
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(proposed?.record.payload).toMatchObject({
+    conditionErrors: [{ ruleID: 'ask-big-memory', revision: 3, code: 'no_such_key' }],
+  });
+});
+
 test('it records the arguments the decision read, so a replay of the stored decision reads the same ones', async () => {
   const ctx = await setupTest({
     tools: [

@@ -1,5 +1,6 @@
 import { Environment } from '@marcbachmann/cel-js';
 import {
+  listReceiverFunctionName,
   maxConditionCallArguments,
   maxConditionDepth,
   maxConditionListElements,
@@ -9,14 +10,20 @@ import {
 } from './constants';
 import { getZonedPart } from './get-zoned-part';
 
+class ListReceiverError extends Error {
+  override readonly name = 'ListReceiverError';
+
+  readonly code = 'invalid_comprehension_range';
+}
+
 // The environment registers no async function. Every name a condition reads is declared here, and
-// an undeclared one fails the type check.
-export function makeConditionEnvironment(): Environment {
+// an undeclared one fails the type check. The room in nodes and depth is for the receiver wrappers.
+export function makeConditionEnvironment(wrapperRoom = 0): Environment {
   const environment = new Environment({
     unlistedVariablesAreDyn: false,
     limits: {
-      maxAstNodes: maxConditionNodes,
-      maxDepth: maxConditionDepth,
+      maxAstNodes: maxConditionNodes + wrapperRoom,
+      maxDepth: maxConditionDepth + wrapperRoom,
       maxListElements: maxConditionListElements,
       maxCallArguments: maxConditionCallArguments,
     },
@@ -38,6 +45,14 @@ export function makeConditionEnvironment(): Environment {
       (instant: Date, zone: string) => getZonedPart(instant, zone, part),
     );
   }
+
+  environment.registerFunction(`${listReceiverFunctionName}(dyn): list<dyn>`, (value: unknown) => {
+    if (!Array.isArray(value)) {
+      throw new ListReceiverError();
+    }
+
+    return value;
+  });
 
   return environment;
 }

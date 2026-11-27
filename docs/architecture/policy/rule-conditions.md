@@ -54,7 +54,8 @@ verdict on every host.
 The check refuses every other construct with `condition_not_allowed`, such as arithmetic, `?:`, map
 literals, `matches` (a JavaScript regular expression can backtrack for seconds), `bytes`, `map`,
 `filter`, conversions and optional types. A macro over `args` itself is refused too, because a map
-loops over its keys.
+loops over its keys. A field of `args` can hold a map, which the check cannot see, so a macro whose
+receiver is no list ends the evaluation with an error.
 
 ## Checking a condition
 

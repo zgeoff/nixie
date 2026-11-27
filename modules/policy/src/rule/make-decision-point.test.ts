@@ -238,12 +238,27 @@ test('it asks at stage 4 for a spend call with another always-ask effect', async
 });
 
 test.each([
-  ['true', 'args.order.total < 15', 'allow', 7],
-  ['false', 'args.order.total > 15', 'ask', 4],
-  ['an error', 'args.order.missing < 15', 'ask', 4],
+  { title: 'true', cel: 'args.order.total < 15', expected: { outcome: 'allow', stage: 7 } },
+  { title: 'false', cel: 'args.order.total > 15', expected: { outcome: 'ask', stage: 4 } },
+  {
+    title: 'an error',
+    cel: 'args.order.missing < 15',
+    expected: { outcome: 'ask', stage: 4 },
+    conditionErrors: [
+      {
+        ruleID: 'allow-groceries',
+        outcome: 'allow',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'missing',
+      },
+    ],
+  },
 ] as const)(
-  'it lifts a purchase at stage 4 only when the condition of the lifting rule is %s',
-  async (_title, cel, outcome, stage) => {
+  'it lifts a purchase at stage 4 only when the condition of the lifting rule is $title',
+  async (row) => {
+    const conditionErrors = 'conditionErrors' in row ? row.conditionErrors : undefined;
+
     const ctx = buildTestDecisionPoint({
       declaration: buildTestDeclaration({
         effects: ['spend'],
@@ -256,7 +271,7 @@ test.each([
           tools: ['shop.order'],
           destinations: ['orders@grocer.example'],
           lift: { perAction: 20, budget: 'shopping-month' },
-          cel,
+          cel: row.cel,
           note: 'Small orders only.',
         }),
       ],
@@ -271,7 +286,8 @@ test.each([
       }),
     );
 
-    expect(decided.decision).toMatchObject({ outcome, stage });
+    expect(decided.decision).toMatchObject(row.expected);
+    expect(decided.decision.conditionErrors).toStrictEqual(conditionErrors);
   },
 );
 
@@ -1294,13 +1310,11 @@ test('it never lets a condition read a content argument of the declaration', asy
 
   const decided = await ctx.decide(buildPolicyCall({ args: { body: 'please read this' } }));
 
-  expect(decided.decision).toMatchObject({
-    outcome: 'ask',
-    cause: 'no_rule',
-    conditionErrors: [
-      { ruleID: 'allow-friendly-reads', outcome: 'allow', revision: 2, code: 'no_such_key' },
-    ],
-  });
+  expect(decided.decision).toMatchObject({ outcome: 'ask', cause: 'no_rule' });
+
+  expect(decided.decision.conditionErrors).toStrictEqual([
+    { ruleID: 'allow-friendly-reads', outcome: 'allow', revision: 2, code: 'no_such_key' },
+  ]);
 });
 
 test.each(['please', 'a different reason', ''])(

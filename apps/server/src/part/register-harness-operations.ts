@@ -1,5 +1,9 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
-import { runActionProposalAnswer, runMcpProposalAnswer } from '@heynixie/api';
+import {
+  runActionProposalAnswer,
+  runMandateProposalAnswer,
+  runMcpProposalAnswer,
+} from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
@@ -13,11 +17,16 @@ import invariant from 'tiny-invariant';
 import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
 import { harnessSpeech } from './harness-speech';
 
+export interface HarnessParts {
+  readonly calls: CallsContext | undefined;
+  readonly mail: MemoryMailHost | null;
+  readonly runInForceSeed: () => Promise<unknown>;
+}
+
 export function registerHarnessOperations(
   link: HarnessLink,
   context: TasksContext,
-  calls: CallsContext | undefined,
-  mail: MemoryMailHost | null,
+  parts: HarnessParts,
 ): void {
   const schemas = buildNixieOperationSchemas();
 
@@ -60,14 +69,14 @@ export function registerHarnessOperations(
     return outcome.status === 'controlled' ? outcome.sequence : null;
   });
 
-  registerCallOperations(link, calls);
+  registerCallOperations(link, parts.calls);
 
   link.registerOperation('deliverMail', schemas.deliverMail, (incoming) => {
-    if (mail === null) {
+    if (parts.mail === null) {
       throw new Error('the config sets no mail section, so the test build has no mailbox');
     }
 
-    return mail.deliver(incoming).hostMessageID;
+    return parts.mail.deliver(incoming).hostMessageID;
   });
 
   // The owner's approval of each pending device.addPackage call, which a journey cannot give with a
@@ -108,6 +117,20 @@ export function registerHarnessOperations(
 
     if (answers.approved === 0) {
       throw new Error(`no MCP ${request.change} proposal waits for an answer`);
+    }
+
+    return answers.approved;
+  });
+
+  link.registerOperation('approveMandate', schemas.approveMandate, async () => {
+    const answers = await runMandateProposalAnswer(context, parts.runInForceSeed);
+
+    if (answers.refused.length > 0) {
+      throw new Error(`a mandate proposal was refused: ${answers.refused.join(', ')}`);
+    }
+
+    if (answers.approved === 0) {
+      throw new Error('no mandate proposal waits for an answer');
     }
 
     return answers.approved;

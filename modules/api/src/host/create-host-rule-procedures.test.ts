@@ -248,17 +248,33 @@ test('#proposals.list shows the condition of each version of a rule, so a change
 
   await ctx.runSeed();
 
-  const [inForce] = await ctx.client.list();
+  const [before] = await ctx.client.list();
 
-  invariant(inForce, 'the seed put the rule in force');
+  invariant(before, 'the seed put the rule in force');
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'allow-term-mail',
+    rule: {
+      outcome: 'allow',
+      tools: ['mail.send'],
+      cel: 'now.getHours("UTC") < 12',
+      note: 'Term mail goes out in the morning.',
+    },
+    changedBy: 'nixie',
+    reason: 'Mail goes out earlier.',
+  });
+
+  const [after] = await ctx.client.list();
+
+  invariant(after, 'the runtime rule is in force');
 
   await seedLegacyRuleProposal(ctx.context.log, {
     changes: [
       {
         ruleID: 'allow-term-mail',
-        before: { hash: inForce.ruleHash, sentence: inForce.sentence },
-        after: { hash: inForce.ruleHash, sentence: inForce.sentence },
-        fields: [{ field: 'cel', before: 'now.getHours("UTC") < 17', after: null }],
+        before: { hash: before.ruleHash, sentence: before.sentence },
+        after: { hash: after.ruleHash, sentence: after.sentence },
+        fields: [],
       },
     ],
     effectChanges: [],
@@ -266,18 +282,29 @@ test('#proposals.list shows the condition of each version of a rule, so a change
 
   const [proposal] = await ctx.client.proposals.list();
 
-  const condition = {
-    note: 'Term mail goes out in the working day.',
-    noteBy: 'you',
-    words: 'the hour in Europe/London is before 17',
-    source: 'now.getHours("Europe/London") < 17',
-  } as const;
-
   expect(proposal?.changes).toStrictEqual([
     {
       ruleID: 'allow-term-mail',
-      before: { ruleHash: inForce.ruleHash, sentence: inForce.sentence, condition },
-      after: { ruleHash: inForce.ruleHash, sentence: inForce.sentence, condition },
+      before: {
+        ruleHash: before.ruleHash,
+        sentence: before.sentence,
+        condition: {
+          note: 'Term mail goes out in the working day.',
+          noteBy: 'you',
+          words: 'the hour in Europe/London is before 17',
+          source: 'now.getHours("Europe/London") < 17',
+        },
+      },
+      after: {
+        ruleHash: after.ruleHash,
+        sentence: after.sentence,
+        condition: {
+          note: 'Term mail goes out in the morning.',
+          noteBy: 'you',
+          words: 'the hour in UTC is before 12',
+          source: 'now.getHours("UTC") < 12',
+        },
+      },
     },
   ]);
 });

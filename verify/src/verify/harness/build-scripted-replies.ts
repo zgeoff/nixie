@@ -47,7 +47,7 @@ export function buildScriptedReplies(
                 rules: [
                   {
                     outcome: 'allow',
-                    tools: ['memory.export'],
+                    tools: ['memory.remember'],
                     cel: reply.ruleCondition.cel,
                     note: reply.ruleCondition.note,
                   },
