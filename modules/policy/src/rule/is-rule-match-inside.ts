@@ -6,8 +6,7 @@ import { isPatternMatch } from './is-pattern-match';
 
 export function isRuleMatchInside(inner: Rule, outer: Rule): boolean {
   return (
-    inner.cel === undefined &&
-    outer.cel === undefined &&
+    inner.cel === outer.cel &&
     isSooner(inner.expires, outer.expires) &&
     isPatternListInside(inner.tools, outer.tools, isToolPatternInside) &&
     isSetInside(inner.effects, outer.effects) &&

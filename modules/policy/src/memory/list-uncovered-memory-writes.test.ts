@@ -247,6 +247,7 @@ test.each<[string, Rule]>([
           args: { itemID: 'k3v9qm2xw1', subject },
           destinations: [],
           sources: [...sources, ...extra],
+          contentArgs: [],
           at: Date.parse('2026-11-17T00:00:00Z'),
         };
 

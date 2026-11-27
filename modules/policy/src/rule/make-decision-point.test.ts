@@ -1000,3 +1000,192 @@ test('it lists no naming rule when a deny rule refuses a call that an allow rule
 
   expect([decided.decision.outcome, decided.namingRules]).toStrictEqual(['deny', undefined]);
 });
+
+test('it allows at stage 7 when the condition of an allow rule is true', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-small-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.count < 5',
+        note: 'Small reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { count: 2 } }));
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'allow-small-reads', revision: 2, others: [] },
+    destinations: [],
+    snapshot: 'snapshot-1',
+  });
+});
+
+test('it asks at stage 9 when the condition of an allow rule is false', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-small-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.count < 5',
+        note: 'Small reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { count: 9 } }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9, cause: 'no_rule' });
+});
+
+test('it asks at stage 9 and lists the error when the condition of an allow rule errors', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-small-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.count < 5',
+        note: 'Small reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 9,
+    rule: null,
+    cause: 'no_rule',
+    destinations: [],
+    snapshot: 'snapshot-1',
+    conditionErrors: [
+      { ruleID: 'allow-small-reads', revision: 2, code: 'no_such_key', missing: 'count' },
+    ],
+  });
+});
+
+test('it asks with the cause condition_error at stage 6 when the condition of a deny rule errors', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 6,
+    rule: { id: 'deny-big-reads', revision: 2, others: [] },
+    cause: 'condition_error',
+    destinations: [],
+    snapshot: 'snapshot-1',
+    conditionErrors: [
+      { ruleID: 'deny-big-reads', revision: 2, code: 'no_such_key', missing: 'count' },
+    ],
+  });
+});
+
+test('it lets a deny that matches win over a deny whose condition errored', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('deny-all-reads', { outcome: 'deny', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'deny',
+    stage: 3,
+    rule: { id: 'deny-all-reads' },
+    conditionErrors: [{ ruleID: 'deny-big-reads', code: 'no_such_key' }],
+  });
+});
+
+test('it does not deny when the condition of a deny rule is false', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { count: 1 } }));
+
+  expect(decided.decision.outcome).toBe('allow');
+});
+
+test('it asks with the cause ask_rule and lists the error when the condition of an ask rule errors', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('ask-big-reads', {
+        outcome: 'ask',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+      buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 6,
+    cause: 'ask_rule',
+    rule: { id: 'ask-big-reads' },
+    conditionErrors: [{ ruleID: 'ask-big-reads', code: 'no_such_key' }],
+  });
+});
+
+test('it never lets a condition read a content argument of the declaration', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [], content: ['body'] }),
+    rules: [
+      buildRuleEntry('allow-friendly-reads', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args.body.contains("please")',
+        note: 'Polite reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { body: 'please read this' } }));
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    cause: 'no_rule',
+    conditionErrors: [{ ruleID: 'allow-friendly-reads', code: 'no_such_key', missing: 'body' }],
+  });
+});

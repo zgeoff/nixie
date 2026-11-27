@@ -177,11 +177,14 @@ function isKindCovered(rule: Omit<Rule, 'id'>, kind: WriteKind, place: Place): b
     checks: checks.filter((check) => isKeptCheck(check, kind)),
   };
 
-  const isMatched = kind.subjects.some((subject) =>
-    kind.sources.some((sources) =>
-      isRuleMatch(narrowed, buildBestCall(rule, kind, place, { subject, sources })),
-    ),
-  );
+  // a condition reads the real call, which this list never has, so it counts as an error
+  const isMatched =
+    rule.cel === undefined &&
+    kind.subjects.some((subject) =>
+      kind.sources.some((sources) =>
+        isRuleMatch(narrowed, buildBestCall(rule, kind, place, { subject, sources })),
+      ),
+    );
 
   return isMatched && isNeedMet({ checks }, kind.need);
 }
@@ -208,6 +211,7 @@ function buildBestCall(
     tool: kind.tool,
     effects: ['memory_write'],
     context: place.context,
+    contentArgs: [],
     task: place.context === 'task' ? (rule.definitions?.[0] ?? 'definition') : null,
     args: {
       subject: variant.subject,

@@ -37,6 +37,7 @@
       "@impz/client": "7.8.0",
       "@impz/testing": "7.8.0",
       "@logtape/logtape": "2.4.2",
+      "@marcbachmann/cel-js": "8.0.0",
       "@modelcontextprotocol/client": "2.4.0",
       "@modelcontextprotocol/server": "2.4.0",
       "@msw/data": "1.1.8",

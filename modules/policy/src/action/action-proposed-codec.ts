@@ -6,6 +6,12 @@ import { effectNames } from '../utils/effect-names';
 
 const ruleSchema = z.object({ hash: z.string() });
 
+const conditionErrorSchema = z.object({
+  ruleID: z.string(),
+  revision: z.number(),
+  code: z.string(),
+});
+
 export const actionProposedCodec = defineRecordCodec(
   'policy.action_proposed',
   z.object({
@@ -22,6 +28,7 @@ export const actionProposedCodec = defineRecordCodec(
       'always_ask',
       'ask_rule',
       'no_rule',
+      'condition_error',
     ]),
 
     // The fields below came after the first release, so a record without them reads as routine, with
@@ -54,5 +61,8 @@ export const actionProposedCodec = defineRecordCodec(
     // For an ask that a lift's budget caused: the budget, the amount and its reset, as the owner
     // reads them
     budgetReached: z.string().exactOptional(),
+
+    // the rules whose condition errored on the call, each with the library's error code
+    conditionErrors: conditionErrorSchema.array().exactOptional(),
   }),
 );

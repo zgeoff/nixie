@@ -1,5 +1,7 @@
 import type { z } from 'zod';
 import type { BudgetDefinition } from '../budget/parse-budget-files';
+import { checkCondition } from '../condition/check-condition';
+import type { ConditionSource } from '../condition/types';
 import type { RuleForm } from '../types';
 import { ruleFieldNames } from './rules-file-body-schema';
 import { rulesFileSchema } from './rules-file-schema';
@@ -106,8 +108,12 @@ function parseRuleFile(
     collectLiftProblems(path, id, body.lift, budgets),
   );
 
-  if (liftProblems.length > 0) {
-    return { status: 'refused', problems: liftProblems };
+  const conditionProblems = Object.entries(result.data).flatMap(([id, body]) =>
+    collectConditionProblems(path, id, body),
+  );
+
+  if (liftProblems.length > 0 || conditionProblems.length > 0) {
+    return { status: 'refused', problems: [...liftProblems, ...conditionProblems] };
   }
 
   return {
@@ -209,4 +215,19 @@ function collectLiftProblems(
           reason: `${ruleID}.lift.budget: the budget ${lift.budget} counts ${budget.counts}, and a lift needs a budget that counts spend`,
         },
       ];
+}
+
+// A fault of a condition is a problem of the rule's file, with the fault code and its detail.
+function collectConditionProblems(
+  path: string,
+  ruleID: string,
+  rule: ConditionSource | { readonly cel?: undefined },
+): RuleFileProblem[] {
+  if (rule.cel === undefined) {
+    return [];
+  }
+
+  const checked = checkCondition(rule);
+
+  return checked.ok ? [] : [{ path, reason: `${ruleID}.cel: ${checked.fault}: ${checked.detail}` }];
 }

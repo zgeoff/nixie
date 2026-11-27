@@ -5,6 +5,8 @@ import { isActionHeldMemoryTool } from '../memory/is-action-held-memory-tool';
 import { pickEntriesOfCall } from '../memory/pick-entries-of-call';
 import type {
   AllowingRule,
+  AskCause,
+  ConditionError,
   DecisionDetail,
   DecisionPoint,
   EffectDeclaration,
@@ -21,7 +23,7 @@ import type {
   StageProgress,
 } from '../types';
 import { getFixedRules } from './get-fixed-rules';
-import { isRuleMatch } from './is-rule-match';
+import { isRuleMatch, matchRule } from './is-rule-match';
 import { isToolNamed } from './is-tool-named';
 import { pickDestinationPermissions } from './pick-destination-permissions';
 import { pickLift } from './pick-lift';
@@ -90,7 +92,7 @@ function buildStageDenial(call: PolicyCall, stage: PolicyStage, sentence: string
   };
 }
 
-interface StageRun {
+interface StageInput {
   readonly options: DecisionPointOptions;
   readonly call: PolicyCall;
   readonly inputs: PolicyInputs;
@@ -98,12 +100,18 @@ interface StageRun {
   readonly progress: StageProgress;
 }
 
-async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
-  const call = run.call;
-  const declaration = run.declaration;
-  const progress = run.progress;
-  const entries = pickEntriesOfCall([...getFixedRules(), ...run.inputs.rules], call);
-  const ruleCall = buildRuleCall(run);
+interface StageRun extends StageInput {
+  readonly entries: readonly RuleEntry[];
+  readonly ruleCall: RuleCall;
+}
+
+async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
+  const call = input.call;
+  const declaration = input.declaration;
+  const progress = input.progress;
+  const entries = pickEntriesOfCall([...getFixedRules(), ...input.inputs.rules], call);
+  const ruleCall = buildRuleCall(input);
+  const run: StageRun = { ...input, entries, ruleCall };
   const pickEntry = makeEntryPicker(entries, ruleCall);
   const answers = makeConsentReader(run);
 
@@ -160,13 +168,21 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
 
   progress.stage = 6;
 
-  const asked = pickEntry('ask');
+  // a deny whose condition errored never refuses the call unseen: this stage counts it as an ask
+  // rule with the cause condition_error
+  const asked = pickAskVerdict(entries, ruleCall);
 
   if (asked !== null) {
     return buildDecision(
       run,
       6,
-      { outcome: 'ask', cause: 'ask_rule', verdict: asked, permissions, consent: answers.peek() },
+      {
+        outcome: 'ask',
+        cause: asked.isErroredDeny ? 'condition_error' : 'ask_rule',
+        verdict: asked.verdict,
+        permissions,
+        consent: answers.peek(),
+      },
       null,
     );
   }
@@ -207,13 +223,14 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
   return buildDecision(run, 9, { outcome: 'ask', cause: 'no_rule', permissions, consent }, null);
 }
 
-function buildRuleCall(run: StageRun): RuleCall {
+function buildRuleCall(run: StageInput): RuleCall {
   return {
     tool: run.call.tool,
     effects: run.declaration.effects,
     context: run.call.context,
     task: run.call.definitionID,
     args: run.call.args,
+    contentArgs: run.declaration.content.map((name) => name.split(/[.[]/u, 1)[0] ?? name),
     destinations: run.call.destinations.map((destination) => destination.value),
     sources: run.call.sources,
     at: run.call.at,
@@ -264,7 +281,7 @@ function makeConsentReader(run: StageRun): ConsentReader {
 interface Verdict {
   readonly outcome: PolicyOutcome;
   readonly verdict?: EntryVerdict;
-  readonly cause?: 'outside_steering' | 'always_ask' | 'ask_rule' | 'no_rule';
+  readonly cause?: AskCause;
   readonly permissions?: readonly (DestinationPermission | null)[];
   readonly consent?: ConsentCheck | null;
   readonly lift?: DecisionLift | null;
@@ -277,6 +294,7 @@ function buildDecision(
   sentence: string | null,
 ): PolicyDecision {
   const call = run.call;
+  const conditionErrors = collectConditionErrors(run.entries, run.ruleCall);
 
   const detail: DecisionDetail = {
     outcome: verdict.outcome,
@@ -299,6 +317,7 @@ function buildDecision(
       ? {}
       : { consent: verdict.consent }),
     snapshot: call.snapshot,
+    ...(conditionErrors.length === 0 ? {} : { conditionErrors }),
     ...(verdict.lift === undefined || verdict.lift === null ? {} : { lift: verdict.lift }),
   };
 
@@ -318,6 +337,29 @@ function buildDecision(
         }
       : {}),
   };
+}
+
+// Every rule whose condition errored on the call, whatever its outcome, by ID.
+function collectConditionErrors(
+  entries: readonly RuleEntry[],
+  ruleCall: RuleCall,
+): readonly ConditionError[] {
+  return entries
+    .toSorted((left, right) => (left.id < right.id ? -1 : 1))
+    .flatMap((entry) => {
+      const matched = entry.rule.cel === undefined ? null : matchRule(entry.rule, ruleCall);
+
+      return matched?.kind === 'error'
+        ? [
+            {
+              ruleID: entry.id,
+              revision: entry.revision,
+              code: matched.code,
+              ...(matched.missing === undefined ? {} : { missing: matched.missing }),
+            },
+          ]
+        : [];
+    });
 }
 
 // An ask at stage 5 or 9 that the owner's own words should have settled.
@@ -340,10 +382,8 @@ function listNamingRules(run: StageRun): readonly NamingRule[] {
 }
 
 function listMatchedAllowEntries(run: StageRun): readonly RuleEntry[] {
-  const ruleCall = buildRuleCall(run);
-
-  const matched = pickEntriesOfCall([...getFixedRules(), ...run.inputs.rules], run.call).filter(
-    (entry) => entry.rule.outcome === 'allow' && isRuleMatch(entry.rule, ruleCall),
+  const matched = run.entries.filter(
+    (entry) => entry.rule.outcome === 'allow' && isRuleMatch(entry.rule, run.ruleCall),
   );
 
   return matched
@@ -363,4 +403,30 @@ function listAllowingRules(run: StageRun): readonly AllowingRule[] {
 
 function isConsentGiven(consent: ConsentCheck | null): boolean {
   return consent !== null && consent.codeCheck === 'pass' && consent.checker === 'yes';
+}
+
+interface AskVerdict {
+  readonly verdict: EntryVerdict;
+  readonly isErroredDeny: boolean;
+}
+
+// The lowest ID among the ask rules that match and the deny rules whose condition errored decides
+// the ask, and the others are listed.
+function pickAskVerdict(entries: readonly RuleEntry[], ruleCall: RuleCall): AskVerdict | null {
+  const candidates = entries
+    .filter((entry) =>
+      entry.rule.outcome === 'ask'
+        ? isRuleMatch(entry.rule, ruleCall)
+        : entry.rule.outcome === 'deny' && matchRule(entry.rule, ruleCall).kind === 'error',
+    )
+    .toSorted((left, right) => (left.id < right.id ? -1 : 1));
+
+  const [first, ...rest] = candidates;
+
+  return first === undefined
+    ? null
+    : {
+        verdict: { entry: first, others: rest.map((entry) => entry.id) },
+        isErroredDeny: first.rule.outcome === 'deny',
+      };
 }

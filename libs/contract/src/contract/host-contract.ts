@@ -12,6 +12,9 @@ import { hostSessionSchema } from './host-session-schema';
 import { knownContactSchema } from './known-contact-schema';
 import { pauseStateSchema } from './pause-state-schema';
 import { recoverySchema } from './recovery-schema';
+import { ruleConflictSchema } from './rule-conflict-schema';
+import { ruleInForceSchema } from './rule-in-force-schema';
+import { ruleProposalChangeSchema } from './rule-proposal-change-schema';
 import { spendStopStandsError } from './spend-stop-schema';
 import { turnInputsContract } from './turn-inputs-contract';
 
@@ -222,35 +225,6 @@ const prompts = oc.errors({
   PROPOSAL_CLOSED: { message: 'the proposal is answered or lapsed', status: 409 },
   STALE_BASE: { message: 'the override in force moved past the proposal', status: 409 },
   PROMPT_CHECK: { message: 'the override fails the definitions checks', status: 400 },
-});
-
-const ruleVersionSchema = z.object({ ruleHash: z.string(), sentence: z.string() }).nullable();
-
-const ruleInForceSchema = z.object({
-  ruleID: z.string(),
-  revision: z.int().positive(),
-  ruleHash: z.string(),
-  sentence: z.string(),
-  origin: z.enum(['definitions', 'nixie']),
-  changeID: z.string().nullable(),
-  lastFiredAt: z.date().nullable(),
-});
-
-const ruleConflictSchema = z.object({
-  ruleID: z.string(),
-  changeID: z.string(),
-  nixie: ruleVersionSchema,
-  repo: ruleVersionSchema,
-  base: ruleVersionSchema,
-  changedBy: z.enum(['owner', 'nixie']),
-  reason: z.string(),
-  changedAt: z.date(),
-});
-
-const ruleProposalChangeSchema = z.object({
-  ruleID: z.string(),
-  before: ruleVersionSchema,
-  after: ruleVersionSchema,
 });
 
 const effectChangeSchema = z.object({

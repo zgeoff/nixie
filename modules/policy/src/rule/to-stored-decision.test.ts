@@ -97,3 +97,27 @@ test('it stores a decision that the schema of the first release parses', () => {
     rule: null,
   });
 });
+
+test('it keeps the rule, revision and code of each condition error and never the missing name', () => {
+  const stored = toStoredDecision(
+    {
+      outcome: 'ask',
+      stage: 6,
+      rule: { id: 'deny-big-reads', revision: 3, others: [] },
+      cause: 'condition_error',
+      destinations: [],
+      snapshot: 'snapshot-1',
+      conditionErrors: [
+        { ruleID: 'deny-big-reads', revision: 3, code: 'no_such_key', missing: 'count' },
+      ],
+    },
+    buildPolicyCall(),
+  );
+
+  expect(stored).toMatchObject({
+    cause: 'condition_error',
+    conditionErrors: [{ ruleID: 'deny-big-reads', revision: 3, code: 'no_such_key' }],
+  });
+
+  expect(JSON.stringify(stored)).not.toContain('count');
+});

@@ -36,6 +36,9 @@ export interface RuleCall {
   // the definition ID of the task run, or null
   readonly task: string | null;
   readonly args: Readonly<Record<string, unknown>>;
+
+  // the top-level argument names that the tool declares as content, which a condition never reads
+  readonly contentArgs: readonly string[];
   readonly destinations: readonly string[];
   readonly sources: readonly RuleSource[];
   readonly at: number;
@@ -118,7 +121,21 @@ export type PolicyOutcome = 'allow' | 'ask' | 'deny' | 'gate';
 
 export type PolicyStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
-export type AskCause = 'outside_steering' | 'always_ask' | 'ask_rule' | 'no_rule';
+export type AskCause =
+  | 'outside_steering'
+  | 'always_ask'
+  | 'ask_rule'
+  | 'no_rule'
+  | 'condition_error';
+
+// A rule whose condition errored on the call. `missing` names the argument a call left out, and
+// never reaches the log.
+export interface ConditionError {
+  readonly ruleID: string;
+  readonly revision: number;
+  readonly code: string;
+  readonly missing?: string;
+}
 
 export interface DecisionDetail {
   readonly outcome: PolicyOutcome;
@@ -137,6 +154,9 @@ export interface DecisionDetail {
   readonly consent?: ConsentCheck;
   readonly snapshot: string;
   readonly fault?: DecisionFault;
+
+  // every rule whose condition errored on this call, whatever its outcome
+  readonly conditionErrors?: readonly ConditionError[];
 
   // set when an allow rule's lift let a purchase past stage 4
   readonly lift?: DecisionLift;

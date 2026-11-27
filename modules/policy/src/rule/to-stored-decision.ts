@@ -13,6 +13,15 @@ export function toStoredDecision(detail: DecisionDetail, call: PolicyCall): Deci
       ? {}
       : { ruleOthers: [...detail.rule.others] }),
     ...(detail.cause === undefined ? {} : { cause: detail.cause }),
+    ...(detail.conditionErrors === undefined
+      ? {}
+      : {
+          conditionErrors: detail.conditionErrors.map((error) => ({
+            ruleID: error.ruleID,
+            revision: error.revision,
+            code: error.code,
+          })),
+        }),
     ...(detail.defect === undefined ? {} : { defect: detail.defect }),
     ...(detail.destinations.length > 0
       ? { permissions: detail.destinations.map((entry) => entry.permission) }

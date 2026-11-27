@@ -225,16 +225,118 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
     true,
   ],
   [
-    'an allow with a CEL condition covers no call',
-    { id: 'allow-small-sends', outcome: 'allow', tools: ['mail.send'], cel: 'size(args.to) < 3' },
+    'an allow whose condition is true covers the call',
+    {
+      id: 'allow-small-sends',
+      outcome: 'allow',
+      tools: ['mail.send'],
+      cel: 'args.count < 3',
+      note: 'Small sends.',
+    },
+    { args: { count: 2 } },
+    true,
+  ],
+  [
+    'an allow whose condition is false does not cover the call',
+    {
+      id: 'allow-small-sends',
+      outcome: 'allow',
+      tools: ['mail.send'],
+      cel: 'args.count < 3',
+      note: 'Small sends.',
+    },
+    { args: { count: 5 } },
+    false,
+  ],
+  [
+    'an allow whose condition errors does not cover the call',
+    {
+      id: 'allow-small-sends',
+      outcome: 'allow',
+      tools: ['mail.send'],
+      cel: 'args.count < 3',
+      note: 'Small sends.',
+    },
     {},
     false,
   ],
   [
-    'a deny with a CEL condition catches on its other fields',
-    { id: 'deny-big-sends', outcome: 'deny', tools: ['mail.send'], cel: 'size(args.to) > 20' },
+    'an allow with a condition and no note does not cover the call',
+    { id: 'allow-small-sends', outcome: 'allow', tools: ['mail.send'], cel: 'args.count < 3' },
+    { args: { count: 2 } },
+    false,
+  ],
+  [
+    'an ask whose condition is true catches the call',
+    {
+      id: 'ask-big-sends',
+      outcome: 'ask',
+      tools: ['mail.send'],
+      cel: 'args.count > 3',
+      note: 'Big sends.',
+    },
+    { args: { count: 5 } },
+    true,
+  ],
+  [
+    'an ask whose condition is false does not catch the call',
+    {
+      id: 'ask-big-sends',
+      outcome: 'ask',
+      tools: ['mail.send'],
+      cel: 'args.count > 3',
+      note: 'Big sends.',
+    },
+    { args: { count: 2 } },
+    false,
+  ],
+  [
+    'an ask whose condition errors catches the call',
+    {
+      id: 'ask-big-sends',
+      outcome: 'ask',
+      tools: ['mail.send'],
+      cel: 'args.count > 3',
+      note: 'Big sends.',
+    },
     {},
     true,
+  ],
+  [
+    'a deny whose condition is true catches the call',
+    {
+      id: 'deny-big-sends',
+      outcome: 'deny',
+      tools: ['mail.send'],
+      cel: 'args.count > 3',
+      note: 'Big sends.',
+    },
+    { args: { count: 5 } },
+    true,
+  ],
+  [
+    'a deny whose condition errors does not catch the call',
+    {
+      id: 'deny-big-sends',
+      outcome: 'deny',
+      tools: ['mail.send'],
+      cel: 'args.count > 3',
+      note: 'Big sends.',
+    },
+    {},
+    false,
+  ],
+  [
+    'an ask whose tool differs is not asked about its condition',
+    {
+      id: 'ask-big-sends',
+      outcome: 'ask',
+      tools: ['files.remove'],
+      cel: 'args.count > 3',
+      note: 'Big sends.',
+    },
+    {},
+    false,
   ],
 ])('it matches when %s: %p', (_label, rule, call, isMatch) => {
   expect(
@@ -246,6 +348,7 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
       args: {},
       destinations: [],
       sources: [],
+      contentArgs: [],
       at: 0,
       ...call,
     }),
@@ -278,6 +381,7 @@ test.each([
         args: { name: 'Garden plan', brief: 'Plan the beds.', ...args },
         destinations: [],
         sources: [],
+        contentArgs: [],
         at: 0,
       }),
     ).toBe(isMatch);
@@ -307,6 +411,7 @@ test.each([
     args: {},
     destinations: [],
     sources: [],
+    contentArgs: [],
     at: 0,
   };
 
@@ -334,6 +439,7 @@ test.each([
     args: {},
     destinations: [],
     sources: [],
+    contentArgs: [],
     at: 0,
   };
 
