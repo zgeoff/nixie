@@ -13,32 +13,54 @@ entries are part of the `vault` feature, and need no config of their own.
 ## Contracts
 
 ```ts
-// vault module; the locked_wrappers table, beside the key store's other wrappers
+// vault module; the locked_wrappers table. The wrapped bytes sit in the key store under a random
+// ID, as the credential store keeps a credential's bytes, so the erasure runner captures them.
 interface LockedWrapper {
   entryID: string;
   credentialID: string; // the passkey whose PRF output wraps this copy
-  salt: string; // random per entry; the PRF input, so each entry's wrapping key differs
-  wrapped: SealedValue; // the secret key under a key derived from that PRF output
+  keyID: string; // crypto.randomUUID(); the key store entry that holds the wrapped secret key
 }
+// one salt per entry, on the vault_entries row: the PRF input, so each entry's wrapping key differs
 
-// contract lib: prf is the PRF output of the same WebAuthn assertion that answers the request, from
-// a signed-in client's full session. The assertion's challenge is of the new locked_answer kind,
-// which joins alwaysAskKinds, so the passkey window never covers it and every call taps.
-type PRFUnlock = { credentialID: string; output: string };
+// contract lib: a locked check is a passkey check of the new locked_answer kind. The vault part
+// adds the kind to alwaysAskKinds, so the passkey window never covers it, and to the core list of
+// fresh-tap checks below. Its challenge carries the PRF input:
+passkeys.challenge({ check: { kind: 'locked_answer', account, op, ...opFields } });
+// → { options, prfSalt } ; op: 'lock' | 'add_passkey' | 'unlock' | 'reveal' | 'update' | 'answer'
+//   | 'resume'. The challenge binds the op and its fields, never the PRF output, so the request
+//   that carries the assertion and its PRF output answers the challenge with no loop.
+type PRFUnlock = { credentialID: string; output: string }; // from the same assertion
 
 // approvals: prf rides as an opaque feature payload, which core passes to the vault part unread
 approvals.answerProposal({ proposalID, actionHash, choice, clientActionID, passkey, prf });
-approvals.answerUnknownOutcome({ proposalID, choice, passkey, prf }); // prf for a retry
+approvals.answerUnknownOutcome({ actionID, choice, clientActionID, passkey, prf }); // prf for a retry
+approvals.answerLockedHold({ actionID, clientActionID, passkey, prf }); // resumes a held attempt
 // the vault checks prf.credentialID against the assertion's own credential and the entry's
 // wrapper, and the entry's version inside the hashed call; it unwraps the secret key in memory for
 // the next attempt, and drops the key and the PRF output when that attempt ends
 
-vault.lock({ account, prf }); // new secret key, sealed again, wrapped under prf's passkey; the old
-//   key is destroyed. Refuses NO_PRF when the assertion returned no PRF output
-vault.addLockPasskey({ account, prf, newPRF }); // two assertions in one request: prf from a passkey
-//   that holds a copy, newPRF from the one to add; nothing changes unless both verify
-vault.unlock({ account, prf }); // a new secret key that the key store holds unwrapped again
-vault.reveal({ account, prf }); // prf only for a locked entry
+vault.lock({ account, passkey, prf }); // new secret key, sealed again, wrapped under prf's passkey;
+//   the old key is destroyed. Refuses NO_PRF when the assertion returned no PRF output
+vault.addLockPasskey({ account, passkey, prf, newPasskey, newPRF }); // two challenges and two taps:
+//   one from a passkey that holds a copy, one from the passkey to add; nothing changes unless both
+//   verify
+vault.unlock({ account, passkey, prf }); // a new secret key that the key store holds unwrapped again
+vault.reveal({ account, passkey, prf }); // prf only for a locked entry
+vault.update({ account, secret, passkey, prf }); // a new secret on a locked entry: sealed under the
+//   same secret key, which prf unwraps for this call only, so the wrappers stay as they are
+```
+
+```ts
+// approvals module: the core list of fresh-tap checks, which features fill
+interface FreshTapCheck {
+  isFreshTap(row: ProposalRow): boolean; // the vault: a call that reads a locked secret; the
+  //   wallet: a wallet.pay with repeats
+}
+// For a row whose check says yes:
+// - the window never covers its answer, and answerProposal takes the passkey every time;
+// - answerProposals refuses it with PASSKEY_REQUIRED, open window or not;
+// - a host command refuses a locked row, which needs a PRF output only a passkey makes, and
+//   answers a repeating purchase as it answers any row.
 ```
 
 ## Constraints
@@ -48,8 +70,8 @@ vault.reveal({ account, prf }); // prf only for a locked entry
 - Every call that reads a locked entry's secret is an `always_ask` row: `sign_in`, `rotate`,
   `wallet.pay` and `vault.reveal`. Its card offers no "always allow", no lift passes a `wallet.pay`
   on a locked card, and a decision of allow still asks.
-- An answer to many proposals at once never approves a call on a locked entry. Each takes its own
-  tap.
+- An answer to many proposals at once never approves a call that reads a locked secret. Each takes
+  its own tap, as the fresh-tap list above sets.
 - The vault reads a locked secret only inside an action whose answer carried a `prf` that the server
   verified for that action. It refuses a `prf` whose credential holds no copy for the entry, or
   whose assertion answers another proposal.
@@ -57,8 +79,12 @@ vault.reveal({ account, prf }); // prf only for a locked entry
   drops both when the attempt ends, on success, refusal, timeout or cancel, and when the action ends
   before its attempt starts. Nothing writes either to disk or to a log. The web client drops the PRF
   output once the request returns.
-- A retry, a restart and a task that pauses before its attempt each need a fresh tap. The queue
-  holds such an attempt in a hold of its own until you answer it with a `prf`.
+- A retry, a restart and a task that pauses before its attempt each need a fresh tap. The queue puts
+  such an action in a `locked_tap` hold, an action state that waits on you, and
+  `approvals.answerLockedHold` resumes it with a `prf`. The approved proposal stays closed. A retry
+  of an unknown outcome takes its `prf` through `answerUnknownOutcome`.
+- A call on a locked entry that reads no secret, such as `add_origin` or a group change, follows the
+  rules and the passkey window as on any entry.
 - `vault.lock` makes a new secret key, seals the secret again under it, wraps it, and destroys the
   old key, so a backup of the key store from before the lock can't open the secret sealed after it.
   `vault.unlock` makes a new secret key the same way.

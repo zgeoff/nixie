@@ -2,7 +2,7 @@
 
 - **Status:** agreed
 - **Decision records:** [0057](../../decisions/0057-every-optional-feature-has-a-switch.md)
-- **Work items:** [the assistant's phone](https://linear.app/zgeoff/issue/GEO-2731)
+- **Work items:** [the assistant's phone](https://linear.app/zgeoff/issue/GEO-2883)
 
 The assistant has a mobile number of its own that takes texts. It lists, reads and sends texts, and
 a sign-up code reaches it by text. A new text wakes the conversation or a task only when a wake rule
@@ -26,21 +26,46 @@ flowchart LR
 ## Contracts
 
 ```ts
-// phone module; PhoneProvider interface, adapter phone-twilio, against the provider's API with fetch
-phone.list({ from: '+61400000000' }); // from: optional
+// phone module; PhoneProvider interface, adapter phone-twilio, against the provider's API through
+// the credential store's fetcher
+phone.list({ from: 'Example' }); // from: optional, a number in E.164 form or a sender name
 // → { number: '+61411111111', texts: [{ text: 'tx8k2m4q9w', from: 'Example', body: 'Your code is 5521',
 //     at }], next: null }   number: the assistant's own
 phone.read({ text: 'tx8k2m4q9w' }); // → { from, body, at }
-phone.send({ to: '+61400000000', body: 'Running 10 minutes late.' }); // → { text: 'tx2w9q4k8m' }
+phone.send({ to: '+61400000000', body: 'Running 10 minutes late.' }); // → the action's short ID;
+//   its outcome holds { text: 'tx2w9q4k8m' }
 // refusals: UNKNOWN_TEXT, BAD_NUMBER, TOO_LONG (over 640 characters), SEND_FAILED
-phone.wake_set({ from: ['Example'], seconds: 900 }); // a wake rule on the phone's arrivals, as mail.wake_set
+phone.wake_set({ from: ['Example'], body: 'code', expires: '30m', window: '1m' });
+// → { rule, expiresAt, window, replaced, recent }: the same arguments, result and rules as
+//   mail.wake_set, on the mailbox { kind: 'phone' }, with body in place of subject
+phone.wake_list(); // and phone.wake_cancel({ rule }), as mail.wake_list and mail.wake_cancel
 ```
 
-| Tool                       | Effect  | Runs   | Destination |
-| -------------------------- | ------- | ------ | ----------- |
-| `phone.list`, `phone.read` | `read`  | direct | none        |
-| `phone.wake_set`           | `write` | direct | none        |
-| `phone.send`               | `send`  | queued | the number  |
+| Tool                                          | Effect | Runs   | Destination |
+| --------------------------------------------- | ------ | ------ | ----------- |
+| `phone.list`, `phone.read`, `phone.wake_list` | `read` | direct | none        |
+| `phone.wake_set`, `phone.wake_cancel`         | `note` | direct | none        |
+| `phone.send`                                  | `send` | queued | the number  |
+
+```ts
+// triggers module: the wake rule contract in mail/wake-rules.md widens for the phone
+type Mailbox = { kind: 'mail' } | { kind: 'gmail'; connectionID: string } | { kind: 'phone' };
+// mailboxKey: 'phone' for the phone
+interface WakeMatch {
+  // …existing fields
+  body?: string; // the phone only: a substring of the text, both sides in NFC and lowered
+}
+// TriggerEvent gains TextArrivalEvent, and TriggerSource.kind gains 'phone'
+interface TextArrivalEvent {
+  kind: 'phone';
+  mailbox: { kind: 'phone' };
+  dedupeKey: string; // the provider's message ID
+  occurredAt: string;
+  payload: { messageID: string; from: string; receivedAt: number; body: string }; // messageID: short ID
+}
+// A text event takes the same steps as a mail event in deliverTriggerBatch. Its wake renders as a
+// `text` system message, from the wake record's erasable fields, as a mail wake does.
+```
 
 ```yaml
 # deployment config. Absent: the phone is off.
@@ -50,21 +75,25 @@ phone:
   twilio: # the adapter's own section; the phone module never reads it
     account_sid: AC0000
     api_key_sid: SK0000
-    credential: deployment:phone # the API key secret alone, sent as HTTP Basic with the key SID
+    credential: deployment:phone # the API key secret alone
 ```
 
 ```text
 phone_texts            -- phone module; short ID → the provider's message ID
 phone.text_received    -- one per new text, keyed by the provider's message ID; from and body erasable
+phone_send_claims      -- phone module; action ID → the provider's message ID it settled on; the
+                          message ID is unique, so one message settles one action
 ```
 
 ## Constraints
 
 - The phone module owns `PhoneProvider`, and `adapters/phone-twilio` is its one adapter. No core
-  module names the phone or the provider.
-- Each new text is one arrival in the trigger core, from a source the phone part fills into the
-  core's list of wake sources. A text that no wake rule matches wakes nothing, and `phone.list`
-  still finds it.
+  module names the phone or the provider. The phone part fills the triggers module's list of wake
+  sources with the `phone` source.
+- The adapter takes its secret through `resolveCredential` and the credential store's fetcher, bound
+  to the provider's API origin. The fetcher sends it as HTTP Basic, with the API key SID as the
+  user, so the adapter never holds the secret.
+- A text that no wake rule matches wakes nothing, and `phone.list` still finds it.
 - A wake rule matches `from` as a number in E.164 form, or as a sender name without case. Anyone can
   send a text under any sender name, so a code from a named sender is only as good as a code from a
   stranger.
@@ -72,18 +101,23 @@ phone.text_received    -- one per new text, keyed by the provider's message ID; 
   assistant, which types it with `computer.browser_fill`.
 - The adapter reads the provider's message list every `poll_interval`, so nixie needs no address the
   internet can reach. At its first start it records the provider's state and writes no record for
-  older texts. After an outage it writes a record for each text it missed, and only those from the
-  last hour make arrivals.
+  older texts. After an outage it writes a `phone.text_received` record for each text it missed, and
+  makes an arrival only for those received in the last hour.
 - The number takes texts only. The provider's settings refuse calls, and nixie places none.
 - The always-allow rule of `phone.send` pins `to`. The configured number is a `nixie_own` place at
   `act` in [trusted places](trusted-places.md), and `phone.send`'s destination parses as a phone
   place.
-- A send reconciles an unknown outcome by finding a message to the same number with the same body,
-  created during the attempt and recorded by no other send. With no message found, it asks the user
-  through `answerUnknownOutcome`.
+- A send reconciles an unknown outcome by looking for a message to the same number with the same
+  body, created during the attempt. It settles `found` only when exactly one such message has no row
+  in `phone_send_claims`, and claims that message in the same transaction. With none, or with more
+  than one, it asks the user through `answerUnknownOutcome`.
 - `phone.text_received` declares `from` and `body` in `ErasableRecordKinds`, the server record-kind
   map and one descriptor list. Forgetting a text erases nixie's copy and leaves the text at the
   provider.
+- `phone.list` and `phone.read` give their tool call records the form the
+  [tool calls](../../architecture/connectors/tool-calls.md) doc sets for text another record guards,
+  so the call keeps no readable copy after a forget. A wake that showed the text keeps it in its own
+  erasable fields, which a forget of the wake erases, as the mail wakes do.
 - When a sign-up asks for a phone number and the phone is on, the assistant gives its own number and
   reads the code from the text. With the phone off, it hands the step to the user.
 
