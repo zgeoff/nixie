@@ -11,10 +11,10 @@ on it and the questions still open. Start the design with a `Status` line: `draf
 approves it, then `agreed`. Give every design in this folder a row in the table.
 
 When the work is built, move the design's lasting facts to
-[`docs/architecture/`](../../architecture/) then delete the design and its row in the table. A built
-design left here would describe code that has since changed, and a reader could not tell it from one
-still to build. When only part is built, move the built part's facts and trim the design to what is
-still to build.
+[`docs/architecture/`](../../architecture/), then delete the design and its row in the table. A
+built design left here would describe code that has since changed, and a reader could not tell it
+from one still to build. When only part is built, move the built part's facts and trim the design to
+what is still to build.
 
 | Area            | Designs                                                                                       |
 | --------------- | --------------------------------------------------------------------------------------------- |
