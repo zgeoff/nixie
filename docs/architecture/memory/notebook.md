@@ -139,7 +139,7 @@ it, and the `notebook.forget` tool forgets one as it forgets any other.
 ## Forgetting a note
 
 The user forgets a note through the checked action `notebook.forget` in the web client, and the
-assistant forgets one of her own with the `notebook.forget` tool. Both append the same records,
+assistant forgets one of its own with the `notebook.forget` tool. Both append the same records,
 which differ only in who forgot. The client's call is in the
 [API](../channels/api.md#forgetting-a-note). The forget runs in 2 parts, as a
 [moment destroy](./moments.md#destroying-a-moment) does:
@@ -181,5 +181,5 @@ note's title left out.
 
 The notebook adds one entry to the [events block](../core/conversation-turns.md#the-events-block): a
 line for each finished note forget by the user, such as "Sam forgot note n4w8k2c6rd". A forget by
-the assistant adds no line, because she made it herself. The server registers the entry only when
-the `forget_notices.note` setting is on, which is the default.
+the assistant adds no line, because it made the forget itself. The server registers the entry only
+when the `forget_notices.note` setting is on, which is the default.

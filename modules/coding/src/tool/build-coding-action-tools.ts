@@ -14,7 +14,10 @@ export function buildCodingActionTools(): ToolDefinition[] {
 
     return {
       name,
-      description: `The coding runner queues ${name} on a coding task's thread, and no model calls it.`,
+      description:
+        name === codingToolNames.spawn
+          ? 'Starts the coding session of a coding task.'
+          : "Stops a coding task's session.",
       input: { type: 'object' },
       output: { type: 'object' },
       declaration,

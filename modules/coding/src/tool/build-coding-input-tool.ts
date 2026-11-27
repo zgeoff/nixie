@@ -19,15 +19,8 @@ const inputSchema = z.strictObject({
 });
 
 const descriptions: Readonly<Record<CodingInputKind, string>> = {
-  steer:
-    "Types text into a coding task's session and presses Enter, so the coding agent takes it " +
-    'as a user turn, as a line typed by the user. Use it to change what the session works on. ' +
-    'It is refused while the session waits on a menu. Returns the action: done, failed, ' +
-    'pending or unknown.',
-  message:
-    "Sends a coding task's session a note beside its conversation. The agent can answer it, and " +
-    'the answer comes back to you as a message; a note never steers the session. Returns the ' +
-    'action: done, failed, pending or unknown.',
+  steer: "Tells a coding task's session what to work on next.",
+  message: "Asks a coding task's session a side question, without changing what it works on.",
 };
 
 // coding.steer and coding.message. Each queues its action on the coding task's thread, caused by

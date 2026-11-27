@@ -10,6 +10,8 @@
     "@heynixie/actions": "workspace:*",
     "@heynixie/api": "workspace:*",
     "@heynixie/backup": "workspace:*",
+    "@heynixie/coding": "workspace:*",
+    "@heynixie/coding-atc": "workspace:*",
     "@heynixie/connections": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",

@@ -150,9 +150,6 @@ this worktree's `.wringer/`. `--target` on one command points that command alone
 neither runs on the registry's first target.
 
 <!-- repo: targets -->
-
-[Targets](references/targets.md) lists start commands.
-
 <!-- /repo -->
 
 ## Commands
@@ -175,9 +172,10 @@ target refuses each `[write]` command except `publish`, which writes no app data
 
 <!-- repo: registry -->
 
-Declare targets, actions, commands, checks and features in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts), with globs in
-[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
+Declare the registry in
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). List each
+feature's packages and files in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts),
+and what every journey runs in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
 
 <!-- /repo -->
 

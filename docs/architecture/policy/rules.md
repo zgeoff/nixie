@@ -252,7 +252,7 @@ conversation tool `rules.propose_mandate`, which only the conversation holds and
 `note` effect, because its call writes a proposal and nothing else. `policy.mandates.max_hours`
 limits the expiry, counted from the proposal, and the default expiry is the next midnight in the
 user's time zone. The tool's description states that limit, read from the setting, so nixie knows
-the longest mandate before she proposes one.
+the longest mandate before it proposes one.
 
 The rule store refuses a past or too late expiry, and each refusal carries the facts that fix it, in
 the user's zone. `expires_past` carries `now`, the time the expiry was compared against.
@@ -283,7 +283,7 @@ and, for a rule that reaches memory, the memory writes it will not cover
 
 ### Reading mandates and rules
 
-nixie reads her mandates and her standing rules with the conversation tool `rules.list`, which
+nixie reads its mandates and its standing rules with the conversation tool `rules.list`, which
 declares the `read` effect, so the starter rule `allow-reads` lets it through. It returns 2 lists:
 
 - `mandates`: the 50 newest mandates, the newest proposal first. Each holds the proposal's short ID,

@@ -15,14 +15,15 @@ The code tool takes a program, its language and the files it reads, and returns 
 output and the files the program wrote. It declares the `code_run` effect, and its result is outside
 content. Every code run, from the conversation, a task or a worker, gets a fresh imp from the code
 image, with egress `none`, no grants and no tool route, destroyed when the call returns. The tool
-runs on the host, so the decision point decides every code run and the record holds it.
+runs on the host, so [the decision point](../policy/decision-point.md) decides every code run, and
+the [event log](../core/event-log.md) holds the decision.
 
 A code run has fixed limits: 60 s of wall time, 512 MiB of memory, 1 MiB of output per stream, 20
 MiB of files out and 1 vCPU. They bound each code run, and the output limits bound how far the
 database and its backups grow. They are constants with no config key, so no rule or user raises
 them. Input files are files an earlier code run wrote and pages the web fetch stored. A `skills`
 list places each named skill's folder read-only in the sandbox, as the
-[skills design](../skills.md#scripts) sets out. A program that needs outside data gets it through
+[skills design](../skills.md#scripts) sets out. To give a program outside data, fetch it with
 another tool first, because the code imp has no route out. See
 [the code tool](../../../architecture/connectors/code-tool.md) for the contracts, the limits and
 what the code image holds.
@@ -35,8 +36,8 @@ credentials, lifecycle and agent harness. A coding runner drives one adapter, an
 adapter's ID.
 
 The interface's calls are `start`, `join`, `list`, `read`, `steer`, `message`, `stop` and `events`.
-See [the atc adapter](../../../architecture/connectors/coding-atc.md) for the calls and the coding
-module for their signatures.
+See [the atc adapter](../../../architecture/connectors/coding-atc.md) for the calls and
+[the coding module](../../../../modules/coding/src) for their signatures.
 
 A session is a task, so it shows on the dashboard. nixie starts a session, or joins one you already
 run, through the `coding.start` tool, which declares `coding_start`, so your rules decide both.
@@ -49,11 +50,13 @@ session's events reach the task's thread as records. See
 ## The atc adapter
 
 atc runs each coding session as a supervised agent under its own rules. The `coding-atc` adapter
-calls atc-gateway's MCP tools over HTTP as a service client. In each atc daemon's config, grant that
-client the targets nixie uses. The adapter never goes through the [MCP proxy](mcp-proxy.md), and the
-model never sees atc's own tools, so your rules decide every start, steer, note and stop. See
+calls atc-gateway's typed fleet API over HTTP as a service client. atc owns the grant: in each atc
+daemon's config, grant that client the targets nixie uses, as
+[the atc adapter](../../../architecture/connectors/coding-atc.md) lists. The adapter never goes
+through the [MCP proxy](mcp-proxy.md), and the model never sees atc's own tools, so your rules
+decide every start, steer, note and stop. See
 [the atc adapter](../../../architecture/connectors/coding-atc.md) for the map of each adapter call
-onto the gateway's tools.
+onto the gateway's fleet procedures.
 
 ## The built-in adapter
 

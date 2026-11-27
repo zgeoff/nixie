@@ -438,7 +438,7 @@ function buildCodingConfigLines(): string[] {
   return [
     'coding:',
     '  atc:',
-    '    url: https://atc.example.test/mcp',
+    '    url: https://atc.example.test',
     '    principal: service:nixie',
     '    token: deployment:atc_token',
     '    targets:',

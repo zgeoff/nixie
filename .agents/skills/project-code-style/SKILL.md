@@ -1,10 +1,11 @@
 ---
 name: project-code-style
 description:
-  "The one code-style rule nixie replaces: a method that a library calls by name, such as Kysely's
-  executeQuery, keeps that name even when it starts with a banned verb. Also how to exempt such a
-  name, and how to pass a handler such as a fetch handler without a lint failure. Load it beside
-  code-style before you write, review or rename TypeScript in nixie."
+  "nixie's code-style rules beside the shared ones: how to keep the name of a method that a library
+  calls by name, such as Kysely's executeQuery, even when it starts with a banned verb; how to
+  exempt such a name; how to pass a handler such as a fetch handler without a lint failure; and how
+  to write the description the assistant reads for a tool. Load it beside code-style before you
+  write, review or rename TypeScript in nixie, including a tool's description."
 metadata:
   kind: rule-set
 ---
@@ -33,3 +34,22 @@ metadata:
   arrow function or a method shorthand from its key. So `fetch: (request) => ...` counts as a
   function named `fetch`, and fails, because code-style bans `fetch` as a leading verb. Never add
   `fetch` to `exemptNames`: the rule would then skip every function named `fetch`.
+
+## Tool descriptions
+
+The assistant, the model nixie runs, reads each tool's description on every turn and treats each
+line as something to act on or to worry about. Write each description for the assistant.
+
+- Say what the tool is for and when to reach for it, in a sentence or two.
+- Say what the tool does, and leave out whose words or action it carries. If you write "typed by the
+  user", the assistant doubts that it may use the tool. If you write "your own instruction", it
+  wonders why it's told. Describe a steer as a steer, as in "Tells a coding task's session what to
+  work on next."
+- Leave out how the tool works, such as how text reaches a session, and the cases where it is
+  refused. The assistant learns from the tool's result when a call fails, and why.
+- Never list everything the assistant can do with the tool, or with nixie. It picks only from a list
+  it sees, and stops trying anything the list leaves out.
+- Refer to the assistant as "the assistant" or "it". Its name and pronouns belong to each
+  deployment.
+- Name the tool for its intent, as `coding.steer` does, so the description needs no warning about
+  misuse.
