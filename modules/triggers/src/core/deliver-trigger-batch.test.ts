@@ -780,8 +780,14 @@ test('it takes the fire of an exempt task while nixie is paused', async () => {
   const rows = await readTestTriggerRows(ctx);
 
   expect(result).toStrictEqual({ delivered: 1 });
-  expect(records.map((record) => record.kind)).toStrictEqual(['trigger.armed', 'trigger.fired']);
-  expect(rows.keys).toHaveLength(1);
+
+  expect(
+    records.filter((record) => record.kind === 'trigger.fired').map((record) => record.thread),
+  ).toStrictEqual([taskID]);
+
+  expect(rows.keys.map((row) => row.source_key)).toStrictEqual([
+    'schedule\nwater-the-tomatoes|2027-03-10T08:00',
+  ]);
 });
 
 test('it delivers a mail arrival while nixie is paused', async () => {
@@ -789,7 +795,7 @@ test('it delivers a mail arrival while nixie is paused', async () => {
 
   await ctx.taskSeed.conversationStep();
 
-  await seedWakeRule(ctx, { match: { from: ['@library.example.org'] } });
+  const rule = await seedWakeRule(ctx, { match: { from: ['@library.example.org'] } });
 
   await ctx.pauseNixie();
 
@@ -805,8 +811,35 @@ test('it delivers a mail arrival while nixie is paused', async () => {
     kinds: ['trigger.mail_arrived'],
   });
 
+  const inbox = await readInbox(ctx.context, 'conversation');
+
   expect(result).toStrictEqual({ delivered: 1 });
   expect(arrivals).toHaveLength(1);
+
+  expect(
+    inbox.filter((record) => record.kind === 'trigger.mail_woke').map((record) => record.payload),
+  ).toStrictEqual([
+    {
+      taskID: 'conversation',
+      mails: [
+        {
+          arrived: expect.any(Number),
+          mailbox: 'mail',
+          messageID: 'mz4k8q2w7p',
+          threadID: 'th6p2k9w4x',
+          receivedAt: Date.parse('2027-03-09T00:00:01.000Z'),
+        },
+      ],
+      rules: [
+        {
+          ruleID: rule.ruleID,
+          shortID: rule.shortID,
+          match: { from: ['@library.example.org'] },
+          expiresAt: null,
+        },
+      ],
+    },
+  ]);
 });
 
 test('it delivers the same fire once the pause lifts, because its key stayed free', async () => {
