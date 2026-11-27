@@ -84,6 +84,16 @@ export const controlRoutes = {
       // when the result names none
       reminder: z.strictObject({ name: z.string().min(1), note: z.string().min(1) }).optional(),
 
+      // a mandate that the model proposes with the mandate tool before its reply: one allow rule for
+      // the memory export, held by a condition with its note
+      ruleCondition: z
+        .strictObject({
+          title: z.string().min(1),
+          cel: z.string().min(1),
+          note: z.string().min(1),
+        })
+        .optional(),
+
       // an export of the memory the model asks for before its reply, which the starter rules hold
       // for your approval
       export: z.boolean().optional(),

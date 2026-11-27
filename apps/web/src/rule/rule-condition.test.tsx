@@ -10,7 +10,7 @@ function setupTest() {
           condition={{
             note: 'School mail can go out in the working day.',
             noteBy,
-            words: 'the hour in Europe/London is before 17',
+            words: '`args.count` is less than 17',
             source: 'now.getHours("Europe/London") < 17',
           }}
         />,
@@ -34,7 +34,8 @@ test('it shows the condition in words and the expression behind a control', () =
   const ctx = setupTest();
   const markup = ctx.render('you');
 
-  expect(markup).toContain('the hour in Europe/London is before 17');
+  expect(markup).toContain('<code class="');
+  expect(markup).toContain('args.count</code><span> is less than 17</span>');
   expect(markup).toContain('<summary>Show the expression</summary>');
   expect(markup.indexOf('Show the expression')).toBeLessThan(markup.indexOf('now.getHours'));
 });

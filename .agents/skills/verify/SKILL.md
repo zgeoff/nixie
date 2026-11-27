@@ -53,6 +53,7 @@ These cost the most time:
 | chat-turn          | Send a message, and see the reply after it                        | [references/feature-chat-turn.md](references/feature-chat-turn.md)                   |
 | memory-approval    | Approve a proposed memory                                         | [references/feature-memory-approval.md](references/feature-memory-approval.md)       |
 | policy-proposal    | Approve a call that an ask rule held unrun                        | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
+| rule-condition     | Approve a rule with a condition, and see it match and not match   | [references/feature-rule-condition.md](references/feature-rule-condition.md)         |
 | task-control       | Pause and resume a task                                           | [references/feature-task-control.md](references/feature-task-control.md)             |
 | coding-session     | Start a coding session from chat                                  | [references/feature-coding-session.md](references/feature-coding-session.md)         |
 | coding-supervision | Supervise a coding session from the live view                     | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |

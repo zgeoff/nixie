@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
+import { RuleSentence } from './rule-sentence';
 
 export interface RuleConditionProps {
   readonly condition: {
@@ -26,7 +27,7 @@ export function RuleCondition(props: RuleConditionProps): ReactNode {
         <strong>{label}:</strong> {condition.note}
       </p>
       <p>
-        <strong>The condition:</strong> {condition.words}
+        <strong>The condition:</strong> <RuleSentence sentence={condition.words} />
       </p>
       <details>
         <summary>Show the expression</summary>
