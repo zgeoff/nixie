@@ -1,91 +1,180 @@
-// Globs are root-relative, as `git ls-files` prints them, and match with Bun.Glob. Every journey
-// runs the server on the test sandbox, its conversation guest, and the web client behind one
-// origin, so each feature holds all of their source.
-const everyJourney = [
-  'apps/server/**',
-  'apps/web/**',
-  'modules/**',
-  'libs/**',
-  'guests/**',
-  'adapters/coding-atc/**',
-  'adapters/connector-google/**',
-  'adapters/definitions-repo-github/**',
-  'adapters/encoder-onnx/**',
-  'adapters/image-gemini/**',
-  'adapters/image-openai/**',
-  'adapters/phone-twilio/**',
-  'adapters/search-kagi/**',
-  'adapters/speech-gpt-live/**',
-  'adapters/spend-model-gateway/**',
-  'adapters/rates-frankfurter/**',
-  'apps/model-gateway/**',
-  'nixie-test-build.d.ts',
-  'bun-serve-options.d.ts',
-] as const;
+import { join } from 'node:path';
+import { collectReachedFolders } from './collect-reached-folders';
+import { corePaths } from './core-paths';
+import { readWorkspacePackages } from './read-workspace-packages';
+import type { WorkspacePackage } from './types';
 
-// The files the running app reads to show and steer a supervised coding session, listed one by one
-// so that no glob also matches a test, which `ignoredPaths` leaves out. Tests and the test-only
-// helpers under `test-utils` stay unmapped here.
-const codingSupervisionPaths = [
-  'apps/server/src/coding/build-server-coding.ts',
-  'apps/web/src/coding/format-session-event-time.ts',
-  'apps/web/src/coding/format-session-release.ts',
-  'apps/web/src/coding/format-session-state.ts',
-  'apps/web/src/coding/session-line.tsx',
-  'apps/web/src/coding/use-is-coding-on.ts',
-  'apps/web/src/components/task-controls.tsx',
-  'apps/web/src/components/task-dashboard.tsx',
-  'apps/web/src/components/task-summary.tsx',
-  'apps/web/src/mocks/read-mock-task-list.ts',
-  'apps/web/src/mocks/store.ts',
-  'apps/web/src/mocks/task-rows.ts',
-  'apps/web/src/mocks/write-mock-task-control.ts',
-  'apps/web/src/task/collect-dashboard-groups.ts',
-  'libs/contract/openapi.json',
-  'libs/contract/src/contract/listed-task-schema.ts',
-  'libs/contract/src/index.ts',
-  'modules/api/src/api/parse-listed-session.ts',
-  'modules/api/src/api/read-listed-tasks.ts',
-  'modules/coding/src/runner/build-coding-runner.ts',
-  'modules/tasks/src/index.ts',
-] as const;
+// Globs are root-relative, as `git ls-files` prints them, and match with Bun.Glob. A feature's
+// startup or record-write code, such as a projection, also runs in its own journey, so a change
+// that breaks it there fails that journey: only what every turn reads goes in the core list.
+interface FeatureReach {
+  // package folders, such as `modules/coding`, whose workspace dependencies the feature also holds
+  readonly packages: readonly string[];
+  readonly paths: readonly string[];
+}
 
+const workspace = await readWorkspace(join(import.meta.dir, '..', '..', '..'));
+
+const taskPages = 'apps/web/src/routes/tasks.*.tsx';
+
+const coding: FeatureReach = {
+  packages: ['modules/coding', 'adapters/coding-atc'],
+  paths: ['apps/server/src/coding/**', taskPages],
+};
+
+const calls: FeatureReach = {
+  packages: ['adapters/speech-gpt-live'],
+  paths: [
+    'apps/server/src/call/**',
+    'apps/server/src/part/harness-speech.ts',
+    'apps/web/src/routes/call.tsx',
+
+    // the call screen's journey checks that the call bar stays on the tasks page
+    taskPages,
+  ],
+};
+
+const devices: FeatureReach = {
+  packages: ['guests/render'],
+  paths: [
+    'apps/server/src/part/start-render-part.ts',
+    'apps/web/src/routes/{add-device,device,device-view}.tsx',
+  ],
+};
+
+const images: FeatureReach = {
+  packages: ['adapters/image-gemini', 'adapters/image-openai'],
+  paths: [
+    'apps/server/src/part/{build-image-providers,image-provider-api}.ts',
+    'apps/web/src/routes/images.tsx',
+  ],
+};
+
+const google: FeatureReach = {
+  packages: ['modules/google', 'adapters/connector-google'],
+  paths: [
+    'apps/server/src/google/**',
+    'apps/server/src/part/{collect-owner-addresses,read-mail-html,start-connections-part,start-google-tools-part}.ts',
+    'apps/web/src/connection/**',
+    'apps/web/src/routes/settings.connections.*.tsx',
+  ],
+};
+
+const computer: FeatureReach = {
+  packages: ['guests/computer'],
+  paths: [
+    'apps/server/src/computer/**',
+    'apps/server/src/part/start-computer-part.ts',
+    'apps/web/src/routes/computer.tsx',
+  ],
+};
+
+const coreOnly: FeatureReach = { packages: [], paths: [] };
+
+// Each feature holds the core list, the folders of its packages and of the workspace packages
+// they depend on, from each `package.json` as this file loads, and its own server and web files.
 export const featurePaths = {
-  'sign-in-enrol': [...everyJourney],
-  'chat-turn': [...everyJourney],
-  'memory-approval': [...everyJourney],
-  'policy-proposal': [...everyJourney],
-  'rule-condition': [...everyJourney],
-  'task-control': [...everyJourney],
-  'coding-session': [...everyJourney],
-  'coding-supervision': [...codingSupervisionPaths],
-  'call-hand-off': [...everyJourney],
-  'call-screen': [...everyJourney],
-  'call-device-show': [...everyJourney],
-  'device-view': [...everyJourney],
-  'mail-wake': [...everyJourney],
-  'phone-text': [...everyJourney],
-  drawing: [...everyJourney],
-  'images-page': [...everyJourney],
-  'notebook-pages': [...everyJourney],
-  'google-connections': [...everyJourney],
-  'google-off': [...everyJourney],
-  'gmail-tools': [...everyJourney],
-  'gmail-wake': [...everyJourney],
-  'calendar-tools': [...everyJourney],
-  'drive-tools': [...everyJourney],
-  'device-in-browser': [...everyJourney],
-  'device-screen': [...everyJourney],
-  'device-layout': [...everyJourney],
-  'mcp-servers': [...everyJourney],
-  'live-updates': [...everyJourney],
-  'spend-routes': [...everyJourney],
-  'computer-browser': [...everyJourney],
-  'computer-shell': [...everyJourney],
-  'computer-screen': [...everyJourney],
-  'computer-watch': [...everyJourney],
-  'computer-off': [...everyJourney],
+  'sign-in-enrol': buildFeatureGlobs(workspace, coreOnly),
+  'chat-turn': buildFeatureGlobs(workspace, coreOnly),
+  'memory-approval': buildFeatureGlobs(workspace, {
+    packages: [],
+    paths: ['apps/web/src/routes/{memory,moments,moments_.$momentID}.tsx'],
+  }),
+  'policy-proposal': buildFeatureGlobs(workspace, coreOnly),
+  'rule-condition': buildFeatureGlobs(workspace, {
+    packages: [],
+    paths: ['apps/web/src/mandate/**', 'apps/web/src/routes/mandates.tsx'],
+  }),
+  'task-control': buildFeatureGlobs(workspace, { packages: [], paths: [taskPages] }),
+  'coding-session': buildFeatureGlobs(workspace, coding),
+  'coding-supervision': buildFeatureGlobs(workspace, coding),
+  'call-hand-off': buildFeatureGlobs(workspace, calls),
+  'call-screen': buildFeatureGlobs(workspace, calls),
+  'call-device-show': buildFeatureGlobs(workspace, joinReaches(calls, devices)),
+  'device-view': buildFeatureGlobs(workspace, devices),
+  'mail-wake': buildFeatureGlobs(workspace, {
+    packages: ['modules/mail'],
+    paths: ['apps/server/src/mail/**'],
+  }),
+  'phone-text': buildFeatureGlobs(workspace, {
+    packages: ['modules/phone', 'adapters/phone-twilio'],
+    paths: ['apps/server/src/phone/**'],
+  }),
+  drawing: buildFeatureGlobs(workspace, images),
+  'images-page': buildFeatureGlobs(workspace, images),
+  'notebook-pages': buildFeatureGlobs(workspace, {
+    packages: ['modules/notebook'],
+    paths: [
+      'apps/server/src/part/start-notebook-part.ts',
+      'apps/web/src/notebook/**',
+      'apps/web/src/routes/notebook*.tsx',
+    ],
+  }),
+  'google-connections': buildFeatureGlobs(workspace, google),
+  'google-off': buildFeatureGlobs(workspace, google),
+  'gmail-tools': buildFeatureGlobs(workspace, google),
+  'gmail-wake': buildFeatureGlobs(workspace, google),
+  'calendar-tools': buildFeatureGlobs(workspace, google),
+  'drive-tools': buildFeatureGlobs(workspace, google),
+  'device-in-browser': buildFeatureGlobs(workspace, devices),
+  'device-screen': buildFeatureGlobs(workspace, devices),
+  'device-layout': buildFeatureGlobs(workspace, devices),
+  'mcp-servers': buildFeatureGlobs(workspace, {
+    packages: ['modules/mcp'],
+    paths: [
+      'apps/server/src/part/start-mcp-part.ts',
+      'apps/web/src/mcp/**',
+      'apps/web/src/routes/settings.mcp.tsx',
+    ],
+  }),
+  'live-updates': buildFeatureGlobs(workspace, coreOnly),
+  'spend-routes': buildFeatureGlobs(workspace, {
+    packages: ['apps/model-gateway', 'adapters/spend-model-gateway', 'adapters/rates-frankfurter'],
+    paths: ['apps/web/src/routes/spend.tsx'],
+  }),
+  'computer-browser': buildFeatureGlobs(workspace, computer),
+  'computer-shell': buildFeatureGlobs(workspace, computer),
+  'computer-screen': buildFeatureGlobs(workspace, computer),
+  'computer-watch': buildFeatureGlobs(workspace, joinReaches(computer, images)),
+  'computer-off': buildFeatureGlobs(workspace, computer),
 } as const satisfies Record<string, readonly string[]>;
+
+interface Workspace {
+  readonly packages: readonly WorkspacePackage[];
+  readonly coreFolders: readonly string[];
+  readonly coreGlobs: readonly string[];
+}
+
+function buildFeatureGlobs(workspaceFacts: Workspace, reach: FeatureReach): string[] {
+  const ownFolders = collectReachedFolders(reach.packages, workspaceFacts.packages).filter(
+    (folder) => !workspaceFacts.coreFolders.includes(folder) && !folder.startsWith('libs/'),
+  );
+
+  return [
+    ...workspaceFacts.coreGlobs,
+    ...ownFolders.map((folder) => `${folder}/**`),
+    ...reach.paths,
+  ];
+}
+
+async function readWorkspace(rootDir: string): Promise<Workspace> {
+  const packages = await readWorkspacePackages(rootDir);
+
+  const coreFolders = collectReachedFolders(corePaths.packages, packages);
+
+  return {
+    packages,
+    coreFolders,
+    coreGlobs: [...coreFolders.map((folder) => `${folder}/**`), ...corePaths.globs],
+  };
+}
+
+function joinReaches(first: FeatureReach, second: FeatureReach): FeatureReach {
+  return {
+    packages: [...first.packages, ...second.packages],
+    paths: [...first.paths, ...second.paths],
+  };
+}
 
 // A change to one of these changes every feature: the verify CLI and its harness, the test helpers
 // the harness starts nixie with, and the preview recipe the `preview` target runs.
