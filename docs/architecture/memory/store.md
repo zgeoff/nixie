@@ -567,13 +567,13 @@ The runner holds these rules, which the code enforces:
   fixed interval the watch retries such a forget, and logs `erasure.stuck` at the error level for
   each one that stays open. A younger forget is left alone, because it may wait on the step that
   called it.
-- A stuck forget shows in 3 places, each read from the open erasures in the log, so they need no
-  record of their own. The web client shows a "forget stuck" notice with a retry button, through
-  `erasure.readStuck` and `erasure.retryStuck`. The conversation's model lists stuck forgets with
-  the `forget.stuck` tool and runs them again with `forget.retry`. A retry only finishes a forget
-  that a checked action or the host already started, so the model still never starts one. Each shows
-  the kind, the short ID and the minutes open, never the erasure's own ID. A retry goes through the
-  runner's queue, so it never runs beside the watch's retry.
+- Stuck forgets are read from the open erasures in the log and need no record of their own. The web
+  client shows a "forget stuck" notice with a retry button, through `erasure.readStuck` and
+  `erasure.retryStuck`. The conversation's model lists stuck forgets with the `forget.stuck` tool
+  and runs them again with `forget.retry`. A retry only finishes a forget that a checked action or
+  the host already started, so the model still never starts one. Each shows the kind, the short ID
+  and the minutes open, never the erasure's own ID. A retry goes through the runner's queue, so it
+  never runs beside the watch's retry.
 
 The projections fold `erasure.started` and `erasure.finished` for the kind `memory_item`, as they
 folded the earlier `memory.forget_started` and `memory.forgotten`. `erasure.started` marks the item
@@ -606,10 +606,10 @@ so the retry begins the items that never started and joins the ones that did, a 
 included. A route replies pending when a step after the starts fails, and the retry finishes the
 forget. The page keeps its retry control on a pending reply.
 
-The model has no tool that forgets an item. The design leaves item forgets to the user, as it leaves
-a record's, and the model's `forget.retry` only finishes a forget that a checked action or the host
-started. The runner still records `by` as `assistant` for a forget whose provenance is not the
-owner's, so a later tool needs no change to the record.
+The model has no tool that forgets an item, as it has none that forgets a record. The model's
+`forget.retry` only finishes a forget that a checked action or the host started. The runner still
+records `by` as `assistant` for a forget whose provenance is not the owner's, so a later tool needs
+no change to the record.
 
 The migration that moved items onto the runner raises the oldest reader. The release before
 registers only moments, so it cannot finish an open `memory_item` erasure, and it refuses to open a
@@ -638,7 +638,7 @@ holds gives the state:
    as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
 
 With the schedule on, the answer of a forget that deleted a key reads pending: no backup set taken
-after the forget exists until the backup job's next job run.
+after the forget exists until the backup job next runs.
 
 ### Forgetting retired items in bulk
 

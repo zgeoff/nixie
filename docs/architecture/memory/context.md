@@ -386,9 +386,9 @@ record it ran for. The cleanup runs in order:
 The cleanup then runs the same steps on the thread and in the sandbox of each open
 [started task](../core/started-tasks.md) that reads memory, one task at a time. A forget of a record
 also cleans the open task whose thread holds the record, whatever its memory setting, because that
-task's session holds the record's text, and a record on the conversation's thread also cleans each
-open task with the log grant, because its session can hold the record's text from a log read. A task
-that reads no memory never received an item, so a memory item forget or a moment forget leaves its
+task's session holds the record's text. A record on the conversation's thread also cleans each open
+task with the log grant, because its session can hold the record's text from a log read. A task that
+reads no memory never received an item, so a memory item forget or a moment forget leaves its
 session as it is. A [note forget](./notebook.md#forgetting-a-note) cleans the conversation and each
 open task whose tool list holds a notebook tool, because a note's text reaches a session only
 through those tools.

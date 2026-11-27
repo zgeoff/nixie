@@ -43,11 +43,11 @@ every receipt that the job wrote, then stages a set when one is due:
    reads, the job removes the set's own key and data snapshots, prunes the key repo, keeps the
    restore note and writes no receipt, so the previous published pair stays whole. A failure of that
    removal fails the job, and the next publish removes the stale snapshot with the other old ones.
-   An erasure that finishes after the last read lets the set publish, because nothing in the job is
-   atomic with the receipt's rename. Its receipt never covers the erasure, which waits for a set
-   that started after it. The withdrawal waits for the job's staging lock, so it never removes a set
-   that the job is shipping, and a pass that finds the lock held withdraws the set on the next pass.
-   A withdrawal that a failure stopped after the rename finishes on the next pass.
+   When an erasure finishes after the last read, the set still publishes, because nothing in the job
+   is atomic with the receipt's rename. That receipt does not cover the erasure, which waits for a
+   set that started after it. The withdrawal waits for the job's staging lock, so it never removes a
+   set that the job is shipping, and a pass that finds the lock held withdraws the set on the next
+   pass. A withdrawal that a failure stopped after the rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 

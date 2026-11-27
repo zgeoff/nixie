@@ -9,10 +9,10 @@ approves it on the approvals page, `/proposals`. An approved item shows on the m
 that table.
 
 Once an item is active, a later call that sets a reminder, starts or defines a task, or writes a
-skill applies at once and its result lists the active items that match its text, as `related`. The
-journey checks that for a reminder, then forgets the item from the memory page. A forget runs on the
-erasure runner: `erasure.started` holds the keys to delete, and `erasure.finished` ends the forget
-once the keys, the indexes and the sessions are clean.
+skill applies at once and its result lists the active items that match its text, as `related`. Check
+`related` for a reminder, then forget the item from the memory page. The erasure runner carries out
+a forget: it writes `erasure.started` with the keys to delete, and writes `erasure.finished` once
+the keys, the indexes and the sessions are clean.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up`, `attach` and `done`, and the `data` field
@@ -150,9 +150,9 @@ item's fact would make nixie keep the item at once, with no proposal.
    ```
 
    Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
-   exit 0. The last snapshot waits for the forgotten item's line to show a "forgotten" date, which
-   the page shows only once `erasure.finished` is written. A line that reads "forgetting" means the
-   erasure is still open, so step 10 never reads an unfinished forget.
+   exit 0. The last snapshot waits until the forgotten item's line shows a "forgotten" date, which
+   appears only once `erasure.finished` is written. A line that reads "forgetting" means the erasure
+   is still open, so do not start step 10 until the date shows.
 
 10. Check the erasure states of the forget and the memory page:
 
@@ -178,7 +178,7 @@ item's fact would make nixie keep the item at once, with no proposal.
   allotment.".
 - On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the
   approved item: the reminder's result listed it as `related`, and the call applied first.
-- On `local`, the forget of step 9 left the item `forgotten` with one finished erasure and no open
-  one, and the memory page shows no item.
+- On `local`, after step 9 the item is `forgotten`, with one finished erasure and no open one, and
+  the memory page shows no item.
 - On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case
   from step 4.

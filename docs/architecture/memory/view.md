@@ -121,25 +121,27 @@ forget, bound to the version that `memory-show` printed.
 
 A forget whose start committed and whose cleanup failed lists as forgetting, and any refresh of the
 lists, such as a pin of another item, moves it out of the row that held its confirmation. The page
-therefore keeps each forget call in the query client, apart from every row, and the forgetting
-item's row in the forgotten list offers to finish the forget while its last call failed. That retry
-sends the same client action ID, so the server finishes the open erasure.
+therefore keeps each forget call in the query client, apart from every row. When the last call
+failed, the user can finish the forget from the forgetting item's row in the forgotten list. That
+retry sends the same client action ID, so the server finishes the open erasure.
 
 ## Forgetting retired items
 
-The retired list offers one checked action that forgets selected retired items, or all of them, in a
-[bulk forget](./store.md#forgetting-retired-items-in-bulk). Its preview lists the oldest retired
-items up to a cap, each at its version with what its forget destroys, and says when more remain. The
-confirmation starts with every listed item selected, states that the forget cannot be undone and
-that chat records stay, and sends the selected items with the versions the preview showed.
+From the retired list, the user forgets selected retired items, or all of them, in one checked
+action, a [bulk forget](./store.md#forgetting-retired-items-in-bulk). Its preview lists the oldest
+retired items up to a cap, each at its version with what its forget destroys, and says when more
+remain. The confirmation starts with every listed item selected, states that the forget cannot be
+undone and that chat records stay, and sends the selected items with the versions the preview
+showed.
 
 The page keeps the set it first showed while the confirmation is open, so a refresh of the lists
 never changes what the user confirmed. A stale set closes the confirmation with the reason, and
-nothing is forgotten. A run whose cleanup failed keeps the confirmation open with a count of
-forgotten and pending items, which the status read returns, and offers to finish the run. That retry
-sends the same client action ID, so the server finishes the open erasure of each pending item. The
-page keeps each bulk call in the query client, as it keeps each single forget, so the retired list
-still offers to finish a failed run after the user leaves the page and comes back.
+nothing is forgotten. When a bulk forget's cleanup fails, the confirmation stays open with the count
+of forgotten and pending items that the status read returns, and the user can finish the bulk forget
+from it. That retry sends the same client action ID, so the server finishes the open erasure of each
+pending item. The page keeps each bulk call in the query client, as it keeps each single forget, so
+the user can still finish a failed bulk forget from the retired list after leaving the page and
+coming back.
 
 ## Proposals
 

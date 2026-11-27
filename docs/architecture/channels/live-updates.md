@@ -104,9 +104,9 @@ none. The log marks the topics of every record a transaction appends. A write th
 marks `tasks` and `definitions`, because a new task can belong to a definition. A trigger's fire or
 skip marks `tasks`, `triggers` and `definitions`, because it moves the watermark that the next run
 of a definition reads. A trigger's arm or defer marks `triggers` and `definitions` for the same
-reason. The log module owns the topics of the erasure records: `erasure.started` and
+reason. The log module owns the topics of the erasure records. `erasure.started` and
 `erasure.finished` mark `memory` and `notebook`, because a forget of a memory item, a moment or a
-note changes what those pages show, and the topic map reads no payload to tell the kinds apart.
+note changes what those pages show. The topic map reads no payload to tell the kinds apart.
 
 Two other marks cover a change with no record. `markChanged(tx, topics)` adds topics to the commit
 of a transaction, and a transaction that rolls back drops them. `publishChanged(writer, topics)`
