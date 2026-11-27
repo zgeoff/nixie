@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
-import { startTestAPI } from '@heynixie/api/test-utils';
 import { makeTakeoverRecords } from '@heynixie/connectors';
 import { createConversationTask } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { startTestComputer } from './test-utils/start-test-computer';
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestComputer();
 
   await createConversationTask(api.context);
 

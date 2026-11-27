@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { buildTestClient, createDeviceSession, startTestAPI } from '@heynixie/api/test-utils';
+import { buildTestClient, createDeviceSession } from '@heynixie/api/test-utils';
 import { startComputer } from '@heynixie/connectors';
 import { buildStubSandboxAdapter } from '@heynixie/connectors/test-utils';
 import { sessionCookieName } from '@heynixie/contract';
@@ -9,6 +9,7 @@ import type { VNCFrame } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { z } from 'zod';
+import { startTestComputer } from './test-utils/start-test-computer';
 
 interface SetupOptions {
   // holds each wake of the sandbox until the promise settles
@@ -16,7 +17,7 @@ interface SetupOptions {
 }
 
 async function setupTest(options: SetupOptions = {}) {
-  const api = await startTestAPI();
+  const api = await startTestComputer();
   const owner = await createDeviceSession(api.context, 'laptop');
   const viewer = await createDeviceSession(api.context, 'phone');
 

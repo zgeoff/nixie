@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { buildTestClient, createDeviceSession, startTestAPI } from '@heynixie/api/test-utils';
+import { buildTestClient, createDeviceSession } from '@heynixie/api/test-utils';
 import { startComputer } from '@heynixie/connectors';
 import { buildStubSandboxAdapter } from '@heynixie/connectors/test-utils';
 import { sessionCookieName } from '@heynixie/contract';
@@ -7,9 +7,10 @@ import { nativeWebSocket, waitForCondition } from '@heynixie/testing';
 import type { VNCFrame } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import { startTestComputer } from './test-utils/start-test-computer';
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestComputer();
   const laptop = await createDeviceSession(api.context, 'laptop');
   const phone = await createDeviceSession(api.context, 'phone');
 

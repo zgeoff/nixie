@@ -848,10 +848,6 @@
       "additionalProperties": false
     },
     "computer": {
-      "default": {
-        "idle_hand_back_minutes": 30,
-        "handover_expiry_minutes": 60
-      },
       "type": "object",
       "properties": {
         "idle_hand_back_minutes": {
@@ -867,6 +863,11 @@
           "maximum": 9007199254740991
         }
       },
+      "additionalProperties": false
+    },
+    "code": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "search": {
