@@ -18,8 +18,8 @@ When you approve the call, its row's `state` becomes `approved`, and nixie adds 
 message. nixie then runs the call, adds an `action.outcome` record, and starts one model turn for
 it. In that turn the model reads the outcome and the time you approved the call. The export tool
 never exports. It returns an error that sends the user to the memory view, and nixie records an
-approved call whose tool returns an error as `failed`, with the reason `refused`. That is the
-outcome this journey expects, and the turn after it commits like any other. When someone declines a
+approved call whose tool returns an error as `failed`, with the reason `refused`. This journey
+expects that outcome, and the turn that reads it commits with no step error. When someone declines a
 call, nixie starts a model turn that shows the model the decline and its reason. The test build
 starts with the [starter rules](../../../../deploy/compose/definitions/rules/starter.yaml), the
 rules file that the Compose recipe ships. Its rule `ask-exports` holds every call whose effect is
@@ -143,5 +143,5 @@ Before you start:
 - Step 7: no call is held. The call's row in `proposals` and its `proposals.settled` record both say
   `approved`.
 - Step 8: the turn after the approval ended in `task.step_committed`, with no `task.step_errored`.
-  The call's `action.outcome` says `failed` with the reason `refused`, because the export tool sends
-  the user to the memory view.
+  The call's `action.outcome` has the status `failed` and the reason `refused`, because the export
+  tool sends the user to the memory view.
