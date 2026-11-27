@@ -69,9 +69,9 @@ versions it ran against, and imports product files by path.
 
 Dependencies:
 
-- Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
-  for an external dependency and `"workspace:*"` for an internal one.
-- The root `package.json` declares only tooling.
+- Declare every external version once, in the root `workspaces.catalog`. In a package, write
+  `"catalog:"` for an external dependency and `"workspace:*"` for an internal one.
+- Declare only tooling in the root `package.json`.
 - Pin exact versions, with no `^` or `~` ranges, in hand-written edits too. `bun add` saves exact
   versions.
 - The Pulumi component is the one exception. It declares the Pulumi SDKs as peer dependencies with a

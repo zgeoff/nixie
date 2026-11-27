@@ -9,8 +9,8 @@ release of a session when its task ends. It reaches the other program only throu
 adapter interface, one adapter per program.
 
 The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's typed fleet
-API. [The atc adapter](../connectors/coding-atc.md) covers its calls and
-[the wiring section](#the-atc-adapter-and-the-server) covers how the server builds it.
+API. Read [the atc adapter](../connectors/coding-atc.md) for its calls and
+[the wiring section](#the-atc-adapter-and-the-server) for how the server builds it.
 
 A coding task runs no model and judges nothing about the session's work. An agent ends a turn while
 a background shell still runs, so an idle session is no sign that the work is done. The conversation
@@ -254,14 +254,13 @@ The server builds the coding runner, its tools, its source and its sweep only wh
 config holds a `coding.atc` block. Without the block, no coding tool or runner exists, and a
 deployment that predates the block loads unchanged.
 
-The block names the gateway's URL, the principal nixie acts as, the targets nixie may start sessions
-on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token lives in
-the `atc_token` entry of the secrets file, like every other secret, and a config that holds the
-block with no such entry stops the server at start. A deployment with no `coding.atc` block needs no
-`atc_token` entry, so the entry is required only with the block. The secret scan treats its value as
-one of nixie's own values.
+In the block, set the gateway's URL, the principal nixie acts as, the targets nixie may start
+sessions on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token
+lives in the `atc_token` entry of the secrets file, like every other secret, and a config that holds
+the block with no such entry stops the server at start. A deployment with no `coding.atc` block
+needs no `atc_token` entry. The secret scan treats its value as one of nixie's own values.
 
-The adapter keeps the state of each session it has seen in memory. The trail names a session's
+The adapter keeps the state of each session it has seen in memory. The trail records a session's
 activity but not always its state, so the adapter also reads the state of each bound session that
 has not ended once a minute, and at once for a session it has not seen since it started. A state
 read that fails still counts as a read, so a failing session never makes the adapter poll without

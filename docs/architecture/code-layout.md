@@ -128,8 +128,8 @@ code reach test code.
   and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `module`, `adapter`,
   `server-only`, `verify`, `integration` or `eval`, so a guest or a client that declares it fails
   the check.
-- **An adapter depends only on the module that owns its interface.** The tags allow any module, so
-  review holds this rule.
+- **An adapter depends only on the module that owns its interface.** Check this rule in review,
+  because the tags allow any module.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
   module that depends on it takes that work through an interface the server passes in.
 
@@ -153,7 +153,8 @@ import escapes the zones. The zones exist because the Agent SDK runs only inside
 
 ## Modules
 
-Each module package covers one area of the architecture, and its doc covers the package.
+Each module package covers one area of the architecture. Read the doc the table links for the
+package.
 
 | Package       | Area                                                                                                                                                |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |

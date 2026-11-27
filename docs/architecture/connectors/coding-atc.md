@@ -3,12 +3,12 @@
 atc is a separate program that runs coding sessions, one daemon per machine. atc-gateway serves the
 fleet of its daemons through one typed API, and nixie calls it over HTTP as the service client
 `service:nixie`. The `coding-atc` package implements the coding module's adapter interface with that
-API, and it is the only package that calls the gateway. It calls the gateway through atc's client
-package, which types each procedure from atc's published contract, so a renamed procedure or field
-fails nixie's type check, and nixie writes none of atc's wire protocol. Read atc for its fleet
-contract, its daemon config and the format of the gateway's token file. This doc covers the
-procedures, scopes and grants the adapter relies on, how it maps states, events and error codes, how
-the coding source reads the events, and which gateway versions it accepts.
+API, and it is the only package that calls the gateway. It goes through atc's client package, which
+types each procedure from atc's published contract, so a renamed procedure or field fails nixie's
+type check, and nixie writes none of atc's wire protocol. Read atc for its fleet contract, its
+daemon config and the format of the gateway's token file. This doc covers the procedures, scopes and
+grants the adapter relies on, how it maps states, events and error codes, how the coding source
+reads the events, and which gateway versions it accepts.
 
 Read this doc before you change the adapter or the coding source's reads. For the runner, the tools
 and the records above the adapter, see [Coding tasks](../core/coding-tasks.md).
