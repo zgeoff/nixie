@@ -106,9 +106,10 @@ error, as CEL defines.
 - The decision lists each rule that errored in `conditionErrors`, with the rule ID, its revision and
   the code, and never the library's message, which can quote argument text. The approval card shows
   each entry, and the call's result tells the model the rule's ID and the code. For an allow rule
-  that a missing argument stopped, it also names the argument, quoted or not, and asks for a new
-  call with it. It never names a content argument. An ask rule that matches a memory write beside an
-  error holds the call as an action card, because the memory proposal has no place for the entry.
+  that a missing argument stopped, it also names the argument, which is a key of the call and not
+  argument text, and asks for a new call with it. It never names a content argument. An ask rule
+  that matches a memory write beside an error holds the call as an action card, because the memory
+  proposal has no place for the entry.
 - The lift check and the destination permissions read allow rules through `isRuleMatch`, so they
   evaluate a condition the same way. `listUncoveredMemoryWrites` matches against a call it builds,
   so it counts every condition as an error.
@@ -127,11 +128,12 @@ view, so every client shows the same sentence. A card for a rule with a conditio
 4. The raw CEL behind a "Show the expression" control.
 
 A card for a mandate with several rules shows each condition under its own rule. The host's proposal
-list carries the condition of each version of a changed rule, and `nixie rules list` and
-`nixie proposals list` print the note and the words, with no raw CEL.
+list carries the condition of each version of a changed rule.
 
-The approval card, the rule notice after an answer, the mandates page, the `rules.list` tool and
-`nixie rules list` show these parts. The web client's rule form keeps a rule's condition as it is.
+The approval card, the rule notice after an answer, the mandates page and the `rules.list` tool show
+all 4 parts. `nixie rules list` and `nixie proposals list` print only the note and the words, never
+the raw CEL. No client form edits a condition: the web client's rule form and `rules.editRule` keep
+a rule's condition as it is.
 
 ## How a rule with a condition arrives
 

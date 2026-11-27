@@ -89,7 +89,7 @@ These cost the most time:
 1. Run `bun verify report`. In `data.report.features`, a feature shows `changed: true` when a file
    that matches its `paths` in the [registry](#edit-the-skill-and-the-registry) differs from the
    default branch.
-2. Pick the target you were asked to use, or the first launch target in the
+2. Pick the target you were asked to use, or the first target in the
    [targets table](references/targets.md). Run `bun verify use --target <target>` and the commands
    in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
@@ -114,7 +114,8 @@ These cost the most time:
      `check-failed` until a journey command has succeeded after `doctor`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
    check, in the order of the features table in [References](#references). Run the part of a journey
-   that its feature's file marks as last after every other journey.
+   that its feature's file marks as last after every other journey, because that part needs an `up`
+   with different settings, and it restarts the app.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Repeat steps 4 to 6 for each `stale` feature.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.

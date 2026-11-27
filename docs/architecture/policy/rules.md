@@ -129,9 +129,10 @@ The check never reports a widening as a narrowing. When the check tests whether 
 inside pattern B, a wildcard in A counts as covered only by a wildcard in B, so the check returns
 "not inside" for a pair it cannot prove. An edit that adds, removes or changes a condition widens,
 because the check cannot read CEL. An edit that keeps the condition text and the outcome is classed
-by the other fields, because the same condition holds on both sides. Dropping a destination narrows.
-For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and never
-access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
+by the other fields, because the same condition holds on both sides. Dropping a destination pattern
+narrows an allow, which then covers fewer calls, and widens an ask or a deny, which then catches
+fewer calls. For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal,
+and never access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
 describes.
 
 ## Rules in force

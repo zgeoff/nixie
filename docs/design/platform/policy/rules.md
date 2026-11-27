@@ -9,26 +9,31 @@ database, seeded from your definitions, and the [decision point](decision-point.
 of its stages. Among the rules that match a call, the strictest outcome wins. Each rule keeps one ID
 for its life and a revision per edit, and code tells whether an edit widens access.
 
+This design is for the owner, who approves it, and for an agent that builds or changes rule
+matching, rule identity, the snapshot hash, the widening check or the starter rule set. An agent
+checks a change against it before the change lands, then follows the links to the decision point and
+the architecture docs for the parts around it.
+
 ## The rule format
 
 Every field except the ID and the outcome is optional, and a missing match field matches every call.
 
-| Field          | Holds                                                           |
-| -------------- | --------------------------------------------------------------- |
-| `id`           | A stable slug, unique in the deployment                         |
-| `outcome`      | `allow`, `ask` or `deny`                                        |
-| `tools`        | Tool names, each exact or a pattern such as `mail.*`            |
-| `effects`      | Declared effects                                                |
-| `contexts`     | `conversation`, `task` or `coding`                              |
-| `definitions`  | Task definition IDs, for a rule that covers only some of them   |
-| `checks`       | Argument checks, each an argument path, an operator and a value |
-| `destinations` | Patterns that the call's destinations must match                |
-| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`    |
-| `lift`         | For a lifting rule: a per-action cap and the budget it draws on |
-| `expires`      | When the rule stops matching, for a mandate                     |
-| `mandate`      | The mandate the rule belongs to                                 |
-| `cel`          | A CEL condition, for a rule the fixed checks cannot express     |
-| `note`         | Your own words about the rule                                   |
+| Field          | Holds                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| `id`           | A stable slug, unique in the deployment                                                     |
+| `outcome`      | `allow`, `ask` or `deny`                                                                    |
+| `tools`        | Tool names, each exact or a pattern such as `mail.*`                                        |
+| `effects`      | Declared effects                                                                            |
+| `contexts`     | `conversation`, `task` or `coding`                                                          |
+| `definitions`  | Task definition IDs, for a rule that covers only some of them                               |
+| `checks`       | Argument checks, each an argument path, an operator and a value                             |
+| `destinations` | Patterns that the call's destinations must match                                            |
+| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`                                |
+| `lift`         | For a [lifting rule](budgets.md#lifting-rules): a per-action cap and the budget it draws on |
+| `expires`      | When the rule stops matching, for a mandate                                                 |
+| `mandate`      | The mandate the rule belongs to                                                             |
+| `cel`          | A CEL condition, for a rule the fixed checks cannot express                                 |
+| `note`         | Your own words about the rule                                                               |
 
 Rule files in the definitions repo are YAML, checked against a JSON Schema that nixie generates from
 the rule format, both when the repo seeds the database and when nixie exports runtime rules.
@@ -41,8 +46,9 @@ expression would give the check a problem it cannot solve in general. A saved co
 consent check matches as literal text between word boundaries.
 
 A rule with a CEL condition is valid only when the fixed checks cannot express it. No starter rule
-uses CEL. For the library, the subset, the limits and the card, see
-[Rule conditions](../../../architecture/policy/rule-conditions.md).
+uses CEL. Adding or changing a condition is a widening, so it always needs approval. A condition
+that errors never lets a deny rule refuse a call unseen: the call asks. For the library, the subset,
+the limits and the card, see [Rule conditions](../../../architecture/policy/rule-conditions.md).
 
 Each rule also carries metadata outside its match: its source (a definitions commit, or the approval
 that created it), who proposed it (you, or nixie from a task), when it was created, and when it last
@@ -118,11 +124,12 @@ canonical form of the whole definition set:
 - **Objects** serialise as JSON with sorted keys and no whitespace, and every set-valued field sorts
   and drops duplicates.
 
-In slice 1, the policy part of the form holds [the slice 1 rule](decision-point.md#the-slice-1-rule)
-in canonical form, plus the test rule in a test build, and the complete tool declarations. Slice 1
-has no seeded rules, budgets, contacts or checkers. The snapshot hash therefore changes only with
-the persona or with a release that changes a tool declaration. **Why:** the fixed rule decides by a
-tool's declared effects, so a replay needs the declarations in force.
+In slice 1, the first build, the policy part of the form holds
+[the slice 1 rule](decision-point.md#the-slice-1-rule) in canonical form, plus the test rule in a
+test build, and the complete tool declarations. Slice 1 has no seeded rules, budgets, contacts or
+checkers. The snapshot hash therefore changes only with the persona or with a release that changes a
+tool declaration. **Why:** the fixed rule decides by a tool's declared effects, so a replay needs
+the declarations in force.
 
 The form leaves out state that changes without an edit: when a rule last fired, how much of a budget
 is spent, and rule metadata. **Why:** the hash then changes exactly when the definitions do, and a

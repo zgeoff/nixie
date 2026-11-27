@@ -17,9 +17,11 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
    [`starter.yaml`](../../deploy/compose/definitions/rules/starter.yaml): ask on `coding.start`, and
    allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
    call, so a join of a coding session needs no approval.
-4. When a rule in your definitions has a `cel` key and no `note`, add a `note` that explains the
-   condition. The first seed refuses a rules file that holds such a rule. See
-   [rule conditions](../architecture/policy/rule-conditions.md) for what a condition reads.
+4. Open the rules files in your deployment repo's `definitions/rules/` folder. When a rule has a
+   `cel` key and no `note`, add a `note` in plain words that says what the condition checks. The
+   next seed refuses a rules file that holds such a rule. This applies only to a rule you write by
+   hand in that folder. See [rule conditions](../architecture/policy/rule-conditions.md) for what a
+   condition reads.
 
 ## Upgrade
 
@@ -38,7 +40,8 @@ notes, and move all 3 pins together.
 3. Deploy in this order: the backup job, then nixie, then web. **Why:** the backup job reads the
    snapshot set format of its own release and of the one before. The web client then only calls an
    API of its own release or a newer one, and a failed nixie step stops the rollout before the web
-   client changes.
+   client changes. The Pulumi component sets its own order, so on Pulumi follow
+   [Deploy with Pulumi](#deploy-with-pulumi) in place of this one.
 
 ### Deploy on Compose
 
@@ -96,12 +99,13 @@ assignments before it.
 
 ### Deploy with Pulumi
 
-1. Run the update. The component already rolls the web Deployment and the backup CronJob after the
-   StatefulSet:
+The component rolls nixie's StatefulSet first, then the web Deployment and the backup CronJob. The
+backup job moves after nixie here, which is safe: it reads the snapshot set format of its own
+release and of the one before. Run the update:
 
-   ```bash
-   pulumi up
-   ```
+```bash
+pulumi up
+```
 
 ## Roll back
 

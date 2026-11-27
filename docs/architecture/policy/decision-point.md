@@ -38,8 +38,12 @@ and the subset its caller passed for a worker. A tool that the registry knows bu
 given is therefore denied, even though the model can name it.
 
 A rule's effects are the tool's declared effects, so the same tool gets the same answer under the
-same rules unless a rule also names argument checks, a context or a source of content. When several
-rules of one outcome match, the first by rule ID decides, and the decision names the others.
+same rules unless a rule also names argument checks, a context, a source of content or a `cel`
+condition. At stages 3, 6 and 7, a rule's condition evaluates only after its other fields match. A
+condition that errors makes a deny rule ask with the cause `condition_error`, makes an ask rule
+catch the call, and makes an allow rule cover nothing, as
+[rule conditions](rule-conditions.md#evaluating-a-condition) describes. When several rules of one
+outcome match, the first by rule ID decides, and the decision names the others.
 
 ## Memory writes
 

@@ -149,8 +149,9 @@ a secret value, and never write one to a file in the repo.
 
 ## Toolchain
 
-- Bun is pinned in `.bun-version`. `bun run format` fixes formatting, and `bun run check` runs every
-  check that CI runs.
+- Bun is pinned in `.bun-version`. `bun run format` fixes formatting. `bun run check` chains every
+  check that CI runs, `lint:full` among them. Locally, run the scripts it chains one at a time and
+  leave `lint:full` out.
 - lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
   the host may have little memory.
 - `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass and its type check.

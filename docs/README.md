@@ -74,6 +74,14 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
 - [Prompts](architecture/core/prompts.md) — the built-in prompts, their parts and templates,
   overrides from the definitions, the operator log line for a dropped safety part, and the checker
   hashes in the policy
+- [Coding tasks](architecture/core/coding-tasks.md) — the bound coding session, starting or joining
+  one, and the steps that move text and events between the task and the session
+- [The assistant's mailbox](architecture/core/mailbox.md) — the mail host, the stored mail, the
+  tools that read it and the wake rules that decide which mail wakes the conversation
+- [Reminders](architecture/core/reminders.md) — what a reminder holds, its tools and how a fire
+  wakes the conversation
+- [Triggers](architecture/core/triggers.md) — what a source hands over, the trigger core that takes
+  each fire once, and which definitions can fire
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
 - [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
@@ -96,6 +104,11 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   check before a turn, the raise and the notice
 - [The turn-input log](architecture/policy/turn-input-log.md) — the capture of a step, the intake,
   the removals and the reading
+- [Approvals](architecture/policy/approvals.md) — the one proposals table and the one lifecycle
+  every proposal that waits for the user follows
+- [Budgets](architecture/policy/budgets.md) — the budget format, the budgets in force and the check
+  before a paid call goes out
+- [Passkeys](architecture/policy/passkeys.md) — the passkeys table and which answers take a passkey
 
 ### Connectors
 
@@ -320,6 +333,9 @@ The durable layer, the sandbox boundary, the database and compaction.
   only the user undoes one, and the agent has no tool for it
 - [0015: Compaction](decisions/0015-own-compaction.md) — nixie's own compactor with the summary in
   the event log, and the SDK's auto-compaction off
+- [0057: Every optional feature has a switch](decisions/0057-every-optional-feature-has-a-switch.md)
+  — an optional feature is on only when its section is in the deployment config, and off it leaves
+  no trace
 
 ### Policy
 
