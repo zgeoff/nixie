@@ -142,8 +142,14 @@ test('it runs the session cleanup and then records the forget as complete', asyn
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added', payload: { itemID: item.itemID, version: 1 } },
     { kind: 'memory.version_keyed', payload: { itemID: item.itemID, version: 1 } },
-    { kind: 'memory.forget_started', payload: { itemID: item.itemID, version: 1 } },
-    { kind: 'memory.forgotten', payload: { itemID: item.itemID } },
+    {
+      kind: 'erasure.started',
+      payload: { kind: 'memory_item', targetID: item.itemID, version: 1, by: 'user' },
+    },
+    {
+      kind: 'erasure.finished',
+      payload: { kind: 'memory_item', targetID: item.itemID, removedKeys: 2 },
+    },
   ]);
 });
 

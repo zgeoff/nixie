@@ -12,7 +12,7 @@ export const momentLinksProjection: Projection = {
     const memory = parseMemoryRecord(record);
 
     // a link goes with its memory item once that item's forget starts
-    if (memory?.kind === 'memory.forget_started') {
+    if (memory?.kind === 'memory.forget_started' || memory?.kind === 'memory.erasure_started') {
       return removeLinks(db, 'item_id', memory.itemID);
     }
 

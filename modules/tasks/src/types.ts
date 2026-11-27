@@ -379,7 +379,6 @@ export type FaultPointID =
   | 'sigterm.grace'
   | 'memory.recall.ranked'
   | 'memory.recall.checked'
-  | 'memory.forget.key_removed'
   | 'memory.lapse.read'
   | 'memory.approval.opened'
   | 'memory.purge.keys_created'

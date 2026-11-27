@@ -97,14 +97,14 @@ test('it forgets the item and the version that writes queued ahead of it add', a
 
   const started = records
     .map((entry) => entry.record)
-    .filter((record) => record.kind === 'memory.forget_started')
+    .filter((record) => record.kind === 'erasure.started')
     .map((record) => record.payload);
 
   expect(itemIDs).toStrictEqual([edited.itemID, addedRef.itemID]);
 
   expect(started).toMatchObject([
-    { itemID: edited.itemID, version: 2 },
-    { itemID: addedRef.itemID, version: 1 },
+    { targetID: edited.itemID, version: 2 },
+    { targetID: addedRef.itemID, version: 1 },
   ]);
 });
 

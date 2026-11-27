@@ -97,7 +97,6 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
     log,
     definitions,
     erasure: runner,
-    cleanupSessions: () => Promise.resolve(),
     linkCounts: buildItemLinkCounts(log),
     ...(semanticSearch === undefined ? {} : { semanticSearch }),
     gate: {

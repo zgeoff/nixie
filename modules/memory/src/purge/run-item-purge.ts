@@ -1,7 +1,6 @@
-import { removeRecordKey } from '@heynixie/log';
+import { removeRecordKey, removeRecordKeyFamily } from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
-import { runForgetCleanup } from '../forget/run-forget-cleanup';
 import type { PurgeRequest, StoreParts } from '../types';
 import { pickPurgePlan } from './pick-purge-plan';
 import { readClosedKeyIDs } from './read-closed-key-ids';
@@ -22,10 +21,11 @@ export async function runItemPurge(parts: StoreParts, request: PurgeRequest): Pr
     return 'skipped';
   }
 
-  // The item's own forget owns its keys. Its cleanup runs to its end here, so record.forgotten
-  // follows the key delete and checkpoint even when that forget stopped before them.
+  // The item's own forget deletes every key of the item, and the record forget's end must follow
+  // the delete of every key that holds the record's text. So the purge deletes the family now,
+  // and the forget finds none left.
   if (keyIDs === 'forget') {
-    await runForgetCleanup(parts, request.itemID);
+    await removeRecordKeyFamily(parts.context.log, request.itemID);
     await writeEvidencePurged(parts, request);
 
     return 'skipped';

@@ -2,6 +2,7 @@ import type { Log } from '@heynixie/log';
 import { logProjections, makeErasureRunner, startWriter } from '@heynixie/log';
 import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import { buildProposalsProjection } from '@heynixie/proposals';
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import { defaultIndexSettings } from '../index-block/default-index-settings';
 import { startMemoryStore } from '../memory/start-memory-store';
@@ -47,6 +48,8 @@ export async function startTestStore(
     effects: {
       ...fake.effects,
       cleanupSessions: (cause) => options.cleanupSessions?.(cause) ?? Promise.resolve(),
+      reachFaultPoint: (point, erasureID) =>
+        waitAtFaultPoint(point, { kind: 'erasure', id: erasureID }),
     },
   });
 
@@ -54,7 +57,6 @@ export async function startTestStore(
     log,
     definitions,
     erasure: runner,
-    cleanupSessions: options.cleanupSessions ?? (() => Promise.resolve()),
     ...(options.semanticSearch === undefined ? {} : { semanticSearch: options.semanticSearch }),
     ...(options.turn === undefined ? {} : { turn: options.turn }),
     ...(options.index === undefined

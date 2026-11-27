@@ -115,7 +115,7 @@ function buildItemUpdate(parsed: MemoryRecord, sequence: number) {
     };
   }
 
-  if (parsed.kind === 'memory.forget_started') {
+  if (parsed.kind === 'memory.forget_started' || parsed.kind === 'memory.erasure_started') {
     return { state: 'forgetting' as const, is_pinned: 0, pinned_sequence: null, until: null };
   }
 

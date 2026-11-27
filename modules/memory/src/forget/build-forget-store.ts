@@ -1,3 +1,6 @@
+import type { ErasureHandle } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import type { ItemErasureRequest } from '../item/erasure/build-item-erasable';
 import { runEvidencePurges } from '../purge/run-evidence-purges';
 import { runItemPurge } from '../purge/run-item-purge';
 import type { MemoryStore, StoreParts } from '../types';
@@ -8,6 +11,7 @@ import { runForgetRetired } from './run-forget-retired';
 
 export function buildForgetStore(
   parts: StoreParts,
+  erasure: ErasureHandle<ItemErasureRequest> | null,
 ): Pick<
   MemoryStore,
   | 'forget'
@@ -17,11 +21,18 @@ export function buildForgetStore(
   | 'purgeItemEvidence'
   | 'finishEvidencePurges'
 > {
+  // without a registry no item can be forgotten, as for a moment
+  const requireErasure = () => {
+    invariant(erasure, 'the memory store holds an erasure registry');
+
+    return erasure;
+  };
+
   return {
-    forget: (request) => runForget(parts, request),
-    forgetRetired: (request) => runForgetRetired(parts, request),
-    forgetAll: (request) => runForgetAll(parts, request),
-    finishForgets: (itemIDs) => runBegunForgets(parts, itemIDs),
+    forget: (request) => runForget(parts, requireErasure(), request),
+    forgetRetired: (request) => runForgetRetired(parts, requireErasure(), request),
+    forgetAll: (request) => runForgetAll(parts, requireErasure(), request),
+    finishForgets: (itemIDs) => runBegunForgets(parts, requireErasure(), itemIDs),
     purgeItemEvidence: (request) => runItemPurge(parts, request),
     finishEvidencePurges: (scope) => runEvidencePurges(parts, scope),
   };

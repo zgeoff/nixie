@@ -175,8 +175,8 @@ test('it forgets an item for good as your own change, and reports the forgotten 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',
     'memory.version_keyed',
-    'memory.forget_started',
-    'memory.forgotten',
+    'erasure.started',
+    'erasure.finished',
   ]);
 });
 
@@ -195,7 +195,7 @@ test('it forgets every item for good as your own change, and reports the forgott
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added' },
     { kind: 'memory.version_keyed' },
-    { kind: 'memory.forget_started', contentSource: null, thread: null },
-    { kind: 'memory.forgotten' },
+    { kind: 'erasure.started', contentSource: null, thread: null },
+    { kind: 'erasure.finished' },
   ]);
 });

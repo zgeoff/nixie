@@ -343,10 +343,6 @@ export interface ItemIDStore {
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
-export interface CleanupCause {
-  readonly itemID: string;
-}
-
 // How many active notes dispute or supersede an item. The notebook module counts them, and memory
 // learns nothing else about a note.
 export interface ItemLinkCount {
@@ -358,10 +354,6 @@ export interface ItemLinkCounts {
   // memory passes item UUIDs, the form links store
   readonly readCounts: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, ItemLinkCount>>;
 }
-
-// The cleanup must be safe to run again, because a forget that a crash cut short runs it again on
-// resume.
-export type CleanupSessions = (cause: CleanupCause) => Promise<void>;
 
 export type EncodeKind = 'query' | 'document';
 
@@ -381,11 +373,10 @@ export interface SemanticSearch {
 export interface MemoryContext {
   readonly log: Log;
   readonly definitions: () => Definitions;
-  readonly cleanupSessions: CleanupSessions;
   readonly gate: GateContext;
 
-  // where the moments register their erasable, which the server's runner takes forgets through;
-  // without it a moment can't be forgotten
+  // where the items and the moments register their erasables, which the server's runner takes
+  // forgets through; without it neither can be forgotten
   readonly erasure?: ErasureRegistry;
 
   readonly pinnedCoreTokens?: number;

@@ -1,4 +1,4 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { memoryProjections } from '../moment/projection/memory-projections';
 import { startTestMemoryStore } from './start-test-memory-store';
@@ -11,7 +11,7 @@ async function setupTest() {
 
 test('it starts a store that remembers and recalls an item', async () => {
   const ctx = await setupTest();
-  const store = await startTestMemoryStore(ctx.context, () => Promise.resolve());
+  const store = await startTestMemoryStore(ctx.context);
 
   const item = await store.remember({
     text: 'The spare key sits under the blue flowerpot',
@@ -25,32 +25,9 @@ test('it starts a store that remembers and recalls an item', async () => {
   ]);
 });
 
-test('it runs the session cleanup it was given on a forget', async () => {
-  const ctx = await setupTest();
-
-  const cleanupSessions = mock(() => Promise.resolve());
-
-  const store = await startTestMemoryStore(ctx.context, cleanupSessions);
-
-  const item = await store.remember({
-    text: 'The spare key sits under the blue flowerpot',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  await store.forget({
-    target: item,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
-});
-
 test('it gives the store a stub encoder over the topics the test passes', async () => {
   const ctx = await setupTest();
-
-  const store = await startTestMemoryStore(ctx.context, () => Promise.resolve(), [
-    ['sister', 'sibling'],
-  ]);
+  const store = await startTestMemoryStore(ctx.context, [['sister', 'sibling']]);
 
   const item = await store.remember({
     text: 'Ana is my sister',

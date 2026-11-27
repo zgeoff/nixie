@@ -1,8 +1,10 @@
 import { readMemorySubjectCounts } from '@heynixie/db';
+import type { ErasureHandle } from '@heynixie/log';
 import { buildForgetStore } from '../forget/build-forget-store';
 import { readIndex } from '../index-block/read-index';
 import { readTopicCounts } from '../index-block/read-topic-counts';
 import { readTopicLines } from '../index-block/read-topic-lines';
+import type { ItemErasureRequest } from '../item/erasure/build-item-erasable';
 import { readItemHistory } from '../item/read-item-history';
 import { runItemLapses } from '../item/run-item-lapses';
 import { writeRememberedItem } from '../item/write-remembered-item';
@@ -20,10 +22,13 @@ import { writeKeep } from './write-keep';
 import { writeRestoration } from './write-restoration';
 import { writeUndo } from './write-undo';
 
-export function buildMemoryStore(parts: StoreParts): MemoryStore {
+export function buildMemoryStore(
+  parts: StoreParts,
+  erasure: ErasureHandle<ItemErasureRequest> | null,
+): MemoryStore {
   return {
     ...buildRecallStore(parts),
-    ...buildForgetStore(parts),
+    ...buildForgetStore(parts, erasure),
     remember: (request) => writeRememberedItem(parts, request),
     retire: (request) => writeRetirement(parts, request),
     lapse: () => runItemLapses(parts),

@@ -91,7 +91,6 @@ export type {
 } from './view/memory-view';
 
 export type {
-  CleanupSessions,
   EncodeKind,
   Encoder,
   ForgetRequest,
@@ -160,7 +159,7 @@ export type { RankedMatch } from './view/merge-rankings';
 export { mergeRankings } from './view/merge-rankings';
 export { splitContentWords } from './memory/split-content-words';
 export { defaultMinSimilarity } from './utils/default-min-similarity';
-export type { CleanupCause, ItemLinkCount, ItemLinkCounts } from './types';
+export type { ItemLinkCount, ItemLinkCounts } from './types';
 export type { MomentLabel } from './moment/read-moment-labels';
 export { readMomentLabels } from './moment/read-moment-labels';
 export type { MomentDestroy, MomentTarget } from './utils/moment-context';

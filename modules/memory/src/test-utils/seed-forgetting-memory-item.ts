@@ -11,7 +11,7 @@ export async function seedForgettingMemoryItem(
 ): Promise<VersionRef> {
   const item = await seedMemoryItem(deps, input);
 
-  startFaultPointFailure('memory.forget.key_removed', item.itemID);
+  startFaultPointFailure('erasure.keys_removed');
 
   await deps.store
     .forget({

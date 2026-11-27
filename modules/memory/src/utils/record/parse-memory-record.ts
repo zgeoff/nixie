@@ -1,4 +1,5 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
+import { erasureFinishedCodec, erasureStartedCodec } from '@heynixie/log';
 import { z } from 'zod';
 import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionState } from '../../types';
 
@@ -73,7 +74,13 @@ export type MemoryRecord =
       readonly version: number;
       readonly evidenceSequences: readonly number[];
     }
-  | { readonly kind: 'memory.forgotten'; readonly itemID: string };
+  | { readonly kind: 'memory.forgotten'; readonly itemID: string }
+  | {
+      readonly kind: 'memory.erasure_started';
+      readonly itemID: string;
+      readonly version: number | null;
+    }
+  | { readonly kind: 'memory.erasure_finished'; readonly itemID: string };
 
 export function parseMemoryRecord(record: EnvelopeRecord): MemoryRecord | null {
   if (record.kind === 'memory.version_added') {
@@ -90,6 +97,22 @@ export function parseMemoryRecord(record: EnvelopeRecord): MemoryRecord | null {
 
   if (record.kind === 'memory.forgotten') {
     return { kind: record.kind, ...forgotten.parse(record.payload) };
+  }
+
+  if (record.kind === erasureStartedCodec.kind) {
+    const started = erasureStartedCodec.decode(record.payload);
+
+    return started.kind === 'memory_item'
+      ? { kind: 'memory.erasure_started', itemID: started.targetID, version: started.version }
+      : null;
+  }
+
+  if (record.kind === erasureFinishedCodec.kind) {
+    const finished = erasureFinishedCodec.decode(record.payload);
+
+    return finished.kind === 'memory_item'
+      ? { kind: 'memory.erasure_finished', itemID: finished.targetID }
+      : null;
   }
 
   return null;
