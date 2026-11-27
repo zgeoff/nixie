@@ -10,7 +10,8 @@ export { revocationRecordedCodec } from './record/revocation-recorded-codec';
 export type { Connections, ConnectionsOptions, ConnectionsPort } from './start-connections';
 export { startConnections } from './start-connections';
 export { probeConnectionEnabled } from './connection/probe-connection-enabled';
-export { readLiveConnectionIDs } from './connection/read-live-connection-ids';
+export { readLiveAddressRefs } from './connection/read-live-address-refs';
+export { readOwnerAddress } from './connection/read-owner-address';
 
 export type {
   BackendHooks,

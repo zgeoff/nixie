@@ -8,5 +8,9 @@ export const recordForgetStartedCodec = defineRecordCodec(
 
     // the starter's task.start calls that hold a forgotten brief, found while the brief is readable
     startCallSequences: z.int().array().exactOptional(),
+
+    // the keys of the other records of a forgotten place, found while the place's records are
+    // readable, because a removal or an act names its place only in its erasable fields
+    cascadeKeyIDs: z.string().array().exactOptional(),
   }),
 );

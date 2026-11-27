@@ -1,7 +1,7 @@
-import { readLiveConnectionIDs } from '@heynixie/connections';
+import { readLiveAddressRefs } from '@heynixie/connections';
 import type { SeedResult } from '@heynixie/definitions';
 import { runInForceSeed, runSeed } from '@heynixie/definitions';
-import { writeContactKinds, writeOwnPlaces } from '@heynixie/policy';
+import { writeContactKinds, writeOwnPlaces, writePersonalRemovals } from '@heynixie/policy';
 import { readArmedReminders } from '@heynixie/reminders';
 import { listOwnPlaceSources } from '../place/list-own-place-sources';
 import type { SeedParts } from '../seed/run-queued-seed';
@@ -10,6 +10,7 @@ import { runQueuedSeed } from '../seed/run-queued-seed';
 export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, async () => {
     await writeContactKinds(parts.context.log);
+    await writePersonalRemovals(parts.context.log);
 
     const result = await runSeed({
       log: parts.context.log,
@@ -32,7 +33,7 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       buildPolicy: parts.buildPolicy,
       builtInBudgets: parts.context.budgets?.builtIn() ?? [],
       readExtraArmed: readArmedReminders,
-      readSelfPlaces: readLiveConnectionIDs,
+      readSelfPlaces: readLiveAddressRefs,
     });
 
     const final = result.status === 'refused' ? result : await runOwnPlacesSeed(parts, result);
@@ -72,6 +73,6 @@ async function runOwnPlacesSeed(parts: SeedParts, result: SeedResult): Promise<S
     buildPolicy: parts.buildPolicy,
     builtInBudgets: parts.context.budgets?.builtIn() ?? [],
     readExtraArmed: readArmedReminders,
-    readSelfPlaces: readLiveConnectionIDs,
+    readSelfPlaces: readLiveAddressRefs,
   });
 }

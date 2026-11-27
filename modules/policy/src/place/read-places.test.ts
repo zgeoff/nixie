@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
-import { readRecords } from '@heynixie/log';
+import { readRecords, runProjectionRebuild } from '@heynixie/log';
 import { removeTestRecordKey, startTestLog } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { knownContactsProjection } from '../contact/known-contacts-projection';
@@ -293,6 +293,59 @@ test('it keeps a removed place for a replay, and leaves it out of the current li
     replayed: replayed.map((place) => place.isRemoved),
     refs: await readPlaceRefs(ctx.log.writer.db),
   }).toStrictEqual({ isRemoved: true, current: [], replayed: [true], refs: [] });
+});
+
+test('it keeps the ID of a removed address place in the erasable fields, and leaves the place removed after a rebuild', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.context, {
+    key: { kind: 'address', address: 'sam@example.org' },
+    trust: 'act',
+    name: 'Sam',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  await writePlaceRemoved(ctx.context, added.placeID);
+
+  const listed = await readPlaces(ctx.log);
+
+  await runProjectionRebuild(ctx.log);
+
+  const [removal] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['places.removed'] });
+
+  expect({
+    listed,
+    rebuilt: await readPlaces(ctx.log),
+    payload: removal?.record.payload,
+    erasable: removal?.record.erasable,
+  }).toStrictEqual({
+    listed: [],
+    rebuilt: [],
+    payload: {},
+    erasable: { status: 'readable', fields: { placeID: added.placeID } },
+  });
+});
+
+test('it leaves a removed site place removed after a rebuild', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.context, {
+    key: { kind: 'site', domain: 'tickets.example.com', subdomains: false },
+    trust: 'act',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  await writePlaceRemoved(ctx.context, added.placeID);
+  await runProjectionRebuild(ctx.log);
+
+  const rebuilt = await readPlaces(ctx.log);
+
+  expect(rebuilt).toStrictEqual([]);
 });
 
 test('it covers nothing once the key of an address place is gone', async () => {

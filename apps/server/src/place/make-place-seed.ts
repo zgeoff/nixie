@@ -1,4 +1,4 @@
-import { readLiveConnectionIDs } from '@heynixie/connections';
+import { readLiveAddressRefs } from '@heynixie/connections';
 import type { DefinitionsExportSweep } from '@heynixie/definitions';
 import { seedInForceInTransaction } from '@heynixie/definitions';
 import { queueCommitHook } from '@heynixie/log';
@@ -19,7 +19,7 @@ export function makePlaceSeed(
       buildPolicy: parts.buildPolicy,
       builtInBudgets: parts.context.budgets?.builtIn() ?? [],
       readExtraArmed: readArmedReminders,
-      readSelfPlaces: readLiveConnectionIDs,
+      readSelfPlaces: readLiveAddressRefs,
     });
 
     if (result.status === 'refused') {

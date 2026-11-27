@@ -4783,3 +4783,65 @@ test.each([
     });
   },
 );
+
+test('it sets the last use of a known place whose permission a call that then asks recorded', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_share',
+        input: { properties: { to: { type: 'string' } }, required: ['to'] },
+        declaration: { effects: ['note'], destinations: ['to'] },
+      }),
+    ],
+  });
+
+  const added = await writePlaceAdded(
+    {
+      log: ctx.log,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      runInForce: () => Promise.resolve(),
+    },
+    {
+      key: { kind: 'address', address: 'sam@example.org' },
+      trust: 'known',
+      name: null,
+      addedBy: 'you',
+    },
+  );
+
+  invariant(added.status === 'added');
+
+  const point = buildTestDecisionPoint({
+    places: [
+      { id: added.placeID, key: { kind: 'address', address: 'sam@example.org' }, trust: 'known' },
+    ],
+    answer: { verdict: 'not_asserted', failure: null },
+    declaration: {
+      effects: ['note'],
+      destinations: ['to'],
+      amount: null,
+      content: [],
+      results: {},
+    },
+  });
+
+  await runToolCall(
+    { tool: 'notes_share', input: { query: 'hi', to: 'sam@example.org' }, toolUseID: 'toolu_a1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_share'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide: point.decide },
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+  const [place] = await readPlaces(ctx.log);
+
+  expect({
+    outcome: called?.record.decision?.outcome,
+    lastUsedAt: place?.lastUsedAt,
+  }).toStrictEqual({ outcome: 'ask', lastUsedAt: called?.record.recordedAt.getTime() });
+});

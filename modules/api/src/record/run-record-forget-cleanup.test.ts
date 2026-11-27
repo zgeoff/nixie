@@ -14,6 +14,7 @@ import {
 } from '@heynixie/log/test-utils';
 import { recordForgetStartedCodec } from '@heynixie/memory';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
+import { writePlaceActed, writePlaceAdded, writePlaceRemoved } from '@heynixie/policy';
 import { createConversationTask } from '@heynixie/tasks';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
@@ -228,6 +229,58 @@ test("it finishes a brief's forget on the pending-forget rerun after a crash tha
   ]);
 
   expect(forgotten).toHaveLength(1);
+});
+
+test("it finishes a place's forget on the rerun after a crash that destroyed only its removal's key", async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  await writePlaceActed(places, {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    callID: 'call-1',
+    tool: 'phone.send',
+    thread: 'conversation',
+  });
+
+  await writePlaceRemoved(places, added.placeID);
+
+  const [removal] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.removed'],
+  });
+
+  invariant(removal);
+
+  await ctx.startForget({ thread: 'conversation', sequence: removal.record.sequence });
+
+  await removeTestRecordKey(ctx.context.log, removal.record.sequence);
+  await runPendingRecordForgets(ctx.context);
+
+  const links = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.added', 'places.acted', 'places.removed'],
+  });
+
+  expect(links.map((entry) => [entry.record.kind, entry.record.erasable.status])).toStrictEqual([
+    ['places.added', 'shredded'],
+    ['places.acted', 'shredded'],
+    ['places.removed', 'shredded'],
+  ]);
 });
 
 test('it removes the key of each recorded start call of a brief that a rerun of the starting step left', async () => {

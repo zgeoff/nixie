@@ -8,14 +8,19 @@ import { placesAddedCodec } from './places-added-codec';
 import { placesChangedCodec } from './places-changed-codec';
 import { placesRemovedCodec } from './places-removed-codec';
 import { writeContactKinds } from './write-contact-kinds';
+import { writePersonalRemovals } from './write-personal-removals';
+import { writeRemovedSequence } from './write-removed-sequence';
 
-// The directory of places. It folds the records of its own and, as places at known, the records of
-// the known contacts. A known contact's kind reads from its erasable destination, so its row holds
-// the kind `contact` until writeContactKinds sets it.
+// The directory of places, with the known contacts as places at known. A fold cannot read erasable
+// fields, so a contact's kind and the removal of an address, phone or handle reach the row through
+// writeContactKinds, writePersonalRemovals and the removal's own writer.
 export const placesProjection: Projection = {
   table: 'places',
   keyColumn: 'place_id',
-  afterRebuild: writeContactKinds,
+  afterRebuild: async (log) => {
+    await writeContactKinds(log);
+    await writePersonalRemovals(log);
+  },
   fold: async (tx, record) => {
     const db = tx.$extendTables<PolicyTables>();
 
@@ -28,16 +33,15 @@ export const placesProjection: Projection = {
     }
 
     if (record.kind === placesRemovedCodec.kind) {
-      const removed = placesRemovedCodec.decode(record.payload);
+      const placeID = placesRemovedCodec.decode(record.payload).placeID;
 
-      await db
-        .updateTable('places')
-        .set({ removed_sequence: record.sequence })
-        .where('place_id', '=', removed.placeID)
-        .where('removed_sequence', 'is', null)
-        .execute();
+      if (placeID === undefined) {
+        return [];
+      }
 
-      return [removed.placeID];
+      await writeRemovedSequence(tx, { placeID, sequence: record.sequence });
+
+      return [placeID];
     }
 
     if (record.kind === contactMarkedKnownCodec.kind) {
@@ -148,17 +152,18 @@ async function foldContactMarked(
   return [marked.contactID];
 }
 
-// The time a call last used a place: each tool_called whose decision carries the place.
+// The time a call last used a place: each tool_called whose decision carries the place's
+// permission, whatever its outcome, so a call that a place let past stage 5 and that then asked
+// counts too.
 async function foldUsed(
   tx: Transaction<unknown>,
   record: EnvelopeRecord,
 ): Promise<readonly string[]> {
   const db = tx.$extendTables<PolicyTables>();
-  const decision = record.decision;
 
   const placeIDs = [
     ...new Set(
-      (decision?.outcome === 'allow' ? (decision.permissions ?? []) : []).flatMap((permission) =>
+      (record.decision?.permissions ?? []).flatMap((permission) =>
         typeof permission === 'object' && permission !== null && permission.by === 'place'
           ? [permission.placeID]
           : [],

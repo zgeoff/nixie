@@ -126,6 +126,12 @@ export interface NixieTables {
     readonly cursor: string;
     readonly written_at: number;
   };
+  readonly connection_addresses: {
+    readonly address_ref: string;
+    readonly connection_id: string;
+    readonly account_sealed: Uint8Array<ArrayBuffer>;
+    readonly created_at: number;
+  };
   readonly connections: {
     readonly connection_id: string;
     readonly short_id: string;

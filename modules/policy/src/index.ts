@@ -38,15 +38,15 @@ export { findPlace } from './place/find-place';
 export { formatPlaceKey } from './place/format-place-key';
 export type { OwnPlace, OwnPlaceSource } from './place/own-place-source';
 export { writeContactKinds } from './place/write-contact-kinds';
+export { writePersonalRemovals } from './place/write-personal-removals';
+export type { PlaceLink } from './place/find-place-link';
+export { findPlaceLink } from './place/find-place-link';
+export { probeOpenPlaceRecord } from './place/probe-open-place-record';
 export { writeOwnPlaces } from './place/write-own-places';
-export type { PlacesSeedAdd, PlacesSeedPlan, SeedPlaceRow } from './place/build-places-seed-plan';
-
-export {
-  applyPlacesSeedPlan,
-  buildPlacesSeedPlan,
-  buildPlacesSeedRecords,
-} from './place/build-places-seed-plan';
-
+export type { PlacesSeedAdd, PlacesSeedPlan, SeedPlaceRow } from './place/types';
+export { applyPlacesSeedPlan } from './place/apply-places-seed-plan';
+export { buildPlacesSeedPlan } from './place/build-places-seed-plan';
+export { buildPlacesSeedRecords } from './place/build-places-seed-records';
 export type { ParsedPlaceFile, PlaceFileEntry } from './place/parse-place-file';
 export { parsePlaceFile } from './place/parse-place-file';
 export { readSeedPlaceRows } from './place/read-seed-place-rows';

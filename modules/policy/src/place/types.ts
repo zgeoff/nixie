@@ -38,6 +38,31 @@ export interface DestinationText {
   readonly raw: string;
 }
 
+// A site or mail domain entry of the directory that the seed may have added.
+export interface SeedPlaceRow {
+  readonly placeID: string;
+  readonly key: Extract<PlaceKey, { kind: 'site' | 'mail_domain' }>;
+  readonly trust: Trust;
+  readonly name: string | null;
+  readonly addedBy: string;
+
+  // true when a places.changed record named the entry since it was added
+  readonly isChanged: boolean;
+}
+
+export interface PlacesSeedAdd {
+  readonly placeID: string;
+  readonly shortID: string;
+  readonly key: Extract<PlaceKey, { kind: 'site' | 'mail_domain' }>;
+  readonly trust: Exclude<Trust, 'self'>;
+  readonly name: string | null;
+}
+
+export interface PlacesSeedPlan {
+  readonly adds: readonly PlacesSeedAdd[];
+  readonly removes: readonly string[];
+}
+
 // The part of a place the decision point reads from a snapshot's directory.
 export interface PlaceEntry {
   readonly placeID: string;

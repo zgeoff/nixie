@@ -14,7 +14,9 @@ type PolicyErasableRecordKind =
   | 'policy.action_answered'
   | 'policy.contact_marked_known'
   | 'places.added'
-  | 'places.changed';
+  | 'places.changed'
+  | 'places.removed'
+  | 'places.acted';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

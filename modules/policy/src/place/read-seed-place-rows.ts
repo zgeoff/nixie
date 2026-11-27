@@ -1,6 +1,6 @@
 import type { Transaction } from 'kysely';
 import type { PolicyTables } from '../policy/policy-tables';
-import type { SeedPlaceRow } from './build-places-seed-plan';
+import type { SeedPlaceRow } from './types';
 import { trustLevels } from './types';
 
 // The site and mail domain entries that are in the directory now, which hold their key in the
@@ -34,6 +34,7 @@ export async function readSeedPlaceRows(
         placeID: row.place_id,
         key,
         trust,
+        name: row.name,
         addedBy: row.added_by,
         isChanged: row.name_sequence !== null,
       },

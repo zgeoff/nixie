@@ -1,4 +1,4 @@
-import { readLiveConnectionIDs } from '@heynixie/connections';
+import { readLiveAddressRefs } from '@heynixie/connections';
 import type { SeedResult } from '@heynixie/definitions';
 import { runInForceSeed } from '@heynixie/definitions';
 import { readArmedReminders } from '@heynixie/reminders';
@@ -12,7 +12,7 @@ export function runQueuedInForceSeed(parts: SeedParts): Promise<SeedResult> {
       buildPolicy: parts.buildPolicy,
       builtInBudgets: parts.context.budgets?.builtIn() ?? [],
       readExtraArmed: readArmedReminders,
-      readSelfPlaces: readLiveConnectionIDs,
+      readSelfPlaces: readLiveAddressRefs,
     }),
   );
 }

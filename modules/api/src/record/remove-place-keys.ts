@@ -1,45 +1,20 @@
 import { removeRecordKey } from '@heynixie/log';
-import { contactMarkedKnownCodec } from '@heynixie/policy';
-import { sql } from 'kysely';
-import { z } from 'zod';
-import type { APIContext, APITables } from '../types';
-import { placeErasableKinds } from '../utils/place-erasable-kinds';
+import { readForgetStarted } from '../forget/read-forget-started';
+import type { APIContext } from '../types';
+import { readPlaceCascadeKeyIDs } from './read-place-cascade-key-ids';
 
-// A contact you marked is an entry of the directory whose ID is the contact's ID, and its marking
-// record holds the contact's address in its erasable fields.
-const placeKeyKinds = [...placeErasableKinds, contactMarkedKnownCodec.kind] as const;
-const placeIDOf = sql`coalesce(json_extract(payload, '$.placeID'), json_extract(payload, '$.contactID'))`;
-
-// A forget of one record of a place takes every record of that place that holds erasable fields,
-// the marking record of a contact included, so no later change of its name keeps what the forget
-// meant to erase. Does nothing for a record of any other kind.
+// A forget of one record of a place takes the key of every record of that place: the keys its start
+// record found while the place was readable, and any record of the place written since. Does
+// nothing for a record of any other kind.
 export async function removePlaceKeys(context: APIContext, recordSequence: number): Promise<void> {
-  const db = context.log.writer.db.$extendTables<APITables>();
+  const started = await readForgetStarted(context, recordSequence);
 
-  const forgotten = await db
-    .selectFrom('records')
-    .select(['kind', placeIDOf.as('place_id')])
-    .where('sequence', '=', recordSequence)
-    .where('kind', 'in', placeKeyKinds)
-    .executeTakeFirst();
+  const keyIDs = new Set([
+    ...(started?.cascadeKeyIDs ?? []),
+    ...(await readPlaceCascadeKeyIDs(context.log, recordSequence)),
+  ]);
 
-  if (forgotten === undefined) {
-    return;
-  }
-
-  const placeID = z.string().parse(forgotten.place_id);
-
-  const rows = await db
-    .selectFrom('records')
-    .select('key_id')
-    .where('kind', 'in', placeKeyKinds)
-    .where(placeIDOf, '=', placeID)
-    .where('key_id', 'is not', null)
-    .execute();
-
-  for (const row of rows) {
-    if (row.key_id !== null) {
-      await removeRecordKey(context.log, row.key_id);
-    }
+  for (const keyID of keyIDs) {
+    await removeRecordKey(context.log, keyID);
   }
 }

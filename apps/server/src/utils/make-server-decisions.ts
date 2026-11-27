@@ -30,9 +30,9 @@ export interface ServerDecisionsOptions {
   // the consent checker, which starts after the decision points do
   readonly readCheck: () => RunConsentCheck | null;
 
-  // The address of an account that is you, by the reference its place holds in a snapshot, such as
-  // a Google connection's ID. Null once the account is gone, and forgetting its connection takes the
-  // address away: the snapshot holds the reference, never the address.
+  // The address of an account that is you, by the reference of one address a Google connection
+  // kept, which a renewal never changes. Null once the account is gone, and a forget of the
+  // connection takes every address away: the snapshot holds the reference, never the address.
   readonly readOwnerAddress: (reference: string) => Promise<string | null>;
 }
 

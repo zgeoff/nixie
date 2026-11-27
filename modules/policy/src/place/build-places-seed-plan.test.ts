@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { applyPlacesSeedPlan, buildPlacesSeedPlan } from './build-places-seed-plan';
+import { buildPlacesSeedPlan } from './build-places-seed-plan';
 
 test('it adds each place of the file that no entry holds', () => {
   const plan = buildPlacesSeedPlan(
@@ -30,6 +30,7 @@ test('it removes an entry that it added and the file no longer lists', () => {
         placeID: 'p1',
         key: { kind: 'site', domain: 'library.example.org', subdomains: false },
         trust: 'read',
+        name: null,
         addedBy: 'seed',
         isChanged: false,
       },
@@ -43,13 +44,14 @@ test('it leaves an entry that you added or changed where it is', () => {
   const key = { kind: 'site', domain: 'library.example.org', subdomains: false } as const;
 
   const plan = buildPlacesSeedPlan(
-    [{ key, trust: 'blocked', name: null }],
+    [{ key, trust: 'blocked', name: 'The library' }],
     [
-      { placeID: 'yours', key, trust: 'act', addedBy: 'you', isChanged: false },
+      { placeID: 'yours', key, trust: 'act', name: null, addedBy: 'you', isChanged: false },
       {
         placeID: 'edited',
         key: { kind: 'site', domain: 'other.example.org', subdomains: false },
         trust: 'act',
+        name: null,
         addedBy: 'seed',
         isChanged: true,
       },
@@ -64,22 +66,35 @@ test('it replaces an entry that it added when the file changes its level', () =>
 
   const plan = buildPlacesSeedPlan(
     [{ key, trust: 'blocked', name: null }],
-    [{ placeID: 'p1', key, trust: 'known', addedBy: 'seed', isChanged: false }],
+    [{ placeID: 'p1', key, trust: 'known', name: null, addedBy: 'seed', isChanged: false }],
   );
 
   expect({
     adds: plan.adds.map((add) => add.trust),
     removes: plan.removes,
-    refs: applyPlacesSeedPlan([{ placeID: 'p1', trust: 'known' }], plan).map((ref) => ref.trust),
-  }).toStrictEqual({ adds: ['blocked'], removes: ['p1'], refs: ['blocked'] });
+  }).toStrictEqual({ adds: ['blocked'], removes: ['p1'] });
+});
+
+test('it replaces an entry that it added when the file changes only its name', () => {
+  const key = { kind: 'site', domain: 'library.example.org', subdomains: false } as const;
+
+  const plan = buildPlacesSeedPlan(
+    [{ key, trust: 'read', name: 'The town library' }],
+    [{ placeID: 'p1', key, trust: 'read', name: 'The library', addedBy: 'seed', isChanged: false }],
+  );
+
+  expect({
+    adds: plan.adds.map((add) => [add.trust, add.name]),
+    removes: plan.removes,
+  }).toStrictEqual({ adds: [['read', 'The town library']], removes: ['p1'] });
 });
 
 test('it changes nothing for a file that the entries already match', () => {
   const key = { kind: 'site', domain: 'library.example.org', subdomains: false } as const;
 
   const plan = buildPlacesSeedPlan(
-    [{ key, trust: 'read', name: null }],
-    [{ placeID: 'p1', key, trust: 'read', addedBy: 'seed', isChanged: false }],
+    [{ key, trust: 'read', name: 'The library' }],
+    [{ placeID: 'p1', key, trust: 'read', name: 'The library', addedBy: 'seed', isChanged: false }],
   );
 
   expect(plan).toStrictEqual({ adds: [], removes: [] });

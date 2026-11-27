@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { findPlaceLink } from './find-place-link';
 import { placesActedCodec } from './places-acted-codec';
 
 export interface ActedPlaceQuery {
@@ -32,9 +33,10 @@ export async function readActedPlaceIDs(
 
     for (const entry of page) {
       const acted = placesActedCodec.tryDecodePartial(entry.record.payload);
+      const link = findPlaceLink(entry.record);
 
-      if (acted?.callID === query.callID && acted.placeID !== undefined) {
-        found.add(acted.placeID);
+      if (acted?.callID === query.callID && link !== null) {
+        found.add(link.placeID);
       }
     }
 

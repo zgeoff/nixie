@@ -1,4 +1,5 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
+import { readOwnerAddress } from '@heynixie/connections';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { writeChatChannels } from '@heynixie/policy';
@@ -173,15 +174,12 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'decisions',
     needs: ['inputs', 'context'],
-    uses: ['checker', 'connections'],
+    uses: ['checker'],
     start: (parts) =>
       Promise.resolve(
         makeServerDecisions({
-          readOwnerAddress: async (connectionID) => {
-            const context = await parts.find('connections')?.readContext(connectionID);
-
-            return context?.account ?? null;
-          },
+          readOwnerAddress: (addressRef) =>
+            readOwnerAddress(parts.get('context').apiContext.log, addressRef),
           log: parts.get('context').apiContext.log,
           linkMaxAgeMs: parts.get('inputs').options.config.policy.consent.linkMaxAgeMs,
           readCheck: () => parts.find('checker')?.check ?? null,

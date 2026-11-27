@@ -67,6 +67,15 @@ interface KeyMarkRow {
   readonly marked_at: number;
 }
 
+// One address of a connection's account, sealed under the connection's key as its account column
+// is. A row never changes: a renewal that reaches a new address adds a row.
+interface ConnectionAddressRow {
+  readonly address_ref: string;
+  readonly connection_id: string;
+  readonly account_sealed: Uint8Array<ArrayBuffer>;
+  readonly created_at: number;
+}
+
 export type ConnectionRow = Selectable<ConnectionTableRow>;
 
 export type ConsentRow = Selectable<ConsentRequestRow>;
@@ -80,6 +89,7 @@ export type ConnectionTables = CheckedTables<
     connections: ConnectionTableRow;
     consent_requests: ConsentRequestRow;
     key_marks: KeyMarkRow;
+    connection_addresses: ConnectionAddressRow;
   }>
 >;
 
