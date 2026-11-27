@@ -1,5 +1,6 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { TextArrivalEvent, TriggerContext, TriggerSource } from '@heynixie/triggers';
+import { readStoredMessageIDs } from '../store/read-stored-message-ids';
 import { writeReceivedText } from '../store/write-received-text';
 import type { PhoneContext, ProviderText } from '../types';
 import { buildNextCursor } from './build-next-cursor';
@@ -86,6 +87,9 @@ async function runPhoneLoop(run: PhoneRun): Promise<void> {
   }
 }
 
+// How far behind the cursor each read reaches, for a text that the provider lists late.
+const lateTextMs = 24 * 60 * 60_000;
+
 // At its first start the source records where the provider stands and writes nothing for the texts
 // it holds. Every later read stores each text past the cursor, and delivers an arrival for each one
 // received in the last hour, so an outage's texts are stored whatever their age.
@@ -104,9 +108,16 @@ async function readProviderOnce(run: PhoneRun): Promise<void> {
     return;
   }
 
-  const inbound = await provider.readInbound(run.cursor.since);
+  const inbound = await provider.readInbound(
+    Math.max(run.cursor.floor, run.cursor.since - lateTextMs),
+  );
 
-  const fresh = pickNewTexts(inbound, run.cursor);
+  const stored = await readStoredMessageIDs(
+    run.context.log,
+    inbound.map((text) => text.messageID),
+  );
+
+  const fresh = pickNewTexts(inbound, run.cursor, stored);
 
   if (fresh.length === 0) {
     return;

@@ -4,6 +4,7 @@ import { readInbox, triggerMailWokeCodec } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { readTestTriggerRows } from '@heynixie/triggers/test-utils';
 import { waitFor } from '@zgeoff/testing';
+import { z } from 'zod';
 import { startTestPhone, startTestPhoneSource } from '../test-utils';
 import { phoneCursorSchema } from './phone-cursor';
 
@@ -57,6 +58,14 @@ async function setupTest() {
 
       return records.map((entry) => entry.record);
     },
+    readNewestTextID: async () => {
+      const outcome = await phone.callTool('phone.list', {});
+
+      const texts = z.array(z.object({ text: z.string() }));
+      const listed = z.object({ result: z.object({ texts }) }).parse(outcome);
+
+      return listed.result.texts[0]?.text ?? '';
+    },
     readStoredIDs: async () => {
       const outcome = await phone.callTool('phone.list', {});
 
@@ -108,7 +117,12 @@ test('it records the cursor of the first start as the provider stands, with no r
     kinds: ['phone.text_received'],
   });
 
-  expect(cursor).toStrictEqual({ since: old.receivedAt, skip: [old.messageID] });
+  expect(cursor).toStrictEqual({
+    since: old.receivedAt,
+    skip: [old.messageID],
+    floor: old.receivedAt,
+  });
+
   expect(records).toStrictEqual([]);
 });
 
@@ -247,6 +261,72 @@ test('it stores a text once when the provider lists it in 2 reads', async () => 
   const listed = await ctx.readStoredIDs();
 
   expect(listed).toHaveLength(1);
+});
+
+test('it stores a text that the provider lists after the cursor passed its receive time', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startSource();
+  await ctx.waitForCursor(0);
+
+  ctx.clock.advance(5000);
+
+  const newer = ctx.provider.deliver({ from: 'Example', body: 'Newer' });
+
+  ctx.poll();
+
+  await ctx.waitForCursor(newer.receivedAt);
+
+  ctx.provider.deliver({ from: 'Example', body: 'Late', receivedAt: newer.receivedAt - 3000 });
+  ctx.poll();
+
+  await waitFor(async () => {
+    const listed = await ctx.callTool('phone.list', {});
+
+    expect(listed).toMatchObject({
+      status: 'ok',
+      result: {
+        texts: [
+          { body: expect.stringContaining('Newer') },
+          { body: expect.stringContaining('Late') },
+        ],
+      },
+    });
+  });
+});
+
+test('it never stores again a forgotten text that a later read lists behind the cursor', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startSource();
+  await ctx.waitForCursor(0);
+
+  ctx.clock.advance(5000);
+
+  const forgotten = ctx.provider.deliver({ from: 'Example', body: 'Forget me' });
+
+  ctx.poll();
+
+  await ctx.waitForCursor(forgotten.receivedAt);
+
+  const textID = await ctx.readNewestTextID();
+
+  await ctx.callTool('phone.forget', { text: textID });
+
+  ctx.clock.advance(1000);
+
+  const next = ctx.provider.deliver({ from: 'Example', body: 'Next' });
+
+  ctx.poll();
+
+  await ctx.waitForCursor(next.receivedAt);
+
+  const records = await readRecords(ctx.tasks.log, {
+    afterSequence: 0,
+    kinds: ['phone.text_received'],
+  });
+
+  expect(records).toHaveLength(2);
 });
 
 test('it logs a failed read, and reads again once the provider answers', async () => {

@@ -25,10 +25,9 @@ const pageSize = 100;
 // Twilio stamps each message to the second.
 const precisionMs = 1000;
 
-// Twilio sorts its list newest first by the time a message was sent, and nixie keys a text by the
-// time Twilio created it, which a late text puts long after its sent time. So a read of the texts
-// pages on the sent time alone, and reaches a text sent up to this long before Twilio created it.
-const lateTextMs = 24 * 60 * 60_000;
+// Twilio lists newest first by sent time: for a received text, when it called the webhook, at or
+// after the text's creation time. So a late webhook puts an older text among newer ones, and a read
+// stops only at a page sent wholly before the time it wants, past which none was created later.
 
 // A read for a send pages on the creation time, because a queued message has no sent time. It goes
 // on until a whole page is this much older than the window, so one old message never ends it.
@@ -90,7 +89,7 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
           ...read.flatMap((message) => toInboundText(message)).map((text) => text.receivedAt),
         );
 
-        return page.length > 0 && page.every((message) => toSentAt(message) < newest - lateTextMs);
+        return page.length > 0 && page.every((message) => toSentAt(message) < newest);
       });
 
       const texts = messages.flatMap((message) => toInboundText(message));
@@ -102,11 +101,13 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
       const query = new URLSearchParams({
         To: options.number,
         PageSize: String(pageSize),
-        'DateSent>=': new Date(sinceMs - lateTextMs).toISOString().slice(0, 10),
+        'DateSent>=': new Date(sinceMs).toISOString().slice(0, 10),
       });
 
-      // The day filter bounds the list on its own sort key, so the read takes every page it leaves.
-      const messages = await readMessages(query, () => false);
+      const messages = await readMessages(
+        query,
+        (page) => page.length > 0 && page.every((message) => toSentAt(message) < sinceMs),
+      );
 
       return messages
         .flatMap((message) => toInboundText(message))

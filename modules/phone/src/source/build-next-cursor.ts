@@ -7,5 +7,9 @@ export function buildNextCursor(cursor: PhoneCursor, fresh: readonly ProviderTex
   const since = Math.max(cursor.since, ...fresh.map((text) => text.receivedAt));
   const ids = fresh.filter((text) => text.receivedAt === since).map((text) => text.messageID);
 
-  return { since, skip: since === cursor.since ? [...cursor.skip, ...ids] : ids };
+  return {
+    since,
+    skip: since === cursor.since ? [...cursor.skip, ...ids] : ids,
+    floor: cursor.floor,
+  };
 }

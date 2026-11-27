@@ -9,5 +9,6 @@ export function buildStartCursor(recent: readonly ProviderText[]): PhoneCursor {
   return {
     since,
     skip: recent.filter((text) => text.receivedAt === since).map((text) => text.messageID),
+    floor: since,
   };
 }

@@ -70,18 +70,20 @@ Before you start:
 
 5. Script the turn that the next wake starts: the model lists the texts from the library's number,
    opens the newest, queues a reply text, then replies. Then deliver the library's text, move the
-   clock, and wait for the model to receive the opened text.
+   clock, and wait for the model to receive the text and for the reply text to wait for approval.
 
    ```bash
    bun verify action script-reply --text 'I read the text and answered it.' --phone-read '{"from":"+61422222222"}' --phone-send '{"to":"+61422222222","body":"Thanks, I will be there."}'
    bun verify action deliver-text --from +61422222222 --body 'Your code is 481516.'
    bun verify action advance-clock --minutes 1
    bun verify model received --text '481516'
+   bun verify proposals --tool phone.send --waiting pending --wait-ms 30000
    ```
 
-   Expect: `data.replies` is 4 for the first command, and `data.requests` is 1 or more for the last.
-   The last command shows only that the wake reached the model, because the wake holds the code.
-   Step 6 checks that the read returned it.
+   Expect: `data.replies` is 4 for the first command, `data.requests` is 1 or more for the fourth,
+   and the last command exits 0. The fourth command shows only that the wake reached the model,
+   because the wake holds the code. Step 6 checks that the read returned it. The last command waits
+   until the turn has queued the reply text, so step 6 reads the finished turn.
 
 6. Check the wake, the read's result, the outside content and the held text:
 
