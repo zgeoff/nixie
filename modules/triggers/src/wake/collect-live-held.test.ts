@@ -16,6 +16,12 @@ test.each([
     sources: [],
     count: 0,
   },
+  {
+    name: 'a text source, which the list of text sources decides',
+    mailbox: { kind: 'source', sourceID: 'phone' },
+    sources: [],
+    count: 1,
+  },
 ] as const)('#collectLiveHeld keeps a match on $name only when its mailbox is live', (row) => {
   const rules = new Map<string, LiveWakeRule>([
     [

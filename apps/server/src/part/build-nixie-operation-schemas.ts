@@ -56,6 +56,10 @@ export function buildNixieOperationSchemas() {
     }),
     releaseWriterLock: z.null(),
 
+    // a note that the harness writes and forgets as a tool call would, so its session cleanup runs
+    // beside the call
+    forgetNoteBeside: z.null(),
+
     // a call that the user started and connected, on the harness's speech layer
     placeHarnessCall: z.null(),
 
@@ -86,6 +90,9 @@ export function buildNixieOperationSchemas() {
       messageID: z.string().exactOptional(),
       references: z.array(z.string()).exactOptional(),
     }),
+
+    // a text that arrives at the assistant's own number, on the in-memory phone of a test build
+    deliverText: z.object({ from: z.string(), body: z.string() }),
 
     connectCredential: credentialProviderSchema,
     refreshCredential: credentialProviderSchema,

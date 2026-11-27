@@ -82,6 +82,9 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_MAIL=1 gives nixie its own mailbox, on a host in memory.
   const hasMail = process.env['NIXIE_VERIFY_MAIL'] === '1';
 
+  // A start with NIXIE_VERIFY_PHONE=1 gives nixie its own phone, on a provider in memory.
+  const hasPhone = process.env['NIXIE_VERIFY_PHONE'] === '1';
+
   // A start with NIXIE_VERIFY_MCP=1 adds an MCP server to nixie's config: a stand-in on a loopback
   // port, with its own authorization server, that lists one tool.
   const mcp =
@@ -168,11 +171,13 @@ export async function runVerifyHarness(): Promise<void> {
       '  package_registry: https://registry.test',
       ...(gateway === null ? [] : buildCodingConfigLines()),
       ...(hasMail ? buildMailConfigLines() : []),
+      ...(hasPhone ? buildPhoneConfigLines() : []),
       ...(mcp === null ? [] : buildMcpConfigLines(mcp.mcpURL, mcp.clientID)),
     ],
     extraSecrets: [
       'connector_credentials:',
       '  images: stub-image-key',
+      '  twilio: stub-twilio-secret',
       ...(isSpendOn ? ['settings:', `  gateway-control: ${testGatewayControlToken}`] : []),
       ...(gateway === null ? [] : [`atc_token: ${gateway.token}`]),
     ],
@@ -317,6 +322,9 @@ export async function runVerifyHarness(): Promise<void> {
     deliverMail: async (mail) => {
       await server.request('deliverMail', mail);
     },
+    deliverText: async (text) => {
+      await server.request('deliverText', text);
+    },
     setSessionState: (state) => {
       if (gateway === null) {
         throw new Error('the harness runs no coding gateway: start it with NIXIE_VERIFY_CODING=1');
@@ -441,6 +449,18 @@ function buildCodingConfigLines(): string[] {
 
 function buildMailConfigLines(): string[] {
   return ['mail:', '  address: assistant@nixie.example.org'];
+}
+
+function buildPhoneConfigLines(): string[] {
+  return [
+    'phone:',
+    '  number: "+61411111111"',
+    '  poll_interval: 1s',
+    '  twilio:',
+    '    account_sid: AC00000000000000000000000000000000',
+    '    api_key_sid: SK00000000000000000000000000000000',
+    '    credential: deployment:twilio',
+  ];
 }
 
 function buildMcpConfigLines(url: string, clientID: string): string[] {

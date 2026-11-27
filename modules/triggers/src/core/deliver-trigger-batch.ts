@@ -48,7 +48,9 @@ export async function deliverTriggerBatch(
     for (const event of batch.events) {
       const isWritten = await match(event)
         .with({ kind: 'task_input' }, (input) => writeTaskInput(tx, core, sourceID, input))
-        .with({ kind: 'mail' }, (mail) => writeMailArrival(tx, core, sourceID, mail))
+        .with({ kind: P.union('mail', 'text') }, (arrival) =>
+          writeMailArrival(tx, core, sourceID, arrival),
+        )
         .with({ kind: P.union('schedule', 'at') }, (schedule) =>
           writeEvent(tx, core, sourceID, schedule),
         )
@@ -61,7 +63,10 @@ export async function deliverTriggerBatch(
 
     await writeCursor(tx, core, sourceID, batch.cursor);
 
-    return { delivered, hasMail: batch.events.some((event) => event.kind === 'mail') };
+    return {
+      delivered,
+      hasMail: batch.events.some((event) => event.kind === 'mail' || event.kind === 'text'),
+    };
   });
 
   if (result.hasMail) {

@@ -113,6 +113,17 @@ export const controlRoutes = {
       // opens the newest, before its reply
       mailRead: z.strictObject({ from: z.string().min(1) }).optional(),
 
+      // a wake rule that the model sets on the assistant's phone with the phone tool before its
+      // reply, for texts from this number or sender name
+      phoneWatch: z.strictObject({ from: z.string().min(1) }).optional(),
+
+      // the model lists the texts its phone received from this number or sender name, then opens
+      // the newest, before its reply
+      phoneRead: z.strictObject({ from: z.string().min(1) }).optional(),
+
+      // the model queues a text to this number with this body before its reply
+      phoneSend: z.strictObject({ to: z.string().min(1), body: z.string().min(1) }).optional(),
+
       // the model searches the connected Google account's mail with this query, opens the first
       // mail the search lists, and replies to it with this text, before its own reply
       gmailReply: z.strictObject({ query: z.string().min(1), text: z.string().min(1) }).optional(),
@@ -269,6 +280,12 @@ export const controlRoutes = {
       // an HTML body, which the mailbox reads in place of the text
       html: z.string().min(1).exactOptional(),
     }),
+    output: z.strictObject({ delivered: z.literal(true) }),
+  },
+  deliverText: {
+    method: 'POST',
+    path: '/control/deliver-text',
+    input: z.strictObject({ from: z.string().min(1), body: z.string().min(1) }),
     output: z.strictObject({ delivered: z.literal(true) }),
   },
   deliverGmail: {

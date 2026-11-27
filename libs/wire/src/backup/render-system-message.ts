@@ -24,6 +24,7 @@ export type SystemMessageType =
   | 'call'
   | 'page-event'
   | 'mail'
+  | 'text'
   | 'mcp';
 
 export interface SystemMessage {

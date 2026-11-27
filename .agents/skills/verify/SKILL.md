@@ -78,6 +78,7 @@ These cost the most time:
 | device-layout      | Lay out a screen in regions, and change them                      | [references/feature-device-layout.md](references/feature-device-layout.md)           |
 | live-updates       | Pause from the host, see it on the page                           | [references/feature-live-updates.md](references/feature-live-updates.md)             |
 | mail-wake          | Mail wakes the chat                                               | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
+| phone-text         | A text wakes the chat                                             | [references/feature-phone-text.md](references/feature-phone-text.md)                 |
 | gmail-tools        | Search and read a mail, and approve a reply                       | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
 | gmail-wake         | A matching Gmail mail wakes the chat                              | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
 | calendar-tools     | Read the calendar, and approve an invitation the assistant writes | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
@@ -182,9 +183,8 @@ Declare targets, actions, commands, checks and features in
 
 Map each file your change adds in the registry: add a glob that matches it to a feature's `paths`,
 to `.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
-gate fails on a changed file that no glob matches. `bun verify features` lists the globs. Keep a
-feature's globs off the files `.ignore()` covers, such as tests, docs and skills: list the app's
-files one by one when a directory glob would also match a test.
+gate fails on a changed file that no glob matches. `bun verify features` lists the globs. List a
+feature's files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run

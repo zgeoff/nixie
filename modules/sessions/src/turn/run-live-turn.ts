@@ -6,6 +6,7 @@ import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { renderHeldMessages } from '../held/render-held-messages';
+import { decodeInboxUUID } from '../inbox/decode-inbox-uuid';
 import { makeGapReader } from '../inbox/make-gap-reader';
 import { readLiveInbox } from '../inbox/read-live-inbox';
 import { renderToldWaitNotices } from '../inbox/render-told-wait-notices';
@@ -28,6 +29,7 @@ import type { TurnSilence } from '../utils/build-turn-silence';
 import { buildTurnSilence } from '../utils/build-turn-silence';
 import type { AssistantFrame } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
+import { SessionInvalidatedError } from '../utils/session-invalidated-error';
 import { pickWaitTelling } from './pick-wait-telling';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
@@ -118,7 +120,11 @@ export async function runLiveTurn(
       ...(gaps === undefined ? {} : { gaps }),
     });
   } catch (error) {
-    await voidFailedAttempt(run, input, live.written, error);
+    // A turn that a cleanup aborted keeps its replies: the user read them, and its rerun skips the
+    // messages they answer.
+    if (!(plan.signal.reason instanceof SessionInvalidatedError)) {
+      await voidFailedAttempt(run, input, live.written, error);
+    }
 
     throw error;
   } finally {
@@ -236,7 +242,8 @@ async function runTokenTurn(
       ...(capabilities.has('interrupt') ? { interrupt: input.interrupt } : {}),
       readRecallMark: () => readTurnRecalledThrough(run.context, input),
       ...(run.onModelCall === undefined ? {} : { onCall: run.onModelCall }),
-      onAssistant: (frame) => writeAssistantReply(run, input, plan.live, frame),
+      onAssistant: (frame, read) =>
+        writeAssistantReply(run, input, plan.live, { frame, read, sent }),
     });
 
     return {
@@ -292,30 +299,47 @@ function buildTurnInput(
   return [{ ...first, text: [...preamble, first.text].join('\n\n') }, ...rest];
 }
 
+interface AssistantReply {
+  readonly frame: AssistantFrame;
+
+  // the uuids the guest has reported read so far
+  readonly read: readonly string[];
+
+  // the sequences of the inbox records the turn has sent
+  readonly sent: ReadonlySet<number>;
+}
+
 async function writeAssistantReply(
   run: ConversationRun,
   input: StepInput,
   live: LiveWrites,
-  frame: AssistantFrame,
+  assistant: AssistantReply,
 ): Promise<number | null> {
-  if (frame.summary !== undefined) {
-    live.summaries.push(frame.summary);
+  if (assistant.frame.summary !== undefined) {
+    live.summaries.push(assistant.frame.summary);
   }
 
-  if (frame.text === '') {
+  if (assistant.frame.text === '') {
     return null;
   }
 
   const sequence = await writeLiveReply(run, input, {
-    messageID: frame.messageID,
-    text: frame.text,
+    messageID: assistant.frame.messageID,
+    text: assistant.frame.text,
     summary: live.summaries.splice(0).join('\n\n'),
     runID: buildStepRunID(input),
+    readSequences: collectReadSequences(assistant),
   });
 
   live.written.push(sequence);
 
   return sequence;
+}
+
+function collectReadSequences(assistant: AssistantReply): readonly number[] {
+  return assistant.read
+    .map((uuid) => decodeInboxUUID(uuid))
+    .filter((read): read is number => read !== null && assistant.sent.has(read));
 }
 
 // The opening rides on the first message, so the notices count as told only once the model reads

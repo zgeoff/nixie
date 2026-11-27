@@ -8,6 +8,8 @@ import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
+import type { NotebookStore } from '@heynixie/notebook';
+import type { FakePhoneProvider } from '@heynixie/phone/fake';
 import type { PlaceContext } from '@heynixie/policy';
 import { readPendingActionProposals, writePlaceAdded } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
@@ -20,7 +22,11 @@ import { harnessSpeech } from './harness-speech';
 
 export interface HarnessParts {
   readonly calls: CallsContext | undefined;
+
+  // the in-memory hosts that a journey puts mail and texts in, each null while its feature is off
   readonly mail: MemoryMailHost | null;
+  readonly phone: FakePhoneProvider | null;
+  readonly notebook: NotebookStore;
   readonly runInForceSeed: () => Promise<unknown>;
   readonly runInForce: PlaceContext['runInForce'];
 }
@@ -81,6 +87,14 @@ export function registerHarnessOperations(
     return parts.mail.deliver(incoming).hostMessageID;
   });
 
+  link.registerOperation('deliverText', schemas.deliverText, (incoming) => {
+    if (parts.phone === null) {
+      throw new Error('the config sets no phone section, so the test build has no phone');
+    }
+
+    return parts.phone.deliver(incoming).messageID;
+  });
+
   // The owner's approval of each pending device.addPackage call, which a journey cannot give with a
   // passkey: it answers as the host command does, which needs none, and the action queue then runs
   // the install as it runs any approved call. It returns once each package is stored.
@@ -122,6 +136,24 @@ export function registerHarnessOperations(
     }
 
     return answers.approved;
+  });
+
+  link.registerOperation('forgetNoteBeside', schemas.forgetNoteBeside, async () => {
+    const written = await parts.notebook.write(
+      { writer: 'conversation', model: 'harness' },
+      { title: 'Boiler notes', body: 'The boiler trips after a cold night.' },
+    );
+
+    invariant(written.status === 'written', 'the harness note was not written');
+
+    const begun = await parts.notebook.forgetBeside(
+      { note: written.shortID },
+      { thread: 'harness' },
+    );
+
+    invariant(begun.status === 'begun', 'the harness note forget did not begin');
+
+    return null;
   });
 
   link.registerOperation('approveMandate', schemas.approveMandate, async () => {

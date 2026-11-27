@@ -573,6 +573,20 @@ export interface NixieTables {
     readonly persona_version: string;
     readonly instructions: string;
   };
+  readonly phone_send_claims: {
+    readonly action_id: string;
+    readonly message_id: string;
+    readonly short_id: string;
+    readonly updated_sequence: number;
+  };
+  readonly phone_texts: {
+    readonly text_id: string;
+    readonly short_id: string;
+    readonly message_id: string;
+    readonly received_at: number;
+    readonly record_sequence: number;
+    readonly updated_sequence: number;
+  };
   readonly places: {
     readonly place_id: string;
     readonly short_id: string;

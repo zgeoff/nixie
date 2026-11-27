@@ -16,7 +16,7 @@ export interface MailHost {
   readonly send: (mail: OutgoingMail) => Promise<{ readonly hostMessageID: string }>;
 
   // reconciles a send by the Message-ID that nixie set
-  readonly findSent: (
+  readonly readSentTexts: (
     messageIDHeader: string,
   ) => Promise<{ readonly hostMessageID: string } | null>;
 

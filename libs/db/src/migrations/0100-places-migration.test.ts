@@ -11,7 +11,7 @@ import { nixieSchema } from '../schema/nixie-schema';
 import { SchemaTooNewError } from '../schema/schema-too-new-error';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { placesMigration } from './0099-places-migration';
+import { placesMigration } from './0100-places-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

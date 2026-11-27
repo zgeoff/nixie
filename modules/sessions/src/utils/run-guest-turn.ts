@@ -41,9 +41,9 @@ export interface GuestTurnSpec {
   readonly onCall?: (usage: ModelCallUsage, replies: GuestCallReplies) => Promise<void>;
 
   // runs on each assistant frame, before the host reads the guest's next frame, and returns the
-  // sequence of the reply it wrote for the frame, or null when it wrote none. A frame that carries
-  // an error text never reaches it: the turn holds that frame for its commit.
-  readonly onAssistant?: (frame: AssistantFrame) => Promise<number | null>;
+  // sequence of the reply it wrote for the frame, or null when it wrote none. A frame with an
+  // error text never reaches it, and read holds the uuids the guest has reported so far.
+  readonly onAssistant?: (frame: AssistantFrame, read: readonly string[]) => Promise<number | null>;
 }
 
 export interface GuestTurn {
@@ -230,7 +230,7 @@ async function readTurn(
     updateTurn(turn, frame, mark, spec.harness);
 
     if (frame.type === 'assistant' && frame.isError !== true) {
-      const sequence = await spec.onAssistant?.(frame);
+      const sequence = await spec.onAssistant?.(frame, turn.read);
 
       if (sequence !== undefined && sequence !== null) {
         turn.written.push(sequence);
