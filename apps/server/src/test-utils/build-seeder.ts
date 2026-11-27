@@ -3,6 +3,7 @@ import type { IdentitySeederDeps } from '@heynixie/api/test-utils';
 import { systemClock } from '@heynixie/clock';
 import { buildConnectorSeeder } from '@heynixie/connectors/test-utils';
 import { writeRecords } from '@heynixie/log';
+import { readTestRecordRows } from '@heynixie/log/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
@@ -57,8 +58,9 @@ export function buildBootSeeder(files: BootSeederFiles) {
         ]);
       }),
 
-    // a call of the code tool, whose forget destroys the sandbox that the call's ID owns; returns the
-    // call record's sequence
+    // a call of the code tool, whose forget destroys the sandbox that the call's ID owns, then
+    // erases the record key that seals the call's input; returns the call record's sequence and
+    // that key's ID
     codeCall: (thread: string, callID: string) =>
       runInDataLog(files, async (context) => {
         const [call] = await writeRecords(context.log, [
@@ -67,12 +69,19 @@ export function buildBootSeeder(files: BootSeederFiles) {
             definitions: { snapshotHash: 'sha256:test' },
             thread,
             payload: { callID, runID: `${thread}:1@1`, toolUseID: null, tool: 'code.run' },
+            erasable: { input: { code: "print('plum')" } },
           },
         ]);
 
         invariant(call !== undefined, 'the call record was written');
 
-        return call.sequence;
+        const rows = await readTestRecordRows(context.log.writer);
+
+        const keyID = rows.find((row) => row.sequence === call.sequence)?.key_id;
+
+        invariant(typeof keyID === 'string', 'the call record is sealed under a record key');
+
+        return { sequence: call.sequence, keyID };
       }),
     goneHolderLease: (taskID: string) =>
       runInDataLog(files, (context) => buildTaskSeeder({ context }).goneHolderLease(taskID)),
