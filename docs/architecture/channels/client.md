@@ -621,14 +621,20 @@ Deferred group is collapsed.
 
 ## The task dashboard
 
-The dashboard at `/tasks` lists every open task in four groups: the conversation, the working tasks,
-the held tasks and the coding sessions. The conversation is the task with the ID `conversation`, and
-it stays in its own group in every state, a pause of nixie included. The other tasks group by their
-listed state, the state that the API's `tasks.list` gives in `listedState`. Working holds `ready`,
-`running`, `waiting`, `idle`, `asleep` and `finished`, and Held holds `paused`, `stopped` and
-`failed`. A `done` or `closed` task leaves the list, except a task that supervises a coding session,
-which leaves only when closed. A task from a server that gives no listed state groups and shows by
-its stored state.
+The dashboard at `/tasks` lists every open task in up to four groups: the conversation, the working
+tasks, the held tasks and the coding sessions. The conversation is the task with the ID
+`conversation`, and it stays in its own group in every state, a pause of nixie included. The other
+tasks group by their listed state, the state that the API's `tasks.list` gives in `listedState`.
+Working holds `ready`, `running`, `waiting`, `idle`, `asleep` and `finished`, and Held holds
+`paused`, `stopped` and `failed`. A `done` or `closed` task leaves the list. A task from a server
+that gives no listed state groups and shows by its stored state.
+
+The coding sessions group follows the `coding` feature, so it shows only while that feature is on.
+It holds each task that supervises a session that nixie started, in any state but closed, so a
+finished task stays there with its session's last state until the user closes it. Under its heading
+it says that the sessions run in another program, outside nixie. A task that joined a session groups
+by its state like any task and shows no session line, because the user already watches that session
+in atc. The group shows only when it has a task, and the filters below apply to it too.
 
 Each task shows its name, which links to its page, its state, the time of its last activity, its
 brief, the task it waits on, the tasks that wait on it, and how many of its actions are queued and
@@ -640,6 +646,18 @@ started. The page also adds these lines, in the browser's time zone:
   poll has no schedule to be late against.
 - On an `asleep` task with a `nextRunAt`, "Next run" and that time.
 - On a `finished` task, "Sent its report".
+
+A supervised task also shows a session line, on the dashboard and on the task's page: "Coding
+session, outside nixie: started by nixie", the session's state and the time of its last event. The
+state reads Running, Waiting for you, Idle, Ended or Out of reach, from the `session` that
+`tasks.list` and `tasks.read` give, as [the API](./api.md#reading-tasks) describes. The time reads
+"No event yet" before the first event and shows once the page hydrates, because it uses the
+browser's time zone. While the task is paused, a second line says the session keeps running, because
+a pause holds the task and never the session. The session line needs no stream of its own: each
+event that lands on the task's thread marks the `tasks` topic, so the read that the topic
+invalidates carries the new state, as [live updates](./live-updates.md#topics) describes. The
+[coding task design](../core/coding-tasks.md#supervising-in-the-live-view) covers what the server
+gives.
 
 The dashboard filters by definition and by state. Each filter is a select with an All option and
 takes one value. The route keeps them as the search parameters `definition` and `state`, so a reload
@@ -662,10 +680,10 @@ retry after a failure sends the same client action ID. A pause of a running task
 until its step ends. A stop first lists the actions it cancels and the started ones that run to
 their outcome. The dashboard offers the confirm only once that list loads, so the user never cancels
 an action unseen. A close asks first too, because a closed task takes no more messages. The
-conversation offers no close. For a task that binds a session, the stop and the close confirmations
-add a line, "This also stops its coding session.", when nixie started the session, and none when the
-task joined one. A coding task offers no restart and no interrupt, so a stopped one offers only
-Close.
+conversation offers no close. While the coding feature is on, the stop and the close confirmations
+of a task that supervises a session add a line, "This also stops its coding session.", when nixie
+started the session, and none when the task joined one or already let go of it at a stop. A coding
+task offers no restart and no interrupt, so a stopped one offers only Close.
 
 While nixie is paused, every signed-in page shows a banner with the cause in words, a restore, you
 or the spending limit, and since when, beside a Resume nixie button that acts at once. A restore

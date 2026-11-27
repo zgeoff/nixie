@@ -2,6 +2,10 @@
 
 - Decisions: [0003](../../../decisions/0003-sdk-placement.md)
 
+This design is for whoever builds or changes how nixie runs code or steers coding sessions. Read it
+before you touch the code tool, the coding adapter interface or an adapter, then follow the links
+for the contracts.
+
 nixie runs code for general work, such as processing a file or crunching data, through its code tool
 in an imp with no credential grants. nixie is not a coding agent: it steers coding agents through a
 coding adapter, with atc first and a built-in adapter that runs one session in an imp later.
@@ -15,8 +19,9 @@ image, with egress `none`, no grants and no tool route, destroyed when the call 
 runs on the host, so the decision point decides every code run and the record holds it.
 
 A code run has fixed limits: 60 s of wall time, 512 MiB of memory, 1 MiB of output per stream, 20
-MiB of files out and 1 vCPU. Input files are files an earlier code run wrote and pages the web fetch
-stored. A `skills` list places each named skill's folder read-only in the sandbox, as the
+MiB of files out and 1 vCPU. They are constants with no config key, so no rule or user raises them.
+Input files are files an earlier code run wrote and pages the web fetch stored. A `skills` list
+places each named skill's folder read-only in the sandbox, as the
 [skills design](../skills.md#scripts) sets out. A program that needs outside data gets it through
 another tool first, because the code imp has no route out.
 [The code tool](../../../architecture/connectors/code-tool.md) holds the contracts, the limits and
@@ -56,4 +61,5 @@ The built-in adapter runs a single session in an imp, with Claude Code's built-i
 imp and nixie's tools reached through the same route every imp uses. The session holds the model
 credential. Any other grant, such as a git host or a package registry, comes from your rule for the
 coding context, which asks once because it widens. The imp's egress allows the hosts its grants name
-and the hosts your rule lists. The first build designs only this adapter's interface.
+and the hosts your rule lists. The first build designs only this adapter's interface, so build
+nothing for it yet.

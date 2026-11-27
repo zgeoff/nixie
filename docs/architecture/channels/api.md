@@ -374,13 +374,16 @@ log sequence it read at, which it reads before the tasks, so a client that follo
 sequence sees every change the list leaves out. The read gives `changesAt`, the earliest time that a
 listed task changes with no write, which is the next task run of a task that wakes on a schedule, or
 null, and a client reads the list again at that time. Each listed task also names its `runner`. A
-task whose runner binds an outside session also gives `session`, with the session's origin
-(`started` or `joined`), its state (`running`, `waiting`, `idle`, `ended` or `gone`) and the time of
-its last event, null before the first. The runner supplies it through its list fields, so the API
-names no runner, and a task of a runner with no such fields gives none. A client shows only the
-controls that the task's [runner](../core/started-tasks.md#task-runners) offers and the task's state
-allows. A started task whose name the user forgot shows under its ID. A task read returns one task
-with the same fields, whatever its place in the list, so a task's page shows a task past the cap.
+task whose runner binds a session that runs in another program, such as the session of a
+[coding task](../core/coding-tasks.md#supervising-in-the-live-view), also gives `session`: the
+session's origin (`started` or `joined`), its state (`running`, `waiting`, `idle`, `ended` or
+`gone`), the time of its last event, null before the first, and `isReleased`, which is true once the
+task let go of the session. The runner supplies it through its list fields, so the API names no
+runner, and a task of a runner with no such fields gives none. The controls a runner offers come
+from the same runner, and a coding runner offers 4 of the 6. A client shows only the controls that
+the task's [runner](../core/started-tasks.md#task-runners) offers and the task's state allows. A
+started task whose name the user forgot shows under its ID. A task read returns one task with the
+same fields, whatever its place in the list, so a task's page shows a task past the cap.
 
 Each listed task also gives `listedState`, built from the state that the model tool `tasks.list`
 reads: the stored state, or `idle`, `finished` or `asleep` for a task whose stored state is
@@ -407,12 +410,12 @@ An ended task run is a task run that has ended with any cause. `tasks.listEnded`
 task runs newest first, one page per call, each with its cause, who ended it, how it reported and
 what it used, its `fire`, and the sequence of its `task.run_ended` record. The `fire` is the one
 that opened the task run's work, as a task list read gives it. It also returns one listed task for
-each task of the page, with the same fields as a task read. A task of a definition that left force,
-with no task run open, shows under the name of the version that its newest ended task run pinned,
-and a task whose version is no longer stored has no entry, so a client shows its task runs by task
-ID. A page holds at most 100 task runs. Its `next` is the sequence of the last task run that the
-page holds, and the client sends it as `before` to read the page after. The last page has a `next`
-of null, so a client never reads an empty page.
+each task of the page, with the same fields as a task read, `session` included. A task of a
+definition that left force, with no task run open, shows under the name of the version that its
+newest ended task run pinned, and a task whose version is no longer stored has no entry, so a client
+shows its task runs by task ID. A page holds at most 100 task runs. Its `next` is the sequence of
+the last task run that the page holds, and the client sends it as `before` to read the page after.
+The last page has a `next` of null, so a client never reads an empty page.
 
 `triggers.report` returns the fires that came late and the fires that nixie skipped, newest first,
 from the start of a date in the user's zone. A late entry is a `trigger.fired` record that is a

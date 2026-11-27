@@ -6,6 +6,10 @@ finished tasks and what each did and why. Both read the same projections as the 
 [event log design](../core/event-log.md) owns the projections, and [tasks](../core/tasks.md) owns
 the conversation's task tools and task states.
 
+Read this before you build or change the dashboard, a task's view, the task controls or the stream
+the client follows. [The client architecture](../../../architecture/channels/client.md) describes
+what is built, so check it before you change code.
+
 | Tier | View      | Holds                                                                      |
 | ---- | --------- | -------------------------------------------------------------------------- |
 | 1    | Dashboard | Every task's row, a task opened as a conversation, and the task controls   |
@@ -16,11 +20,12 @@ Tier 2 adds views over the same projections and no new data model.
 ## The dashboard
 
 The dashboard lists the conversation first, then every task in 4 groups: needs you, working, held
-(`paused`, `stopped`, `failed`) and finished in the last 7 days. Each row shows the title, state,
-last update and what the task waits on, such as "approval: send email". A job run also shows its
-scheduled time and whether it is a catch-up. The dashboard filters by job and state.
-[The task dashboard](../../../architecture/channels/client.md#the-task-dashboard) describes what is
-built, which keeps 3 groups, Conversation, Working and Held.
+(`paused`, `stopped`, `failed`) and finished in the last 7 days. A fifth group holds the coding
+sessions that nixie supervises through atc, labelled as outside nixie. It is not a task group. Each
+row shows the title, state, last update and what the task waits on, such as "approval: send email".
+A job run also shows its scheduled time and whether it is a catch-up. The dashboard filters by job
+and state. [The task dashboard](../../../architecture/channels/client.md#the-task-dashboard)
+describes what is built, which keeps 3 groups, Conversation, Working and Held.
 
 ## A task as a conversation
 
@@ -28,9 +33,9 @@ An open task reads like the conversation: its brief, your messages, the model's 
 reports. Each step's work shows as a compact line that expands. A tool call shows the policy
 decision and its rule, a worker its question, answer and sources, a proposal its
 [card](approvals.md), an action its recorded outcome, and a memory read or write its items and
-versions. A record with no renderer still shows by its kind, and no line offers its raw record.
-Payloads over 4 KB load on demand. The
-[client architecture](../../../architecture/channels/client.md#worker-runs-and-large-payloads)
+versions. A record with no renderer still shows by its kind. No line in a task's view offers its raw
+record, because raw records belong to the live view in tier 2. Payloads over 4 KB load on demand.
+The [client architecture](../../../architecture/channels/client.md#worker-runs-and-large-payloads)
 describes the worker line and the load on demand.
 
 ## Stepping in
@@ -52,6 +57,5 @@ event carries one record and the projection rows its transaction changed, so the
 the log itself. The stream covers every thread, with full payloads only for the thread on screen. A
 payload whose key is destroyed arrives as a gap.
 
-Coding sessions that nixie supervises through atc show as their own dashboard group, labelled as
-outside nixie, as [the client doc](../../../architecture/channels/client.md#the-task-dashboard)
-describes.
+[The client doc](../../../architecture/channels/client.md#the-task-dashboard) describes the
+coding-session group as built.

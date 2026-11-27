@@ -11,11 +11,16 @@ ask, the prompt cause. It runs a fixed pipeline of deterministic stages, and a c
 settles asks you, or goes to auto-mode once auto-mode is on. Every decision is part of a record in
 the [event log](../core/event-log.md).
 
+Read this doc before you add a tool, an effect or a rule, or change the pipeline. Start with the
+effects, because a new tool declares them first. [Where to go next](#where-to-go-next) lists the
+docs for what this one leaves out.
+
 ## The pipeline
 
 The stages run in a fixed order, and the first stage that decides returns. Every stage that can deny
-or hold back a call runs before any stage that can allow one, so an allow never skips a check. The
-last stage always decides, so every call gets exactly one decision.
+or hold back a call runs before any stage that can allow one, so an allow never skips a check. Every
+call gets exactly one decision: from stage 9, or, for a call with the `memory_write` effect, from
+the memory gate in place of stages 8 and 9.
 
 | Stage              | Decides                                                          | Outcome | Prompt cause       |
 | ------------------ | ---------------------------------------------------------------- | ------- | ------------------ |
@@ -95,9 +100,12 @@ whose input cannot share the tool's starts from a tool of its own, such as `codi
 [policy](../../../architecture/core/coding-tasks.md#policy) is in the coding tasks doc. Split any
 other capability whose effects differ by argument into separate tools: moving an email to the trash
 is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for every call of a
-tool, and you can judge a tool's risk from its name. Creating a job carries `schedule` plus the
-effects of every tool on the job's list, so you decide with your rules which jobs nixie schedules on
-its own.
+tool, and you can judge a tool's risk from its name.
+
+One call is decided on more than its tool's own effects: a call that creates a job. Its tool
+declares `schedule`, and the call is decided on `schedule` plus the effects of every tool on the job
+list it passes. **Why:** the list is what the job may later do, so you decide with your rules which
+jobs nixie schedules on its own.
 
 A tool also declares which arguments are destinations, which argument holds the amount for a
 `spend`, which arguments are free-text content, and the source of each field of its result. Effect
@@ -224,3 +232,14 @@ The scripted scenarios in the [policy rules spike](../../../../research/policy-r
 calls, messages and answers through the decision point with the starter rule set and auto-mode off,
 and fail on any prompt the script does not expect. CI runs them on every change to the starter rule
 set or the pipeline.
+
+## Where to go next
+
+- [Rules](rules.md): evaluation order, the snapshot hash, and gaps and proposed rules.
+- [Budgets](budgets.md): lifting rules and budget limits.
+- [Memory writes](../memory/writes.md): the memory gate.
+- [Connectors](../connectors/connector.md): the connection argument.
+- [Tasks](../core/tasks.md): job runs and their definitions.
+- [Actions](../../../architecture/core/actions.md): how an approval answers each outcome.
+- [Coding tasks](../../../architecture/core/coding-tasks.md#policy): the policy of `coding.start`.
+- [The code tool](../../../architecture/connectors/code-tool.md): `code_run`.

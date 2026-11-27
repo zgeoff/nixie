@@ -4,7 +4,8 @@ atc is a separate program that runs coding sessions, one daemon per machine. atc
 tools of several daemons as one MCP server, and nixie calls it over HTTP as the service client
 `service:nixie`. The `coding-atc` package implements the coding module's adapter interface with
 those tools, and it is the one package that calls the gateway. It speaks MCP with the workspace's
-MCP client, so nixie writes none of atc's wire protocol.
+MCP client, so nixie writes none of atc's wire protocol. atc owns its tool schemas, its daemon
+config and the format of the gateway's token file, and this doc covers none of them.
 
 Read this doc before you change the adapter, or the coding source's reads.
 [Coding tasks](../core/coding-tasks.md) covers the runner, the tools and the records that sit above
@@ -74,8 +75,8 @@ state it mapped and logs the value.
 - An event's key is `<daemon>.<incarnation>|<daemon cursor>`, from the event's `origin`, so it stays
   the same whatever the gateway's merged cursor holds.
 
-The trail carries no sender. The coding step matches each answer to nixie's own note by its message
-reference.
+The trail carries no sender. The coding task's [step](../core/coding-tasks.md#steps) matches each
+answer to nixie's own note by its message reference.
 
 `read` builds the tail from `atc_transcript_read`, which pages oldest first. The adapter pages from
 the start with `limit` 200 until `more` is false, because the call has no tail option, groups the
@@ -104,8 +105,9 @@ the queue's ambiguous outcome.
 - atc's MCP answer carries only an error's code and `problem`, so the adapter cannot tell a daemon
   whose identity changed under a key from a daemon that is down. On a keyed call it treats either as
   `unknown`, and the queue resends the call under the same key.
-- A steer's lost connection after the request left is `unknown`, and its `none` reconciliation sends
-  it to the user, because the line may have reached the terminal.
+- A steer's lost connection after the request left is `unknown`, and the steer declares `none`
+  [reconciliation](../core/actions.md#reconciling-an-unknown-outcome), which never resends the call
+  and sends the unknown outcome to the user, because the line may have reached the terminal.
 - A spawn and a note declare `idempotency_key` reconciliation, and the queue keeps their key for a
   shorter time than a daemon keeps a completed key. The gateway holds its own binding of the key for
   longer than the daemon, so while the queue still holds the key, a resend never runs the call
@@ -145,7 +147,9 @@ the same transaction, so a batch's records and its cursor commit together.
 
 - The source drops each event of a session that has no bound `coding_sessions` row, and stores
   nothing of it, because nixie's principal reaches sessions that nixie is not working with. Only
-  sessions that nixie started show in the live view, and the web client skips a joined one.
+  sessions that nixie started show in the
+  [live view](../core/coding-tasks.md#supervising-in-the-live-view), which lists a coding task's
+  session beside the task, and the web client skips a joined one.
 - The source can read a session's events before the coding task's step records the binding. When it
   starts, and when a session's row appears, it catches up each bound session whose state is not
   `ended`: it reads the trail from the row's stored cursor until a read has no more events. The
@@ -158,10 +162,10 @@ the same transaction, so a batch's records and its cursor commit together.
   reads that daemon again on the next call. A page that lists a daemon as truncated lost that
   daemon's older events, and the source logs the loss with the daemon's name.
 - An event is `wake: true` when it is `ended`, `answered` or `unanswered`, or when the session's
-  wake set holds a `state` event's state or a `note`'s label. An answer always wakes the step, so
-  the step can reply to the note's sender with the answer's hop. Every other event gets
-  `wake: false`: its record wakes no step, and only the coding module's fold of it updates the
-  session's row.
+  [wake set](../core/coding-tasks.md#steps) holds a `state` event's state or a `note`'s label. An
+  answer always wakes the task's step, so the step can reply to the note's sender with the answer's
+  hop. Every other event gets `wake: false`: its record wakes no step, and only the coding module's
+  fold of it updates the session's row.
 - The source drops an event of a task that is stopped, done, failed or closed, and of a session
   whose row has `unbound_at` set, and still moves its cursor.
 - A trigger input's hop is the `hop` of the session's row. The tasks module owns the record's codec,

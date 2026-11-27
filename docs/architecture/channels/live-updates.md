@@ -11,9 +11,11 @@ backup notice marks its topic in the transaction that writes it, and the spend w
 its `changed` event, and reads every topic again when a stream opens, because `changed` has no event
 ID and a closed stream misses it.
 
-Two reads change with no write and have no topic of their own, so the tab reads them again on a
-timer: the task list, at the time its own answer gives, and the stuck forgets. Roots such as
-`sessions` and `devices` have no topic at all. See [Topics](#topics) for each.
+Two changes happen with no write, so a topic cannot announce them and the tab reads again on a
+timer. A task that comes due changes the task list, which also has the `tasks` topic, so the tab
+reads it at the time its own answer gives as well as on `changed`. A forget turns stuck with no
+topic at all, so the tab reads the stuck forgets on a timer alone. Roots such as `sessions` and
+`devices` have no topic either. See [Topics](#topics) for each.
 
 ```mermaid
 flowchart LR

@@ -186,9 +186,11 @@ sandbox.
 | `allow-stop-started-sessions` | allows a `coding.stop` whose origin is `started`                                   |
 | `allow-coding-input`          | allows `coding.steer` and `coding.message` to the destinations `atc:*`             |
 
-A start therefore asks the user at most once. A spawn whose outcome is unknown still asks the user
-whether the session started. `coding.read` and `coding.sessions` declare `read`, and `coding.watch`
-declares `note`, so the starter rules allow them.
+A start therefore asks the user for approval at most once, because `coding.spawn` never asks. When a
+spawn's outcome is unknown, the user gets a separate question, whether the session started. That
+question asks for no approval, and it does not count toward the one approval. `coding.read` and
+`coding.sessions` declare `read`, and `coding.watch` declares `note`, so the starter rules allow
+them.
 
 ## Tool limits
 
@@ -247,9 +249,10 @@ deployment that predates the block loads unchanged.
 
 The block names the gateway's URL, the principal nixie acts as, the targets nixie may start sessions
 on, and a default target. Its `token` is always `deployment:atc_token`: the gateway's token lives in
-the `atc_token` entry of the secrets file, like every other secret, and a config that names it with
-no such entry stops the server at start. The secrets file's `atc_token` entry is optional, and the
-secret scan treats its value as one of nixie's own values.
+the `atc_token` entry of the secrets file, like every other secret, and a config that holds the
+block with no such entry stops the server at start. A deployment with no `coding.atc` block needs no
+`atc_token` entry, so the entry is required only with the block. The secret scan treats its value as
+one of nixie's own values.
 
 The adapter keeps the state of each session it has seen in memory. The source's `events` call
 carries a read of the bound sessions, and the adapter reads the state of each bound session that has

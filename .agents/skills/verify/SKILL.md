@@ -181,7 +181,9 @@ in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 Map each file your change adds in the registry: add a glob that matches it to a feature's `paths`,
 to `.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
-gate fails on a changed file that no glob matches. `bun verify features` lists the globs.
+gate fails on a changed file that no glob matches. `bun verify features` lists the globs. Keep a
+feature's globs off the files `.ignore()` covers, such as tests, docs and skills: list the app's
+files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run
