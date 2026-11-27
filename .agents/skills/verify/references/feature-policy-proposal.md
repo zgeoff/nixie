@@ -17,13 +17,13 @@ When you approve the call, its row's `state` becomes `approved`, and nixie adds 
 `proposals.settled` record. nixie starts no model turn for that record and shows the model no
 message. nixie then runs the call, adds an `action.outcome` record, and starts one model turn for
 it. In that turn the model reads the outcome and the time you approved the call. The export tool
-never exports: it tells the model that the user exports memory from the memory view, so the call's
-`action.outcome` has the status `failed` and the reason `refused`. That is the outcome this journey
-expects, and the turn after it commits like any other. When someone declines a call, nixie starts a
-model turn that shows the model the decline and its reason. The test build starts with the
-[starter rules](../../../../deploy/compose/definitions/rules/starter.yaml), the rules file that the
-Compose recipe ships. Its rule `ask-exports` holds every call whose effect is `export`, such as
-`memory.export`.
+never exports. It returns an error that sends the user to the memory view, and nixie records an
+approved call whose tool returns an error as `failed`, with the reason `refused`. That is the
+outcome this journey expects, and the turn after it commits like any other. When someone declines a
+call, nixie starts a model turn that shows the model the decline and its reason. The test build
+starts with the [starter rules](../../../../deploy/compose/definitions/rules/starter.yaml), the
+rules file that the Compose recipe ships. Its rule `ask-exports` holds every call whose effect is
+`export`, such as `memory.export`.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
@@ -135,8 +135,7 @@ Before you start:
    Expect: the first query returns one row, with `kind` `task.step_committed`. The second returns
    one row, with `status` `failed` and `reason` `refused`. When the first query returns no row, run
    it again, up to 5 runs in all. A row with `task.step_errored` fails the journey: skip `done`, and
-   report the record. Without the reply of step 4, that row has the reason `model_api.unknown`,
-   because the scripted model has no reply left for the turn.
+   report the record with its `reason`.
 
 ## End state
 
