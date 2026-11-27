@@ -19,10 +19,7 @@ export function buildCodingWatchTool(
 ): ToolDefinition {
   return {
     name: codingToolNames.watch,
-    description:
-      'Sets which events of a coding task wake you: waiting, idle, ended, gone, and the notes ' +
-      'progress, blocked and decision. Pass the whole set. An empty set leaves only the ' +
-      "session's end and its report.",
+    description: 'Chooses which events of a coding task wake you.',
     input: {
       type: 'object',
       properties: {
@@ -30,6 +27,7 @@ export function buildCodingWatchTool(
         wake: {
           type: 'array',
           items: { type: 'string', enum: [...wakeEvents] },
+          description: 'the whole set of events that wake you',
           uniqueItems: true,
         },
       },

@@ -24,10 +24,9 @@ export function buildCodingStartTool(
     description:
       'Starts a coding task: a coding agent works on a repository in its own session, or you ' +
       'join a session that already runs, which you find with coding.sessions. Give it a short ' +
-      'name and a brief. With repo, the brief is the first user turn of the new session, so ' +
-      'it holds everything the coding agent needs. With session, the brief is your own note ' +
-      'on the task, and the session gets nothing. The coding agent judges nothing for you: ' +
-      'read the session with coding.read, and steer it with coding.steer.',
+      'name and a brief. For a new session, the brief is all the coding agent gets, so put ' +
+      'everything it needs in it. A joined session gets nothing from the brief. Read the ' +
+      'session with coding.read, and steer it with coding.steer.',
     runner: adapter.id,
     relatedMemory: start.relatedMemory,
   });

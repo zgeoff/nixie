@@ -111,7 +111,7 @@ own stamp, and the model must never read the status time as the time now. The tw
 last, and only when the index budget is above 0. They come from the same read of the memory as the
 index block, so they match it. Every value is a name, a time or a count, so the opening record holds
 them with no free text. Mandates stay out of the block, because nixie can propose one at any time in
-a session: she reads them with the
+a session: it reads them with the
 [`rules.list` tool](../policy/rules.md#reading-mandates-and-rules).
 
 ## The brief

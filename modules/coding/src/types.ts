@@ -56,7 +56,7 @@ export interface BoundSession {
 export interface SessionBrief {
   readonly name: string;
 
-  // the task's brief: the session's first user turn
+  // the task's brief
   readonly prompt: string;
   readonly repo: { readonly url: string; readonly ref: string };
   readonly target: TargetRef;
