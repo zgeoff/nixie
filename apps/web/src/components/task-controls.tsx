@@ -3,10 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { formatSessionRelease } from '../coding/format-session-release';
+import { useIsCodingOn } from '../coding/use-is-coding-on';
 import { formatStopPreview } from '../conversation/format-stop-preview';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
-import { isFeatureOn } from '../features/is-feature-on';
-import { useFeatures } from '../features/use-features';
 import { collectOfferedControls } from '../pause/collect-offered-controls';
 import { css } from '../styled-system/css';
 import { runTaskControl } from '../task/run-task-control';
@@ -49,8 +48,8 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
   const [confirming, setConfirming] = useState<'stop' | 'close' | null>(null);
   const [attempt, setAttempt] = useState<ControlAttempt | null>(null);
   const task = props.task;
-  const features = useFeatures();
-  const release = isFeatureOn(features, 'coding') ? formatSessionRelease(task.session) : null;
+  const isCodingOn = useIsCodingOn();
+  const release = isCodingOn ? formatSessionRelease(task.session) : null;
 
   const refreshList = (): void => {
     void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.tasks.key() });

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { isFeatureOn } from '../features/is-feature-on';
-import { useFeatures } from '../features/use-features';
+import { useIsCodingOn } from '../coding/use-is-coding-on';
 import { css } from '../styled-system/css';
 import { collectDashboardGroups } from '../task/collect-dashboard-groups';
 import type { ListedTask } from '../task/use-live-task-list';
@@ -41,8 +40,7 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
   });
 
   const definitions = useTaskDefinitions();
-  const features = useFeatures();
-  const groups = collectDashboardGroups(listed.tasks, isFeatureOn(features, 'coding'));
+  const groups = collectDashboardGroups(listed.tasks, useIsCodingOn());
   const isFiltered = filters.definition !== undefined || filters.state !== undefined;
 
   // The state filter hides tasks, so a list with none of a definition says nothing of whether

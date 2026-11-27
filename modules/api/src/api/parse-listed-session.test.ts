@@ -4,8 +4,16 @@ import { parseListedSession } from './parse-listed-session';
 test.each([
   {
     title: 'a session with its last event',
-    fields: { session: { origin: 'started', state: 'waiting', lastEventAt: 1_794_550_000_000 } },
+    fields: {
+      session: {
+        origin: 'started',
+        state: 'waiting',
+        lastEventAt: 1_794_550_000_000,
+        isReleased: false,
+      },
+    },
     expected: {
+      isReleased: false,
       origin: 'started',
       state: 'waiting',
       lastEventAt: new Date(1_794_550_000_000),
@@ -13,14 +21,21 @@ test.each([
   },
   {
     title: 'a session with no event yet',
-    fields: { session: { origin: 'joined', state: 'idle', lastEventAt: null } },
-    expected: { origin: 'joined', state: 'idle', lastEventAt: null },
+    fields: { session: { origin: 'joined', state: 'idle', lastEventAt: null, isReleased: false } },
+    expected: { isReleased: false, origin: 'joined', state: 'idle', lastEventAt: null },
+  },
+  {
+    title: 'a session that the task let go of',
+    fields: { session: { origin: 'started', state: 'ended', lastEventAt: null, isReleased: true } },
+    expected: { isReleased: true, origin: 'started', state: 'ended', lastEventAt: null },
   },
   { title: 'fields with no session', fields: { limits: null }, expected: undefined },
   { title: 'no fields', fields: undefined, expected: undefined },
   {
     title: 'a state that no session has',
-    fields: { session: { origin: 'started', state: 'dancing', lastEventAt: null } },
+    fields: {
+      session: { origin: 'started', state: 'dancing', lastEventAt: null, isReleased: false },
+    },
     expected: undefined,
   },
 ])('#parseListedSession reads $title', (row) => {

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
-import { isFeatureOn } from '../features/is-feature-on';
-import { useFeatures } from '../features/use-features';
 import { isTaskShownPaused } from '../pause/is-task-shown-paused';
 import { css } from '../styled-system/css';
 import type { ListedTask } from '../task/use-live-task-list';
+import { formatSessionEventTime } from './format-session-event-time';
 import { formatSessionState } from './format-session-state';
+import { useIsCodingOn } from './use-is-coding-on';
 
 export interface SessionLineProps {
   readonly task: ListedTask;
@@ -13,22 +13,14 @@ export interface SessionLineProps {
 
 const line = css({ color: 'textMuted', fontSize: 'sm' });
 
-const timeFormat: Intl.DateTimeFormatOptions = {
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-  month: 'short',
-  second: '2-digit',
-};
-
 // What a supervised task shows of its session: that it is a coding session which runs outside
 // nixie, its state and the time of its last event. Nothing shows while the coding feature is off.
 export function SessionLine(props: SessionLineProps): ReactNode {
-  const features = useFeatures();
+  const isCodingOn = useIsCodingOn();
   const isHydrated = useIsHydrated();
   const session = props.task.session;
 
-  if (session === undefined || !isFeatureOn(features, 'coding')) {
+  if (session === undefined || !isCodingOn) {
     return null;
   }
 
@@ -42,9 +34,7 @@ export function SessionLine(props: SessionLineProps): ReactNode {
         {isHydrated ? (
           <>
             {' · '}
-            {session.lastEventAt === null
-              ? 'No event yet'
-              : `Last event ${session.lastEventAt.toLocaleString(undefined, timeFormat)}`}
+            {formatSessionEventTime(session.lastEventAt)}
           </>
         ) : null}
       </p>

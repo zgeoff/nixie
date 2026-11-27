@@ -21,9 +21,9 @@ const workingStates: ReadonlySet<ListedState> = new Set([
 
 const heldStates: ReadonlySet<ListedState> = new Set(['paused', 'stopped', 'failed']);
 
-// A task that supervises a session groups apart from the other tasks, in any listed state, while
-// the coding feature is on. A task from a server that gives no listed state groups by its stored
-// state.
+// A task that supervises a session, started or joined, groups apart in any listed state but closed
+// while the coding feature is on, so a finished task keeps its session's last state until you
+// close it. A task with no listed state groups by its stored state.
 export function collectDashboardGroups(
   tasks: readonly ListedTask[],
   isCodingOn: boolean,
@@ -36,9 +36,7 @@ export function collectDashboardGroups(
   return {
     conversation: tasks.find((task) => task.taskID === 'conversation'),
     held: unsupervised.filter((task) => heldStates.has(task.listedState ?? task.state)),
-    supervised: supervised.filter(
-      (task) => !['done', 'closed'].includes(task.listedState ?? task.state),
-    ),
+    supervised: supervised.filter((task) => (task.listedState ?? task.state) !== 'closed'),
     working: unsupervised.filter((task) => workingStates.has(task.listedState ?? task.state)),
   };
 }

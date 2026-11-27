@@ -4,13 +4,23 @@ import { formatSessionRelease } from './format-session-release';
 test.each([
   {
     title: 'stops a session that nixie started',
-    session: { origin: 'started', state: 'running', lastEventAt: null } as const,
+    session: { origin: 'started', state: 'running', lastEventAt: null, isReleased: false } as const,
     expected: 'This also stops its coding session.',
   },
   {
     title: 'leaves a joined session running',
-    session: { origin: 'joined', state: 'idle', lastEventAt: null } as const,
+    session: { origin: 'joined', state: 'idle', lastEventAt: null, isReleased: false } as const,
     expected: 'Its coding session keeps running, as yours.',
+  },
+  {
+    title: 'says nothing of a started session that the task let go of',
+    session: { origin: 'started', state: 'ended', lastEventAt: null, isReleased: true } as const,
+    expected: null,
+  },
+  {
+    title: 'says nothing of a joined session that the task let go of',
+    session: { origin: 'joined', state: 'idle', lastEventAt: null, isReleased: true } as const,
+    expected: null,
   },
   { title: 'says nothing for a task with no session', session: undefined, expected: null },
 ])('#formatSessionRelease $title', (row) => {

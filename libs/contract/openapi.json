@@ -3451,6 +3451,9 @@
                           "session": {
                             "type": "object",
                             "properties": {
+                              "isReleased": {
+                                "type": "boolean"
+                              },
                               "lastEventAt": {
                                 "anyOf": [
                                   {
@@ -3482,6 +3485,7 @@
                               }
                             },
                             "required": [
+                              "isReleased",
                               "lastEventAt",
                               "origin",
                               "state"
@@ -3777,6 +3781,9 @@
                     "session": {
                       "type": "object",
                       "properties": {
+                        "isReleased": {
+                          "type": "boolean"
+                        },
                         "lastEventAt": {
                           "anyOf": [
                             {
@@ -3808,6 +3815,7 @@
                         }
                       },
                       "required": [
+                        "isReleased",
                         "lastEventAt",
                         "origin",
                         "state"
@@ -6735,6 +6743,9 @@
                           "session": {
                             "type": "object",
                             "properties": {
+                              "isReleased": {
+                                "type": "boolean"
+                              },
                               "lastEventAt": {
                                 "anyOf": [
                                   {
@@ -6766,6 +6777,7 @@
                               }
                             },
                             "required": [
+                              "isReleased",
                               "lastEventAt",
                               "origin",
                               "state"

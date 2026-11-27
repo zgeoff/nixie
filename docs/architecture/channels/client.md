@@ -626,8 +626,9 @@ the held tasks and the coding sessions. The conversation is the task with the ID
 it stays in its own group in every state, a pause of nixie included. The other tasks group by their
 listed state, the state that the API's `tasks.list` gives in `listedState`. Working holds `ready`,
 `running`, `waiting`, `idle`, `asleep` and `finished`, and Held holds `paused`, `stopped` and
-`failed`. A `done` or `closed` task leaves the list. A task from a server that gives no listed state
-groups and shows by its stored state.
+`failed`. A `done` or `closed` task leaves the list, except a task that supervises a coding session,
+which leaves only when closed. A task from a server that gives no listed state groups and shows by
+its stored state.
 
 Each task shows its name, which links to its page, its state, the time of its last activity, its
 brief, the task it waits on, the tasks that wait on it, and how many of its actions are queued and

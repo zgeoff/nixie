@@ -121,6 +121,11 @@ export async function writeMockTaskControl(
       if (plan.kind === 'task.closed') {
         draft.closedBy = 'owner';
       }
+
+      // A stop or a close lets go of the session that the task works with.
+      if ((plan.kind === 'task.stopped' || plan.kind === 'task.closed') && draft.session) {
+        draft.session = { ...draft.session, isReleased: true };
+      }
     },
   });
 

@@ -57,7 +57,31 @@ test('#tasks.list lists the session of a task that joined one, with its origin, 
   const sessions = await ctx.readSessions();
 
   expect(sessions).toStrictEqual([
-    { name: 'login fix', session: { origin: 'joined', state: 'idle', lastEventAt: null } },
+    {
+      name: 'login fix',
+      session: { origin: 'joined', state: 'idle', lastEventAt: null, isReleased: false },
+    },
+  ]);
+});
+
+test('#tasks.list lists the session of a stopped task as released, and the session of a running one as not', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.joinSession();
+  const before = await ctx.readSessions();
+
+  await ctx.client.tasks.stop({ clientActionID: '2c4e6a8b-1d3f-4b5c-8e7a-9f0b1c2d3e4f', taskID });
+
+  const after = await waitFor(async () => {
+    const sessions = await ctx.readSessions();
+
+    expect(sessions.map((entry) => entry.session.isReleased)).toStrictEqual([true]);
+
+    return sessions;
+  });
+
+  expect([before[0]?.session.isReleased, after[0]?.session.isReleased]).toStrictEqual([
+    false,
+    true,
   ]);
 });
 

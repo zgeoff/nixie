@@ -54,32 +54,52 @@ command's JSON output.
    Expect: the entry reads "Idle" and shows "Last event" with a time. Take up to 5 snapshots, as in
    step 2.
 
-4. Press Stop in the group "Controls for Login fix", and read the confirmation:
+4. Press Stop of the task "Login fix", and read the confirmation. The conversation also offers Stop,
+   so a click on the name alone matches both buttons. In the snapshot, find the group "Controls for
+   Login fix", take the `ref` of its Stop button, and pass it as `<stop_ref>`:
 
    ```bash
-   bun verify browser click --role button --name Stop
+   bun verify browser snapshot
+   bun verify browser click --ref '<stop_ref>'
    bun verify browser snapshot
    ```
 
    Expect: the confirmation holds the line "This also stops its coding session.".
 
-5. Confirm the stop, then check the task and its session:
+5. Confirm the stop, then check the task, its session and the stop's outcome. The stop's outcome
+   arrives after the task stops, so on exit 1 from `task`, or on a query that returns no row, run
+   the `task` and `db query` commands again, up to 5 runs in all, and click nothing again.
 
    ```bash
    bun verify browser click --role button --name 'Stop the task'
    bun verify task --name 'Login fix' --state stopped --record task.stopped
    bun verify db query "select unbound_at is not null as released from coding_sessions"
+   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'coding.stop'"
    bun verify browser snapshot
    ```
 
-   Expect: `task` exits 0, and the one row in `data.rows` has `released` 1. The page still lists
-   "Login fix" under "Coding sessions", reads "Stopped" and offers Close and no Restart. On exit 1
-   from `task`, run it again, up to 5 runs in all.
+   Expect: `task` exits 0, and the one row in `data.rows` of the first query has `released` 1. The
+   second query returns one row, with `status` `done`: the gateway stopped the session. Any other
+   status means the stop failed, although `released` is 1 either way. The page still lists "Login
+   fix" under "Coding sessions", reads "Stopped" and offers Close and no Restart.
+
+6. Press Close of the task "Login fix", and read the confirmation. Take the `ref` of the Close
+   button in the group "Controls for Login fix" as `<close_ref>`:
+
+   ```bash
+   bun verify browser snapshot
+   bun verify browser click --ref '<close_ref>'
+   bun verify browser snapshot
+   ```
+
+   Expect: the confirmation holds no line that says the close stops the session, because the stop
+   already released it.
 
 ## End state
 
 - Step 1: "Login fix" shows in the group "Coding sessions", marked as a coding session outside
   nixie.
 - Steps 2 and 3: the shown state moved to "Waiting for you" and then to "Idle", with no page load.
-- Step 5: the task is `stopped`, its session row has an `unbound_at`, and the page offers only
-  Close.
+- Step 5: the task is `stopped`, its session row has an `unbound_at`, the `coding.stop` action
+  finished with `done`, and the page offers only Close.
+- Step 6: the close confirmation says nothing of stopping the session.

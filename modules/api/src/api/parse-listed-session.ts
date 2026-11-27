@@ -6,6 +6,7 @@ type ListedSession = z.output<typeof listedSessionSchema>;
 
 const sessionFieldSchema = z.object({
   session: z.object({
+    isReleased: z.boolean(),
     lastEventAt: z.number().nullable(),
     origin: listedSessionSchema.shape.origin,
     state: listedSessionSchema.shape.state,
@@ -23,6 +24,7 @@ export function parseListedSession(fields: JSONObject | undefined): ListedSessio
   const session = parsed.data.session;
 
   return {
+    isReleased: session.isReleased,
     lastEventAt: session.lastEventAt === null ? null : new Date(session.lastEventAt),
     origin: session.origin,
     state: session.state,

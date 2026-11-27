@@ -26,7 +26,9 @@ export const actionCountSchema = z.int().nonnegative();
 
 // The session that a supervised task works with, which runs in another program. Its state is the
 // session's own, as the task last saw it, and `lastEventAt` is null before the first event.
+// `isReleased` is true once the task let go of the session, so a later close does nothing to it.
 export const listedSessionSchema = z.object({
+  isReleased: z.boolean(),
   lastEventAt: z.date().nullable(),
   origin: z.enum(['started', 'joined']),
   state: z.enum(['running', 'waiting', 'idle', 'ended', 'gone']),
