@@ -1,6 +1,7 @@
 # Accounts and sign-in
 
-- **Status:** draft
+- **Status:** agreed
+- **Decision records:** [0057](../../decisions/0057-every-optional-feature-has-a-switch.md)
 - **Work items:**
   [the assistant's own email and accounts](https://linear.app/zgeoff/issue/GEO-2731). It builds on
   [the browser renames](https://linear.app/zgeoff/issue/GEO-2798) and
@@ -8,15 +9,27 @@
   which land first.
 
 The assistant gets accounts of its own, and signs in to them in its browser without ever seeing a
-password. Its [mailbox and phone number](mail-and-phone.md) are each account's username and way back
-in. Each account's secret sits in a vault that only the server reads. When the assistant asks to
-sign in, the request passes your rules like any other action, and on allow the server sends the
-secret over the browser guest's private channel, where it goes straight into the page's password
-field. [The wallet](wallet.md) keeps cards in the same vault and fills them the same way.
+password. Its [mailbox](mail/README.md) is each account's username and way back in, and its
+[phone](phone.md) takes a site's text codes. Each account's secret sits in a vault that only the
+server reads. When the assistant asks to sign in, the request passes your rules like any other
+action, and on allow the server sends the secret over the browser guest's private channel, where it
+goes straight into the page's password field. [The wallet](wallet.md) keeps cards in the same vault
+and fills them the same way.
 
-Each entry sits in a group that the owner names, such as `nix` or `household`, and rules match a
-group the way they match a host. An entry can be [locked](locked-entries.md), so each use waits for
-your passkey, whatever the rules say.
+Each entry sits in a group that you name, such as `nix` or `household`, and rules match a group the
+way they match a host. An entry can be [locked](locked-entries.md), so each use waits for a fresh
+tap of your passkey, whatever the rules say.
+
+The vault is the `vault` feature, in its own `modules/vault` package. With no `vault` section in the
+deployment config, nixie offers no `account.*` or `vault.*` call.
+
+```yaml
+# deployment config. Absent: the vault is off. It requires the computer.
+vault:
+  default_group: nix
+  pending_notice_after: 7d
+  dumps_kept: 50
+```
 
 ## Shape
 
@@ -119,55 +132,70 @@ The guest checks the submit element and the form before it fills, so a refusal f
 result of `filled` carries `report` too.
 
 ```ts
-// connectors module: the effects each tool declares
+// vault module: the effects each tool declares
 // account.list: ['note'], direct. account.inspect: ['read'], direct.
-// account.sign_in, sign_up, rotate: ['sign_in'], queued; destination: the tab's host, as the
-//   computer's act tools declare it. Its "always allow" rule pins the host and the account, as the
+// account.sign_in, rotate: ['sign_in'], queued; destination: the tab's site place, as the
+//   computer's act tools declare it. Its "always allow" rule pins the place and the account, as the
 //   rule builder pins any scalar argument.
-// account.add_origin: ['account_origin'], queued; destination: the new host. Its card shows the
-//   entry's origins beside the new one.
-// policy module: sign_in joins the routine risk class and account_origin the always-ask class, in
-//   the effect list, so add_origin asks with your passkey and offers no "always allow".
-// policy module: a rule's match gains vaultGroups, read from the entry the call names:
-//   { tools: ['account.sign_in'], vaultGroups: ['household'], outcome: 'ask' }
-//   A call on a locked entry asks with the passkey whatever the rules say, and its card offers no
-//   "always allow".
+// account.sign_up: ['account_create'], queued; destination: the tab's site place.
+// account.add_origin: ['account_origin'], queued; destination: the new site place. Its card shows
+//   the entry's origins beside the new one.
+// The vault part fills the core lists:
+//   - effectNames: sign_in, account_create and account_origin;
+//   - alwaysAskEffects: account_origin, so add_origin always asks and offers no "always allow";
+//   - the trusted places list of effects that act never allows: account_create and account_origin,
+//     beside spend, so only sign_in and rotate pass at an act place;
+//   - the rule match fields: vaultGroups, read from the entry the call names:
+//     { tools: ['account.sign_in'], vaultGroups: ['household'], outcome: 'ask' }
+// A call that reads a locked entry's secret (sign_in, rotate) is an always_ask row of the decision
+//   point, as locked-entries.md says. Any other call on a locked entry follows the rules as usual.
 // No tool takes an origin. The prepare hook reads the tab's origin and URL from the guest before the
-// decision. The fill happens only on that origin.
+// decision, and puts the entry's version inside the hashed call. The fill happens only on that
+// origin.
 ```
 
 The approval card for a sign-in shows the account's short ID, label, group, username and the origin,
-from the entry's version that the proposal recorded, "locked" for a locked entry, and "forgotten"
-once the entry is.
+"locked" for a locked entry, and "forgotten" once the entry is. An entry that changed since the
+proposal fails the answer as `CONFLICT`, and the attempt as `ENTRY_CHANGED`.
 
 ### The vault
 
 ```ts
-// connectors module; the vault_entries table, a projection of the vault.* records
+// vault module; the vault_entries table, a projection of the vault.* records
 // records: vault.entry_added, vault.entry_ready, vault.secret_changed, vault.origin_added,
-//   vault.entry_forgotten, vault.revealed, vault.group_changed, vault.lock_changed, and
-//   vault.group_added and vault.group_removed for the vault_groups table. entry_added and
-//   secret_changed carry the sealed label and secret as erasable fields; no record holds a secret
-//   in the clear.
+//   vault.revealed, vault.group_changed, vault.lock_changed, and vault.group_added,
+//   vault.group_removed and vault.group_default_set for the vault_groups table. The erasure
+//   runner's own end record marks a forget.
+// The sealed label and the sealed secret sit in the key store under random IDs, as the credential
+//   store keeps its secrets, and entry_added and secret_changed carry only those IDs. So the
+//   projection rebuilds from plain fields, and no record holds a label or a secret.
 interface VaultEntry {
   entryID: string; // crypto.randomUUID(); keys the entry's erasure keys in the key store
   account: string; // short ID from createShortID; the only ID the model sees
-  label: string; // sealed under the entry's label key, which a lock never wraps
-  kind: 'password' | 'card';
+  labelKeyID: string; // the key store entry of the label, sealed under the entry's label key, which
+  //   a lock never wraps; reads go through the key store
+  kind: 'password' | 'card'; // a card is added and used only while the wallet is on: see wallet.md
   groupID: string; // a vault_groups row's random ID; rules match it, and show its name
-  isLocked: boolean; // the secret key is wrapped under the owner's passkeys: see locked-entries.md
-  isAssistantOwned: boolean; // true for a sign_up; the owner sets it on vault.add
+  isLocked: boolean; // the secret key is wrapped under your passkeys: see locked-entries.md
+  isAssistantOwned: boolean; // true for a sign_up; you set it on vault.add
   origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget
+  placeID: string | null; // the trusted place of the first origin's site; a card has none
   username: string | null; // kept after a forget
-  secret: SealedValue; // under the entry's secret key: a password, or a card's number, expiry and code
+  secretKeyID: string; // the key store entry of the secret, sealed under the entry's secret key: a
+  //   password, or a card's number, expiry and code
   version: number; // rises on every change to the secret, the group or the lock
   state: 'pending' | 'ready' | 'forgotten'; // a card starts ready
   // a card's fingerprint, frameOrigins, currency and budget: see the wallet design
 }
 
-// contract lib: owner calls from a device session. Every vault call that writes, and reveal, takes a
-// passkey assertion bound to a SHA-256 of the request's canonical JSON, a new challenge kind in the
-// published contract.
+// contract lib: your calls, from a signed-in client's full session. Every vault call that writes
+// takes a passkey check of a new challenge kind, vault_write, which the 10-minute passkey window
+// covers. Its binding is the SHA-256 of the request's canonical JSON with each secret field
+// replaced by an HMAC under a server key, so passkey.used never holds an unkeyed hash of a secret.
+// The calls that carry a prf (vault.lock, vault.unlock, vault.addLockPasskey, vault.reveal, and
+// vault.update of a locked entry's secret) take the locked_answer check of locked-entries.md
+// instead, which always asks for a fresh tap. vault.reveal of an unlocked entry takes it too, with
+// no prf. Card calls refuse FEATURE_OFF while the wallet is off.
 vault.add({
   kind: 'password',
   label: 'forum',
@@ -175,12 +203,14 @@ vault.add({
   username,
   secret: { password },
   group: 'household',
-  isAssistantOwned: false, // an account the owner shares; the assistant never rotates or resets it
+  isAssistantOwned: false, // an account you share; the assistant never rotates or resets it
 }); // → { account: 'b5n2x8q1rw' }
-vault.update({ account: 'b5n2x8q1rw', group: 'nix', secret }); // either field
+vault.update({ account: 'b5n2x8q1rw', group: 'nix', secret }); // either field; a new secret on a
+//   locked entry also takes prf, as locked-entries.md says
 vault.lock({ account: 'b5n2x8q1rw', prf }); // and vault.unlock: see locked-entries.md
-vault.remove({ account: 'b5n2x8q1rw' }); // destroys its keys; the row stays with state 'forgotten'
-vault.list({}); // → every entry with its state, group and isLocked; a forgotten one shows "forgotten"
+vault.forget({ account: 'b5n2x8q1rw' }); // through the erasure runner; the row stays as 'forgotten'
+vault.list({}); // → every entry with its state, group and isLocked; a forgotten one shows "forgotten";
+//   while the wallet is off, a card entry lists with its kind and label only, and stays stored
 vault.reveal({ account: 'a7q2m9x4kd', prf }); // → { password }; prf only for a locked entry; writes
 //   vault.revealed, with no secret
 
@@ -189,14 +219,20 @@ vault.groups.add({ name: 'household' });
 vault.groups.remove({ name: 'household' }); // GROUP_NOT_EMPTY while an entry sits in it;
 //   GROUP_IS_DEFAULT for the default group
 vault.groups.setDefault({ name: 'nix' }); // the group a sign_up with no group lands in
-// a deployment starts with one group, 'nix', as its default
+// a deployment starts with one group, the config's default_group, as its default
 ```
+
+The vault is a backend of the credential store. It adds `fill(binding, frame)`, which the sign-in
+broker calls, and `reveal(binding, device)`, which `vault.reveal` calls. Each checks the store's
+removal counter before it reads a secret, and again when it hands the secret off, under the lock it
+shares with removal, as the built credential store does. So a credential removed mid-call fills
+nothing. A removed secret shows as `[secret removed]`.
 
 ### The fill frame
 
 ```ts
 // wire lib: more ops in ComputerRequest, and FillReply joins ComputerReply with kind: 'filled'
-type OriginRequest = { op: 'origin'; tab: string }; // → { ok: true; origin: string } | tab_gone
+type OriginRequest = { op: 'origin'; tab: string }; // → { ok: true; origin: string; url: string } | tab_gone
 type InspectRequest = { op: 'inspect'; tab: string; kind: 'password' | 'card'; isDump: boolean };
 // → { ok: true; report: FillReport; dump: string | null }
 type FillRequest = {
@@ -262,8 +298,8 @@ Secrets:
 - The broker never puts a secret in the model's context, a tool result, a `hidden` value, a
   snapshot, an approval card, the event log or the server log. Nothing logs the body of a fill
   frame.
-- A page that shows a filled password as text can put it in a screenshot. The design accepts that
-  for passwords, and the acceptance test leaves screenshots out of its search for a password.
+- A page that shows a filled password as text can put it in a screenshot. nixie accepts that for
+  passwords, and the acceptance test leaves screenshots out of its search for a password.
 - Before any result of an `account.*`, `wallet.*` or `computer.*` tool reaches the model, the server
   replaces each vault secret it finds in the result's text with dots: every entry's secret, pending
   entries included. A stored page read later through `web_fetch` gets the same pass. This catches a
@@ -272,15 +308,18 @@ Secrets:
   outside its entry's origins. The body of an HTTPS request goes unscanned.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
   off.
-- Chromium runs as its own user on the desktop, as [the desktop](desktop.md) sets, so no command the
+- Chromium runs as its own user on the desktop (see [the desktop](desktop.md)), so no command the
   assistant runs reads the page's memory or its profile.
-- The desktop stream that you watch shows a filled page as it is. Only a device session watches.
-- `vault.reveal` asks for your passkey, and only a device session calls it.
+- The desktop stream that you watch shows a filled page as it is. Only a signed-in client watches.
+- `vault.reveal` asks for a fresh passkey tap, and only a signed-in client's full session calls it.
 
 Filling:
 
-- `sign_in` asks unless a rule allows it. An "always allow" rule scopes it by host and pins the
-  account.
+- `sign_in` asks unless a rule allows it. An "always allow" rule scopes it by site place and pins
+  the account.
+- A site place at `act` in [trusted places](trusted-places.md) lets `sign_in` through with no card.
+  `sign_up` and `add_origin` still ask at `act`, a call that reads a locked entry's secret still
+  asks for a fresh tap, and the fill still goes only to the entry's exact origins.
 - The guest compares `expectOrigin` with the live top frame's origin right before it fills, and
   fills nothing when they differ.
 - A password goes only into an `<input type=password>` in a frame of the same origin as the top
@@ -289,24 +328,34 @@ Filling:
   first origin.
 - A sign-up that shows a CAPTCHA or a check that wants a person stops, and the assistant calls
   `computer.handover` with the reason. A sign-up that asks for a phone number gets the assistant's
-  own number, and a site that refuses the number hands over the same way.
+  own number while the phone is on. With the phone off, or on a site that refuses the number, the
+  assistant hands over the same way.
+- The sign-up tab stays open across turns, so the assistant finishes a sign-up after the mail or
+  text with its code arrives.
 
 Entry state:
 
 - The broker writes a `sign_up`'s pending entry before it sends the fill frame. When the guest
-  refuses, it has filled nothing, so the site never saw the password and the broker removes the
+  refuses, it has filled nothing and the site never saw the password, so the broker removes the
   entry.
 - A `sign_up` entry turns `ready` when the sign-up reaches `signed_in` or `next_step`. Otherwise it
   stays `pending` until its first `sign_in` does. A pending entry signs in like a ready one.
-- After 7 days with no sign-in, a pending entry raises a push notice that links the vault screen,
-  where you keep or remove it. nixie never forgets a filled entry on its own.
-- A forget of an entry, or of any of its `vault.*` records, destroys the entry's key.
+- After `pending_notice_after` with no sign-in, a pending entry raises a push notice that links the
+  vault screen, where you keep or forget it. nixie never forgets a filled entry on its own.
+- Forget is the one verb for an entry. A forget of an entry, or of its `vault.entry_added` or
+  `vault.secret_changed` record, runs through the erasure runner as one `vault_entry` kind, with the
+  capture cause `{ entryID }`. It destroys the entry's keys, its sealed values and their wrappers,
+  clears the site's cookies and storage in the browser profile, and makes a backup due. The group
+  records name no entry, and a forget never targets them.
+- `vault_entry` is declared in `ErasableRecordKinds`, the server record-kind map and one descriptor
+  list, and so is `account.fill_failed` with its erasable fields.
 - An entry holds one password. A `rotate` that returns `changed` makes the new password the secret,
   and one that returns `filled` keeps the old one.
 - A `sign_in` that returns `filled` on an entry with `isAssistantOwned` tells the assistant in its
-  message to reset the password: open the site's reset link from its mailbox, then call `rotate` on
-  the reset page. On any other entry, or before the mailbox exists, the message tells the assistant
-  to ask the owner.
+  message to reset the password: set a wake rule with `mail.wake_set` for the site's mail, ask for
+  the reset, read the mail with `mail.read` when the wake arrives, open its link, then call `rotate`
+  on the reset page. On any other entry, or while the mailbox is off, the message tells the
+  assistant to ask you.
 - `rotate` refuses with `NOT_OWN_ACCOUNT` on an entry without `isAssistantOwned`. A login name alone
   doesn't show where the site sends its reset mail.
 - A page can fake a `changed` result by navigating away from a refused password, so the entry can
@@ -333,14 +382,16 @@ Debugging a fill:
 - Each fill that refuses with a report, or returns `filled`, writes an `account.fill_failed` record
   with the tool, the account, the origin, the report and the name of a page dump. The report's URL
   and labels are erasable fields.
-- With that record, the guest writes a page dump to `debug/fill/<record ID>.tar.zst` in nixie's data
-  folder, for a developer on the server to unpack. It holds the tab's MHTML snapshot with every
-  frame, each frame's DOM, the accessibility tree, the URLs the page requested, the console log, the
-  report, and a screenshot unless a card field was filled. The guest takes the dump from a copy of
-  the page in which every input's value, and every vault secret in the text, reads as dots. The same
-  scan runs over the requested URLs and the console log before they go in the dump.
-- nixie keeps the newest 50 page dumps and deletes older ones, a setting with that default. The
-  model never reads a dump.
+- With that record, nixie writes a page dump to `debug/fill/<record ID>.tar.zst` in its data folder,
+  for a developer on the server to unpack. It holds the tab's MHTML snapshot with every frame, each
+  frame's DOM, the accessibility tree, the URLs the page requested, the console log, the report, and
+  a screenshot unless a card field was filled. The guest takes the dump from a copy of the page in
+  which every input's value reads as dots, and sends it to the server. The server runs the redaction
+  pass over the whole dump, the requested URLs and the console log included, before it writes the
+  file, so every vault secret the server can read is dotted out. A locked secret outside an open
+  attempt can't be looked for, as locked-entries.md says.
+- nixie keeps the newest `dumps_kept` page dumps and deletes older ones. Forgetting an
+  `account.fill_failed` record deletes its dump. The model never reads a dump.
 
 ## Decisions
 
@@ -380,8 +431,8 @@ Debugging a fill:
 
 - Two-factor apps and passkeys for the assistant's accounts.
 - Solving a CAPTCHA. The assistant hands the desktop over to you.
-- Rotating or resetting an account that isn't the assistant's own. The owner keeps that password
-  current with `vault.update`.
+- Rotating or resetting an account that isn't the assistant's own. You keep that password current
+  with `vault.update`.
 
 ## Open questions
 
