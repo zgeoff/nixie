@@ -3,7 +3,7 @@ import type { APIContext, ForgetBackupState } from '../types';
 import { pickForgetProgress } from './pick-forget-progress';
 import { readForgetBackupState } from './read-forget-backup-state';
 
-interface ForgetStatusReply {
+export interface ForgetStatusReply {
   readonly deleted: string[];
   readonly pending: string[];
   readonly backup: ForgetBackupState;

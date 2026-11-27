@@ -438,12 +438,20 @@ test('it begins the unbegun targets on the retry when a restart finished the fir
   const stopped = ctx.memory.store.forgetRetired({ targets: retired, provenance });
 
   await stopped.catch(() => {});
-  await ctx.memory.store.finishForgets([first.itemID]);
-  await ctx.memory.store.forgetRetired({ targets: retired, provenance });
 
-  const status = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
+  const restarted = await startNextTestMemory(ctx.memory);
+
+  const statusAtRestart = await restarted.store.view.readForgetStatus([
+    first.itemID,
+    second.itemID,
+  ]);
+
+  await restarted.store.forgetRetired({ targets: retired, provenance });
+
+  const status = await restarted.store.view.readForgetStatus([first.itemID, second.itemID]);
 
   expect(stopped).rejects.toMatchObject({ message: 'crashed at erasure.begun' });
+  expect(statusAtRestart).toMatchObject({ deleted: [first.itemID], pending: [] });
   expect(status).toMatchObject({ deleted: [first.itemID, second.itemID], pending: [] });
 });
 

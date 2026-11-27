@@ -1,7 +1,8 @@
 import { toContractMemoryItem } from '../contract/to-contract-memory-item';
 import { toContractMemoryVersion } from '../contract/to-contract-memory-version';
+import { forgetReplySchemas } from '../forget/forget-reply-schemas';
 import { readForgetStatusReply } from '../forget/read-forget-status-reply';
-import { runForgetFinish } from '../forget/run-forget-finish';
+import { runForgetReply } from '../forget/run-forget-reply';
 import { ownerProvenance } from '../owner/owner-provenance';
 import type { APIContext, ReadViewMemory } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -49,10 +50,17 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
           }),
       }));
 
-      const status = await runForgetFinish(context, store, [target.itemID]);
-      const reply = await readForgetStatusReply(context, [target.itemID], status);
-
-      return { ...result, pending: reply.pending.length > 0, backup: reply.backup };
+      return runForgetReply(context, store, {
+        clientActionID: options.input.clientActionID,
+        result,
+        itemIDs: [target.itemID],
+        schema: forgetReplySchemas.item,
+        toReply: (reply) => ({
+          ...result,
+          pending: reply.pending.length > 0,
+          backup: reply.backup,
+        }),
+      });
     }),
 
     previewForgetRetired: memory.previewForgetRetired.handler(async (options) => {
@@ -91,9 +99,13 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
           }),
       }));
 
-      const status = await runForgetFinish(context, store, itemIDs);
-
-      return readForgetStatusReply(context, itemIDs, status);
+      return runForgetReply(context, store, {
+        clientActionID: options.input.clientActionID,
+        result: { itemIDs },
+        itemIDs,
+        schema: forgetReplySchemas.bulk,
+        toReply: (reply) => reply,
+      });
     }),
 
     readForgetStatus: memory.readForgetStatus.handler(async (options) => {

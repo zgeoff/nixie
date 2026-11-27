@@ -6,6 +6,7 @@ import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { seedPublishedBackupSet } from '../test-utils/seed-published-backup-set';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
 
@@ -428,6 +429,68 @@ test('#memory.forget replies with the same result when a completed request repea
 
   const first = await client.memory.forget(input);
   const replay = await client.memory.forget(input);
+
+  expect(replay).toStrictEqual(first);
+});
+
+test('#memory.forget replays the reply it saved when a backup set was published after it', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'Keeps a spare key under the blue pot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item };
+
+  const first = await client.memory.forget(input);
+
+  await seedPublishedBackupSet(ctx.writer, { sequence: 1, logHead: 1_000_000 });
+
+  const replay = await client.memory.forget(input);
+
+  expect(first).toStrictEqual({
+    itemID: item.itemID,
+    pending: false,
+    backup: { state: 'pending' },
+  });
+
+  expect(replay).toStrictEqual(first);
+});
+
+test('#memory.forgetRetired replays the reply it saved when a backup set was published after it', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const item = await ctx.memory.remember({ text: 'Owns a red canoe', provenance });
+  const retired = await ctx.memory.retire({ target: item, provenance });
+
+  const input = { clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74', targets: [retired] };
+
+  const first = await client.memory.forgetRetired(input);
+
+  await seedPublishedBackupSet(ctx.writer, { sequence: 1, logHead: 1_000_000 });
+
+  const replay = await client.memory.forgetRetired(input);
+
+  expect(first).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'pending' },
+  });
 
   expect(replay).toStrictEqual(first);
 });
