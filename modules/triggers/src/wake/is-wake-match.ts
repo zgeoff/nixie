@@ -4,6 +4,9 @@ export interface MatchedMail {
   readonly from: string;
   readonly subject: string;
   readonly threadID: string;
+
+  // a text's body; a mail has none
+  readonly body?: string;
 }
 
 // Every field of the match that is present must match. The From header proves nothing about the
@@ -14,6 +17,10 @@ export function isWakeMatch(match: WakeMatch, mail: MatchedMail): boolean {
   }
 
   if (match.subject !== undefined && !normalize(mail.subject).includes(normalize(match.subject))) {
+    return false;
+  }
+
+  if (match.body !== undefined && !normalize(mail.body ?? '').includes(normalize(match.body))) {
     return false;
   }
 

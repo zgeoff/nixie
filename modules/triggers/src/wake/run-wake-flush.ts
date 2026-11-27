@@ -120,6 +120,7 @@ async function readArrivals(
       receivedAt: arrived.receivedAt,
       from: fields.from,
       subject: fields.subject,
+      ...(fields.body === undefined ? {} : { body: fields.body }),
     });
   }
 

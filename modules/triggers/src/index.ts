@@ -55,6 +55,8 @@ export type {
   MailArrivalEvent,
   ConnectionArrivalEvent,
   ConnectionMailbox,
+  TextArrival,
+  TextArrivalEvent,
   Mailbox,
   ScheduleTriggerEvent,
   TaskInputEvent,
@@ -75,6 +77,7 @@ export { endWakeRuleInTransaction } from './wake/end-wake-rule-in-transaction';
 export type { ReadWakeRulesOptions } from './wake/read-wake-rules';
 export { readWakeRules } from './wake/read-wake-rules';
 export { isWakeMatch } from './wake/is-wake-match';
+export { textSources } from './wake/text-sources';
 export { runWakeFlush } from './wake/run-wake-flush';
 export { startWakeFlush } from './wake/start-wake-flush';
 export type { WakeRulesConfig } from './wake/wake-rules-config-schema';

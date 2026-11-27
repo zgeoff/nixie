@@ -77,7 +77,10 @@ export interface TaskInputEvent {
 // the connection belongs to. A mail source takes the mailbox's source as its ID.
 export type Mailbox =
   | { readonly kind: 'mail' }
-  | { readonly kind: 'connection'; readonly source: string; readonly connectionID: string };
+  | { readonly kind: 'connection'; readonly source: string; readonly connectionID: string }
+
+  // a feature's own source of texts, which names its ID in the core's list of text sources
+  | { readonly kind: 'source'; readonly sourceID: string };
 
 export type ConnectionMailbox = Extract<Mailbox, { readonly kind: 'connection' }>;
 
@@ -91,6 +94,9 @@ export interface WakeMatch {
 
   // the mailbox's thread ID: a short ID for the assistant's mailbox, the source's own for a connection's
   readonly thread?: string;
+
+  // text sources only: a substring of the text, both sides in NFC and lowered
+  readonly body?: string;
 }
 
 // The conversation or any task that a rule wakes.
@@ -158,7 +164,36 @@ export interface MailArrivalEvent {
 // One new mail in a connection's mailbox, as the source of that connection read it.
 export type ConnectionArrivalEvent = MailArrivalEvent & { readonly mailbox: ConnectionMailbox };
 
-export type TriggerEvent = ScheduleTriggerEvent | TaskInputEvent | MailArrivalEvent;
+// One new text from a text source, as the source read it from its provider.
+export interface TextArrivalEvent {
+  readonly kind: 'text';
+  readonly mailbox: { readonly kind: 'source'; readonly sourceID: string };
+
+  // the source's part of the key: the provider's message ID
+  readonly dedupeKey: string;
+
+  // ISO instant: when the source read it
+  readonly occurredAt: string;
+  readonly payload: TextArrival;
+}
+
+export interface TextArrival {
+  // the short ID of the stored text
+  readonly messageID: string;
+
+  // the sender's number or sender name
+  readonly from: string;
+
+  // epoch ms, the provider's receive time
+  readonly receivedAt: number;
+  readonly body: string;
+}
+
+export type TriggerEvent =
+  | ScheduleTriggerEvent
+  | TaskInputEvent
+  | MailArrivalEvent
+  | TextArrivalEvent;
 
 export interface TriggerBatch {
   readonly cursor: JSONValue;
@@ -182,7 +217,7 @@ export interface TriggerContext {
 export interface TriggerSource {
   // stable across restarts, such as 'schedule'
   readonly id: string;
-  readonly kind: 'schedule' | 'stream' | 'mail';
+  readonly kind: 'schedule' | 'stream' | 'mail' | 'text';
 
   // resolves once the source runs
   readonly start: (context: TriggerContext) => Promise<void>;

@@ -30,6 +30,22 @@ test.each<[string, WakeMatch, boolean]>([
   expect(isWakeMatch(match, ctx.mail)).toBe(expected);
 });
 
+test.each<[string, WakeMatch, boolean]>([
+  ['a body substring without case', { body: 'CODE IS' }, true],
+  ['a body that is absent', { body: 'receipt' }, false],
+  ['the sender name of a text without case', { from: ['example'], body: 'code' }, true],
+])('#isWakeMatch takes a text with %s', (_name, match, expected) => {
+  const text = { from: 'Example', subject: '', threadID: '', body: 'Your code is 5521' };
+
+  expect(isWakeMatch(match, text)).toBe(expected);
+});
+
+test('#isWakeMatch refuses a body match on a mail, which has no body', () => {
+  const ctx = setupTest();
+
+  expect(isWakeMatch({ body: 'code' }, ctx.mail)).toBe(false);
+});
+
 test('#isWakeMatch compares subjects in NFC', () => {
   const ctx = setupTest();
   const decomposed = `Cafe${String.fromCodePoint(0x3_01)} menu`;

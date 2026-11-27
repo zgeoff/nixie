@@ -1,5 +1,6 @@
 export { buildTestArmedDefinition } from './build-test-armed-definition';
 export { buildTestMailEvent } from './build-test-mail-event';
+export { buildTestTextEvent } from './build-test-text-event';
 export { buildTestTriggerCore } from './build-test-trigger-core';
 export { buildTestTriggerEvent } from './build-test-trigger-event';
 export { readTestTriggerRows } from './read-test-trigger-rows';

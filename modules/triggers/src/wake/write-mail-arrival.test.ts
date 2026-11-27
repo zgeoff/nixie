@@ -1,15 +1,17 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { readInbox } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { deliverTriggerBatch } from '../core/deliver-trigger-batch';
 import {
   buildTestMailEvent,
+  buildTestTextEvent,
   readTestTriggerRows,
   seedWakeRule,
   startTestTriggers,
 } from '../test-utils';
-import type { MailArrivalEvent } from '../types';
+import type { MailArrivalEvent, TextArrivalEvent } from '../types';
+import { textSources } from './text-sources';
 
 async function setupTest() {
   const triggers = await startTestTriggers();
@@ -19,6 +21,15 @@ async function setupTest() {
     taskSeed: buildTaskSeeder({ context: triggers.context }),
     deliverMail: (events: readonly MailArrivalEvent[]) =>
       deliverTriggerBatch(triggers.core, 'mail', { cursor: null, events }),
+    deliverTexts: (events: readonly TextArrivalEvent[], sourceID = 'test-texts') => {
+      textSources.set(['test-texts']);
+
+      onTestFinished(() => {
+        textSources.set([]);
+      });
+
+      return deliverTriggerBatch(triggers.core, sourceID, { cursor: null, events });
+    },
     readKinds: async (kind: 'trigger.mail_arrived' | 'trigger.mail_woke') => {
       const records = await readRecords(triggers.context.log, { afterSequence: 0, kinds: [kind] });
 
@@ -348,6 +359,133 @@ test('it drops a connection arrival that names another source than its own', asy
       }),
     ],
   });
+
+  expect(result).toStrictEqual({ delivered: 0 });
+});
+
+test('it wakes the conversation with a text that a rule on its source matches by body', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'source', sourceID: 'test-texts' },
+    match: { body: 'CODE' },
+  });
+
+  ctx.clock.advance(1000);
+
+  const result = await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } }),
+  ]);
+
+  const [woke] = await ctx.readKinds('trigger.mail_woke');
+
+  expect(result).toStrictEqual({ delivered: 1 });
+
+  expect(woke?.payload).toMatchObject({
+    mails: [{ mailbox: 'source:test-texts', messageID: 'tx8k2m4q9w' }],
+  });
+
+  expect(woke?.erasable).toMatchObject({
+    status: 'readable',
+    fields: { mails: [{ from: 'Example', subject: '', body: 'Your code is 5521' }] },
+  });
+});
+
+test('it writes nothing for a text that no rule matches', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, {
+    mailbox: { kind: 'source', sourceID: 'test-texts' },
+    match: { body: 'receipt' },
+  });
+
+  ctx.clock.advance(1000);
+
+  const result = await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } }),
+  ]);
+
+  const arrived = await ctx.readKinds('trigger.mail_arrived');
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(result).toStrictEqual({ delivered: 0 });
+  expect(arrived).toStrictEqual([]);
+  expect(rows.keys).toStrictEqual([]);
+});
+
+test('it refuses a text of a source that no feature filled in the list', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'other' }, match: {} });
+
+  ctx.clock.advance(1000);
+
+  const result = await ctx.deliverTexts(
+    [
+      buildTestTextEvent({
+        mailbox: { kind: 'source', sourceID: 'other' },
+        payload: { receivedAt: ctx.clock.now() },
+      }),
+    ],
+    'other',
+  );
+
+  expect(result).toStrictEqual({ delivered: 0 });
+});
+
+test('it refuses a text whose mailbox is another source than the one delivering it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'test-texts' }, match: {} });
+
+  ctx.clock.advance(1000);
+
+  const result = await ctx.deliverTexts(
+    [buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } })],
+    'mail',
+  );
+
+  expect(result).toStrictEqual({ delivered: 0 });
+});
+
+test('it takes a text once, whatever the rules', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'source', sourceID: 'test-texts' }, match: {} });
+
+  ctx.clock.advance(1000);
+
+  const event = buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } });
+
+  await ctx.deliverTexts([event]);
+
+  const second = await ctx.deliverTexts([event]);
+
+  expect(second).toStrictEqual({ delivered: 0 });
+});
+
+test('it does not take a mail rule for a text of the same words', async () => {
+  const ctx = await setupTest();
+
+  await ctx.taskSeed.conversationStep();
+
+  await seedWakeRule(ctx, { mailbox: { kind: 'mail' }, match: {} });
+
+  ctx.clock.advance(1000);
+
+  const result = await ctx.deliverTexts([
+    buildTestTextEvent({ payload: { receivedAt: ctx.clock.now() } }),
+  ]);
 
   expect(result).toStrictEqual({ delivered: 0 });
 });
