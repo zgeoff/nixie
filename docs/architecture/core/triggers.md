@@ -33,8 +33,8 @@ can still land on the task that binds its session next. The input carries a `wak
 the record joins the task's inbox and wakes the task; without it, the record lands on the thread and
 no step reads it.
 
-A source can also hand over a mail arrival, which names no definition and no task. The core matches
-it against the wake rules of its mailbox and wakes each target a ready rule names.
+A source can also hand over a mail arrival or a text arrival, which name no definition and no task.
+The core matches it against the wake rules of its mailbox and wakes each target a ready rule names.
 [The mailbox](./mailbox.md#the-arrival-path) covers the rules, the held matches and the wake flush,
 which the triggers module holds.
 

@@ -112,6 +112,21 @@ test('it records the cursor of the first start as the provider stands, with no r
   expect(records).toStrictEqual([]);
 });
 
+test('it wakes nothing for a text that a rule matches when the text came before the first start', async () => {
+  const ctx = await setupTest();
+
+  await ctx.callTool('phone.wake_set', { from: ['example'], window: '1m' });
+
+  const old = ctx.provider.deliver({ from: 'Example', body: 'Old news' });
+
+  await ctx.startSource();
+  await ctx.waitForCursor(old.receivedAt);
+
+  const wakes = await ctx.readWakes();
+
+  expect(wakes).toStrictEqual([]);
+});
+
 test('it wakes nothing for a text that no wake rule matches, and phone.list still finds it', async () => {
   const ctx = await setupTest();
 

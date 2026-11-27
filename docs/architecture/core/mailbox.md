@@ -191,8 +191,12 @@ Mail is silent by default. The triggers module writes no record for a mail that 
 
 ## The arrival path
 
-A rule holds one mailbox: the assistant's own, or one Gmail connection, whose
-[arrivals](../connectors/gmail-tools.md#arrivals) take the same path.
+A rule holds one mailbox: the assistant's own, one Gmail connection, whose
+[arrivals](../connectors/gmail-tools.md#arrivals) take the same path, or one text source, such as
+[the phone](../connectors/phone.md). A text source is `{ kind: 'source', sourceID }`, its mailbox
+key is `source:<sourceID>`, and a feature fills the core list of text sources with its own ID, so
+the core refuses an arrival from a source no feature filled. A rule on a text source matches `body`,
+a substring of the text, in place of `subject`, and a wake renders as a `text` system message.
 
 The trigger core takes a mail arrival in the same write transaction as the rest of a batch, and
 drops a repeat arrival by its dedupe key. Then it reads the live rules and matches the mail:

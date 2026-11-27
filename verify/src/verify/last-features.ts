@@ -40,7 +40,7 @@ export const lastFeatures = [
   },
   {
     name: 'phone-text',
-    summary: 'A text wakes the chat, and the assistant reads and answers it',
+    summary: 'A text wakes the chat',
     paths: featurePaths['phone-text'],
   },
   {

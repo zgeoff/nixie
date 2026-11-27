@@ -25,7 +25,7 @@ export function findMissingToken(text: string, quote: string): DestinationToken 
 }
 
 function isNumberKind(token: DestinationToken): boolean {
-  return token.kind === 'phone' || token.kind === 'account';
+  return token.kind === 'telephone' || token.kind === 'account';
 }
 
 function getHost(token: DestinationToken): string {
