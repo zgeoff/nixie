@@ -44,7 +44,12 @@ Each adapter call maps to fleet procedures:
   open, so a new event reaches the source at once. The client opens a dropped stream again after its
   last event, and the adapter throws when the stream ends in any other way, so the source backs off
   and reports its health. A `daemons` item of the stream that lists a truncated daemon is logged
-  like a truncated page.
+  like a truncated page. The client also retries a stream, and the open of one, for as long as the
+  gateway stays unreachable, so after each quiet wait of `waitMs` the adapter reads the trail's
+  cursor with a time limit, and throws when that read fails. It then yields a page, empty when
+  nothing came, so the source catches up a session whose task bound it since the last page. Every
+  lookup of a note, an answer or a state takes the source's abort signal, so a stopped source never
+  waits on one.
 - `steer` is the only call that types into a session. It never calls `session.choose`, so the
   adapter answers no menu. It reads the session's state first, and refuses a session in `waiting`
   with `menu_open`, because a typed Enter would pick the menu's highlighted option. atc refuses the
@@ -103,11 +108,11 @@ the queue's ambiguous outcome.
 | ------------------------------------------------------------------------------------------------- | --------------------------- |
 | `outcome_unknown`; a connection lost after the request left                                       | `unknown`                   |
 | `daemon_unavailable` on a call with a key; `no_such_session` to a resent spawn                    | `unknown`                   |
-| a gateway error that is no atc code, such as HTTP 502, on a call with a key                       | `unknown`                   |
+| a gateway error that is no atc code, such as HTTP 502, on a call with a key or on a steer         | `unknown`                   |
 | `daemon_unavailable` with no key, `target_unavailable`, `host_unavailable`, `timeout`, `too_slow` | `refused`, `canClear` true  |
 | `permission_pending` to a steer; `host_leased` to a stop                                          | `refused`, `canClear` true  |
 | `protocol_mismatch`; HTTP 401 as `bearer_refused`; an unreachable gateway as `unreachable`        | `refused`, `canClear` true  |
-| a gateway error that is no atc code, such as HTTP 502, on a call with no key                      | `refused`, `canClear` true  |
+| a gateway error that is no atc code, such as HTTP 502, on any other call with no key              | `refused`, `canClear` true  |
 | `unsupported` to a note in the session's first minute                                             | `refused`, `canClear` true  |
 | `insufficient_scope`; `unauthorized`; `daemon_unauthorized`; `idempotency_conflict`; `bad_args`   | `refused`, `canClear` false |
 | `target_forbidden`; `session_dead`; HTTP 403; any other code                                      | `refused`, `canClear` false |

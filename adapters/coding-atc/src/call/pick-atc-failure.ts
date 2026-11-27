@@ -12,6 +12,10 @@ export interface ThrownCall {
   readonly isKeyed: boolean;
 }
 
+// A line typed into a session may have reached the terminal when a proxy answers with an error, and
+// the call has no key to make a resend safe, so its failure is never a refusal.
+const typingProcedure = 'session.submit';
+
 // The reply for a call that threw. atc's typed errors keep their `code`; the client itself throws
 // `UNAUTHORIZED` for an HTTP 401 and `FORBIDDEN` for a refused host. Anything that is no oRPC
 // error came from the network.
@@ -31,7 +35,7 @@ export function pickATCFailure(error: unknown, call: ThrownCall): Failure {
   }
 
   if (code === code.toUpperCase()) {
-    return call.isKeyed
+    return call.isKeyed || call.procedure === typingProcedure
       ? { status: 'unknown', reason: 'gateway_failed' }
       : { status: 'refused', canClear: true, reason: 'gateway_failed' };
   }

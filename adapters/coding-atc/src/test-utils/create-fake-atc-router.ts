@@ -28,7 +28,8 @@ export function createFakeATCRouter(state: FakeATCState) {
     session: {
       list: os.session.list.handler(() => ({
         sessions: [...state.sessions.values()].map((session) => toEntry(session)),
-        daemons: [{ name: 'cloud', state: state.daemonState }],
+        daemons:
+          state.daemonState === 'missing' ? [] : [{ name: 'cloud', state: state.daemonState }],
       })),
       get: os.session.get.handler((call) => {
         const session = findSession(state, call.input.session);

@@ -478,6 +478,17 @@ test('it gives an unknown outcome to a keyed call that a failing gateway answers
   expect(reply).toStrictEqual({ status: 'unknown', reason: 'gateway_failed' });
 });
 
+test('it gives the unknown outcome to a steer that a proxy answers with an error, since the line may have reached the terminal', async () => {
+  const ctx = setupTest();
+
+  ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
+  ctx.gateway.failNext('session.submit', { kind: 'http', status: 500 });
+
+  const reply = await ctx.adapter.steer({ id: 'cloud.3f9a1c2e.a' }, 'Use the shared fixture.');
+
+  expect(reply).toStrictEqual({ status: 'unknown', reason: 'gateway_failed' });
+});
+
 test('it gives a refusal that may clear to a gateway that nothing listens on, and no empty list', async () => {
   const ctx = setupTest();
 
@@ -543,6 +554,16 @@ test.each([
     canClear: row.canClear,
     reason: `daemon_${row.state}`,
   });
+});
+
+test('it refuses a list when a configured daemon is missing from the gateway registry, and the refusal cannot clear', async () => {
+  const ctx = setupTest();
+
+  ctx.gateway.setDaemonState('missing');
+
+  const reply = await ctx.adapter.list();
+
+  expect(reply).toStrictEqual({ status: 'refused', canClear: false, reason: 'daemon_missing' });
 });
 
 test('it lists the sessions it can reach and logs a daemon that is not up', async () => {
@@ -874,6 +895,68 @@ test('it reads a session that waits on a question with a long reply and a tail o
       ],
     },
   });
+});
+
+test('it yields an empty page after each quiet wait, so the source can catch up a session that bound late', async () => {
+  const ctx = setupTest();
+
+  const pages = await ctx.readPages('g0', 3);
+
+  expect(pages).toStrictEqual([
+    { cursor: 'g0', events: [] },
+    { cursor: 'g0', events: [] },
+    { cursor: 'g0', events: [] },
+  ]);
+});
+
+test('it fails the events read when the gateway goes away while the event stream is open', async () => {
+  const ctx = setupTest();
+  const pending = ctx.readPages('g0', 1000);
+
+  await waitForCondition(() =>
+    ctx.gateway.calls.some((call) => call.procedure === 'events.stream'),
+  );
+
+  await ctx.gateway.stop();
+
+  expect(pending).rejects.toThrow(/the atc event read gave unreachable/u);
+});
+
+test('it ends an events read at once when the source aborts it during a note lookup, and yields no cut note', async () => {
+  const ctx = setupTest();
+
+  ctx.gateway.addSession({ id: 'cloud.3f9a1c2e.a' });
+
+  ctx.gateway.emit({
+    session: 'cloud.3f9a1c2e.a',
+    kind: 'note',
+    at: 1,
+    detail: 'x',
+    label: 'progress',
+    text: 'Halfway there.',
+  });
+
+  ctx.gateway.failNext('note.get', { kind: 'hang' });
+
+  const controller = new AbortController();
+
+  const pages: unknown[] = [];
+
+  const reading = (async () => {
+    for await (const page of ctx.adapter.events('g0', controller.signal, () =>
+      Promise.resolve([{ id: 'cloud.3f9a1c2e.a', state: 'running' }]),
+    )) {
+      pages.push(page);
+    }
+  })();
+
+  await waitForCondition(() => ctx.gateway.calls.some((call) => call.procedure === 'note.get'));
+
+  controller.abort();
+
+  await reading;
+
+  expect(pages).toStrictEqual([]);
 });
 
 test('it fails an events read when the gateway refuses the event stream', () => {

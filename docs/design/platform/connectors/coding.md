@@ -49,11 +49,11 @@ session's events reach the task's thread as records. See
 ## The atc adapter
 
 atc runs each coding session as a supervised agent under its own rules. The `coding-atc` adapter
-calls atc-gateway's MCP tools over HTTP as a service client. In each atc daemon's config, grant that
-client the targets nixie uses. The adapter never goes through the [MCP proxy](mcp-proxy.md), and the
-model never sees atc's own tools, so your rules decide every start, steer, note and stop. See
-[the atc adapter](../../../architecture/connectors/coding-atc.md) for the map of each adapter call
-onto the gateway's tools.
+calls atc-gateway's typed fleet API over HTTP as a service client. In each atc daemon's config,
+grant that client the targets nixie uses. The adapter never goes through the
+[MCP proxy](mcp-proxy.md), and the model never sees atc's own tools, so your rules decide every
+start, steer, note and stop. See [the atc adapter](../../../architecture/connectors/coding-atc.md)
+for the map of each adapter call onto the gateway's fleet procedures.
 
 ## The built-in adapter
 

@@ -94,7 +94,11 @@ async function* readBacklog(
       deps.log('coding.atc_trail_truncated', { daemon }, 'warn');
     }
 
-    const events = await readPageEvents(deps, page.events, boundIDs);
+    const events = await readPageEvents(deps, page.events, { boundIDs, signal: run.signal });
+
+    if (run.signal.aborted) {
+      return current;
+    }
 
     current = page.cursor;
 
@@ -112,26 +116,43 @@ async function* readBacklog(
   return current;
 }
 
+interface PageReads {
+  readonly boundIDs: ReadonlySet<string>;
+  readonly signal: AbortSignal;
+}
+
 async function readPageEvents(
   deps: EventsDependencies,
   trail: readonly TrailEvent[],
-  boundIDs: ReadonlySet<string>,
+  reads: PageReads,
 ): Promise<SessionEvent[]> {
-  const texts = await readEventTexts(deps.atc, trail);
-  const stateEvents = await readStateEvents(deps, collectStateReads(deps, trail, boundIDs));
+  const texts = await readEventTexts(deps.atc, trail, reads.signal);
+
+  const stateEvents = await readStateEvents(
+    deps,
+    collectStateReads(deps, trail, reads.boundIDs),
+    reads.signal,
+  );
 
   return [...buildSessionEvents(trail, texts), ...stateEvents];
 }
 
-// Holds the event stream open from the cursor. It yields a page for each event that gives a session
-// event, and an empty page when a state read comes due and the cursor moved. It returns when the
-// abort signal fires, and throws when the stream ends otherwise, so the caller backs off.
-async function* readStream(deps: EventsDependencies, run: ReadRun): AsyncGenerator<EventsPage> {
-  const stream = await deps.atc.events.stream({ cursor: run.cursor }, { signal: run.signal });
+// The client retries a dropped stream, and an unreachable gateway, until the signal fires. So each
+// quiet wait ends with one cheap read that fails when the gateway cannot be reached.
+const probeTimeoutMs = 10_000;
 
-  const iterator = stream[Symbol.asyncIterator]();
+// Holds the event stream open from the cursor. It yields a page for each event that gives a session
+// event, and an empty page after each quiet wait, so the source catches up newly bound sessions.
+// It returns when the abort signal fires, and throws when the stream ends or the probe fails.
+async function* readStream(deps: EventsDependencies, run: ReadRun): AsyncGenerator<EventsPage> {
+  const streamAbort = new AbortController();
+
+  const iterator = streamItems(deps, {
+    cursor: run.cursor,
+    signal: AbortSignal.any([run.signal, streamAbort.signal]),
+  })[Symbol.asyncIterator]();
+
   let current = run.cursor;
-  let yielded = run.cursor;
   let next = settleNext(iterator);
 
   try {
@@ -157,10 +178,20 @@ async function* readStream(deps: EventsDependencies, run: ReadRun): AsyncGenerat
       }
 
       if (arrival.kind === 'due') {
-        const events = await readStateEvents(deps, collectStateReads(deps, [], boundIDs));
+        await readOrThrow(() =>
+          deps.atc.events.read(
+            { limit: 1 },
+            { signal: AbortSignal.any([run.signal, AbortSignal.timeout(probeTimeoutMs)]) },
+          ),
+        );
 
-        if (events.length > 0 || current !== yielded) {
-          yielded = current;
+        const events = await readStateEvents(
+          deps,
+          collectStateReads(deps, [], boundIDs),
+          run.signal,
+        );
+
+        if (!run.signal.aborted) {
           yield { cursor: current, events };
         }
 
@@ -177,17 +208,24 @@ async function* readStream(deps: EventsDependencies, run: ReadRun): AsyncGenerat
         continue;
       }
 
+      const events = await readPageEvents(deps, [arrival.item.event], {
+        boundIDs,
+        signal: run.signal,
+      });
+
+      if (run.signal.aborted) {
+        return;
+      }
+
       current = arrival.item.event.cursor;
 
-      const events = await readPageEvents(deps, [arrival.item.event], boundIDs);
-
       if (events.length > 0) {
-        yielded = current;
         yield { cursor: current, events };
       }
     }
   } finally {
-    await closeIterator(iterator);
+    streamAbort.abort();
+    void closeIterator(iterator);
   }
 }
 
@@ -197,6 +235,22 @@ type StreamItem =
   >
     ? Item
     : never;
+
+interface StreamOpen {
+  readonly cursor: string;
+  readonly signal: AbortSignal;
+}
+
+// The stream's items, opened inside the first step, so a gateway that never answers the open is as
+// quiet as a stream with no event.
+async function* streamItems(
+  deps: EventsDependencies,
+  open: StreamOpen,
+): AsyncGenerator<StreamItem> {
+  const stream = await deps.atc.events.stream({ cursor: open.cursor }, { signal: open.signal });
+
+  yield* stream;
+}
 
 type Arrival =
   | { readonly kind: 'due' }

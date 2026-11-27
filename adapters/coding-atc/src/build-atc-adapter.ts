@@ -15,6 +15,7 @@ import { runATCCall } from './call/run-atc-call';
 import type { KnownSession } from './events/read-atc-events';
 import { readATCEvents } from './events/read-atc-events';
 import { buildSpawnArguments } from './session/build-spawn-arguments';
+import { collectDaemonsNotUp } from './session/collect-daemons-not-up';
 import { mapATCState } from './session/map-atc-state';
 import { readTranscriptTail } from './session/read-transcript-tail';
 import type { SessionEntry } from './types';
@@ -197,10 +198,7 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         return listed;
       }
 
-      const notUp = listed.value.daemons.filter(
-        (daemon) =>
-          daemon.state !== 'up' && options.targets.some((target) => target.daemon === daemon.name),
-      );
+      const notUp = collectDaemonsNotUp(listed.value.daemons, options.targets);
 
       for (const daemon of notUp) {
         options.log(

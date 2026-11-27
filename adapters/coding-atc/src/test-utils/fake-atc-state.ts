@@ -46,12 +46,13 @@ export interface FakeATCCall {
   readonly args: Readonly<Record<string, unknown>>;
 }
 
-// A failure that the fake answers in place of a procedure's next call. A `lost` call runs, and its
+// A failure that the fake answers in place of a procedure's next call. A `hang` call never answers. A `lost` call runs, and its
 // answer never arrives: the caller sees `outcome_unknown`.
 export type FakeATCFailure =
   | { readonly kind: 'code'; readonly code: string }
   | { readonly kind: 'lost' }
-  | { readonly kind: 'http'; readonly status: number };
+  | { readonly kind: 'http'; readonly status: number }
+  | { readonly kind: 'hang' };
 
 export interface FakeATCState {
   readonly sessions: Map<string, FakeATCSession>;
@@ -64,8 +65,8 @@ export interface FakeATCState {
   readonly failures: Map<string, FakeATCFailure[]>;
   readonly messages: Map<string, { session: string; text: string }>;
 
-  // how the gateway reports the daemon `cloud`
-  daemonState: 'up' | 'down' | 'mismatched' | 'refused' | 'unauthorized' | 'changed';
+  // how the gateway reports the daemon `cloud`; `missing` leaves it out of the registry
+  daemonState: 'up' | 'down' | 'mismatched' | 'refused' | 'unauthorized' | 'changed' | 'missing';
 
   // the major version of the contract the fake serves
   readonly major: number;

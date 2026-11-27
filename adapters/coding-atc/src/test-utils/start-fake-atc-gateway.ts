@@ -79,6 +79,10 @@ export function startFakeATCGateway(options: FakeATCGatewayOptions = {}): FakeAT
           throw buildError(failure.code);
         }
 
+        if (failure?.kind === 'hang') {
+          await new Promise<never>(() => {});
+        }
+
         const answer = await call.next();
 
         if (failure?.kind === 'lost') {

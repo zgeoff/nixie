@@ -50,11 +50,12 @@ export function collectStateReads(
 export async function readStateEvents(
   deps: EventsDependencies,
   sessions: readonly string[],
+  signal: AbortSignal,
 ): Promise<SessionEvent[]> {
   const events: SessionEvent[] = [];
 
   for (const id of sessions) {
-    const event = await readStateEvent(deps, id);
+    const event = await readStateEvent(deps, id, signal);
 
     if (event !== null) {
       events.push(event);
@@ -64,8 +65,12 @@ export async function readStateEvents(
   return events;
 }
 
-async function readStateEvent(deps: EventsDependencies, id: string): Promise<SessionEvent | null> {
-  const read = await readState(deps, id);
+async function readStateEvent(
+  deps: EventsDependencies,
+  id: string,
+  signal: AbortSignal,
+): Promise<SessionEvent | null> {
+  const read = await readState(deps, id, signal);
 
   const nowMs = deps.now();
   const known = deps.known.get(id);
@@ -99,8 +104,9 @@ async function readStateEvent(deps: EventsDependencies, id: string): Promise<Ses
 async function readState(
   deps: EventsDependencies,
   id: string,
+  signal: AbortSignal,
 ): Promise<{ readonly state: SessionState; readonly question: string | null } | null> {
-  const read = await runATCCall(() => deps.atc.session.get({ session: id }), {
+  const read = await runATCCall(() => deps.atc.session.get({ session: id }, { signal }), {
     procedure: 'session.get',
     isKeyed: false,
   });

@@ -271,10 +271,11 @@ its cursor, because the key is spent. A cursor that a start kept stays for a day
 which the queue sends no replay, and the next store write drops it.
 
 A join refuses a session whose target the config does not list, even when a saved short ID names it.
-The adapter yields a page of the trail only when the page holds an event or the read caught up, so
-the source's catch-up never stops at a page of events that the adapter drops while more pages wait.
+The adapter yields a page of the trail when the page holds an event, when the read caught up, and
+after each quiet wait, so the source's catch-up of a newly bound session runs even when the fleet is
+quiet, and never stops at a page of events that the adapter drops while more pages wait.
 
-The adapter calls the gateway only through its documented tools, refuses a gateway whose version it
+The adapter calls the gateway only through its typed fleet API, refuses a gateway whose version it
 does not support, and maps each failure to a value of the adapter interface. A session's own text
 reaches nixie only as untrusted data.
 

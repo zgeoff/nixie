@@ -11,18 +11,19 @@ export type EventText =
 export async function readEventTexts(
   atc: ATCFleet,
   events: readonly TrailEvent[],
+  signal: AbortSignal,
 ): Promise<ReadonlyMap<string, EventText>> {
   const texts = new Map<string, EventText>();
 
   for (const event of events) {
     if (event.kind === 'note') {
-      const text = await readText(() => readNote(atc, event));
+      const text = await readText(() => readNote(atc, event, signal));
 
       texts.set(event.cursor, text);
     }
 
     if (event.kind === 'message-answered') {
-      const text = await readText(() => readAnswer(atc, event));
+      const text = await readText(() => readAnswer(atc, event, signal));
 
       texts.set(event.cursor, text);
     }
@@ -41,14 +42,14 @@ async function readText(
   }
 }
 
-async function readNote(atc: ATCFleet, event: TrailEvent) {
-  const read = await atc.note.get({ note: event.note ?? event.cursor });
+async function readNote(atc: ATCFleet, event: TrailEvent, signal: AbortSignal) {
+  const read = await atc.note.get({ note: event.note ?? event.cursor }, { signal });
 
   return { text: read.text, isComplete: read.complete };
 }
 
-async function readAnswer(atc: ATCFleet, event: TrailEvent) {
-  const read = await atc.answer.get({ answer: event.answer ?? event.cursor });
+async function readAnswer(atc: ATCFleet, event: TrailEvent, signal: AbortSignal) {
+  const read = await atc.answer.get({ answer: event.answer ?? event.cursor }, { signal });
 
   return { text: read.text, isComplete: read.complete };
 }

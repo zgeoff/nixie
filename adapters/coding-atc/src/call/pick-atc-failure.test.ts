@@ -47,3 +47,16 @@ test('#pickATCFailure gives the unknown outcome to a keyed call that a bad gatew
     reason: 'gateway_failed',
   });
 });
+
+test('#pickATCFailure gives the unknown outcome to a steer that a proxy answered with an error', () => {
+  const error = Object.assign(new Error('INTERNAL_SERVER_ERROR'), {
+    code: 'INTERNAL_SERVER_ERROR',
+    defined: false,
+    status: 500,
+  });
+
+  expect(pickATCFailure(error, { procedure: 'session.submit', isKeyed: false })).toStrictEqual({
+    status: 'unknown',
+    reason: 'gateway_failed',
+  });
+});
