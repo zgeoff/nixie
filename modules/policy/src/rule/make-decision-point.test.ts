@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { migrationsPlugin } from '@heynixie/db';
+import type { Trust } from '../place/types';
 import { buildPolicyCall } from '../test-utils/build-policy-call';
 import { buildRuleEntry } from '../test-utils/build-rule-entry';
 import {
@@ -10,6 +11,7 @@ import {
   buildTestDeclaration,
   buildTypedMessage,
 } from '../test-utils/build-test-decision-point';
+import type { Effect } from '../types';
 
 test('it denies an unknown tool at the registry stage', async () => {
   const ctx = buildTestDecisionPoint({ declaration: null });
@@ -17,7 +19,13 @@ test('it denies an unknown tool at the registry stage', async () => {
   const decided = await ctx.decide(buildPolicyCall({ tool: 'nope', toolList: ['nope'] }));
 
   expect(decided).toStrictEqual({
-    decision: { outcome: 'deny', stage: 1, rule: null, destinations: [], snapshot: 'snapshot-1' },
+    decision: {
+      outcome: 'deny',
+      stage: 1,
+      rule: null,
+      destinations: [],
+      snapshot: 'snapshot-1',
+    },
     sentence: 'The tool nope is unknown or has no effect declaration.',
   });
 });
@@ -36,7 +44,13 @@ test("it denies a tool outside the caller's tool list at the scope stage", async
   const decided = await ctx.decide(buildPolicyCall({ tool: 'mail.send', toolList: ['other'] }));
 
   expect(decided).toStrictEqual({
-    decision: { outcome: 'deny', stage: 2, rule: null, destinations: [], snapshot: 'snapshot-1' },
+    decision: {
+      outcome: 'deny',
+      stage: 2,
+      rule: null,
+      destinations: [],
+      snapshot: 'snapshot-1',
+    },
     sentence: "The tool mail.send is not on this run's tool list.",
   });
 });
@@ -150,7 +164,9 @@ test('it passes stage 4 for a purchase within the lift, and carries the lift', a
     outcome: 'allow',
     stage: 7,
     rule: { id: 'allow-groceries', revision: 2, others: [] },
-    destinations: [{ value: 'orders@grocer.example', permission: 'rule' }],
+    destinations: [
+      { value: 'orders@grocer.example', permission: { by: 'rule', ruleID: 'allow-groceries' } },
+    ],
     snapshot: 'snapshot-1',
     lift: { ruleID: 'allow-groceries', budgetID: 'shopping-month', amountMicros: 12_500_000 },
   });
@@ -434,7 +450,7 @@ test('it asks at stage 5 for a destination with no permission, past an ask and a
   });
 });
 
-test('it asks at stage 5 for a read of a host that no rule allows, as a page with a declared fetch is sent', async () => {
+test('it gives a read of a host with no entry the reading permission, and asks at stage 9 when no rule allows it', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
   });
@@ -448,9 +464,9 @@ test('it asks at stage 5 for a read of a host that no rule allows, as a page wit
 
   expect(decided.decision).toMatchObject({
     outcome: 'ask',
-    stage: 5,
-    cause: 'outside_steering',
-    destinations: [{ value: 'tides.example', permission: null }],
+    stage: 9,
+    cause: 'no_rule',
+    destinations: [{ value: 'tides.example', permission: { by: 'reading' } }],
   });
 });
 
@@ -471,7 +487,7 @@ test('it passes stage 5 for a reply target and lets an ask rule decide at stage 
     stage: 6,
     rule: { id: 'ask-sends', revision: 2, others: [] },
     cause: 'ask_rule',
-    destinations: [{ value: 'sam@example.org', permission: 'reply_target' }],
+    destinations: [{ value: 'sam@example.org', permission: { by: 'reply_target' } }],
     snapshot: 'snapshot-1',
   });
 });
@@ -588,7 +604,9 @@ test('it grants a destination the rule permission without letting the rule decid
   expect(decided.decision).toMatchObject({
     outcome: 'allow',
     stage: 7,
-    destinations: [{ value: 'sam@example.org', permission: 'rule' }],
+    destinations: [
+      { value: 'sam@example.org', permission: { by: 'rule', ruleID: 'allow-example' } },
+    ],
   });
 });
 
@@ -606,7 +624,7 @@ test('it grants a destination the task permission from the definition that runs 
   );
 
   expect(decided.decision.destinations).toStrictEqual([
-    { value: 'sam@example.org', permission: 'task' },
+    { value: 'sam@example.org', permission: { by: 'task' } },
   ]);
 });
 
@@ -623,32 +641,32 @@ test('it grants no task permission to a call with no definition', async () => {
   expect(decided.decision.stage).toBe(5);
 });
 
-test('it grants a known contact permission to its destination', async () => {
+test('it grants a known place permission to its destination, whatever the address case', async () => {
   const ctx = buildTestDecisionPoint({
-    inputs: { contacts: [{ contactID: 'c1', name: 'Sam', destination: 'sam@example.org' }] },
+    inputs: {
+      places: [
+        {
+          placeID: 'c1',
+          shortID: 'c1short',
+          key: { kind: 'address', address: 'sam@example.org' },
+          trust: 'known',
+          name: 'Sam',
+        },
+      ],
+    },
     rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
   });
 
   const decided = await ctx.decide(
-    buildPolicyCall({ destinations: [{ value: 'sam@example.org', replyTarget: false }] }),
+    buildPolicyCall({ destinations: [{ value: 'Sam@Example.org', replyTarget: false }] }),
   );
 
   expect(decided.decision.destinations).toStrictEqual([
-    { value: 'sam@example.org', permission: 'known_contact' },
+    {
+      value: 'Sam@Example.org',
+      permission: { by: 'place', placeID: 'c1', trust: 'known' },
+    },
   ]);
-});
-
-test('it gives a contact with erased details no permission', async () => {
-  const ctx = buildTestDecisionPoint({
-    inputs: { contacts: [{ contactID: 'c1', name: null, destination: null }] },
-    rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
-  });
-
-  const decided = await ctx.decide(
-    buildPolicyCall({ destinations: [{ value: 'sam@example.org', replyTarget: false }] }),
-  );
-
-  expect(decided.decision.stage).toBe(5);
 });
 
 test('it allows actions.log through the queue check rule, and test.send through the test rule', async () => {
@@ -696,7 +714,7 @@ test('it asks about test.send and allows actions.log in the release bundle, whic
       'const declaration = { effects: ["write"], destinations: [], amount: null, content: [], results: {} };',
       'const decide = makeDecisionPoint({',
       '  findDeclaration: () => declaration,',
-      '  readInputs: async () => ({ rules: [], contacts: [], tools: new Map(), ownerDestinations: [] }),',
+      '  readInputs: async () => ({ rules: [], places: [], tools: new Map() }),',
       '  findTaskDestinations: () => [],',
       '  readConsent: async () => null,',
       '});',
@@ -781,7 +799,13 @@ test('it gates a memory write at stage 8 when no rule decides it, and never read
   const decided = await ctx.decide(buildPolicyCall({ turnMessageSequence: 7 }));
 
   expect(decided).toStrictEqual({
-    decision: { outcome: 'gate', stage: 8, rule: null, destinations: [], snapshot: 'snapshot-1' },
+    decision: {
+      outcome: 'gate',
+      stage: 8,
+      rule: null,
+      destinations: [],
+      snapshot: 'snapshot-1',
+    },
     sentence: null,
     memoryWrite: { allowing: [] },
   });
@@ -1376,3 +1400,274 @@ test.each([
     expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual([outcome, stage]);
   },
 );
+
+test('it denies a call to a blocked place at stage 3 and names only its short ID', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'blocked',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['fetch'], destinations: [], content: [] }),
+    rules: [buildRuleEntry('allow-all', { outcome: 'allow', effects: ['fetch'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'web_fetch',
+      toolList: ['web_fetch'],
+      destinations: [{ value: 'catalog.library.example.org', replyTarget: false }],
+    }),
+  );
+
+  expect({
+    decision: decided.decision,
+    sentence: decided.sentence,
+  }).toStrictEqual({
+    decision: {
+      outcome: 'deny',
+      stage: 3,
+      rule: null,
+      destinations: [{ value: 'catalog.library.example.org', permission: null }],
+      places: [{ placeID: 'p1', shortID: 'short-p1' }],
+      snapshot: 'snapshot-1',
+    },
+    sentence: 'Not allowed: you blocked the place short-p1.',
+  });
+});
+
+test('it denies a spend call to a blocked place before stage 4 asks', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'blocked',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['spend'], destinations: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [{ value: 'library.example.org', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'deny', stage: 3 });
+});
+
+test('it lets a blocked place beat a more specific place at act', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'wide',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'blocked',
+      },
+      {
+        id: 'narrow',
+        key: { kind: 'site', domain: 'catalog.library.example.org', subdomains: false },
+        trust: 'act',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['fetch'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [{ value: 'catalog.library.example.org', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision.places).toStrictEqual([{ placeID: 'wide', shortID: 'short-wide' }]);
+});
+
+test.each<[Trust, readonly Effect[], 'allow' | 'ask']>([
+  ['known', ['fetch'], 'ask'],
+  ['read', ['fetch'], 'allow'],
+  ['read', ['send'], 'ask'],
+  ['read', ['fetch', 'send'], 'ask'],
+  ['act', ['send'], 'allow'],
+  ['act', ['fetch'], 'allow'],
+  ['self', ['send'], 'allow'],
+  ['act', ['spend'], 'ask'],
+  ['self', ['spend'], 'ask'],
+  ['read', ['spend'], 'ask'],
+])(
+  'it answers a place at %s and a call with effects %j with %s',
+  async (trust, effects, outcome) => {
+    const ctx = buildTestDecisionPoint({
+      places: [
+        { id: 'p1', key: { kind: 'site', domain: 'library.example.org', subdomains: true }, trust },
+      ],
+      declaration: buildTestDeclaration({ effects: [...effects], destinations: [], content: [] }),
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        destinations: [{ value: 'https://library.example.org/x', replyTarget: false }],
+      }),
+    );
+
+    expect(decided.decision.outcome).toBe(outcome);
+  },
+);
+
+test('it records stage 7 with the places set and no rule when a place allows the call', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'act',
+      },
+      { id: 'p2', key: { kind: 'address', address: 'sam@example.org' }, trust: 'self' },
+    ],
+    declaration: buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [
+        { value: 'library.example.org', replyTarget: false },
+        { value: 'library.example.org', replyTarget: false },
+        { value: 'Sam@example.org', replyTarget: false },
+      ],
+    }),
+  );
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'allow',
+    stage: 7,
+    rule: null,
+    destinations: [
+      { value: 'library.example.org', permission: { by: 'place', placeID: 'p1', trust: 'act' } },
+      { value: 'library.example.org', permission: { by: 'place', placeID: 'p1', trust: 'act' } },
+      { value: 'Sam@example.org', permission: { by: 'place', placeID: 'p2', trust: 'self' } },
+    ],
+    places: [
+      { placeID: 'p1', shortID: 'short-p1' },
+      { placeID: 'p2', shortID: 'short-p2' },
+    ],
+    snapshot: 'snapshot-1',
+  });
+});
+
+test('it asks when one of two destinations has no place that allows it', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'act',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [
+        { value: 'library.example.org', replyTarget: false },
+        { value: 'other.example.net', replyTarget: false },
+      ],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 5 });
+});
+
+test('it never lets a place allow a call that has no destination', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'act',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ destinations: [] }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9 });
+});
+
+test('it lets an ask rule at stage 6 still ask at a trusted place', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'act',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+    rules: [buildRuleEntry('ask-sends', { outcome: 'ask', effects: ['send'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ destinations: [{ value: 'library.example.org', replyTarget: false }] }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 6, cause: 'ask_rule' });
+});
+
+test('it does not let an allow rule cover a call that requires a destination and has none', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: {
+      ...buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+      requiresDestination: true,
+    },
+    rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ destinations: [] }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9 });
+});
+
+test('it lets an allow rule cover a call with no destination when the declaration needs none', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+    rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ destinations: [] }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'allow', stage: 7 });
+});
+
+test('it never gives a destination that parses to nothing the reading permission', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [],
+    declaration: buildTestDeclaration({ effects: ['fetch'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ destinations: [{ value: 'owner/skills repo', replyTarget: false }] }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 5,
+    destinations: [{ value: 'owner/skills repo', permission: null }],
+  });
+});
+
+test('it matches a raw place on the exact declared string only', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [{ id: 'p1', key: { kind: 'raw', value: 'owner/skills' }, trust: 'read' }],
+    declaration: buildTestDeclaration({ effects: ['fetch'], destinations: [], content: [] }),
+  });
+
+  const exact = await ctx.decide(
+    buildPolicyCall({ destinations: [{ value: 'owner/skills', replyTarget: false }] }),
+  );
+
+  expect(exact.decision).toMatchObject({ outcome: 'allow', stage: 7 });
+});

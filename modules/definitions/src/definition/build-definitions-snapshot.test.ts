@@ -23,7 +23,7 @@ test('it builds the canonical form and its hashes', () => {
 
   expect(snapshot).toMatchInlineSnapshot(`
     {
-      "form": "{"conversation":{"skills":["tide-tables"]},"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"contacts":[],"rules":[{"effects":["read","fetch","note"],"id":"allow-reads","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}],"tasks":[{"hash":"e1","id":"book-dentist","origin":"definitions"},{"hash":"f2","id":"water-plants","origin":"definitions"}]}",
+      "form": "{"conversation":{"skills":["tide-tables"]},"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"places":[],"rules":[{"effects":["read","fetch","note"],"id":"allow-reads","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}],"tasks":[{"hash":"e1","id":"book-dentist","origin":"definitions"},{"hash":"f2","id":"water-plants","origin":"definitions"}]}",
       "persona": 
     "# Persona
 
@@ -31,9 +31,9 @@ test('it builds the canonical form and its hashes', () => {
     "
     ,
       "personaVersion": "0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575",
-      "policyHash": "b9796c07c2f3ba58000b2aa073ef491a4321f5469944614944478d51b283a435",
+      "policyHash": "2b7f4c9e21d0feed5815d7d907cd231696123131060ea71c2264b57fb52a979e",
       "prompts": {},
-      "snapshotHash": "79b25d4e67d465a687fbd835712aaf17ca1c079ec3d2bc8c53a2fbeec387ac00",
+      "snapshotHash": "6bf9f7492fe91b1f24b40b0ea7c880b9e949a0ae15b018a817e5104cc2f0c737",
       "tasks": [
         {
           "hash": "e1",
@@ -77,7 +77,7 @@ test('it hashes the canonical form for the snapshot and the persona text for its
   const personaHash = createHash('sha256').update('# Persona\n').digest('hex');
 
   const policyHash = createHash('sha256')
-    .update('{"consent":{},"contacts":[],"rules":[],"tools":[]}')
+    .update('{"consent":{},"places":[],"rules":[],"tools":[]}')
     .digest('hex');
 
   const formHash = createHash('sha256').update(snapshot.form).digest('hex');

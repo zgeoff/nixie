@@ -92,8 +92,7 @@ async function setupTest() {
     decisions: (findDeclaration, overrides) =>
       makeDecisionPoint({
         findDeclaration,
-        readInputs: () =>
-          Promise.resolve({ rules, contacts: [], tools: snapshotTools, ownerDestinations: [] }),
+        readInputs: () => Promise.resolve({ rules, places: [], tools: snapshotTools }),
         findTaskDestinations: () => [],
         readConsent: overrides?.readConsent ?? (() => Promise.resolve(null)),
       }),

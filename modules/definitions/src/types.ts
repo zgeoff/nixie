@@ -49,8 +49,8 @@ export interface SnapshotPolicy {
   readonly rules: readonly PolicyRule[];
   readonly tools: readonly ToolDeclaration[];
 
-  // the IDs of the known contacts, never their details
-  readonly contacts?: readonly string[];
+  // each place of the directory by ID and level, never its key
+  readonly places?: readonly { readonly placeID: string; readonly trust: string }[];
 
   // the consent checker's definition: its prompt hash and the model profile of its role
   readonly consent?: JSONObject;

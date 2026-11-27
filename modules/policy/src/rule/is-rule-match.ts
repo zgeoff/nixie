@@ -5,6 +5,7 @@ import type { Rule, RuleCall, RuleCheck } from '../types';
 import { toolShapes } from '../utils/tool-shapes';
 import { findArgument } from './find-argument';
 import { isCommandMatch, isCommandMentioned } from './is-command-match';
+import { isDestinationPatternMatch } from './is-destination-pattern-match';
 import { isPatternMatch } from './is-pattern-match';
 
 export type RuleMatch =
@@ -83,7 +84,7 @@ function isDestinationMatch(
   isAllow: boolean,
 ): boolean {
   const isFit = (destination: string): boolean =>
-    patterns.some((pattern) => isPatternMatch(pattern, destination));
+    patterns.some((pattern) => isDestinationPatternMatch(pattern, destination));
 
   return isAllow
     ? destinations.length > 0 && destinations.every((destination) => isFit(destination))

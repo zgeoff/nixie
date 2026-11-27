@@ -35,12 +35,30 @@ export function readScenarioRunner(options: ScenarioOptions = {}) {
     readInputs: () =>
       Promise.resolve({
         rules,
-        contacts: [
-          { contactID: 'contact-1', name: null, destination: 'partner@example.com' },
-          { contactID: 'contact-2', name: 'Sam', destination: 'sam@example.com' },
+        places: [
+          {
+            placeID: 'owner',
+            shortID: 'owner',
+            key: { kind: 'raw', value: 'owner' },
+            trust: 'self',
+            name: null,
+          },
+          {
+            placeID: 'contact-1',
+            shortID: 'contact-1',
+            key: { kind: 'address', address: 'partner@example.com' },
+            trust: 'known',
+            name: null,
+          },
+          {
+            placeID: 'contact-2',
+            shortID: 'contact-2',
+            key: { kind: 'address', address: 'sam@example.com' },
+            trust: 'known',
+            name: 'Sam',
+          },
         ],
         tools: new Map(),
-        ownerDestinations: ['owner'],
       }),
     findTaskDestinations: () => [],
     readConsent: (call, facts) =>

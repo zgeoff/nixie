@@ -1,18 +1,27 @@
 import type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from '@heynixie/actions';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import type {
   AskCause,
   CallDestination,
+  Effect,
   EffectDeclaration,
   PolicyCall,
   PolicyDecision,
 } from '@heynixie/policy';
-import { makeFaultSafeDecisionPoint } from '@heynixie/policy';
+import {
+  collectActedPlaces,
+  effectNames,
+  makeFaultSafeDecisionPoint,
+  placesActedCodec,
+  writePlaceActed,
+} from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
 import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
+import type { StoredCall } from './read-stored-call';
 import { readStoredCall } from './read-stored-call';
 
 export interface AttemptCheckOptions {
@@ -63,7 +72,12 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       turnMessageSequence: stored.inputs.turnMessageSequence,
       onBehalfOf: stored.inputs.onBehalfOf,
       snapshot: options.definitions().snapshotHash,
+      ...(stored.inputs.placeEffects === undefined
+        ? {}
+        : { placeEffects: stored.inputs.placeEffects.filter((name) => isEffect(name)) }),
     });
+
+    await writeActedPlaces(options, { policy, stored, declaration });
 
     return buildVerdict(options, {
       policy,
@@ -210,4 +224,71 @@ function invariantSequence(sequence: number | null): number {
   );
 
   return sequence;
+}
+
+function isEffect(name: string): name is Effect {
+  return effectNames.some((effect) => effect === name);
+}
+
+interface ActedFacts {
+  readonly policy: PolicyDecision;
+  readonly stored: StoredCall;
+  readonly declaration: EffectDeclaration | null;
+}
+
+// A queued call that an act place allowed owes the place one record when its attempt runs. A retry
+// of the same call writes no second one.
+async function writeActedPlaces(options: AttemptCheckOptions, facts: ActedFacts): Promise<void> {
+  const decision = facts.policy.decision;
+
+  const owed = collectActedPlaces(
+    {
+      outcome: decision.outcome,
+      permissions: decision.destinations.map((destination) => destination.permission),
+      places: decision.places,
+    },
+    pickStoredEffects(facts.stored, facts.declaration),
+  );
+
+  if (owed.length === 0 || facts.stored.thread === null) {
+    return;
+  }
+
+  const earlier = await readRecords(options.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+    thread: facts.stored.thread,
+    order: 'newest',
+    limit: 200,
+  });
+
+  const written = new Set(
+    earlier.flatMap((entry) => {
+      const acted = placesActedCodec.tryDecodePartial(entry.record.payload);
+
+      return acted?.callID === facts.stored.callID ? [acted.placeID ?? ''] : [];
+    }),
+  );
+
+  for (const place of owed.filter((candidate) => !written.has(candidate.placeID))) {
+    await writePlaceActed(
+      { log: options.log, definitions: options.definitions },
+      {
+        placeID: place.placeID,
+        shortID: place.shortID,
+        callID: facts.stored.callID,
+        tool: facts.stored.tool,
+        thread: facts.stored.thread,
+      },
+    );
+  }
+}
+
+function pickStoredEffects(
+  stored: StoredCall,
+  declaration: EffectDeclaration | null,
+): readonly Effect[] {
+  const placed = stored.inputs.placeEffects?.filter((name) => isEffect(name));
+
+  return placed ?? declaration?.effects ?? [];
 }

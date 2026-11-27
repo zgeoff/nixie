@@ -51,9 +51,8 @@ async function setupTest(config: SetupConfig = {}) {
             readInputs: () =>
               Promise.resolve({
                 rules: [...readStarterRules(), ...extraRules],
-                contacts: [],
+                places: [],
                 tools: new Map([['memory.remember', snapshotDeclaration]]),
-                ownerDestinations: [],
               }),
           }),
     },

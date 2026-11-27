@@ -23,6 +23,8 @@ export const forgettableKinds = [
   'model.session_summarized',
   'owner_message',
   'passkey.registered',
+  'places.added',
+  'places.changed',
   'policy.action_answered',
   'policy.action_proposed',
   'policy.contact_marked_known',

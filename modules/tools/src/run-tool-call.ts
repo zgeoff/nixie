@@ -15,7 +15,8 @@ import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
 import { renderChangedSentence } from './call-record/render-changed-sentence';
 import type { ToolCallOptions } from './call-record/tool-call-options';
-import { callCapRefusal } from './cap/call-cap-refusal';
+import { writeDirectActs } from './call-record/write-direct-acts';
+import { renderCallCapRefusal } from './cap/render-call-cap-refusal';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
 import type { PaidState } from './paid/try-prepare-paid-call';
 import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
@@ -173,6 +174,10 @@ export async function runToolCall(
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
   const decide = makeFaultSafeDecisionPoint(options.decide, decisionTimeout);
+
+  const placeEffects =
+    registered === null ? undefined : pickCallDeclaration(registered, effects)?.effects;
+
   const policyArgs = withPreparedAmount(facts?.args ?? call.input, registered, prepared);
 
   const policyCall = buildToolPolicyCall(run, {
@@ -181,7 +186,7 @@ export async function runToolCall(
     destinations,
     definitions,
     at: options.log.writer.clock.now(),
-    ...(effects === undefined ? {} : { effects }),
+    ...(placeEffects === undefined ? {} : { placeEffects }),
     ...(facts === null ? {} : { sources: facts.sources }),
   });
 
@@ -243,6 +248,15 @@ export async function runToolCall(
 
   if (written.isCapped) {
     plan?.release();
+  } else if (registered?.definition.execution === 'direct') {
+    await writeDirectActs({
+      options,
+      definitions,
+      policy,
+      effects: placeEffects ?? [],
+      call,
+      thread: run.thread,
+    });
   }
 
   const settled = written.isCapped
@@ -336,19 +350,6 @@ async function writeDirectResult(
   return toCallToolResult(recorded.settled);
 }
 
-// A prepared amount stands in for the argument the declaration names as the call's amount.
-function withPreparedAmount(
-  args: JSONObject,
-  registered: RegisteredTool | null,
-  prepared: Prepared | null,
-): JSONObject {
-  const name = registered?.definition.declaration.amount ?? null;
-
-  return prepared?.amount === undefined || name === null
-    ? args
-    : { ...args, [name]: prepared.amount };
-}
-
 // What the call charges: a plan for a paid tool that runs, a result that its check ended with, or
 // the failure of that check, which the call settles as the tool's failure.
 // A prepared call's effects join the declared ones in the proposal the call may write.
@@ -367,10 +368,17 @@ function joinEffects(declared: readonly Effect[], added: readonly Effect[]): rea
   return [...new Set([...declared, ...added])];
 }
 
-function renderCallCapRefusal(run: ToolRun, tool: string): string {
-  const cap = run.taskRun?.calls[tool] ?? 0;
+// A prepared amount stands in for the argument the declaration names as the call's amount.
+function withPreparedAmount(
+  args: JSONObject,
+  registered: RegisteredTool | null,
+  prepared: Prepared | null,
+): JSONObject {
+  const name = registered?.definition.declaration.amount ?? null;
 
-  return callCapRefusal.replace('{n}', String(cap)).replace('{tool}', tool);
+  return prepared?.amount === undefined || name === null
+    ? args
+    : { ...args, [name]: prepared.amount };
 }
 
 interface DecidedCall {

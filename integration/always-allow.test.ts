@@ -49,7 +49,7 @@ async function setupTest() {
     readInputs: async (snapshot) => {
       const read = await readSnapshotPolicy(api.context.log.writer.db, snapshot);
 
-      return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
+      return { rules: read.rules, places: [], tools: read.tools };
     },
     findTaskDestinations: () => [],
     readConsent: () => Promise.resolve(null),

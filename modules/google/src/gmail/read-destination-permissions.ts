@@ -1,5 +1,5 @@
 import { readRecords } from '@heynixie/log';
-import type { DestinationPermission, Log } from '@heynixie/log';
+import type { Log, StoredDestinationPermission } from '@heynixie/log';
 import { z } from 'zod';
 
 const erasableSchema = z.object({
@@ -12,7 +12,7 @@ const erasableSchema = z.object({
 export async function readDestinationPermissions(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   callSequence: number,
-): Promise<ReadonlyMap<string, DestinationPermission | null>> {
+): Promise<ReadonlyMap<string, StoredDestinationPermission | null>> {
   const [entry] = await readRecords(log, { afterSequence: callSequence - 1, limit: 1 });
 
   const record = entry?.record.sequence === callSequence ? entry.record : undefined;

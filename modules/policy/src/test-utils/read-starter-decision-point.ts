@@ -18,8 +18,7 @@ export function readStarterDecisionPoint(
 
   return makeDecisionPoint({
     findDeclaration,
-    readInputs: () =>
-      Promise.resolve({ rules, contacts: [], tools: new Map(), ownerDestinations: [] }),
+    readInputs: () => Promise.resolve({ rules, places: [], tools: new Map() }),
     findTaskDestinations: () => [],
     readConsent: () => Promise.resolve(null),
     ...overrides,

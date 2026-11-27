@@ -1,4 +1,4 @@
-import type { DestinationPermission } from '@heynixie/log';
+import type { StoredDestinationPermission } from '@heynixie/log';
 import type { BodyFields } from '@heynixie/policy';
 import { match } from 'ts-pattern';
 import { annotateRecipients } from '../gmail/annotate-recipients';
@@ -8,7 +8,7 @@ import { formatEventTime } from './format-event-time';
 
 interface CardView {
   readonly zone: string;
-  readonly permissions: ReadonlyMap<string, DestinationPermission | null>;
+  readonly permissions: ReadonlyMap<string, StoredDestinationPermission | null>;
 }
 
 // The card of a Calendar call, from the facts that `prepare` read, or from a create's own input:

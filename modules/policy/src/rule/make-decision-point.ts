@@ -1,14 +1,25 @@
-import type { ConsentCheck, DecisionLift, DestinationPermission } from '@heynixie/log';
+import type {
+  ConsentCheck,
+  DecisionLift,
+  DecisionPlace,
+  DestinationPermission,
+} from '@heynixie/log';
 import type { ConsentFacts } from '../consent/check-consent';
 import { alwaysAskEffects } from '../effect/always-ask-effects';
 import { isActionHeldMemoryTool } from '../memory/is-action-held-memory-tool';
 import { pickEntriesOfCall } from '../memory/pick-entries-of-call';
+import { findPlace } from '../place/find-place';
+import { formatPlaceKey } from '../place/format-place-key';
+import { isPlaceAllowing } from '../place/is-place-allowing';
+import { isReadingCall } from '../place/is-reading-call';
+import { parsePlace } from '../place/parse-place';
 import type {
   AllowingRule,
   AskCause,
   ConditionError,
   DecisionDetail,
   DecisionPoint,
+  Effect,
   EffectDeclaration,
   NamingRule,
   PolicyCall,
@@ -25,6 +36,7 @@ import type {
 import { getFixedRules } from './get-fixed-rules';
 import { isRuleMatch, matchRule } from './is-rule-match';
 import { isToolNamed } from './is-tool-named';
+import type { FoundDestination } from './pick-destination-permissions';
 import { pickDestinationPermissions } from './pick-destination-permissions';
 import { pickLift } from './pick-lift';
 import { pickRuleOutcome } from './pick-rule-outcome';
@@ -103,6 +115,7 @@ interface StageInput {
 interface StageRun extends StageInput {
   readonly entries: readonly RuleEntry[];
   readonly ruleCall: RuleCall;
+  readonly found: readonly FoundDestination[];
 }
 
 async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
@@ -111,11 +124,28 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
   const progress = input.progress;
   const entries = pickEntriesOfCall([...getFixedRules(), ...input.inputs.rules], call);
   const ruleCall = buildRuleCall(input);
-  const run: StageRun = { ...input, entries, ruleCall };
+  const found = collectDestinations(call, input.inputs);
+  const placeEffects = call.placeEffects ?? declaration.effects;
+  const run: StageRun = { ...input, entries, ruleCall, found };
   const pickEntry = makeEntryPicker(entries, ruleCall);
   const answers = makeConsentReader(run);
 
   progress.stage = 3;
+
+  // a blocked place beats every rule, mandate and lift
+  const blocked = found.find((entry) => entry.place?.trust === 'blocked');
+
+  if (blocked?.place !== undefined && blocked.place !== null) {
+    return buildDecision(
+      run,
+      3,
+      {
+        outcome: 'deny',
+        places: [{ placeID: blocked.place.placeID, shortID: blocked.place.shortID }],
+      },
+      renderPlaceDenySentence(blocked.place.shortID),
+    );
+  }
 
   const denied = pickEntry('deny');
 
@@ -143,12 +173,11 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
     (entry) => entry.rule.outcome === 'allow' && isRuleMatch(entry.rule, ruleCall),
   );
 
-  const permissions = pickDestinationPermissions(call.destinations, {
-    ownerDestinations: run.inputs.ownerDestinations,
-    contacts: run.inputs.contacts,
+  const permissions = pickDestinationPermissions(found, {
+    isReadingCall: isReadingCall(placeEffects),
     taskDestinations:
       call.definitionID === null ? [] : run.options.findTaskDestinations(call.definitionID),
-    allowRules: allowing.map((entry) => entry.rule),
+    allowRules: allowing,
   });
 
   const hasUncovered = permissions.some((permission) => permission === null);
@@ -189,7 +218,19 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
 
   progress.stage = 7;
 
-  const allowed = pickEntry('allow');
+  const isDestinationless = declaration.requiresDestination === true && found.length === 0;
+  const allowingPlaces = isDestinationless ? null : pickAllowingPlaces(found, placeEffects);
+
+  if (allowingPlaces !== null) {
+    return buildDecision(
+      run,
+      7,
+      { outcome: 'allow', permissions, consent: answers.peek(), places: allowingPlaces },
+      null,
+    );
+  }
+
+  const allowed = isDestinationless ? null : pickEntry('allow');
 
   if (allowed !== null) {
     return buildDecision(
@@ -214,7 +255,7 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
 
   const consent = await answers.read();
 
-  if (isConsentGiven(consent)) {
+  if (!isDestinationless && isConsentGiven(consent)) {
     return buildDecision(run, 8, { outcome: 'allow', permissions, consent }, null);
   }
 
@@ -235,6 +276,18 @@ function buildRuleCall(run: StageInput): RuleCall {
     sources: run.call.sources,
     at: run.call.at,
   };
+}
+
+function collectDestinations(call: PolicyCall, inputs: PolicyInputs): readonly FoundDestination[] {
+  return call.destinations.map((destination) => {
+    const parsed = parsePlace(destination.value);
+
+    return {
+      destination,
+      isParsed: parsed !== null,
+      place: findPlace(inputs.places, { parsed, raw: destination.value }),
+    };
+  });
 }
 
 interface EntryVerdict {
@@ -266,7 +319,17 @@ interface ConsentReader {
 // Stage 5 and stage 8 share one answer, so the checker runs at most once per call.
 function makeConsentReader(run: StageRun): ConsentReader {
   let held: { readonly consent: ConsentCheck | null } | null = null;
-  const facts: ConsentFacts = { declaration: run.declaration, contacts: run.inputs.contacts };
+
+  const facts: ConsentFacts = {
+    declaration: run.declaration,
+    contacts: run.inputs.places
+      .filter((place) => place.trust === 'known')
+      .map((place) => ({
+        contactID: place.placeID,
+        name: place.name,
+        destination: formatPlaceKey(place.key),
+      })),
+  };
 
   return {
     read: async () => {
@@ -285,6 +348,7 @@ interface Verdict {
   readonly permissions?: readonly (DestinationPermission | null)[];
   readonly consent?: ConsentCheck | null;
   readonly lift?: DecisionLift | null;
+  readonly places?: readonly DecisionPlace[];
 }
 
 function buildDecision(
@@ -316,6 +380,7 @@ function buildDecision(
     ...(verdict.consent === undefined || verdict.consent === null
       ? {}
       : { consent: verdict.consent }),
+    ...(verdict.places === undefined ? {} : { places: verdict.places }),
     snapshot: call.snapshot,
     ...(conditionErrors.length === 0 ? {} : { conditionErrors }),
     ...(verdict.lift === undefined || verdict.lift === null ? {} : { lift: verdict.lift }),
@@ -404,6 +469,10 @@ function listAllowingRules(run: StageRun): readonly AllowingRule[] {
   }));
 }
 
+function renderPlaceDenySentence(shortID: string): string {
+  return `Not allowed: you blocked the place ${shortID}.`;
+}
+
 function isConsentGiven(consent: ConsentCheck | null): boolean {
   return consent !== null && consent.codeCheck === 'pass' && consent.checker === 'yes';
 }
@@ -439,4 +508,28 @@ function pickAskVerdict(entries: readonly RuleEntry[], ruleCall: RuleCall): AskV
 
 function compareByID(left: RuleEntry, right: RuleEntry): number {
   return left.id < right.id ? -1 : 1;
+}
+
+// Every destination's place allows the call, and a call with no destination never passes. Each
+// place is listed once.
+function pickAllowingPlaces(
+  found: readonly FoundDestination[],
+  effects: readonly Effect[],
+): readonly DecisionPlace[] | null {
+  const places = found.map((entry) => entry.place);
+
+  if (places.length === 0 || places.some((place) => place === null)) {
+    return null;
+  }
+
+  const held = places.filter((place) => place !== null);
+
+  if (!held.every((place) => isPlaceAllowing(place.trust, effects))) {
+    return null;
+  }
+
+  return [...new Map(held.map((place) => [place.placeID, place])).values()].map((place) => ({
+    placeID: place.placeID,
+    shortID: place.shortID,
+  }));
 }

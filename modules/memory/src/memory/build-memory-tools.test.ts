@@ -131,9 +131,8 @@ async function setupTest(config: TestMemoryOptions = {}) {
         readInputs: () =>
           Promise.resolve({
             rules: readStarterRules(),
-            contacts: [],
+            places: [],
             tools,
-            ownerDestinations: [],
           }),
       }),
     callTool: (

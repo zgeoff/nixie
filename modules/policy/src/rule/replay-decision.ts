@@ -50,6 +50,9 @@ export function replayDecision(
     sources: inputs.sources,
     at: record.at,
     ...(inputs.effects === undefined ? {} : { effects: inputs.effects.filter(isEffect) }),
+    ...(inputs.placeEffects === undefined
+      ? {}
+      : { placeEffects: inputs.placeEffects.filter(isEffect) }),
     turnMessageSequence: inputs.turnMessageSequence,
     onBehalfOf: inputs.onBehalfOf,
     snapshot: record.snapshot,

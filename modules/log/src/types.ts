@@ -59,7 +59,34 @@ interface DecisionConditionError {
   readonly code: string;
 }
 
-export type DestinationPermission = 'owner' | 'reply_target' | 'known_contact' | 'task' | 'rule';
+export type PlaceTrust = 'blocked' | 'known' | 'read' | 'act' | 'self';
+
+// Stage 5 gives each destination the first permission that holds, in this order.
+export type DestinationPermission =
+  | {
+      readonly by: 'place';
+      readonly placeID: string;
+      readonly trust: 'known' | 'read' | 'act' | 'self';
+    }
+  | { readonly by: 'reading' }
+  | { readonly by: 'reply_target' }
+  | { readonly by: 'task' }
+  | { readonly by: 'rule'; readonly ruleID: string };
+
+// A decision recorded before the directory of places keeps these strings.
+export type LegacyDestinationPermission =
+  | 'owner'
+  | 'reply_target'
+  | 'known_contact'
+  | 'task'
+  | 'rule';
+
+export type StoredDestinationPermission = DestinationPermission | LegacyDestinationPermission;
+
+export interface DecisionPlace {
+  readonly placeID: string;
+  readonly shortID: string;
+}
 
 export type CheckerResult = 'yes' | 'no' | 'unsure' | 'unreachable';
 
@@ -82,6 +109,9 @@ export interface DecisionInputs {
 
   // the effects a tool's prepare step set for the call, when it added to the declared ones
   readonly effects?: readonly string[];
+
+  // every effect the call had when the places judged it
+  readonly placeEffects?: readonly string[];
 }
 
 export interface Decision {
@@ -93,7 +123,7 @@ export interface Decision {
   // The first release wrote destinations and consent in these shapes; nothing writes them now.
   readonly destinations?: readonly {
     readonly destination: string;
-    readonly permission: DestinationPermission | null;
+    readonly permission: StoredDestinationPermission | null;
   }[];
 
   readonly consent?: { readonly messageSequence: number; readonly verdict: string };
@@ -111,7 +141,11 @@ export interface Decision {
   readonly conditionErrors?: readonly DecisionConditionError[];
 
   // one per destination, in the order of the record's erasable destinations
-  readonly permissions?: readonly (DestinationPermission | null)[];
+  readonly permissions?: readonly (StoredDestinationPermission | null)[];
+
+  // a deny: the first blocked place in destination order; an allow at stage 7: every place that
+  // allowed it
+  readonly places?: readonly DecisionPlace[];
 
   readonly consentCheck?: ConsentCheck;
   readonly fault?: DecisionFault;

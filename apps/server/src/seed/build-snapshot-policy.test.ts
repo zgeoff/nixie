@@ -49,7 +49,7 @@ test('it lists each rule and each tool declaration in plain JSON', () => {
         results: { text: 'untrusted' },
       },
     ],
-    contacts: [],
+    places: [],
     consent: { prompt: 'sha256:aa', profile: 'checker-direct' },
   });
 });

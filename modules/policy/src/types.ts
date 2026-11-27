@@ -3,10 +3,12 @@ import type {
   ContentSource,
   DecisionFault,
   DecisionLift,
+  DecisionPlace,
   DestinationPermission,
   JSONObject,
 } from '@heynixie/log';
 import type { z } from 'zod';
+import type { PlaceEntry } from './place/types';
 import type { ruleBodySchema } from './rule/rule-body-schema';
 import type { ruleContexts } from './rule/rule-contexts';
 import type { ruleSources } from './rule/rule-sources';
@@ -56,6 +58,10 @@ export interface EffectDeclaration {
   readonly content: readonly string[];
 
   readonly results: Readonly<Record<string, ContentSource>>;
+
+  // set on a call whose act lands where its destination says, so stages 7 and 8 never allow it
+  // with no destination; part of the declaration that the snapshot hash covers
+  readonly requiresDestination?: true;
 }
 
 export interface CallDestination {
@@ -106,6 +112,9 @@ export interface PolicyCall {
   // names. A call without it takes the effects in force alone.
   readonly effects?: readonly Effect[];
 
+  // every effect the call has once its tool's prepare step has run, which the places judge by
+  readonly placeEffects?: readonly Effect[];
+
   // the sequence of the owner_message that started this turn; null in a task run
   readonly turnMessageSequence: number | null;
 
@@ -152,6 +161,10 @@ export interface DecisionDetail {
     readonly value: string;
     readonly permission: DestinationPermission | null;
   }[];
+
+  // a deny: the first blocked place in destination order; an allow at stage 7: every place that
+  // allowed it; unset when no place decided
+  readonly places?: readonly DecisionPlace[];
   readonly consent?: ConsentCheck;
   readonly snapshot: string;
   readonly fault?: DecisionFault;
@@ -210,12 +223,16 @@ export interface KnownContact {
   readonly destination: string | null;
 }
 
+// An entry of the directory as a call reads it: the name serves the consent check's typed-name match.
+export interface PolicyPlace extends PlaceEntry {
+  readonly name: string | null;
+}
+
 // What the decision point reads from the snapshot a call runs under, never from the latest one.
 export interface PolicyInputs {
   readonly rules: readonly RuleEntry[];
-  readonly contacts: readonly KnownContact[];
+  readonly places: readonly PolicyPlace[];
   readonly tools: ReadonlyMap<string, EffectDeclaration>;
-  readonly ownerDestinations: readonly string[];
 }
 
 export interface ConsentMessage {

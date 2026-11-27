@@ -1,4 +1,4 @@
-import { readKnownContactIDs } from '@heynixie/policy';
+import { readPlaceRefs } from '@heynixie/policy';
 import type { EffectOverride } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import { addSeededRules } from '../rule/add-seeded-rules';
@@ -16,7 +16,7 @@ export type SeedPolicy =
   | { readonly status: 'refused'; readonly error: Error };
 
 // The policy of a seed: the tools in code with the effect overrides applied, each rule in force and
-// each known contact.
+// each place of the directory.
 export async function readSeedPolicy(
   tx: Transaction<unknown>,
   input: SeedPolicyInput,
@@ -27,10 +27,10 @@ export async function readSeedPolicy(
     return { status: 'refused', error: new Error(effects.reason) };
   }
 
-  const contacts = await readKnownContactIDs(tx);
+  const places = await readPlaceRefs(tx);
 
   return {
     status: 'built',
-    policy: addSeededRules({ ...input.base, tools: effects.tools }, input.rules, contacts),
+    policy: addSeededRules({ ...input.base, tools: effects.tools }, input.rules, places),
   };
 }
