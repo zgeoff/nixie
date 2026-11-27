@@ -71,7 +71,10 @@ public, keep the number and the Twilio IDs out of it: each of the 3 takes a `dep
 reference to an entry in the `settings` group of the sops secrets file, and the API key's secret
 takes one to an entry in `connector_credentials`.
 
-1. Add the entries to the secrets file, and encrypt it again:
+1. Upgrade nixie and web to a release that reads these references, as the
+   [release notes](https://github.com/zgeoff/nixie/releases) say. An older release, such as the one
+   this recipe pins, drops the `phone` section at start and leaves the phone off.
+2. Add the entries to the secrets file, and encrypt it again:
 
    ```yaml
    connector_credentials:
@@ -82,7 +85,7 @@ takes one to an entry in `connector_credentials`.
      twilio_api_key_sid: SK00000000000000000000000000000000
    ```
 
-2. Add the section to `config.yaml`:
+3. Add the section to `config.yaml`:
 
    ```yaml
    phone:
@@ -93,7 +96,7 @@ takes one to an entry in `connector_credentials`.
        credential: deployment:twilio
    ```
 
-3. Start nixie. Expect it to refuse to start, and to name the key, when a reference has no entry.
+4. Start nixie. Expect it to refuse to start, and to name the key, when a reference has no entry.
 
 A plain value in the config still works.
 [The assistant's phone](../architecture/connectors/phone.md#configuration) describes each key.
