@@ -40,7 +40,9 @@ Each adapter call maps to gateway tools:
 - `steer` is the only call that types into a session. It never calls `atc_terminal_choose`, so the
   adapter answers no menu. It reads the session's state first, and refuses a session in `waiting`
   with `menu_open`, because a typed Enter would pick the menu's highlighted option. atc refuses the
-  line itself with `permission_pending` while a Claude Code permission prompt is open.
+  line itself with `permission_pending` while a Claude Code permission prompt is open. A menu can
+  still open between the state read and the keystrokes, so the Enter can still pick the highlighted
+  option.
 
 ## Session states and events
 
