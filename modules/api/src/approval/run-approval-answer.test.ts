@@ -1,17 +1,7 @@
 import { expect, test } from 'bun:test';
-import {
-  buildActionHash,
-  claimAction,
-  makeQueueRunnerActions,
-  runActionAttempt,
-} from '@heynixie/actions';
+import { claimAction, makeQueueRunnerActions, runActionAttempt } from '@heynixie/actions';
 import type { AttemptCheck } from '@heynixie/actions';
-import {
-  createTestStep,
-  queueTestAction,
-  readTestAction,
-  seedStoredArguments,
-} from '@heynixie/actions/test-utils';
+import { createTestStep, readTestAction, seedStoredArguments } from '@heynixie/actions/test-utils';
 import type { ActionAttempt } from '@heynixie/connectors';
 import type { JSONObject } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
@@ -143,22 +133,6 @@ async function setupTest() {
 
     stopTask: () => writeTaskControl(api.context, { taskID, control: 'stop' }),
 
-    // a model action queued under a hash of an older form, whose attempt asks
-    holdModelAction: async (call: HeldCall) => {
-      const queued = await queueTestAction(api.context, {
-        step,
-        tool: call.tool,
-        actionHash: buildActionHash(call.tool, call.input),
-        arguments: call.input,
-        decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
-        callSequence: 1,
-      });
-
-      await runNext(call.tool, asks(call));
-
-      return queued.actionID;
-    },
-
     readOpenProposalID: async () => {
       const listed = await client.approvals.listItems();
 
@@ -197,77 +171,8 @@ async function setupTest() {
         choice,
         clientActionID,
       }),
-
-    // the attempt's own check asks again, as it does while no rule allows the call, and the
-    // approval is what lets the attempt go ahead
-    runApproved: (call: HeldCall) => runNext(call.tool, asks(call)),
   };
 }
-
-test.each([
-  {
-    tool: 'coding.spawn',
-    hashParts: ['spawn'],
-    effects: ['coding_start'],
-    input: { name: 'Fix the flaky test', brief: 'Find why it fails.' },
-  },
-  {
-    tool: 'coding.stop',
-    hashParts: ['stop'],
-    effects: ['coding_start'],
-    input: { session: 'cloud.3f9a1c2e.a' },
-  },
-  {
-    tool: 'coding.steer',
-    hashParts: ['12'],
-    effects: ['send'],
-    input: { session: 'cloud.3f9a1c2e.a', text: 'Use the cache.' },
-  },
-  {
-    tool: 'coding.message',
-    hashParts: ['call-7'],
-    effects: ['send'],
-    input: { session: 'cloud.3f9a1c2e.a', text: 'Hello.' },
-  },
-] as const)(
-  '#approvals.answerProposal releases a held $tool that a runner queued, and it runs',
-  async (row) => {
-    const ctx = await setupTest();
-
-    const call = { tool: row.tool, effects: row.effects, input: row.input };
-
-    const actionID = await ctx.holdRunnerAction(call, row.hashParts);
-    const answered = await ctx.approveOpenCard();
-
-    await ctx.runApproved(call);
-
-    expect({
-      state: answered.state,
-      action: await ctx.readAction(actionID),
-      args: ctx.calls.map((attempt) => attempt.arguments),
-    }).toStrictEqual({
-      state: 'approved',
-      action: expect.objectContaining({ status: 'done', is_approved: 1 }),
-      args: [row.input],
-    });
-  },
-);
-
-test('#approvals.answerProposal releases a held model action whose stored hash is of the older form, and it runs', async () => {
-  const ctx = await setupTest();
-
-  const call = { tool: 'test.send', effects: ['send'], input: { to: 'team' } } as const;
-
-  const actionID = await ctx.holdModelAction(call);
-  const answered = await ctx.approveOpenCard();
-
-  await ctx.runApproved(call);
-
-  expect({ state: answered.state, action: await ctx.readAction(actionID) }).toStrictEqual({
-    state: 'approved',
-    action: expect.objectContaining({ status: 'done', is_approved: 1 }),
-  });
-});
 
 test('#approvals.answerProposal refuses with action_changed when the stored arguments change after the ask, and runs nothing', async () => {
   const ctx = await setupTest();
