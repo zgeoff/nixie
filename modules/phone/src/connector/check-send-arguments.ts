@@ -3,6 +3,9 @@ import type { JSONObject } from '@heynixie/log';
 const maxBodyLength = 640;
 const numberPattern = /^\+[1-9]\d{6,14}$/u;
 
+// counts what a person reads as one character, so an emoji counts once
+const graphemes = new Intl.Segmenter('en', { granularity: 'grapheme' });
+
 // The sentence that refuses a send's arguments, or null when the send can go. The code leads the
 // sentence, so the model reads which argument to change.
 export function checkSendArguments(input: JSONObject): string | null {
@@ -17,7 +20,7 @@ export function checkSendArguments(input: JSONObject): string | null {
     return 'TOO_LONG: body must hold 1 to 640 characters';
   }
 
-  return [...body].length > maxBodyLength
+  return [...graphemes.segment(body)].length > maxBodyLength
     ? `TOO_LONG: body holds more than ${String(maxBodyLength)} characters`
     : null;
 }

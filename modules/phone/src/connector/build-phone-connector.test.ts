@@ -110,7 +110,7 @@ test('it finds a send of unknown outcome by the one unclaimed text to the same n
 
   const attempt = ctx.buildAttempt('action-1');
 
-  await expect(ctx.connector.run(attempt)).rejects.toThrow();
+  await expect(ctx.connector.run(attempt)).toReject();
 
   const found = await ctx.connector.check(attempt);
   const again = await ctx.connector.check(attempt);
@@ -132,7 +132,7 @@ test('it finds no text for a send that never reached the provider', async () => 
 
   const attempt = ctx.buildAttempt('action-1');
 
-  await expect(ctx.connector.run(attempt)).rejects.toThrow();
+  await expect(ctx.connector.run(attempt)).toReject();
 
   const response = await ctx.connector.check(attempt);
 
@@ -294,7 +294,13 @@ test('it asks the user when an identical send begins after the provider is read,
 
       const value: unknown = Reflect.get(target, property);
 
-      return typeof value === 'function' ? value.bind(target) : value;
+      return typeof value === 'function'
+        ? (...args: unknown[]): unknown => {
+            const result: unknown = Reflect.apply(value, target, args);
+
+            return result;
+          }
+        : value;
     },
   });
 

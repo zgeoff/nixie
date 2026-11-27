@@ -212,6 +212,13 @@ test('it lets a send of 640 characters to an E.164 number go', async () => {
   expect(sentence).toBeNull();
 });
 
+test('it counts an emoji of several code points as one character of a send', async () => {
+  const ctx = await setupTest();
+  const sentence = await ctx.clearSend({ to: '+61400000000', body: '👍🏽'.repeat(640) });
+
+  expect(sentence).toBeNull();
+});
+
 test('it declares every field of a received text as outside content', () => {
   expect(phoneDeclarations.list.results).toStrictEqual({
     number: 'owner_data',
