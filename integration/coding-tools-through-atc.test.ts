@@ -165,6 +165,77 @@ test('#coding.read gives a result that matches its output schema, for a session 
   });
 });
 
+test('#coding.read gives a result that matches its output schema, for a multi-line reply, tool-use turns and a tail that needs a cut', async () => {
+  const ctx = await setupTest();
+
+  const reply = [
+    'I moved the invoice rounding into `roundInvoice` and updated the callers.',
+    '',
+    '```ts',
+    'export function roundInvoice(cents: number): number {',
+    '  return Math.round(cents / 5) * 5;',
+    '}',
+    '```',
+    '',
+    'The suite passes: 212 tests, 0 failures. Café totals now round the same way.',
+  ].join('\n');
+
+  const longExplanation = `${'The refund path still rounds per line. '.repeat(260)}Done.`;
+
+  ctx.gateway.addSession({
+    id: 'cloud.3f9a1c2e.7c1d0e55',
+    name: 'invoice rounding',
+    state: 'done',
+    result: reply,
+    prompt: 'Round invoice totals to 5 cents.\n\nKeep the refund path as it is.',
+    rows: [
+      { role: 'user', text: 'Round invoice totals to 5 cents.\n\nKeep the refund path as it is.' },
+      {
+        role: 'assistant',
+        text: 'Reading the billing module first.',
+        tools: [
+          { name: 'Read', input: 'src/billing/invoice.ts' },
+          { name: 'Bash', input: 'bun test src/billing\n--bail' },
+        ],
+      },
+      { role: 'user', text: 'Why is the refund path different?' },
+      { role: 'assistant', text: longExplanation, tools: [{ name: 'Grep', input: 'refund' }] },
+      { role: 'user', text: 'Run the suite once more.' },
+      {
+        role: 'assistant',
+        text: reply,
+        tools: [{ name: 'Edit', input: 'src/billing/invoice.ts' }],
+      },
+    ],
+  });
+
+  const taskID = await ctx.joinSession();
+
+  const read = await ctx.callTool(ctx.claim, 'coding.read', {
+    task: taskID,
+    prompt: true,
+    tail: 3,
+  });
+
+  const output = ctx.tools.get('coding.read')?.output;
+
+  invariant(output);
+  invariant(read.outcome.status === 'ok');
+
+  expect(buildSchemaParser(output)(read.outcome.result)).toStrictEqual({ isValid: true });
+
+  expect(read.outcome.result).toMatchObject({
+    state: 'idle',
+    question: null,
+    lastReply: { text: reply, cut: false },
+    prompt: {
+      text: 'Round invoice totals to 5 cents.\n\nKeep the refund path as it is.',
+      cut: false,
+    },
+    tail: { cut: true },
+  });
+});
+
 test('#coding.read reads a session with no tail argument', async () => {
   const ctx = await setupTest();
 
