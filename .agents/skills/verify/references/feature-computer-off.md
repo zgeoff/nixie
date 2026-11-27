@@ -8,11 +8,13 @@ sandbox image, offers the model no `computer.` tool, runs no take-over or handov
 its menu, and a direct visit to `/computer` shows the page that says the feature is off in this
 nixie.
 
-Run this journey on `local` only, on an `up` of its own:
+Run this journey on `local` only, on an `up` of its own, because every other computer journey needs
+the computer on:
 
 - On `local`, `NIXIE_VERIFY_NO_COMPUTER=1 bun verify up` runs a test build of nixie whose config
   leaves out the `computer` section.
-- On `preview`, skip this journey, and list the feature as not verified there in your reply.
+- On `preview`, skip this journey, and list the feature as not verified there in your reply. The
+  preview's config holds a `computer` section, so its computer is on.
 
 Before you start, run `NIXIE_VERIFY_NO_COMPUTER=1 bun verify up --restart` and `bun verify doctor`,
 then [sign-in-enrol](feature-sign-in-enrol.md).
@@ -54,4 +56,5 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
 - In step 2, the computer page said that the feature is off in this nixie.
 - In step 3, nixie held no `computer.` record.
 
-Once the end state matches, run `bun verify done`.
+Once the end state matches, run `bun verify done`. Then run `bun verify up --restart` and
+`bun verify doctor`, so the next journey has the computer on.

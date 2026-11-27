@@ -18,11 +18,12 @@ secret reaches the container's configuration or its disk.
 3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
    `definitions/rules/starter.yaml`. `definitions/nixie.yaml` holds format 2, which leaves rule
    files unapplied. To apply them, set `format: 3`. The next seed applies every rule in the files at
-   once.
+   once. [The definitions format](../architecture/core/definitions.md#the-definitions-format)
+   describes each format.
 
-   `config.yaml` holds `computer: {}`, which keeps the assistant's computer on. The pinned image
-   keeps the code tool on, and refuses a `code` section. When you run a release that switches the
-   code tool by config, add `code: {}` to `config.yaml` to keep it.
+   `config.yaml` holds `computer: {}`, which keeps the assistant's computer on. The image that
+   `compose.yaml` pins keeps the code tool on, and refuses a `code` section. When you run a release
+   that switches the code tool by config, add `code: {}` to `config.yaml` to keep it.
 
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape of
