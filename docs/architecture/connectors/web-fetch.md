@@ -305,6 +305,12 @@ no refusal frame. A fetch with no `scanHop` sends `hops: 'none'` and the same by
 `hop` frame on it fails the fetch. Every reply carries `isGated`, which is true when the fetcher
 asked before each hop, and the fetch tool never passes it on to the model.
 
+The tool declares the host of the page a call names as the call's destination, taken from the `url`
+argument or from the target of the `link`, before any known-site rewrite. A stored page named by
+`page` declares none. The first URL and each redirect hop also meet the directory: a URL whose host
+a blocked place covers is not fetched, and the refusal names the place by its short ID. The hop gate
+reads the directory as it is now, because no decision point sees a hop.
+
 The server takes only the URL from a `hop` frame. It counts the hops itself, and takes the host that
 sent each redirect from the URL before it. It reads one frame at a time, and the fetcher waits while
 the scan runs. The fetch's one time limit covers every read, scan and pass. A gated fetch fails,

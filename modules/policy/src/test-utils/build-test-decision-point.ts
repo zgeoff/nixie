@@ -13,7 +13,7 @@ import type {
 } from '../types';
 
 // An entry of the directory, with a short ID derived from its ID.
-export interface TestPlace {
+interface TestPlace {
   readonly id: string;
   readonly key: PlaceKey;
   readonly trust: Trust;

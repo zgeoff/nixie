@@ -71,7 +71,7 @@ commit a second hash.
 
 ## The definitions format
 
-The manifest holds the definitions format version. A release reads formats 2 to 6 and refuses any
+The manifest holds the definitions format version. A release reads formats 2 to 7 and refuses any
 other, because an image upgrade and a definitions change land in separate repos, in either order.
 The persona must be UTF-8 text and not blank.
 
@@ -94,6 +94,14 @@ these files, and the seed lists as unapplied each file from a format later than 
   unapplied, and never refuses the repo over it.
 - Format 6: each `mcp/<server>.yaml` file as the
   [overrides](../connectors/mcp-proxy-declarations.md#override-files) of one MCP server's tools.
+- Format 7: `places.yaml`, a list of `place`, `trust` (`blocked`, `known`, `read` or `act`) and an
+  optional `name`. A `place` is a site or a mail domain, with a leading `*.` for its subdomains. The
+  seed adds each listed place to the [directory](../policy/decision-point.md#destinations), removes
+  one that it added and the file no longer lists, and replaces one whose level the file changed. It
+  never changes an entry that you added or changed, and one bad line refuses the whole file. An
+  address, a phone number or a handle never comes from the repo. The snapshot lists each place of
+  the directory by ID and level; a snapshot from before format 7 lists the contacts you marked,
+  which a call reads as places at `known`.
 
 The prompt and task exports raise the manifest's `format` line to the format they need, as
 [prompts](prompts.md) and [the export of task definitions](#the-export-of-task-definitions)
