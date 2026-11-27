@@ -50,8 +50,13 @@ export interface SnapshotPolicy {
   readonly rules: readonly PolicyRule[];
   readonly tools: readonly ToolDeclaration[];
 
-  // each place of the directory by ID and level, never its key
-  readonly places?: readonly { readonly placeID: string; readonly trust: string }[];
+  // Each place of the directory by ID and level, never its key, and the record its name came from
+  // when a change set the name, so a later rename leaves the snapshot's name as it was.
+  readonly places?: readonly {
+    readonly placeID: string;
+    readonly trust: string;
+    readonly nameSequence?: number;
+  }[];
 
   // the consent checker's definition: its prompt hash and the model profile of its role
   readonly consent?: JSONObject;

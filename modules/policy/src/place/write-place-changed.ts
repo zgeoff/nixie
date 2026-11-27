@@ -43,8 +43,8 @@ export function writePlaceChanged(
 
     const name = change.name === undefined ? place.name : (change.name?.normalize('NFC') ?? null);
 
-    const isPersonal =
-      place.key.kind === 'address' || place.key.kind === 'phone' || place.key.kind === 'handle';
+    // a raw key is a contact's own text, as personal as an address
+    const isPersonal = place.key.kind !== 'site' && place.key.kind !== 'mail_domain';
 
     await writeRecordsInTransaction(tx, context.log, [
       {

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { JSONObject } from '@heynixie/log';
 import { actionProposalLapseMs, buildActionHash } from '@heynixie/policy';
 import type { DirectResult, Prepared, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
-import type { ComputerFocus, ScreenAct, ScreenBinding } from '@heynixie/wire';
+import type { ScreenAct, ScreenBinding } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ComputerState, ScreenPrepared } from './computer-state';
 import { buildActionKey } from './computer-state';
@@ -10,6 +10,7 @@ import type { ComputerToolOptions } from './computer-tool-options';
 import { isSameList } from './is-same-list';
 import { pickScreenDestinations } from './pick-screen-destinations';
 import { prepareScreenRead } from './prepare-screen-read';
+import { refuseBlockedFocus } from './refuse-blocked-focus';
 import {
   makeActionScans,
   refuseComputer,
@@ -18,6 +19,7 @@ import {
 } from './run-computer-call';
 import { screenMessages } from './screen-messages';
 import { fitPicture, showPicture } from './show-picture';
+import { toFocusResult } from './to-focus-result';
 import type { ComputerAttempt } from './types';
 
 // The tools that look at and drive the whole desktop: a screenshot and a scroll run directly, and a
@@ -108,6 +110,12 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
         return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
       }
 
+      const blocked = await refuseBlockedFocus(options, context.callSequence, outcome.reply.focus);
+
+      if (blocked !== null) {
+        return { status: 'ok', ...blocked };
+      }
+
       return showPicture(options, context.run, {
         isDesktop: true,
         base64: outcome.reply.base64,
@@ -124,18 +132,6 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
 
 function unexpected(): DirectResult {
   return refuseComputer('COMPUTER_FAILED', 'the computer answered with the wrong kind of reply');
-}
-
-// The focus as the model reads it: a browser tab carries the model's own tab ID. A tab the model
-// has not named yet, such as one a page opened, gets the next ID now.
-function toFocusResult(options: ComputerToolOptions, focus: ComputerFocus): JSONObject {
-  if (focus.kind !== 'browser') {
-    return { kind: focus.kind };
-  }
-
-  const tab = options.computer.tabs.findGuest(focus.tab) ?? options.computer.tabs.add(focus.tab);
-
-  return { kind: 'browser', tab, url: focus.url };
 }
 
 const scrollArguments = z.object({ x: z.number(), y: z.number(), by: z.number() });
@@ -186,6 +182,12 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
 
       if (outcome.kind === 'refused' || outcome.reply.kind !== 'screen') {
         return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
+      }
+
+      const blocked = await refuseBlockedFocus(options, context.callSequence, outcome.reply.focus);
+
+      if (blocked !== null) {
+        return { status: 'ok', ...blocked };
       }
 
       const result = {

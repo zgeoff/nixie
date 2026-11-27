@@ -17,6 +17,11 @@ export interface ReadPlacesOptions {
   readonly placeIDs?: readonly string[];
 
   readonly isRemovedIncluded?: boolean;
+
+  // The change record each place's name comes from in place of the latest, or null for the name the
+  // place was added with: a snapshot keeps the names it was built with. It covers the names in
+  // erasable fields, and a site keeps its latest name.
+  readonly nameSequences?: ReadonlyMap<string, number | null>;
 }
 
 const trustSchema = z.enum(trustLevels);
@@ -78,11 +83,22 @@ async function readRows(
     .orderBy('added_sequence')
     .execute();
 
+  const named = rows.map((row) => pinNameSequence(row, options.nameSequences));
+
   // an added place claims its key before a contact does
   return [
-    ...rows.filter((row) => row.origin === 'added'),
-    ...rows.filter((row) => row.origin === 'contact'),
+    ...named.filter((row) => row.origin === 'added'),
+    ...named.filter((row) => row.origin === 'contact'),
   ];
+}
+
+function pinNameSequence(
+  row: PlaceRow,
+  pins: ReadonlyMap<string, number | null> | undefined,
+): PlaceRow {
+  const pinned = pins?.get(row.place_id);
+
+  return pinned === undefined ? row : { ...row, name_sequence: pinned };
 }
 
 async function readErasableFields(
@@ -188,5 +204,10 @@ function resolveContact(
   const parsedKey: PlaceKey | null = parsed === null || parsed.kind === 'site' ? null : parsed;
   const key = parsedKey === null || held.has(JSON.stringify(parsedKey)) ? rawKey : parsedKey;
 
-  return { key, name: details.data.name };
+  const changed =
+    row.name_sequence === null
+      ? null
+      : changedFieldsSchema.safeParse(erasable.get(row.name_sequence));
+
+  return { key, name: changed?.success === true ? changed.data.name : details.data.name };
 }

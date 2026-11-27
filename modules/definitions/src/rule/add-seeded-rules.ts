@@ -10,7 +10,11 @@ export function addSeededRules(
 ): SnapshotPolicy {
   return {
     ...policy,
-    places: places.map((place) => ({ placeID: place.placeID, trust: place.trust })),
+    places: places.map((place) => ({
+      placeID: place.placeID,
+      trust: place.trust,
+      ...(place.nameSequence === undefined ? {} : { nameSequence: place.nameSequence }),
+    })),
     rules: [
       ...policy.rules,
       ...inForce.map((entry) => ({

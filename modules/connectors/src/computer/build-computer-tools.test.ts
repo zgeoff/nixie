@@ -38,6 +38,9 @@ interface SetupOptions {
   readonly turnWaitMs?: number;
 
   readonly idleMs?: number;
+
+  // the host that the call's snapshot blocks
+  readonly blockedHost?: string;
 }
 
 async function setupTest(options: SetupOptions) {
@@ -218,6 +221,11 @@ async function setupTest(options: SetupOptions) {
       pageStoreBytes: 20_971_520,
       imageLongEdge: options.imageLongEdge ?? 1568,
       secretTypedURLCovers: 'redirects',
+    },
+    makeBlockedPlaceFinder: () => (url) => {
+      const shortID = new URL(url).host === options.blockedHost ? 'k3p9m2x7qa' : null;
+
+      return Promise.resolve(shortID);
     },
   });
 
@@ -467,6 +475,46 @@ test('it refuses a queued click when its control became a button since the prepa
   ]);
 });
 
+test('it refuses a queued plain link click when a later preparation of the same click found a control that acts', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  ctx.lookups.element = {
+    kind: 'element',
+    ok: true,
+    element: {
+      role: 'link',
+      href: 'https://site.test/next',
+      isInForm: false,
+      hasClickHandler: false,
+    },
+  };
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+  await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
+
+  ctx.lookups.element = {
+    kind: 'element',
+    ok: true,
+    element: {
+      role: 'link',
+      href: 'https://site.test/next',
+      isInForm: false,
+      hasClickHandler: true,
+    },
+  };
+
+  await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
+
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' }, [
+    'site.test',
+  ]);
+
+  expect([response.kind, ctx.requests.some((request) => request.op === 'act')]).toStrictEqual([
+    'refused',
+    false,
+  ]);
+});
+
 test('it refuses a queued click when its link points to another host since the preparation', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
 
@@ -700,6 +748,43 @@ test('it scrolls a tab and shows the viewport beside the result', async () => {
   });
 
   expect(ctx.requests.at(-1)).toStrictEqual({ op: 'scroll', tab: 'g1', to: 'down' });
+});
+
+test.each([
+  ['computer.browser_read', { tab: 't1', mode: 'text' }],
+  ['computer.browser_screenshot', { tab: 't1' }],
+  ['computer.browser_scroll', { tab: 't1', to: 'down' }],
+  ['computer.screenshot', {}],
+  ['computer.screen_scroll', { x: 10, y: 10, by: 1 }],
+])('it returns nothing of a page that %s captured at a blocked place', async (tool, input) => {
+  const ctx = await setupTest({
+    blockedHost: 'site.test',
+    answer: (replies) => (request) =>
+      Promise.resolve(
+        match(request.op)
+          .with('screenshot', () => replies.shot)
+          .with('scroll', () => replies.scroll)
+          .with('desktopShot', () => replies.desktop)
+          .with('screenScroll', () => replies.screen)
+          .otherwise(() => replies.page),
+      ),
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://other.test/start' });
+
+  const outcome = await ctx.call(tool, input);
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      refused: {
+        code: 'PAGE_CHANGED',
+        message:
+          'the page now shows a place you blocked (k3p9m2x7qa), so nothing of it was returned',
+      },
+    },
+    refusalCode: 'PAGE_CHANGED',
+  });
 });
 
 test('it refuses a scroll to a control that moved', async () => {

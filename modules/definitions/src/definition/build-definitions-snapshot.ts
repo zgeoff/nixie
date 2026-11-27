@@ -45,7 +45,11 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     rules: sortUniqueBy(input.policy.rules, 'id', (rule) => rule.id),
     tools: sortUniqueBy(input.policy.tools.map(buildToolForm), 'name', (tool) => tool.name),
     places: sortUniqueBy(
-      (input.policy.places ?? []).map((place) => ({ placeID: place.placeID, trust: place.trust })),
+      (input.policy.places ?? []).map((place) =>
+        place.nameSequence === undefined
+          ? { placeID: place.placeID, trust: place.trust }
+          : { placeID: place.placeID, trust: place.trust, nameSequence: place.nameSequence },
+      ),
       'placeID',
       (place) => place.placeID,
     ),

@@ -42,9 +42,11 @@ export async function runRecordForgetCleanup(
   // any key does.
   await context.readCodeCleanup?.()?.([recordSequence, ...startCalls]);
 
-  const thread = await removeForgottenKey(context, recordSequence);
-
+  // The place's keys go first: a removal or an act names its place only in its own erasable fields,
+  // so the read of the place's later records needs the forgotten record's key.
   await removePlaceKeys(context, recordSequence);
+
+  const thread = await removeForgottenKey(context, recordSequence);
 
   for (const call of [...startCalls, ...(await readScreenPictureCalls(context, recordSequence))]) {
     await removeCallKey(context, call);

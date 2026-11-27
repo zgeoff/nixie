@@ -190,7 +190,12 @@ async function prepareAct(
   }
 
   state.expectations.set(key, url);
-  state.clicks.set(key, reach.isPlainLink);
+
+  const earlier = state.clicks.get(key);
+  const isAgreed = earlier === undefined || earlier === reach.isPlainLink;
+  const click = isAgreed ? reach.isPlainLink : 'changed';
+
+  state.clicks.set(key, click);
   state.holds.get(key)?.();
   state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 

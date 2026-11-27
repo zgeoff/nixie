@@ -283,6 +283,50 @@ test("it finishes a place's forget on the rerun after a crash that destroyed onl
   ]);
 });
 
+test("it shreds an act of a place written after the forget of the place's act began", async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  await ctx.startForget({ thread: 'conversation', sequence: first.record.sequence });
+
+  await writePlaceActed(places, { ...act, callID: 'call-2' });
+  await runRecordForgetCleanup(ctx.context, first.record.sequence);
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
+});
+
 test('it removes the key of each recorded start call of a brief that a rerun of the starting step left', async () => {
   const ctx = await setupTest();
 

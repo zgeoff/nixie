@@ -42,6 +42,14 @@ export async function readFetchPass(
   if (readsCache) {
     const cached = await readCachedPage(fetching, url);
 
+    // A stored page can sit at the end of a redirect, so its own URL is checked as well.
+    const landingRefusal =
+      cached === null || cached.url === url ? null : await refuseBlockedPlace(fetching, cached.url);
+
+    if (landingRefusal !== null) {
+      return { kind: 'ended', reason: landingRefusal };
+    }
+
     if (cached !== null) {
       return { kind: 'cached', page: cached };
     }

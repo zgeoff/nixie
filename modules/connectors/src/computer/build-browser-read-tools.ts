@@ -8,6 +8,7 @@ import { buildChallengeField } from './handover/build-challenge-field';
 import { hostOf } from './host-of';
 import { prepareTabRead } from './prepare-tab-read';
 import { readWebAddress } from './read-web-address';
+import { refuseBlockedCapture } from './refuse-blocked-capture';
 import { refuseTabGone } from './refuse-tab-gone';
 import { refuseWrongReply } from './refuse-wrong-reply';
 import { runComputerCall } from './run-computer-call';
@@ -166,6 +167,16 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
         };
       }
 
+      const blocked = await refuseBlockedCapture(
+        options,
+        context.callSequence,
+        outcome.reply.page.url,
+      );
+
+      if (blocked !== null) {
+        return { status: 'ok', ...blocked };
+      }
+
       return {
         status: 'ok',
         ...(await writeComputerPage(options, context.run, input.tab, outcome.reply)),
@@ -257,6 +268,12 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
         };
       }
 
+      const blocked = await refuseBlockedCapture(options, context.callSequence, outcome.reply.url);
+
+      if (blocked !== null) {
+        return { status: 'ok', ...blocked };
+      }
+
       return showPicture(options, context.run, {
         base64: outcome.reply.base64,
         result: {
@@ -336,6 +353,12 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
           status: 'ok',
           ...(outcome.kind === 'refused' ? outcome.result : refuseWrongReply()),
         };
+      }
+
+      const blocked = await refuseBlockedCapture(options, context.callSequence, outcome.reply.url);
+
+      if (blocked !== null) {
+        return { status: 'ok', ...blocked };
       }
 
       return showPicture(options, context.run, {

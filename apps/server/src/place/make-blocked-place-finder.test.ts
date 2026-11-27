@@ -5,7 +5,12 @@ import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { writeRecords } from '@heynixie/log';
-import { readPlaces, writePlaceAdded, writePlaceRemoved } from '@heynixie/policy';
+import {
+  readPlaces,
+  writePlaceAdded,
+  writePlaceChanged,
+  writePlaceRemoved,
+} from '@heynixie/policy';
 import { buildPolicyCall } from '@heynixie/policy/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { toolCalledCodec } from '@heynixie/tools';
@@ -16,6 +21,7 @@ import { createServerContext } from '../server/create-server-context';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildStartState } from '../utils/build-start-state';
 import { makeServerDecisions } from '../utils/make-server-decisions';
+import { readSnapshotPlaces } from '../utils/read-snapshot-places';
 import { makeBlockedPlaceFinder } from './make-blocked-place-finder';
 import { makePlaceSeed } from './make-place-seed';
 
@@ -116,6 +122,8 @@ async function setupTest() {
 
       return added;
     },
+    places,
+    readSnapshotPlaces: (snapshotHash: string) => readSnapshotPlaces(log, snapshotHash),
     removePlace: (placeID: string) => writePlaceRemoved(places, placeID),
     addBlockWithFailingSeed: (domain: string) =>
       writePlaceAdded(
@@ -218,6 +226,46 @@ test('it denies the next call to a site that a block added through the writer co
     stage: 3,
     places: [{ placeID: added.placeID, shortID: added.shortID }],
   });
+});
+
+test('#readSnapshotPlaces keeps the name a place had in an older snapshot after you rename it', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.places, {
+    key: { kind: 'address', address: 'sam@example.org' },
+    trust: 'known',
+    name: 'Sam',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const before = ctx.readSnapshotHash();
+
+  await writePlaceChanged(ctx.places, { placeID: added.placeID, name: 'Sam at work' });
+
+  const listed = await ctx.readSnapshotPlaces(before);
+
+  expect(listed.map((place) => place.name)).toStrictEqual(['Sam']);
+});
+
+test('#readSnapshotPlaces reads the new name of a place in the snapshot its rename put in force', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.places, {
+    key: { kind: 'address', address: 'sam@example.org' },
+    trust: 'known',
+    name: 'Sam',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  await writePlaceChanged(ctx.places, { placeID: added.placeID, name: 'Sam at work' });
+
+  const listed = await ctx.readSnapshotPlaces(ctx.readSnapshotHash());
+
+  expect(listed.map((place) => place.name)).toStrictEqual(['Sam at work']);
 });
 
 test('it keeps no block and the same snapshot in force when the seed fails after the write', async () => {

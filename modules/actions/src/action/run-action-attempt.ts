@@ -174,7 +174,11 @@ async function runAttempt(
 
   const response = await start.admission
     .run(async () => {
-      await step.writeActs?.();
+      const actsFailure = await writeActs(step.writeActs);
+
+      if (actsFailure !== null) {
+        return actsFailure;
+      }
 
       return runConnector(context, attempt, {
         connector,
@@ -224,6 +228,23 @@ function writeFailure(
     outcome: { status: 'failed', reason },
     details: { message },
   });
+}
+
+// The provider has not run when the acts fail to write, so the attempt ends as a refusal that a
+// later attempt can clear.
+async function writeActs(
+  write: (() => Promise<void>) | undefined,
+): Promise<ProviderResponse | null> {
+  try {
+    await write?.();
+
+    return null;
+  } catch (error) {
+    return {
+      kind: 'refused_retryable',
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 interface ConnectorCall {

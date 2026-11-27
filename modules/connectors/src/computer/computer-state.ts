@@ -16,8 +16,9 @@ export interface ComputerState {
   // the URL a tab held when a click or a fill was prepared, by action key
   readonly expectations: Map<string, string>;
 
-  // whether the clicked control was a plain link when a click was prepared, by action key
-  readonly clicks: Map<string, boolean>;
+  // Whether the clicked control was a plain link when a click was prepared, by action key. Two
+  // preparations of one click that disagree leave 'changed', which no attempt matches.
+  readonly clicks: Map<string, boolean | 'changed'>;
 
   // The windows a screen act was prepared for, by action key. Two calls with the same input can be
   // prepared against different windows, and each keeps its own entry until its action runs.

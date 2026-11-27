@@ -3,9 +3,9 @@ import type { Log } from '@heynixie/log';
 import type { PolicyPlace } from '@heynixie/policy';
 import { readPlaces } from '@heynixie/policy';
 
-// The places of the directory that a definitions snapshot holds, each at the level the snapshot
-// gives it. A call decides under its snapshot, so a place you blocked or removed since changes
-// nothing for it.
+// The places of the directory that a definitions snapshot holds, each at the level and with the
+// name the snapshot gives it. A call decides under its snapshot, so a place you blocked, renamed or
+// removed since changes nothing for it.
 export async function readSnapshotPlaces(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   snapshotHash: string,
@@ -14,6 +14,7 @@ export async function readSnapshotPlaces(
 
   const stored = await readPlaces(log, {
     placeIDs: read.places.map((place) => place.placeID),
+    nameSequences: new Map(read.places.map((place) => [place.placeID, place.nameSequence ?? null])),
   });
 
   const levels = new Map(read.places.map((place) => [place.placeID, place.trust]));

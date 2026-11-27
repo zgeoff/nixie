@@ -23,7 +23,11 @@ const declarationSchema = z.object({
   requiresDestination: z.literal(true).exactOptional(),
 });
 
-const placeRefSchema = z.object({ placeID: z.string(), trust: z.enum(trustLevels) });
+const placeRefSchema = z.object({
+  placeID: z.string(),
+  trust: z.enum(trustLevels),
+  nameSequence: z.int().exactOptional(),
+});
 
 const formSchema = z.object({
   policy: z.object({

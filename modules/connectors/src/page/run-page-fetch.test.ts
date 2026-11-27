@@ -83,6 +83,7 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
         readonly fresh?: boolean;
         readonly sessionKey?: string;
         readonly findSecret?: SecretScanSetup['findSecret'];
+        readonly findBlockedPlace?: (url: string) => Promise<string | null>;
       } = {},
     ) =>
       runPageFetch(
@@ -111,6 +112,9 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
           cacheMs: options.cacheMs ?? 0,
           clock,
           reserveImages: null,
+          ...(fetchOptions.findBlockedPlace === undefined
+            ? {}
+            : { findBlockedPlace: fetchOptions.findBlockedPlace }),
         },
         url,
         view,
@@ -776,5 +780,26 @@ test('it refuses a URL that holds a secret even when a page for it is stored', a
   expect(refusing).toStrictEqual({
     status: 'error',
     message: 'the URL holds a secret (rule test-rule), so it was not fetched',
+  });
+});
+
+test('it refuses the stored page of a URL whose fetch ended at a site blocked since', async () => {
+  const ctx = await setupTest(
+    () => buildMockPageReply('https://landing.example.net/page', { text: 'Landing page' }),
+    { cacheMs: 300_000 },
+  );
+
+  await ctx.runFetch('https://start.example.org/go');
+
+  const refusing = await ctx.runFetch('https://start.example.org/go', {
+    findBlockedPlace: (url) =>
+      Promise.resolve(
+        new Map([['landing.example.net', 'k3p9m2x7qa']]).get(new URL(url).host) ?? null,
+      ),
+  });
+
+  expect(refusing).toStrictEqual({
+    status: 'error',
+    message: 'the site is a place you blocked (k3p9m2x7qa), so it was not fetched',
   });
 });

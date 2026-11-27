@@ -1,8 +1,10 @@
 import { isPlaceCovered } from './is-place-covered';
 import type { DestinationText, PlaceEntry, PlaceKey } from './types';
+import { trustLevels } from './types';
 
 // The entry the decision point reads for a destination, or null for a place with no entry. A blocked
-// entry wins. Otherwise the most specific entry wins: an exact or raw key, then the longer domain.
+// entry wins. Otherwise the most specific entry wins: an exact or raw key, then the longer domain,
+// then the higher level, so a contact you marked at your own address leaves it yours.
 export function findPlace(
   entries: readonly PlaceEntry[],
   destination: DestinationText,
@@ -13,7 +15,10 @@ export function findPlace(
 
   return (
     candidates.toSorted(
-      (left, right) => rankKey(right.key) - rankKey(left.key) || compareIDs(left, right),
+      (left, right) =>
+        rankKey(right.key) - rankKey(left.key) ||
+        trustLevels.indexOf(right.trust) - trustLevels.indexOf(left.trust) ||
+        compareIDs(left, right),
     )[0] ?? null
   );
 }

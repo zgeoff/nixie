@@ -397,6 +397,29 @@ test('it forgets a contact you marked by a later change of its entry and shreds 
   }).toStrictEqual({ forgotten: 'forgotten', listed: [], markingFields: ['shredded'] });
 });
 
+test('it forgets a contact you marked by its marking record', async () => {
+  const ctx = await setupTest();
+
+  await writeContactMarked(ctx.context, { destination: 'sam@example.org', name: 'Sam' });
+
+  const [marking] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['policy.contact_marked_known'],
+  });
+
+  invariant(marking);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: marking.record.sequence,
+  });
+
+  expect({
+    forgotten: forgotten.status,
+    listed: await readPlaces(ctx.context.log),
+  }).toStrictEqual({ forgotten: 'forgotten', listed: [] });
+});
+
 test.each(['places.removed', 'places.acted'] as const)(
   'it forgets an address place from its %s record and leaves no removal or act that names it',
   async (kind) => {

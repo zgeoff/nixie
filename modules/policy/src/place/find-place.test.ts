@@ -104,6 +104,27 @@ test('#findPlace lets a blocked entry beat a more specific one', () => {
   ).toBe('1');
 });
 
+test('#findPlace picks the higher level of 2 entries with equally specific keys', () => {
+  const entries: PlaceEntry[] = [
+    {
+      placeID: '1',
+      shortID: 's1',
+      key: { kind: 'address', address: 'sam@example.org' },
+      trust: 'known',
+    },
+    {
+      placeID: '2',
+      shortID: 's2',
+      key: { kind: 'address', address: 'sam@example.org' },
+      trust: 'self',
+    },
+  ];
+
+  expect(
+    findPlace(entries, { parsed: parsePlace('sam@example.org'), raw: 'sam@example.org' })?.placeID,
+  ).toBe('2');
+});
+
 test('#findPlace picks the longer domain, and an exact key over a wildcard', () => {
   const entries: PlaceEntry[] = [
     {

@@ -22,4 +22,10 @@ export interface ComputerToolOptions {
     WebFetchConfig,
     'limits' | 'linkPathChars' | 'pageStoreBytes' | 'imageLongEdge' | 'secretTypedURLCovers'
   >;
+
+  // starts the finder of one call, which finds the short ID of the place that the call's snapshot
+  // blocks and that covers a URL, for a capture that shows another page than its decision saw
+  readonly makeBlockedPlaceFinder?: (
+    callSequence: number,
+  ) => (url: string) => Promise<string | null>;
 }

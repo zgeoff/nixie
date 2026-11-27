@@ -428,6 +428,39 @@ test('it gives a contact a raw key when a place already holds its key', async ()
   ]);
 });
 
+test('it lists the new name of a contact you renamed', async () => {
+  const ctx = await setupTest();
+
+  const marked = await writeContactMarked(ctx.context, {
+    destination: 'sam@example.org',
+    name: 'Sam',
+  });
+
+  await writePlaceChanged(ctx.context, { placeID: marked.contact.contactID, name: 'Sam at work' });
+
+  const listedNames = await readPlaces(ctx.log);
+
+  expect(listedNames.map((place) => place.name)).toStrictEqual(['Sam at work']);
+});
+
+test('it keeps the new name of a contact with a raw key in the erasable fields only', async () => {
+  const ctx = await setupTest();
+
+  const marked = await writeContactMarked(ctx.context, {
+    destination: 'owner/skills',
+    name: 'Sam',
+  });
+
+  await writePlaceChanged(ctx.context, { placeID: marked.contact.contactID, name: 'Sam at work' });
+
+  const [changed] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['places.changed'] });
+
+  expect([changed?.record.payload, changed?.record.erasable]).toStrictEqual([
+    { placeID: marked.contact.contactID },
+    { status: 'readable', fields: { name: 'Sam at work' } },
+  ]);
+});
+
 test('it removes the place of a contact that is unmarked', async () => {
   const ctx = await setupTest();
 
