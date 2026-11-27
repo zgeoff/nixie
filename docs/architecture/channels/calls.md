@@ -83,12 +83,13 @@ Other rules of the adapter:
 - Every `open` creates a session from a fresh offer of the device. The adapter holds no state across
   sessions.
 
-The adapter's tests run against a fake GPT-Live as a loopback HTTPS and WebSocket site. The model
-API test in `evals/gpt-live/` opens 2 real sessions. In one, it says one line and one short answer,
-and checks that `session.started` gives the expiry as a number. In the other, it sends an answer of
+The adapter's tests run against a fake GPT-Live as a loopback HTTPS and WebSocket site. The GPT-Live
+test in `evals/gpt-live/` opens 2 real sessions. In one, it says one line and one short answer, and
+checks that `session.started` gives the expiry as a number. In the other, it sends an answer of
 about 2,400 characters, which goes as 7 commentaries, and checks that GPT-Live speaks each sentence
-in order. CI holds no model credential, so a person runs it by hand with `NIXIE_SDK_CONTRACT=1` and
-`OPENAI_API_KEY` set.
+in order. CI holds no model credential, so a person runs it by hand with `NIXIE_GPT_LIVE=1` and
+`OPENAI_API_KEY` set, through `bun run test:gpt-live`. The test starts a headless browser, so run
+`bun run test:chromium` first on a fresh checkout.
 
 ## The call's states
 

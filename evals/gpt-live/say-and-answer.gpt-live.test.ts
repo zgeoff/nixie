@@ -14,9 +14,10 @@ import { chromium } from 'playwright-core';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
-// The session costs a few seconds of GPT-Live time, so only a contract run enables it. It needs
-// OPENAI_API_KEY, which stays in this process and goes to OpenAI through the credential store.
-const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
+// The session costs a few seconds of GPT-Live time, so only a run with NIXIE_GPT_LIVE=1 enables it.
+// It needs OPENAI_API_KEY, which stays in this process and goes to OpenAI through the credential
+// store.
+const isGPTLiveRun = process.env['NIXIE_GPT_LIVE'] === '1';
 
 // Opens a real session from a headless device, plays the question into its microphone, and returns
 // once the speech layer has handed the question off.
@@ -188,7 +189,7 @@ async function setupTest(question: string) {
   };
 }
 
-test.skipIf(!isContractRun)(
+test.skipIf(!isGPTLiveRun)(
   'it opens a real GPT-Live session, hands off a request, and speaks one line and one answer',
   async () => {
     const ctx = await setupTest("What's on my calendar tomorrow morning?");
@@ -230,7 +231,7 @@ test.skipIf(!isContractRun)(
   120_000,
 );
 
-test.skipIf(!isContractRun)(
+test.skipIf(!isGPTLiveRun)(
   'it speaks every sentence of an answer split into several commentaries, in order',
   async () => {
     const ctx = await setupTest('What do I have on this week?');
