@@ -44,6 +44,7 @@ export type { CodeFileRead } from './code/read-code-file';
 export { readCodeFile, readCodeFileBytes } from './code/read-code-file';
 export type { CodeRunCleanup } from './code/make-code-run-cleanup';
 export { makeCodeRunCleanup } from './code/make-code-run-cleanup';
+export type { CodeSandboxLister } from './code/destroy-code-run-sandboxes';
 export type { CodeSkill, NoteBodies, SkillLookup } from './code/resolve-code-run-inputs';
 export { buildWebFetchTool } from './web/build-web-fetch-tool';
 export { readLinkTarget } from './web/read-link-target';

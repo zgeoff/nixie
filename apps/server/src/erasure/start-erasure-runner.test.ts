@@ -41,12 +41,6 @@ async function setupTest() {
     conversation_imp: { cleanupSessions: mock(() => Promise.resolve()) },
     sandbox_runner: { cleanupSessions: mock(() => Promise.resolve()) },
     memory: { finishEvidencePurges: mock(() => Promise.resolve()) },
-    code_run: {
-      cleanup: {
-        destroyForRecords: mock(() => Promise.resolve()),
-        destroyForThread: mock(() => Promise.resolve()),
-      },
-    },
   };
 
   const reader: PartReader<ErasureRunnerValues> = {
@@ -56,7 +50,12 @@ async function setupTest() {
   };
 
   const runner = startErasureRunner(
-    { context, turnInputs: inputs.turnInputs, config: { backup: { isEnabled: false } } },
+    {
+      context,
+      turnInputs: inputs.turnInputs,
+      tools: { adapter: { list: () => Promise.resolve([]) } },
+      config: { backup: { isEnabled: false } },
+    },
     reader,
   );
 
