@@ -596,9 +596,9 @@ white text, whichever has the higher WCAG contrast ratio on it. Markdown and a l
 the largest size that fits their region, and fit again when the region's size or the text changes. A
 clock or a countdown ticks each second from the browser's own time, with no event from the server.
 The page renders markdown like a reply and an image on black: `whole` scales it to fit and centres
-it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the window
-resizes, at most once per debounce window and only when the size differs from the one the server
-has, so the assistant reads the new size within a second. The server takes the size from the
+it, `fill` covers the screen and crops evenly. After the window resizes, the page sends
+`devices.resize` at most once per debounce window, and only when the size differs from the one the
+server has. The assistant reads the new size within a second. The server takes the size from the
 stream's connect until a resize is answered. After that, the resize's size stands against a later
 connect, until every stream of the device has closed.
 

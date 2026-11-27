@@ -168,14 +168,13 @@ in a few places. Find each one in `apps/server/src/leak/leak-exceptions.ts`, or 
   The root also fills the API's session hooks, which keep each feature's rows in step with a
   session, and its feature procedures, which supply the calls and devices procedures. Core names no
   inbox kind of calls or devices: the root fills in which of their records are in the inbox and
-  which wake a task. A list is global to the process, so a test that sets one resets it when the
+  which wake a task. A list is global to the process, so reset each list that a test sets when the
   test ends.
 
-- A feature that is off leaves its parts out of the plan, and the parts that serve it: the call
-  claim pool of the task runners starts only with calls, the device fetch sandbox only with devices,
-  and the render sandbox is a devices part. A session that is revoked or renamed while devices are
-  off leaves its device row behind, so the devices part brings the rows in step with the sessions at
-  each start.
+- A feature that is off also leaves out the parts that serve it. The call claim pool of the task
+  runners starts only with calls, the device fetch sandbox only with devices, and the render sandbox
+  is a devices part. A session that is revoked or renamed while devices are off leaves its device
+  row behind, so the devices part brings the rows in step with the sessions at each start.
 - List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
   work item whose retrofit removes it. Read the file for the retrofits still open. Only the leak
   test reads the file, and the test fails when an exception matches nothing.

@@ -16,9 +16,9 @@ A Pulumi component that runs nixie on Kubernetes.
 
 The component registers nixie's StatefulSet, the web client and the backup job in one namespace, in
 the shape each nixie release ships. Each release of nixie publishes the component at its own
-version, so a deployment takes a change to that shape with a version bump. To start, install the
-package, call `createNixie` with your namespace and images, and point your ingress at its 2
-Services: one for nixie's API, on `nixieAPIPort`, and one for the web client, on `nixieWebPort`.
+version, so bump the version to take a change to that shape. To start, install the package, call
+`createNixie` with your namespace and images, and point your ingress at its 2 Services: one for
+nixie's API, on `nixieAPIPort`, and one for the web client, on `nixieWebPort`.
 
 ## Install
 
