@@ -15,6 +15,7 @@ import { checkHarness } from './check-harness';
 import { codingFeatures } from './coding-features';
 import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
+import { prodReadPaths, refusalHint, taskListSchema } from './constants';
 import { driveFilesCommand } from './drive-files-command';
 import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { gmailRequestsCommand } from './gmail-requests-command';
@@ -23,6 +24,7 @@ import { controlRoutes } from './harness/control-routes';
 import { lastFeatures } from './last-features';
 import { liveOpensCommand } from './live-opens-command';
 import { modelInputCommand } from './model-input-command';
+import { pageFeatures } from './page-features';
 import { pickTaskRefusal } from './pick-task-refusal';
 import { postControl } from './post-control';
 import { checkPreviewCommit } from './preview/check-preview-commit';
@@ -52,13 +54,6 @@ import { waitForProposals } from './wait-for-proposals';
 
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
-
-// The prod reads leave out each record's and each task's content, which is the owner's data.
-const taskListSchema = z.object({ tasks: z.array(z.unknown()) });
-const prodReadPaths = ['/rpc/conversation/read', '/rpc/tasks/list'] as const;
-
-const refusalHint =
-  'This target refuses the command. Leave it undone, skip `done` for this feature, and report the command you needed: add the triage label to the pull request, or report it to the owner.';
 
 // The registry's name is not `nixie`: gunshi reads a command group named like the program as the
 // program itself.
@@ -158,7 +153,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --rule-condition it first proposes a mandate with an allow rule for memory.remember that holds a condition and its note, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --gmail-watch it first sets a wake rule on the connected Google account's mail for mail from that address, with --gmail-reply it first searches the connected Google account's mail, opens the first mail and replies to it, with --calendar-invite it first lists the connected Google account's events and invites a guest to a new one, with --drive-create it first searches the connected Google account's files and creates a text file, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --reminder it first sets that reminder and writes a note of the memory that the result names as related, with --export it first asks to export memory, with --rule-condition it first proposes a mandate with an allow rule for memory.remember that holds a condition and its note, with --task it first starts that task, with --coding-task it first starts that coding task on atc, with --mail-watch it first sets a wake rule on the assistant's mailbox for mail from that address, with --mail-read it first lists the unread mail from that address and opens the newest, with --phone-watch it first sets a wake rule on the assistant's phone for texts from that number, with --phone-read it first lists the texts from that number and opens the newest, with --phone-send it first queues a text to the number --to with the body --body, with --gmail-watch it first sets a wake rule on the connected Google account's mail for mail from that address, with --gmail-reply it first searches the connected Google account's mail, opens the first mail and replies to it, with --calendar-invite it first lists the connected Google account's events and invites a guest to a new one, with --drive-create it first searches the connected Google account's files and creates a text file, with --handover it first asks the user to take over the computer, for that reason, with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID, and with --output-tokens the closing reply reports that many output tokens, which a spending gateway prices",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -174,6 +169,16 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.deliverMail.input,
       data: controlRoutes.deliverMail.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.deliverMail, input),
+    })
+    .action({
+      name: 'deliver-text',
+      summary:
+        "Deliver a text to the assistant's own number, which a start with NIXIE_VERIFY_PHONE=1 gives it, on a provider in memory: from --from, with the body --body. The next poll of the number reads it",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.deliverText.input,
+      data: controlRoutes.deliverText.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.deliverText, input),
     })
     .action({
       name: 'deliver-gmail',
@@ -462,36 +467,7 @@ export function createVerifyRegistry(): Wringer {
       },
       ...codingFeatures,
       ...callFeatures,
-      {
-        name: 'drawing',
-        summary: 'Draw a picture, edit it, and list both',
-        paths: featurePaths.drawing,
-      },
-      {
-        name: 'images-page',
-        summary: 'Browse and forget images',
-        paths: featurePaths['images-page'],
-      },
-      {
-        name: 'notebook-pages',
-        summary: 'Browse notes, open a private one, forget one',
-        paths: featurePaths['notebook-pages'],
-      },
-      {
-        name: 'google-connections',
-        summary: 'Connect a Google account and forget it',
-        paths: featurePaths['google-connections'],
-      },
-      {
-        name: 'google-off',
-        summary: 'Turn Google off',
-        paths: featurePaths['google-off'],
-      },
-      {
-        name: 'mcp-servers',
-        summary: 'Connect an MCP server, and approve a tool',
-        paths: featurePaths['mcp-servers'],
-      },
+      ...pageFeatures,
       ...computerFeatures,
       ...lastFeatures,
     )

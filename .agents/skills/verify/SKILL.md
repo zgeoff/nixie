@@ -77,6 +77,7 @@ These cost the most time:
 | device-layout      | Lay out a screen in regions, and change them                      | [references/feature-device-layout.md](references/feature-device-layout.md)           |
 | live-updates       | Pause from the host, see it on the page                           | [references/feature-live-updates.md](references/feature-live-updates.md)             |
 | mail-wake          | Mail wakes the chat                                               | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
+| phone-text         | A text wakes the chat, and the assistant reads and answers it     | [references/feature-phone-text.md](references/feature-phone-text.md)                 |
 | gmail-tools        | Search and read a mail, and approve a reply                       | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
 | gmail-wake         | A matching Gmail mail wakes the chat                              | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
 | calendar-tools     | Read the calendar, and approve an invitation the assistant writes | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
