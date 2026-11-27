@@ -5,8 +5,8 @@ Contents: [Journey](#journey), [End state](#end-state).
 With a connected Google account, the assistant searches and reads its mail with the `gmail` tools.
 Each result that holds a mail's words counts as outside content. A reply takes its recipients from
 the mail it answers. The send passes the decision point like any other: when a recipient has no
-permission, nixie holds the call on a card, and the mail goes out once you approve. The mail carries
-the action's ID in its `Message-ID` and in no other header.
+permission, nixie holds the call on a card, and the mail goes out once the user approves. The mail
+carries the action's ID in its `Message-ID` and in no other header.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -20,7 +20,7 @@ has no permission. `preview` and `prod` reach the real Google. On them, skip thi
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey once per `up`, because a deployment registers one client and the card of step 5
+- Run this journey once per `up`, because a deployment registers one client and the card of step 6
   must be the only held call. Before you run it again, even after a failed pass, run
   `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol.
 
@@ -80,8 +80,9 @@ Before you start:
    bun verify browser snapshot
    ```
 
-   Expect: one collapsed item, which reads
-   `Reply to reports@example.org from verify@example.test: "Re: Q3 numbers"`, with no buttons.
+   Expect: one collapsed item under "Routine", in the group "Conversation". It reads
+   `Reply to reports@example.org from verify@example.test: "Re: Q3 numbers"`, holds a checkbox
+   "Select" and shows no approve button.
 
 6. Expand the item, check its card, and approve it. For `<item_ref>`, pass the `ref` of the line in
    the step 5 snapshot that holds the item's text and `[cursor=pointer]`. Take no other snapshot
@@ -95,7 +96,8 @@ Before you start:
 
    Expect: the card shows the fields `from` `verify@example.test`, `to`
    `reports@example.org (no permission)`, `subject` "Re: Q3 numbers" and `text`, the text of the
-   reply. The approve button reads "Send reply". Both clicks exit 0.
+   reply. It also shows the fields `message`, `connection`, `inReplyTo` and `replyWake`. The approve
+   button reads "Send reply", beside "Always allow", "Defer" and "Decline". Both clicks exit 0.
 
 7. Check that the mail went out once:
 

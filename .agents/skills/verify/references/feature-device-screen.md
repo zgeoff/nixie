@@ -52,8 +52,8 @@ A device is a browser that shows what the model puts on its screen. You enrol it
    bun verify db query "select name, capabilities from devices where name = 'hall display'"
    ```
 
-   Expect: no button "Switch on screen", and none of the buttons "Switch off screen", "Full screen"
-   and "Sign out", because the page hides them until a touch. One row, "hall display", whose
+   Expect: no button "Switch on screen", and none of the buttons "Close", "Switch off screen", "Full
+   screen" and "Sign out", because the page hides them until a touch. One row, "hall display", whose
    `capabilities` holds `"screen":true`.
 
 4. Have the model show the photo, once for each `--fit` value. `whole` shows all of the picture and
@@ -83,7 +83,8 @@ A device is a browser that shows what the model puts on its screen. You enrol it
 
 ## End state
 
-- The snapshot of step 5 lists an image named "Picture" above the buttons.
+- The snapshot of step 5 lists an image named "Picture" above the buttons "Close", "Full screen",
+  "Switch off screen" and "Sign out".
 - `shown_sequence` of the device is a number, never null.
 - The screenshot is evidence for the reviewer. Check nothing in it.
 
