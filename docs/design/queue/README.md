@@ -20,7 +20,6 @@ still to build.
 | --------------- | --------------------------------------------------------------------------------------------- |
 | Features        | [feature switches](feature-switches.md)                                                       |
 | Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)                                        |
-| Tasks           | [the coding session start](coding-session-runner.md)                                          |
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                         |
 | The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md) |
 | Web             | [the hop gate](hop-gate.md)                                                                   |
