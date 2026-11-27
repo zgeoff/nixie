@@ -3,7 +3,6 @@ import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
 import { voiceConfigSchema } from '@heynixie/calls';
 import { codingConfigSchema } from '@heynixie/coding';
-import { googleConfigSchema } from '@heynixie/connector-google';
 import {
   codeConfigSchema,
   computerConfigSchema,
@@ -13,6 +12,7 @@ import {
   webFetchConfigSchema,
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
+import { googleConfigSchema } from '@heynixie/google';
 import { mailConfigSchema } from '@heynixie/mail';
 import { mcpConfigSchema } from '@heynixie/mcp';
 import { memoryConfigSchema } from '@heynixie/memory';

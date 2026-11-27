@@ -1,7 +1,8 @@
 import { startSweep } from '@heynixie/clock';
 import type { Connections, DatabaseHeldBackend } from '@heynixie/connections';
 import { probeConnectionEnabled, startConnections } from '@heynixie/connections';
-import { buildGmailMailbox, createGoogleConnector } from '@heynixie/connector-google';
+import { createGoogleProvider } from '@heynixie/connector-google';
+import { buildGmailMailbox, buildGoogleConnector } from '@heynixie/google';
 import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
 import { eraseConnectionMailbox, readConnectionWakeRecords } from '@heynixie/triggers';
@@ -32,7 +33,7 @@ export async function startConnectionsPart(
     backend,
     erasure,
     now,
-    connector: createGoogleConnector(google.hosts, [...google.actions]),
+    connector: buildGoogleConnector(createGoogleProvider(google.hosts), [...google.actions]),
     eraseDependents: (connectionID) =>
       eraseConnectionMailbox(
         { log, clock: parts.context.clock, definitions },

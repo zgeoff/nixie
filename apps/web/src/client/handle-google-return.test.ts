@@ -64,6 +64,28 @@ test('it answers the feature-off page when the browser has no session, so a nixi
   ]).toStrictEqual([404, true, ['/rpc/nixie/read']]);
 });
 
+test.each([
+  { session: 'no session', cookie: null },
+  { session: 'a session that nixie refuses', cookie: 'nixie_session=unknown-token' },
+])(
+  'it answers the feature-off page, and never finishes a consent, when google is off and the browser has $session',
+  async (row) => {
+    const ctx = await setupTest();
+
+    await featureStore.featuresOff.create({ feature: 'google' });
+
+    const response = await ctx.handleReturn('?state=abc&code=4%2F0Ab', row.cookie);
+    const page = await response.text();
+
+    expect([
+      response.status,
+      page.includes('This feature is off in this nixie'),
+      page.includes('4/0Ab'),
+      ctx.api.requests.map((request) => request.path),
+    ]).toStrictEqual([404, true, false, ['/rpc/nixie/read']]);
+  },
+);
+
 test('it answers 400 without calling the API when the state is missing', async () => {
   const ctx = await setupTest();
   const response = await ctx.handleReturn('?code=4%2F0Ab', ctx.cookie);

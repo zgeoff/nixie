@@ -35,6 +35,7 @@
     "@heynixie/devices": "workspace:*",
     "@heynixie/egress": "workspace:*",
     "@heynixie/encoder-onnx": "workspace:*",
+    "@heynixie/google": "workspace:*",
     "@heynixie/image-gemini": "workspace:*",
     "@heynixie/image-openai": "workspace:*",
     "@heynixie/log": "workspace:*",

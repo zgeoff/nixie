@@ -6,6 +6,7 @@ import type {
   StartConsentResult,
 } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
+import { ORPCError } from '@orpc/server';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
@@ -45,6 +46,7 @@ export function createConnectionProcedures(context: APIContext) {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       requireFeature(context, 'google', options.errors.FEATURE_OFF);
+      requireConnector(options.input.connector);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
 
@@ -69,6 +71,7 @@ export function createConnectionProcedures(context: APIContext) {
       );
 
       requireFeature(context, 'google', options.errors.FEATURE_OFF);
+      requireConnector(options.input.connector);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
@@ -239,6 +242,7 @@ export function createConnectionProcedures(context: APIContext) {
       );
 
       requireFeature(context, 'google', options.errors.FEATURE_OFF);
+      requireConnector(options.input.connector);
 
       const port = requirePort(options.errors.CONNECTIONS_NOT_STARTED);
       const input = options.input;
@@ -446,6 +450,13 @@ export function createConnectionProcedures(context: APIContext) {
       );
     }),
   };
+}
+
+// The contract takes any connector ID, and Google is the one connector that nixie runs.
+function requireConnector(connector: string): void {
+  if (connector !== 'google') {
+    throw new ORPCError('BAD_REQUEST', { message: 'nixie has no connector of this ID' });
+  }
 }
 
 function toRegisterClientResult(result: RegisterClientResult): JSONObject {

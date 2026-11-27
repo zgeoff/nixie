@@ -1,5 +1,5 @@
-import { googleToolPrefixes } from '@heynixie/connector-google';
 import type { ConnectorAction } from '@heynixie/connectors';
+import { googleToolPrefixes } from '@heynixie/google';
 import type { ActionsWithCoding } from '../coding/add-coding-connectors';
 
 type GoogleActionsTarget = Pick<ActionsWithCoding, 'connectors' | 'readHeldToolPrefixes'>;

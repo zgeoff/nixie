@@ -7,7 +7,7 @@ import {
   startTestActions,
 } from '@heynixie/actions/test-utils';
 import type { ActionConnector } from '@heynixie/connections';
-import { startGmailTools } from '@heynixie/connector-google/test-utils';
+import { startGmailTools } from '@heynixie/google/test-utils';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 

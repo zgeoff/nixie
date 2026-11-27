@@ -5,31 +5,12 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./test-utils": "./src/test-utils/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
-    "@heynixie/clock": "workspace:*",
-    "@heynixie/connections": "workspace:*",
-    "@heynixie/logger": "workspace:*",
-    "@heynixie/wire": "workspace:*",
-    "kysely": "catalog:",
-    "tiny-invariant": "catalog:",
-    "ts-pattern": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@heynixie/connectors": "workspace:*",
-    "@heynixie/egress": "workspace:*",
-    "@heynixie/log": "workspace:*",
-    "@heynixie/memory": "workspace:*",
-    "@heynixie/policy": "workspace:*",
-    "@heynixie/tasks": "workspace:*",
-    "@heynixie/tools": "workspace:*",
-    "@heynixie/triggers": "workspace:*",
-    "@zgeoff/testing": "catalog:"
+    "@heynixie/google": "workspace:*"
   }
 }

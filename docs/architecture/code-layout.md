@@ -175,6 +175,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `credentials` | The [credential store](connectors/credentials.md): the reference resolver, the fetcher, the model grant and the own-value set                       |
 | `connections` | The [credential database](connectors/credential-database.md): the database backend for OAuth tokens and the forget of a connection                  |
 | `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools     |
+| `google`      | [Google](connectors/google-connections.md): the connector, the Gmail, Calendar and Drive tools, the Gmail arrival source and the provider interface |
 | `memory`      | The [memory store](memory/store.md) and its context                                                                                                 |
 | `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                    |
 | `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                               |
@@ -193,8 +194,8 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/definitions-repo-github` is the definitions repo on GitHub's API.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
-- `adapters/connector-google` is the connections module's connector for Google, with the Gmail,
-  Calendar and Drive tools and the Gmail arrival source.
+- `adapters/connector-google` is the google module's provider on Google: its hosts, its OAuth
+  consent, its setup steps and its scope check.
 - `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
   and on the Gemini API.
 - `adapters/speech-gpt-live` is the calls module's speech layer on OpenAI's GPT-Live.

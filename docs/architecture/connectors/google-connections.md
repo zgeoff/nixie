@@ -7,10 +7,10 @@ sealed value, and [the credential store](credentials.md) covers the token exchan
 
 The connections module knows no provider. It owns the `Connector` interface, which holds a
 provider's OAuth endpoints, scopes, setup steps, tools and scope check, and it takes the connector
-from the server when it starts. The `connector-google` adapter holds Google's connector, with its
-Gmail, Calendar and Drive tools and the Gmail arrival source. The connections module also passes on
-what a connector may use of the triggers, policy and tasks modules, such as the wake rules, so the
-adapter reaches those modules through it.
+from the server when it starts. The `google` feature module builds Google's connector, with its
+Gmail, Calendar and Drive tools and the Gmail arrival source, and reaches the triggers, policy,
+tasks, tools and log modules itself. The `connector-google` adapter gives it Google's hosts, OAuth
+consent, setup steps and scope check through the module's `GoogleProvider` interface.
 
 ## The switch
 

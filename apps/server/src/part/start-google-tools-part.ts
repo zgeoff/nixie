@@ -1,13 +1,13 @@
 import type { Clock } from '@heynixie/clock';
 import type { ConnectionContext, ConnectionState, ConnectorAction } from '@heynixie/connections';
-import type { GoogleHosts, PickedFile } from '@heynixie/connector-google';
+import { googleHosts } from '@heynixie/connector-google';
+import type { GoogleHosts, PickedFile } from '@heynixie/google';
 import {
   buildGoogleActions,
   collectGmailConnections,
-  googleHosts,
   isGmailPolled,
   readPickedFiles,
-} from '@heynixie/connector-google';
+} from '@heynixie/google';
 import type { Definitions, Log, WriteTransaction } from '@heynixie/log';
 import type { FetchReply } from '@heynixie/wire';
 import invariant from 'tiny-invariant';

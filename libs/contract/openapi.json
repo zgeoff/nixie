@@ -18631,7 +18631,7 @@
                 "type": "object",
                 "properties": {
                   "connector": {
-                    "const": "google"
+                    "type": "string"
                   },
                   "origin": {
                     "type": "string",
@@ -18986,7 +18986,7 @@
                     "format": "uuid"
                   },
                   "connector": {
-                    "const": "google"
+                    "type": "string"
                   },
                   "clientID": {
                     "type": "string",
@@ -20091,7 +20091,7 @@
                     "format": "uuid"
                   },
                   "connector": {
-                    "const": "google"
+                    "type": "string"
                   },
                   "connection": {
                     "anyOf": [
@@ -20567,7 +20567,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "Google did not grant the consent"
+                          "default": "The provider did not grant the consent"
                         },
                         "data": {}
                       },
@@ -20881,7 +20881,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "Google refused the code"
+                          "default": "The provider refused the code"
                         },
                         "data": {
                           "type": "object",
@@ -20924,7 +20924,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "Google returned no refresh token"
+                          "default": "The provider returned no refresh token"
                         },
                         "data": {}
                       },

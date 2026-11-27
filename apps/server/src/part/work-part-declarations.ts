@@ -6,17 +6,13 @@ import {
 import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
-  buildGmailArrivalSource,
-  collectGmailConnections,
-  gmailSourceID,
-} from '@heynixie/connector-google';
-import {
   endTakeoverCutByRestart,
   makeTakeoverRecords,
   resumeOpenHandover,
 } from '@heynixie/connectors';
 import { checkPromptProposal, startMandateTimer } from '@heynixie/definitions';
 import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
+import { buildGmailArrivalSource, collectGmailConnections, gmailSourceID } from '@heynixie/google';
 import { toErrorFields } from '@heynixie/logger';
 import { buildMailSource } from '@heynixie/mail';
 import { startSpendWatcher } from '@heynixie/spend';

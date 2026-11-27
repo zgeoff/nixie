@@ -1,6 +1,6 @@
 import { bodyFieldReaders } from '@heynixie/api';
 import type { BodyFieldReader } from '@heynixie/api';
-import { readGoogleBodyFields } from '@heynixie/connector-google';
+import { readGoogleBodyFields } from '@heynixie/google';
 import { buildGoogleToolkit } from './build-google-toolkit';
 
 interface GoogleListsConfig {

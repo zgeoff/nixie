@@ -776,14 +776,12 @@ test.each(['readSetup', 'registerClient', 'startConsent'] as const)(
     const answers = {
       readSetup: () =>
         ctx.client.connections.readSetup({
-          // @ts-expect-error -- the test sends a connector that the contract refuses
           connector: 'unsupported',
           origin: ctx.origin,
         }),
       registerClient: () =>
         ctx.client.connections.registerClient({
           clientActionID: crypto.randomUUID(),
-          // @ts-expect-error -- the test sends a connector that the contract refuses
           connector: 'unsupported',
           clientID: 'client-1.apps.example',
           clientSecret: 'secret-value-1',
@@ -792,7 +790,6 @@ test.each(['readSetup', 'registerClient', 'startConsent'] as const)(
       startConsent: () =>
         ctx.client.connections.startConsent({
           clientActionID: crypto.randomUUID(),
-          // @ts-expect-error -- the test sends a connector that the contract refuses
           connector: 'unsupported',
           connection: null,
         }),

@@ -182,9 +182,9 @@ connection that holds `gmail.modify` and is not waiting for a new consent, one a
 - When Google answers 404 for the stored history ID, the source reads the profile's history ID, and
   only then lists the mail that arrived since a margin before the last good poll. The margin is
   `lookbackMs` in
-  [`read-gmail-changes.ts`](../../../adapters/connector-google/src/gmail/poll/read-gmail-changes.ts).
-  A mail that arrives between the two reads is in the list or after the new cursor. The dedupe keys
-  drop each mail already recorded.
+  [`read-gmail-changes.ts`](../../../modules/google/src/gmail/poll/read-gmail-changes.ts). A mail
+  that arrives between the two reads is in the list or after the new cursor. The dedupe keys drop
+  each mail already recorded.
 - The source rereads the mail since each reply rule's send, so a rule still wakes on a reply that
   arrived, and was dropped, before the rule existed. Each poll reads the connection's live reply
   rules from the log and takes those whose IDs are not yet in `replayed` in the connection's cursor
@@ -193,8 +193,7 @@ connection that holds `gmail.modify` and is not waiting for a new consent, one a
   so a restart between setting the rule and the next poll loses nothing.
 - A failed poll keeps the cursor. The source polls again after a backoff, or after Google's retry
   time when that is longer. The backoff doubles after each further failure up to a cap, and both
-  live in
-  [`build-poll-retry-ms.ts`](../../../adapters/connector-google/src/gmail/poll/build-poll-retry-ms.ts).
+  live in [`build-poll-retry-ms.ts`](../../../modules/google/src/gmail/poll/build-poll-retry-ms.ts).
   After 3 failed polls in a row of any polled connection it reports `unhealthy`, and it reports
   `running` once the last poll of every polled connection succeeded. A connection that needs a new
   consent is skipped and counts for neither. The loop never sleeps past

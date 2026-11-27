@@ -120,8 +120,10 @@ module depend on a feature module. Each row comes from the entries in
 | `modules/tools`       | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/triggers`    | `mail`                                                                                          | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 
-The connections module owns the core `Connector` interface, and the `connector-google` adapter holds
-Google's code behind it.
+The connections module owns the core `Connector` interface. The `google` feature module builds
+Google's connector, with its tools, its record reads and writes and its Gmail poll, and owns the
+`GoogleProvider` interface. The `connector-google` adapter fills that interface with Google's hosts,
+its OAuth consent, its setup steps and its scope check, and depends on the `google` module alone.
 
 The memory, notebook and skills modules reach a feature module only through another leaking module,
 such as the sessions module. They have no import entry, and carry the `leaking` tag until the

@@ -5,7 +5,7 @@ import type { LeakExceptions } from '../types';
 // entry that matches nothing.
 export const leakExceptions: LeakExceptions = {
   owned: {
-    google: ['libs/contract/src/contract/connections-contract.ts', 'modules/api/src/connection'],
+    google: ['modules/api/src/connection'],
     computer: [
       'libs/contract/src/contract/computer-contract.ts',
       'libs/contract/src/contract/contract.ts',
