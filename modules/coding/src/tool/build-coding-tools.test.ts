@@ -21,7 +21,7 @@ test('it builds tools that the tool registry takes, each with a result whose fie
   ]);
 });
 
-test('it describes no coding tool as a user turn, as typed by the user, or by a menu', async () => {
+test('it describes no coding tool as a user turn, as typed by the user, as your own, or by a menu', async () => {
   const ctx = await startTestCoding();
 
   const descriptions = [...ctx.tools.values(), ...buildCodingActionTools()]
@@ -31,6 +31,6 @@ test('it describes no coding tool as a user turn, as typed by the user, or by a 
   expect(descriptions).toHaveLength(8);
 
   expect(descriptions).toSatisfyAll(
-    (description: string) => !/user turn|typed by the user|menu/iu.test(description),
+    (description: string) => !/user turn|typed by the user|your own|menu/iu.test(description),
   );
 });

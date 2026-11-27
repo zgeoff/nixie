@@ -19,9 +19,7 @@ const inputSchema = z.strictObject({
 });
 
 const descriptions: Readonly<Record<CodingInputKind, string>> = {
-  steer:
-    "Sends your own instruction to a coding task's session. Use it to change what the session " +
-    'works on.',
+  steer: "Tells a coding task's session what to work on next.",
   message:
     "Sends a coding task's session a side note, and the coding agent's answer comes back to you " +
     'as a message. Use it to ask a question without changing what the session works on.',
