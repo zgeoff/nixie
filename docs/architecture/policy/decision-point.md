@@ -1,10 +1,11 @@
 # The decision point
 
-The decision point answers allow, ask or deny for each tool call before the call acts. It decides
-from what the tool declares it does, the rules in force, who the call sends to, and whether you
-asked for it. The record of the call keeps the decision beside the snapshot hash of the definitions
-in force, and a replay rebuilds the decision from that record. The one call that gets no decision is
-a call to a listed tool whose input breaks the tool's input schema: the
+The decision point answers allow, ask or deny for each tool call before the call acts. A memory
+write gets a fourth answer, `gate`, which hands the call to the memory gate. The decision point
+decides from what the tool declares it does, the rules in force, who the call sends to, and whether
+the user asked for it. The record of the call keeps the decision beside the snapshot hash of the
+definitions in force, and a replay rebuilds the decision from that record. The one call that gets no
+decision is a call to a listed tool whose input breaks the tool's input schema: the
 [tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first and rejects it,
 so it never reaches the decision point. `modules/policy` owns the decision point and the effect
 declarations. [Tool calls](../connectors/tool-calls.md) covers how a call reaches it, and the
@@ -27,6 +28,7 @@ the latest.
 | 6. Ask rules   | An ask rule matches                                           | Ask     |
 | 7. Allow rules | An allow rule matches                                         | Allow   |
 | 8. Consent     | You asked for the call in typed words, and the checker agrees | Allow   |
+|                | The call is a memory write that no earlier stage decided      | Gate    |
 | 9. No rule     | Always, because nothing else decided                          | Ask     |
 
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the

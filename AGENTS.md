@@ -57,7 +57,7 @@ preview/           throwaway test build of one pull request
 docs/
   architecture/    what is built
   decisions/       numbered decision records
-  design/          designs for work not yet built; only the user opens one
+  design/          designs for work not yet built; only the design's owner opens one
   guides/          steps a user does
   runbooks/        operator and contributor procedures
   reference/       generated reference

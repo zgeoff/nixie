@@ -4,10 +4,11 @@ A rule is plain data that matches a tool call and gives it one outcome: allow, a
 writes rules as YAML files in the definitions, and nixie checks, matches, evaluates and renders them
 with code that never calls a model, so the user reads exactly what a rule does and a replay of a
 decision gets the same answer. The policy module owns the rule format and these pure functions, and
-[rules in force](#rules-in-force) covers how a seed puts them in force. A seed is the step that
-reads the definitions and puts them in force, as [seeding](../core/definitions.md#seeding)
-describes. The [rules design](../../design/platform/policy/rules.md) holds the parts not built yet,
-and [the decision point](decision-point.md) covers the stages that decide a call.
+[rules in force](#rules-in-force) covers how a seed puts them in force. A seed is the step that puts
+a snapshot of the definitions in force, usually one it has just read from the repo, as
+[seeding](../core/definitions.md#seeding) describes. The
+[rules design](../../design/platform/policy/rules.md) holds the parts not built yet, and
+[the decision point](decision-point.md) covers the stages that decide a call.
 
 An allow rule can allow any call, with 2 exceptions. A call that widens the policy or raises a
 budget always asks, so no rule can give the assistant more room than the user approved. A seed
@@ -187,9 +188,9 @@ moved since:
   repo's version retires the runtime change and applies the definitions' version as seeded, with no
   widening check, because the user chose it. The rule store writes a record of each choice.
 
-A seed of the definitions in force reads the snapshot already in force, with no read of the repo. A
-runtime change, an approved proposal and a resolved conflict each take effect at once through one,
-as [skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote) do. Each rule has a
+A seed of the definitions in force skips the repo and reads the snapshot already in force. A runtime
+change, an approved proposal and a resolved conflict each take effect at once through one, as
+[skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote) do. Each rule has a
 revision, which goes up by one each time its version in force changes, and a decision names the rule
 and the revision that decided it. A log reset keeps the rule store, and the seed after the reset
 restores the rules of the snapshot in force, as [seeding](../core/definitions.md#seeding) describes.

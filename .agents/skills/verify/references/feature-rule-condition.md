@@ -54,12 +54,13 @@ Before you start:
    bun verify browser snapshot
    ```
 
-   Expect: the "Always asks" list holds "Allow memory.remember, until 1970-01-01T14:00:00.000Z, when
-   its condition holds." Expand it to see the card, which shows "nixie's note:" with "Only for facts
-   about shared things.", "The condition:" with "`args.subject` is "shared"", and a "Show the
-   expression" control that holds `args.subject == "shared"`. They sit under the rule they belong
-   to. To expand the item, click the line that holds the rule's sentence and `[cursor=pointer]` by
-   its `ref`.
+   Expect: the "Always asks" list holds "Allow memory.remember, until <time>, when its condition
+   holds." The `<time>` is the end of the mandate's term on the test build's clock. Check that it is
+   a timestamp, and don't compare its value. Expand it to see the card, which shows "nixie's note:"
+   with "Only for facts about shared things.", "The condition:" with "`args.subject` is "shared"",
+   and a "Show the expression" control that holds `args.subject == "shared"`. They sit under the
+   rule they belong to. To expand the item, click the line that holds the rule's sentence and
+   `[cursor=pointer]` by its `ref`.
 
 4. Approve the mandate. The approvals page asks for a passkey, which a journey cannot give, so the
    action answers with the exemption that a host answer has.

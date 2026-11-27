@@ -13,8 +13,8 @@ metadata:
 
 Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
-[Check a change](#check-a-change). Then end the run, and give the **Reply** at the end of this file:
-the PR link and each feature you could not verify. You are done after the Reply. Leave
+[Check a change](#check-a-change), stop the app with step 11, and give the **Reply** at the end of
+this file: the PR link and each feature you could not verify. You are done after the Reply. Leave
 `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its description.
 
 These cost the most time:

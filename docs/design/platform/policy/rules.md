@@ -9,32 +9,33 @@ database, seeded from your definitions, and the [decision point](decision-point.
 of its stages. Among the rules that match a call, the strictest outcome wins. Each rule keeps one ID
 for its life and a revision per edit, and code tells whether an edit widens access.
 
-This design is for the user, who approves it, and for an agent that builds or changes rule matching,
-rule identity, the snapshot hash, the widening check or the starter rule set. An agent checks a
-change against it before the change lands. To build, start from the rule format and matching, then
-rule identity, the snapshot hash and the widening check, and follow the links to the decision point
-and the architecture docs for the parts around them.
+This design is for the owner and for an agent that builds or changes rule matching, rule identity,
+the snapshot hash, the widening check or the starter rule set. The owner approves it by reading the
+rule format, the widening check and the starter rule set, and by objecting to any **Why** that does
+not hold. An agent checks a change against it before the change lands. To build, start from the rule
+format and matching, then rule identity, the snapshot hash and the widening check, and follow the
+links to the decision point and the architecture docs for the parts around them.
 
 ## The rule format
 
 Every field except the ID and the outcome is optional, and a missing match field matches every call.
 
-| Field          | Holds                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------- |
-| `id`           | A stable slug, unique in the deployment                                                     |
-| `outcome`      | `allow`, `ask` or `deny`                                                                    |
-| `tools`        | Tool names, each exact or a pattern such as `mail.*`                                        |
-| `effects`      | Declared effects                                                                            |
-| `contexts`     | `conversation`, `task` or `coding`                                                          |
-| `definitions`  | Task definition IDs, for a rule that covers only some of them                               |
-| `checks`       | Argument checks, each an argument path, an operator and a value                             |
-| `destinations` | Patterns that the call's destinations must match                                            |
-| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`                                |
-| `lift`         | For a [lifting rule](budgets.md#lifting-rules): a per-action cap and the budget it draws on |
-| `expires`      | When the rule stops matching, for a mandate                                                 |
-| `mandate`      | The mandate the rule belongs to                                                             |
-| `cel`          | A CEL condition, for a rule the fixed checks cannot express                                 |
-| `note`         | Your own words about the rule                                                               |
+| Field          | Holds                                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | A stable slug, unique in the deployment                                                                                                  |
+| `outcome`      | `allow`, `ask` or `deny`                                                                                                                 |
+| `tools`        | Tool names, each exact or a pattern such as `mail.*`                                                                                     |
+| `effects`      | Declared effects                                                                                                                         |
+| `contexts`     | `conversation`, `task` or `coding`                                                                                                       |
+| `definitions`  | Task definition IDs, for a rule that covers only some of them                                                                            |
+| `checks`       | Argument checks, each an argument path, an operator and a value                                                                          |
+| `destinations` | Patterns that the call's destinations must match                                                                                         |
+| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`                                                                             |
+| `lift`         | For a [lifting rule](budgets.md#lifting-rules), an allow rule that lifts the always-ask set: a per-action cap and the budget it draws on |
+| `expires`      | When the rule stops matching, for a mandate                                                                                              |
+| `mandate`      | The mandate the rule belongs to                                                                                                          |
+| `cel`          | A CEL condition, for a rule the fixed checks cannot express                                                                              |
+| `note`         | Your own words about the rule                                                                                                            |
 
 Rule files in the definitions repo are YAML, checked against a JSON Schema that nixie generates from
 the rule format, both when the repo seeds the database and when nixie exports runtime rules. The

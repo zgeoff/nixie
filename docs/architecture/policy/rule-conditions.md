@@ -134,7 +134,7 @@ list carries the condition of each version of a changed rule.
 The approval card, the rule notice after an answer, the mandates page and the `rules.list` tool show
 all 4 parts. `nixie rules list` and `nixie proposals list` print only the note and the words, never
 the raw CEL. No client form edits a condition: the web client's rule form calls `rules.editRule`,
-and both keep a rule's condition as it is.
+which keeps a rule's condition as it is.
 
 ## How a rule with a condition arrives
 
