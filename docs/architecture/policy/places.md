@@ -26,19 +26,20 @@ parsePlacePattern('*.github.io'); // null: the key would cover a whole public su
 
 - `parsePlace` tries a URL with `://`, an address, a phone number, a handle, then a host with an
   optional port. A phone number parses only from `+` and its digits. A handle parses only as
-  `<channel>:<id>` with a channel that a chat feature that is on named. Core names none: the
-  composition root fills the list from the features, so a name such as `telegram:51234` reads as a
-  host and a port until that feature is on.
+  `<channel>:<id>`, with a channel from the list of chat features that are on. Core lists none: the
+  composition root fills the list from the features, so `telegram:51234` reads as a host and a port
+  until the telegram feature is on.
 - A site's normal form is lower case IDNA ASCII, with no port, no trailing dot and no leading
   `www.`, unless what remains is a public suffix. A mail domain keeps its `www.`. A host or mail
   domain with a backslash, a `?` or a `#` is no place. A name that the public-suffix list does not
   hold, such as `localhost`, is no public suffix.
 - A key is one of `site` and `mail_domain` (each with `subdomains`), `address`, `phone`, `handle` or
-  `raw`. A `raw` key is a contact that `parsePlace` cannot read, and it matches the exact string. A
-  destination that parses to `null` matches only a `raw` key.
-- A `site` or `mail_domain` key with `subdomains: true` never names a public suffix, which the
-  matcher reads through `tldts` with `allowPrivateDomains: true`. A `mail_domain` entry holds
-  `blocked`, `known` or `read`, never `act`, and a site is never `self`.
+  `raw`. A `raw` key is a contact's exact text, kept when `parsePlace` cannot read it or another
+  entry holds its key, and it matches the exact string. A destination that parses to `null` matches
+  only a `raw` key.
+- A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
+  reads the public-suffix list through `tldts` with `allowPrivateDomains: true`. A `mail_domain`
+  entry holds `blocked`, `known` or `read`, never `act`, and a site is never `self`.
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
   entry wins: an exact or `raw` key, then the longer domain, then the higher level. A contact you
   marked at one of your own addresses therefore leaves that address at `self`.
@@ -62,11 +63,11 @@ The directory writes `places.added`, `places.changed` and `places.removed`, and 
 which goes on the call's thread. Each add, change or removal that the user or a tool makes runs the
 in-force seed in its own write transaction, which puts a definitions snapshot that holds the
 directory in force. The definitions seed writes the entries of `places.yaml` inside its own
-snapshot, and the seed of nixie's own entries runs the in-force seed once, after all its entries.
-When the seed refuses, the whole transaction rolls back and the write is not made. A call decides
-under the snapshot it started with, so a block takes effect for each call that starts after the
-commit. The snapshot lists each entry's level and the record its name came from, so a rename leaves
-an older snapshot's name of an address, phone number, handle or contact as it was.
+snapshot, and the seed of nixie's own entries runs the in-force seed once after its entries, when it
+added any. When the seed refuses, the whole transaction rolls back. A call decides under the
+snapshot it started with, so a block takes effect for each call that starts after the commit. The
+snapshot lists each entry's level and the record its name came from, so a rename leaves an older
+snapshot's name of an address, phone number, handle or contact as it was.
 
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. A call uses an
 entry when its `tool_called` decision carries the entry's permission, whatever the outcome. The
@@ -112,13 +113,12 @@ key and IDs sit in the payload, where no key can erase them.
   reads the address kept under its own snapshot's reference. A renewal that reaches a new address
   keeps a new reference, so a call under an older snapshot still sees only the older address. A
   connection made or moved after a snapshot needs a new snapshot, which the end of its consent runs,
-  and forgetting a connection takes every address away at once. They share one ID, so a decision
-  never stores an address.
+  and forgetting a connection takes every address away at once. Each `self` entry's ID is its
+  address's reference, so a decision never stores an address.
 - A feature adds its own addresses, numbers or sites at `act` as `nixie_own` through a source that
   the composition root lists. After each seed of the definitions, nixie adds each listed value
-  unless it added that value before, so a value you removed stays removed, and runs the in-force
-  seed once more when it added any. The phone lists its configured number, and `parsePlace` reads
-  each destination of `phone.send` as a phone place.
+  unless it added that value before, so a value you removed stays removed. The phone lists its
+  configured number, and `parsePlace` reads each destination of `phone.send` as a phone place.
 - `places.yaml` of [definitions format 7](../core/definitions.md#the-definitions-format) seeds sites
   and mail domains with the origin `seed`. The seed replaces an entry it added when the file changes
   its level or its name, and removes only an entry it added and nobody changed.

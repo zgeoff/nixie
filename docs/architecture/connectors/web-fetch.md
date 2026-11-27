@@ -19,7 +19,7 @@ flowchart LR
 
 ## The tool
 
-The tool declares only the fetch effect, and the host of the page as its destination, as
+The tool declares the fetch effect alone, with the host of the page as its destination, as
 [The fetch sandbox](#the-fetch-sandbox) says. The decision point allows it under an allow rule on
 that effect, such as the starter rule `allow-reads`, or under a place at `read`, and it runs direct,
 inside the turn. Its result holds the final URL after redirects, the status code, the content type,
@@ -310,13 +310,13 @@ no refusal frame. A fetch with no `scanHop` sends `hops: 'none'` and the same by
 asked before each hop, and the fetch tool never passes it on to the model.
 
 The tool declares the host of the page a call names as the call's destination, taken from the `url`
-argument or from the target of the `link`, before any known-site rewrite. A stored page named by
-`page` declares none. The first URL and each redirect hop also meet the directory: a URL whose host
-a blocked place covers is not fetched, and the refusal names the place by its short ID. The hop gate
-reads the directory of the snapshot that the call's own record holds, once per call, because no
-decision point sees a hop. A block added after the call started stops no hop of it, and a block
-removed after it still stops each hop. A refusal leaves out a sender that holds a secret, as the
-refusal for a secret does.
+argument or from the target of the `link`, before any known-site rewrite. A call that names a stored
+page by `page` declares none. nixie also checks the first URL and each redirect hop against the
+directory. It fetches no URL whose host a blocked place covers, and the refusal names the place by
+its short ID. The hop gate reads the directory of the snapshot that the call's own record holds,
+once per call, because no decision point sees a hop. A block added after the call started stops no
+hop of it, and a block removed after it still stops each hop. A refusal leaves out a sender that
+holds a secret, as the refusal for a secret does.
 
 The server takes only the URL from a `hop` frame. It counts the hops itself, and takes the host that
 sent each redirect from the URL before it. It reads one frame at a time, and the fetcher waits while

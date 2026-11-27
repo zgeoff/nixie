@@ -75,18 +75,18 @@ proposal.
 
 ## Destinations
 
-A destination is a place that the [directory](places.md) covers or nothing. The directory holds one
-entry for each site, mail domain, address, phone number or handle, with a level: `blocked`, `known`,
-`read`, `act` or `self`. The most specific entry wins, an exact key beats a wildcard one, and a
-blocked entry beats every other. Contacts you marked are entries at `known`, and each address that
-is you (a connected Google account's own) is an entry at `self`.
+The [directory](places.md) covers each destination with one entry, or with none. The directory holds
+one entry for each site, mail domain, address, phone number or handle, with a level: `blocked`,
+`known`, `read`, `act` or `self`. A blocked entry beats every other. Otherwise the most specific
+entry wins, so an exact key beats a wildcard one. Contacts you marked are entries at `known`, and
+each address that is you (a connected Google account's own) is an entry at `self`.
 
 A blocked place denies the call at stage 3, whatever a rule, a lift or your consent says. At stage 5
 each destination gets the first permission that holds, and the decision records it:
 
-1. `place`: an entry covers the destination at `known`, `read`, `act` or `self`. `known` and `read`
-   cover only the destination's permission: `known` adds nothing more, and `read` lets a call that
-   only reads or fetches go on.
+1. `place`: an entry covers the destination at `known`, `read`, `act` or `self`. An entry at `known`
+   gives the destination its permission and nothing more. An entry at `read` also allows a call that
+   only reads or fetches, at stage 7.
 2. `reading`: the call only reads or fetches, and no entry covers the destination.
 3. `reply_target`: the destination is the sender of the message the run answers.
 4. `task`: the task definition whose task run makes the call names the destination.
@@ -97,20 +97,20 @@ domain such as `*@example.org` covers no recipient. Only an exact address holds 
 
 At stage 7 a call is allowed when every destination has an entry that allows the call's effects: a
 place at `act` or `self` allows any effect except `spend`, and a place at `read` allows a call that
-only reads or fetches. A call with no destination never passes this way. A tool that declares
-`requiresDestination`, such as a click or typing on the desktop, finds no allow, from a place or a
-rule, when the window it lands on names no destination. The decision records the places that allowed
-it, and a call that an `act` place allowed with an acting effect writes one `places.acted` record
-for each such place.
+only reads or fetches. A call with no destination never passes this way. A tool can declare
+`requiresDestination`, as a click or typing on the desktop does. When the window such a call lands
+on names no destination, neither a place nor a rule allows it. The decision records the places that
+allowed it, and a call that an `act` place allowed with an acting effect writes one `places.acted`
+record for each such place.
 
 A destination with no permission asks at stage 5 unless consent covers it. A call reads the places
 of its own snapshot with the level that snapshot holds, so a place removed since still covers a
 replay of an earlier call. A forget of an address, phone number or handle takes its key away, and
 the entry then covers nothing, in a replay too.
 
-The decision keeps the effects the call had once its tool's prepare step ran. Each rule and each
-place judges the call by the declared effects plus those, so a call that adds `send` is no read for
-either.
+The decision keeps the call's effects as they stood after its tool's prepare step ran. Rules and
+places judge the call by those effects, so neither treats a call whose prepare step adds `send` as a
+read.
 
 ## Consent
 
@@ -196,4 +196,4 @@ bundler drops it from the release bundle.
 
 With no rule of the user's in force and an empty directory, stages 3, 6 and 7 match only the code
 rules. A call that no earlier stage decides and consent does not allow then asks at stage 9, except
-a memory write, which gets `gate`. The start logs a warning.
+a memory write other than `memory.retopic`, which gets `gate`. The start logs a warning.

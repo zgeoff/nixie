@@ -215,11 +215,12 @@ result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'term
 `{ kind: 'other' }`, and `isWatched`, which is `true` while a [watch](#watching) is open.
 
 While a device holds the desktop, 4 direct reads still run: `browser_read`, `browser_screenshot`,
-`screenshot` and `read_file`. A browser or screen scroll, though a direct read too, a page open, a
-close, a download, a file write and a file export answer `TAKEN_OVER`, so the assistant never moves
-the person's view. A queued act stays pending, and the runner claims it after the hand-back, as
-[Taking over](#taking-over) says. A queued act that was prepared before a hold began, and runs after
-it ended, answers `SCREEN_CHANGED`, because the person may have moved the page or the focus.
+`screenshot` and `read_file`. A browser or screen scroll, a page open, a close, a download, a file
+write and a file export answer `TAKEN_OVER`, so the assistant never moves the person's view. A
+scroll is a direct read too, and it moves the view. A queued act stays pending, and the runner
+claims it after the hand-back, as [Taking over](#taking-over) says. A queued act that was prepared
+before a hold began, and runs after it ended, answers `SCREEN_CHANGED`, because the person may have
+moved the page or the focus.
 
 The result of a screen act carries the picture of the desktop after the act, as a screenshot does.
 The connector's response holds the picture beside the result. The action runner seals its bytes as
@@ -246,14 +247,14 @@ A read changes nothing outside nixie, so `browser_open`, `browser_navigate` and 
 are `fetch` effects, with the site's host and port as the destination. Each read tool of a tab
 (`browser_read`, `browser_screenshot`, `browser_scroll` and `browser_reload`) is a `fetch` too, and
 its `prepare` hook reads the tab's address from the guest, because the result shows that page
-whoever opened it. `screenshot` and `screen_scroll` are `fetch` effects with the host of the browser
-tab in front, and no destination when another window is in front. A site at `blocked` denies each of
-these. A site that no entry covers is read without asking, and an entry at `read` gives the same
-answer.
+whoever opened it. `screenshot` and `screen_scroll` are `fetch` effects too. Their destination is
+the host of the browser tab in front, and they have none when another window is in front. A site at
+`blocked` denies each of these. A site that no entry covers is read without asking, and an entry at
+`read` gives the same answer.
 
 The page can change between the read of its address and the capture, so each of these tools also
-checks the address of the captured page against the call's snapshot. A blocked site refuses the call
-with `PAGE_CHANGED`, and the tool returns nothing of the page.
+checks the address of the captured page against the call's snapshot. When the captured page is on a
+blocked site, the tool refuses the call with `PAGE_CHANGED` and returns nothing of the page.
 
 A fill can post a form, so it is a queued `send`. A click declares `fetch`, and its `prepare` hook
 adds `send` unless the control is a plain link: an `<a>` with an http or https address, outside a
@@ -266,12 +267,13 @@ destinations differ from the ones the decision covered. A script's click handler
 Two calls with the same input share one prepared entry. When 2 preparations of one click find
 different kinds of control, every action of that click refuses with `PAGE_CHANGED`.
 
-Both tools read the tab's URL before the decision. The host becomes the call's destination, and the
-URL becomes `expectURL`, which the action hash covers. When the action runs, the guest compares the
-tab's URL with `expectURL` and returns `PAGE_CHANGED` when they differ. It also returns
-`STALE_ELEMENT` for a control that no longer holds its number, and `CROSS_ORIGIN_SUBMIT` for a form
-that posts to another origin. Nixie keeps `expectURL` in memory, so a restart between the call and
-the action makes the action refuse with `PAGE_CHANGED`, never run against a page nobody looked at.
+A click and a fill both read the tab's URL before the decision. The host becomes the call's
+destination, and the URL becomes `expectURL`, which the action hash covers. When the action runs,
+the guest compares the tab's URL with `expectURL` and returns `PAGE_CHANGED` when they differ. It
+also returns `STALE_ELEMENT` for a control that no longer holds its number, and
+`CROSS_ORIGIN_SUBMIT` for a form that posts to another origin. Nixie keeps `expectURL` in memory, so
+a restart between the call and the action makes the action refuse with `PAGE_CHANGED`, never run
+against a page nobody looked at.
 
 A screen act is a queued `send`. Its `prepare` hook asks the guest for the window the act would land
 on: the one under the point for a click, and the focused one for typing. That window is the

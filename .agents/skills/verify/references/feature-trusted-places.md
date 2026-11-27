@@ -22,7 +22,8 @@ Before you start:
   `up`, run `bun verify up --restart`, `doctor` and sign-in-enrol before this journey. Once the user
   approves `pages.test` in computer-browser, the browser no longer asks about it, and this journey
   no longer shows what trusting the site changes.
-- No page adds a place yet, so the `trust-site` action adds the entry that the places page will add.
+- No page adds a place, so the `trust-site` action adds the entry through the test build.
+- When a command fails, do what its row in [Exit codes](exit-codes.md) says.
 
 ## Journey
 
