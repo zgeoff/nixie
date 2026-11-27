@@ -25,6 +25,7 @@ import {
   readWebBuild,
 } from '@heynixie/web/test-utils';
 import { approveHeldInstall } from './approve-held-install';
+import { approveHeldMandate } from './approve-held-mandate';
 import { approveHeldMcp } from './approve-held-mcp';
 import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
@@ -285,6 +286,8 @@ export async function runVerifyHarness(): Promise<void> {
 
       return runDeviceLayout(api.client, nixie.model, { ...layout, step: layout.step });
     },
+    approveHeldMandate: () =>
+      approveHeldMandate((operation, args) => server.request(operation, args)),
     approveHeldMcp: (label) =>
       approveHeldMcp((operation, args) => server.request(operation, args), label),
     runCallStep: (call) =>

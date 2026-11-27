@@ -16,6 +16,7 @@ import type { RuleContext } from '../runtime/write-runtime-rule';
 import { writeRuntimeRuleInTransaction } from '../runtime/write-runtime-rule';
 import { buildMemorySuggestedRuleFields } from '../utils/build-memory-suggested-rule-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
+import { toConditionFields } from '../utils/to-condition-fields';
 import { mandateProposedCodec } from './mandate-proposed-codec';
 import { mandateStartedCodec } from './mandate-started-codec';
 
@@ -47,6 +48,7 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
   const erasable = erasableSchema.parse(record.erasable.fields);
   const rules = erasable.rules.map((rule) => parseRule(rule));
   const sentences = rules.map((rule) => renderRule(rule));
+  const noteBy = proposed.proposedBy === 'nixie' ? 'nixie' : 'you';
 
   return {
     sentence: sentences.join(' '),
@@ -57,6 +59,7 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
       ...buildMemorySuggestedRuleFields(rules),
     },
     ruleSentence: null,
+    ...toConditionFields(rules, noteBy),
     approveLabel: 'Start the mandate',
   };
 }

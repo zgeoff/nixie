@@ -1,21 +1,20 @@
 # The decision point
 
-Every tool call passes the decision point before it acts, and the decision point answers allow, ask
-or deny. It decides from what the tool declares it does, the rules in force, who the call sends to,
-and whether you asked for it. The record of the call keeps the decision beside the snapshot hash of
-the definitions in force, and a replay rebuilds the decision from that record. A call to a listed
-tool whose input breaks the tool's input schema never reaches the decision point, because the
-[tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first. `modules/policy`
-owns the decision point and the effect declarations. [Tool calls](../connectors/tool-calls.md)
-covers how a call reaches it, and the
-[decision point design](../../design/platform/policy/decision-point.md) covers what is still to
-build.
+The decision point answers allow, ask or deny for each tool call before the call acts. A memory
+write gets a fourth answer, `gate`, which hands the call to the memory gate. The decision point
+decides from what the tool declares it does, the rules in force, who the call sends to, and whether
+the user asked for it. The record of the call keeps the decision beside the snapshot hash of the
+definitions in force, and a replay rebuilds the decision from that record. The one call that gets no
+decision is a call to a listed tool whose input breaks the tool's input schema: the
+[tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first and rejects it,
+so it never reaches the decision point. `modules/policy` owns the decision point and the effect
+declarations. For how a call reaches it, read [Tool calls](../connectors/tool-calls.md). For what is
+still to build, read the [decision point design](../../design/platform/policy/decision-point.md).
 
 ## The stages
 
-The stages run in order, and the first that decides returns. Each call reads one snapshot: the rules
-in force, the known contact IDs and the tool declarations of the snapshot the call runs under, never
-the latest.
+The stages run in order, and the first that decides returns. Each call reads the rules in force, the
+known contact IDs and the tool declarations from the one snapshot it runs under.
 
 | Stage          | Decides when                                                  | Outcome |
 | -------------- | ------------------------------------------------------------- | ------- |
@@ -27,19 +26,24 @@ the latest.
 | 6. Ask rules   | An ask rule matches                                           | Ask     |
 | 7. Allow rules | An allow rule matches                                         | Allow   |
 | 8. Consent     | You asked for the call in typed words, and the checker agrees | Allow   |
-| 9. No rule     | Always, because nothing else decided                          | Ask     |
+|                | The call is a memory write that no earlier stage decided      | Gate    |
+| 9. No rule     | Nothing else decided                                          | Ask     |
 
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
-outcome `gate` at stage 8, as [memory writes](#memory-writes) says. `memory.retopic` is the
-exception that asks at stage 9.
+outcome `gate` at stage 8 (see [memory writes](#memory-writes)). `memory.retopic` is the exception
+that asks at stage 9.
 
 The caller's tool list is the run's own: the task definition's list for a task run of a definition,
 and the subset its caller passed for a worker. A tool that the registry knows but the run was not
 given is therefore denied, even though the model can name it.
 
 A rule's effects are the tool's declared effects, so the same tool gets the same answer under the
-same rules unless a rule also names argument checks, a context or a source of content. When several
-rules of one outcome match, the first by rule ID decides, and the decision names the others.
+same rules unless a rule also names argument checks, a context, a source of content or a `cel`
+condition. At stages 3, 6 and 7, a rule's condition evaluates only after its other fields match. A
+condition that errors makes a deny rule ask with the cause `condition_error`, makes an ask rule
+catch the call, and makes an allow rule cover nothing, as
+[rule conditions](rule-conditions.md#evaluating-a-condition) describes. When several rules of one
+outcome match, the first by rule ID decides, and the decision names the others.
 
 ## Memory writes
 
@@ -109,14 +113,16 @@ checker counts as unreachable.
 
 An ask writes the `tool_called` record and a `policy.action_proposed` record in one transaction, and
 the model reads "Waiting for approval as `<shortID>`". The model keeps working. An ask's cause is
-`outside_steering`, `always_ask`, `ask_rule`, `no_rule`, `direct_request` or `repeat`.
+`outside_steering`, `always_ask`, `ask_rule`, `no_rule`, `direct_request`, `repeat` or
+`condition_error`. The last is a call that asks because a deny rule's condition errored, as
+[rule conditions](rule-conditions.md#evaluating-a-condition) describes.
 
-`nixie proposals approve <shortID>` and `nixie proposals reject <shortID>`, or the page for actions,
-answer it. The answer lands in the inbox of the task that asked. Approving queues the call once, and
-the call runs as [actions](../core/actions.md#approved-actions) describes. A proposal lapses after a
-fixed time without an answer. [Approvals](approvals.md) describes the row and the answer path.
-`contacts.mark_known` is a tool that declares `policy_widen`, so it always asks, and approving it
-marks the contact.
+Answer an ask with `nixie proposals approve <shortID>` or `nixie proposals reject <shortID>`, or on
+the page for actions. The answer lands in the inbox of the task that asked. Approving queues the
+call once, and the call runs as [actions](../core/actions.md#approved-actions) describes. A proposal
+lapses after a fixed time without an answer. For the row and the answer path, read
+[Approvals](approvals.md). `contacts.mark_known` is a tool that declares `policy_widen`, so it
+always asks, and approving it marks the contact.
 
 A call that asks again while its proposal is open, or while its approval is unused, writes no second
 proposal. The model reads "Waiting for approval as `<shortID>`" with the open proposal's short ID,
@@ -165,10 +171,11 @@ covers ([the definitions](../core/definitions.md#the-snapshot-hash)).
 
 ## The code rules
 
-Two rules live in code, after the rules in your definitions. The queue check rule allows the
-log-only connector's tool at stage 7, so the [queue check](../core/actions.md#the-queue-check)
-reaches the action queue on every start. A test build adds a rule that allows the crash tests' send
-tool. The bundler drops it from the release bundle.
+Code adds rules after the rules in your definitions. The queue check rule allows the log-only
+connector's tool at stage 7, so the [queue check](../core/actions.md#the-queue-check) reaches the
+action queue on every start. A test build adds a rule that allows the crash tests' send tool. The
+bundler drops it from the release bundle.
 
-With no rule of yours in force, every call that consent does not allow asks, and the start logs a
-warning.
+With no rule of yours in force, stages 3, 6 and 7 never match. A call that stages 1 and 2 do not
+deny and consent does not allow then asks at stage 9, except a memory write, which gets `gate`. The
+start logs a warning.

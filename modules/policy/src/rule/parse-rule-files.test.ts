@@ -293,3 +293,65 @@ test('it skips an allow rule with a field it does not know, as the release befor
     warnings: [{ path: 'rules/x.yaml', ruleID: 'allow-x', field: 'lifted', action: 'skipped' }],
   });
 });
+
+test('it parses a rule with a condition and a note', () => {
+  const parsed = parseRuleFiles(
+    new Map([
+      [
+        'rules/school.yaml',
+        [
+          'allow-term-mail-in-hours:',
+          '  outcome: allow',
+          '  tools: [mail.send]',
+          "  destinations: ['*@school.example']",
+          '  cel: now.getHours("Europe/London") < 17 && args.subject.startsWith("Term")',
+          '  note: School mail about the term can go out during the working day.',
+          '',
+        ].join('\n'),
+      ],
+    ]),
+  );
+
+  expect(parsed).toMatchObject({
+    status: 'parsed',
+    rules: [
+      {
+        rule: {
+          id: 'allow-term-mail-in-hours',
+          cel: 'now.getHours("Europe/London") < 17 && args.subject.startsWith("Term")',
+          note: 'School mail about the term can go out during the working day.',
+        },
+      },
+    ],
+  });
+});
+
+test.each([
+  ['no note', 'cel: args.n == 1', 'condition_note_missing'],
+  ['text that does not parse', 'cel: args.n ==\n  note: Broken.', 'condition_syntax'],
+  [
+    'a construct outside the subset',
+    'cel: args.name.matches("a")\n  note: Matches.',
+    'condition_not_allowed',
+  ],
+  ['a type error', 'cel: tool == 1\n  note: Wrong type.', 'condition_type'],
+  [
+    'text over the length limit',
+    `cel: 'args.s == "${'a'.repeat(1000)}"'\n  note: Long.`,
+    'condition_too_large',
+  ],
+])(
+  'it refuses the seed of a rule with %s, with the fault code and the rule',
+  (_label, lines, fault) => {
+    const parsed = parseRuleFiles(
+      new Map([['rules/school.yaml', `allow-mail:\n  outcome: allow\n  ${lines}\n`]]),
+    );
+
+    expect(parsed).toStrictEqual({
+      status: 'refused',
+      problems: [
+        { path: 'rules/school.yaml', reason: expect.stringContaining(`allow-mail.cel: ${fault}`) },
+      ],
+    });
+  },
+);

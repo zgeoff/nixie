@@ -96,6 +96,7 @@ export type {
   AllowingRule,
   AskCause,
   CallDestination,
+  ConditionError,
   ConsentAnswer,
   ConsentMessage,
   DecisionDetail,
@@ -152,3 +153,20 @@ export type { RuleNeed } from './memory/is-need-met';
 export { isNeedMet } from './memory/is-need-met';
 export { listUncoveredMemoryWrites } from './memory/list-uncovered-memory-writes';
 export { policyRecordTopics } from './policy/policy-record-topics';
+export { checkCondition } from './condition/check-condition';
+export { describeCondition } from './condition/describe-condition';
+export type { RuleCondition } from './condition/describe-condition';
+export { evaluateCondition } from './condition/evaluate-condition';
+export { renderConditionWords } from './condition/render-condition-words';
+
+export type {
+  ConditionCheck,
+  ConditionFault,
+  ConditionResult,
+  ConditionSource,
+  ConditionView,
+  Subject as ConditionSubject,
+} from './condition/types';
+
+export { matchRule } from './rule/is-rule-match';
+export type { RuleMatch } from './rule/is-rule-match';

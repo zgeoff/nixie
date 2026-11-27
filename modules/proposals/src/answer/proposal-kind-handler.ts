@@ -138,6 +138,23 @@ export interface ProposalBody {
   readonly fields: Readonly<Record<string, string>>;
   readonly ruleSentence: string | null;
 
+  // the condition of each rule the card proposes, built by the policy module; `rule` is the
+  // rule's place among the rules the card shows
+  readonly ruleConditions?: {
+    readonly rule: number;
+    readonly note: string;
+    readonly noteBy: 'you' | 'nixie';
+    readonly words: string;
+    readonly source: string;
+  }[];
+
+  // each rule whose condition errored on the call, with the error code
+  readonly conditionErrors?: {
+    readonly ruleID: string;
+    readonly revision: number;
+    readonly code: string;
+  }[];
+
   // the IDs of stored images that the card shows, such as the photos a draw would send
   readonly images?: string[];
 

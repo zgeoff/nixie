@@ -9,6 +9,7 @@ function setupTest() {
 
 test.each([
   ['no_rule', 'no rule covers it yet.'],
+  ['condition_error', 'the condition of a rule failed to run, so the call asks.'],
   ['ask_rule', 'a rule of yours asks before it.'],
   ['always_ask', 'this kind of action always asks.'],
   ['outside_steering', 'it follows something nixie read outside your own words.'],

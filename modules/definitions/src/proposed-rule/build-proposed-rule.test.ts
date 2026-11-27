@@ -26,6 +26,7 @@ function setupTest() {
     context: proposed.context,
     task: proposed.definitionID,
     args: proposed.input,
+    contentArgs: [],
     destinations: proposed.destinations,
     sources: proposed.sources,
     at: defaults.destinations.length,

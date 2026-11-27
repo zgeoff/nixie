@@ -18,6 +18,13 @@ export interface MandateRule {
 }
 
 export type MandateRefusal =
+  | {
+      readonly status: 'refused';
+      readonly reason: 'invalid_condition';
+
+      // the rule's place in the mandate, as `rules.1`, with the fault code and its detail
+      readonly faults: readonly string[];
+    }
   | { readonly status: 'refused'; readonly reason: 'expires_past'; readonly now: string }
   | {
       readonly status: 'refused';

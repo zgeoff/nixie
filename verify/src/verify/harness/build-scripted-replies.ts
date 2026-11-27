@@ -35,6 +35,28 @@ export function buildScriptedReplies(
   const memoryExport =
     reply.export === true ? [{ toolUse: { name: 'mcp__nixie__memory_export', input: {} } }] : [];
 
+  const ruleCondition =
+    reply.ruleCondition === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__rules_propose_mandate',
+              input: {
+                title: reply.ruleCondition.title,
+                rules: [
+                  {
+                    outcome: 'allow',
+                    tools: ['memory.remember'],
+                    cel: reply.ruleCondition.cel,
+                    note: reply.ruleCondition.note,
+                  },
+                ],
+              },
+            },
+          },
+        ];
+
   const drawing = reply.draw === undefined ? [] : buildDrawingReplies(reply.draw);
 
   const notebook =
@@ -117,6 +139,7 @@ export function buildScriptedReplies(
       ...memory,
       ...reminder,
       ...memoryExport,
+      ...ruleCondition,
       ...drawing,
       ...notebook,
       ...mailWatch,
@@ -139,6 +162,7 @@ export function buildScriptedReplies(
     ...memory,
     ...reminder,
     ...memoryExport,
+    ...ruleCondition,
     ...notebook,
     ...mailWatch,
     ...mailRead,

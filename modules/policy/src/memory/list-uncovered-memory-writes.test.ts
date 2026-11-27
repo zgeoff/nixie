@@ -247,6 +247,7 @@ test.each<[string, Rule]>([
           args: { itemID: 'k3v9qm2xw1', subject },
           destinations: [],
           sources: [...sources, ...extra],
+          contentArgs: [],
           at: Date.parse('2026-11-17T00:00:00Z'),
         };
 
@@ -262,4 +263,26 @@ test.each<[string, Rule]>([
       });
     }
   }
+});
+
+test('#listUncoveredMemoryWrites leaves a new fact uncovered for a rule whose condition is always true', () => {
+  const rule: Rule = {
+    id: 'allow-conditional-memory',
+    outcome: 'allow',
+    effects: ['memory_write'],
+    cel: '1 == 1',
+    note: 'Always true.',
+  };
+
+  expect(listUncoveredMemoryWrites(rule)).toContain('a new fact');
+});
+
+test('#listUncoveredMemoryWrites covers a new fact for the same rule without its condition', () => {
+  const rule: Rule = {
+    id: 'allow-memory',
+    outcome: 'allow',
+    effects: ['memory_write'],
+  };
+
+  expect(listUncoveredMemoryWrites(rule)).not.toContain('a new fact');
 });

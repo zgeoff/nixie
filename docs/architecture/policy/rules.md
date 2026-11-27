@@ -4,10 +4,11 @@ A rule is plain data that matches a tool call and gives it one outcome: allow, a
 writes rules as YAML files in the definitions, and nixie checks, matches, evaluates and renders them
 with code that never calls a model, so the user reads exactly what a rule does and a replay of a
 decision gets the same answer. The policy module owns the rule format and these pure functions, and
-[rules in force](#rules-in-force) covers how a seed puts them in force. A seed is the step that
-reads the definitions and puts them in force, as [seeding](../core/definitions.md#seeding)
-describes. The [rules design](../../design/platform/policy/rules.md) holds the parts not built yet,
-and [the decision point](decision-point.md) covers the stages that decide a call.
+[rules in force](#rules-in-force) covers how a seed puts them in force. A seed is the step that puts
+a snapshot of the definitions in force, usually one it has just read from the repo, as
+[seeding](../core/definitions.md#seeding) describes. The
+[rules design](../../design/platform/policy/rules.md) holds the parts not built yet, and
+[the decision point](decision-point.md) covers the stages that decide a call.
 
 An allow rule can allow any call, with 2 exceptions. A call that widens the policy or raises a
 budget always asks, so no rule can give the assistant more room than the user approved. A seed
@@ -36,21 +37,25 @@ field but the outcome is optional, and a field that is missing matches every cal
 | `expires`      | When the rule stops matching, as an ISO date and time; a rule with `mandate` needs one                    |
 | `mandate`      | The mandate the rule belongs to                                                                           |
 | `lift`         | On an allow rule: `perAction` dollars and a `budget` ID, as [budgets](budgets.md#lifts) describes         |
-| `cel`          | A CEL condition                                                                                           |
-| `note`         | The user's own words about the rule                                                                       |
+| `cel`          | A CEL condition, as [rule conditions](rule-conditions.md) describes; it needs a `note`                    |
+| `note`         | The user's own words about the rule; a rule with `cel` must have one                                      |
+
+A rule with `cel` and no `note` fails the check with `condition_note_missing`, as
+[checking a condition](rule-conditions.md#checking-a-condition) describes.
 
 The parser refuses an empty list, a pattern with a space and an unknown field inside a check, and
 lists each fault with its file. A rule that holds an unknown top-level field fails closed, so a
-newer release's field never stops an older release from seeding: the seed skips an allow rule whole,
-so it matches nothing, and drops only the field from an ask or a deny rule, so the rule matches
-more. The seed logs a warning with the rule and the field. Each release publishes the format as a
-JSON Schema, the `definitions-rules.schema.json` asset, generated from the schema that the parser
-uses. After a change to the format, `bun run --cwd modules/policy rules-schema` rewrites the
-committed file, and a test fails while the two differ.
+newer release's field never stops an older release from seeding. The seed skips an allow rule whole,
+so it matches nothing. It drops only the field from an ask or a deny rule, so the rule matches more.
+The seed logs a warning with the rule and the field. Each release publishes the format as a JSON
+Schema, the `definitions-rules.schema.json` asset, generated from the schema that the parser uses.
+After a change to the format, run `bun run --cwd modules/policy rules-schema` to rewrite the
+committed file. A test fails while the two differ.
 
 A pattern uses `*` as its only wildcard and matches the whole text, so `*@example.com` matches every
-address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. One kind of
-wildcard keeps the widening check decidable, which a regular expression would not.
+address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. Because `*`
+is the only wildcard, the widening check can decide whether one pattern lies inside another by
+comparing the text between the wildcards. A regular expression would not allow that.
 
 The parser of a rules file reads 2 deprecated names: `jobs` for `definitions`, and the context `job`
 for `task`. The parser refuses a rule that holds both `jobs` and `definitions`, because merging the
@@ -68,8 +73,8 @@ therefore give the same rule.
 
 ## Matching
 
-A rule matches a call when every field it holds matches. A list field reads one way for an allow and
-the other way for an ask or a deny, because an allow grants access and must cover all of a call,
+A rule matches a call when every field it holds matches. A list field matches one way for an allow
+and the other way for an ask or a deny, because an allow grants access and must cover all of a call,
 while an ask or a deny guards access and catches any part of it:
 
 | Field          | An allow covers the call when                         | An ask or a deny catches the call when   |
@@ -84,8 +89,9 @@ the tool and each of its variants, so `task.start` matches `task.start/sandbox`,
 `task.start/sandbox` matches only that variant. A rule stops matching at its expiry, compared with
 the time of the call, so a replay agrees.
 
-nixie evaluates no CEL, so a rule with a CEL condition fails closed: an allow with one covers no
-call, and an ask or a deny with one catches on its other fields alone.
+A rule with a `cel` condition matches only when its other fields match and the condition is true. A
+condition that errors makes an allow cover nothing and an ask catch the call, and a deny that errors
+makes the call ask, as [rule conditions](rule-conditions.md#evaluating-a-condition) describes.
 
 ## Evaluation
 
@@ -101,8 +107,7 @@ Each rule renders as one sentence from a fixed template per field, such as "**Al
 when every destination matches `sam@example.com`." The outcome leads the sentence, the tools or "a
 call" follow it, and each other field adds a condition after "when". A `task.start` variant renders
 in words, so `task.start/sandbox` reads "starting a task in sandbox". The sentence for a rule with a
-CEL condition says how the rule fails closed: an allow reads "**Allow** no call", and an ask or a
-deny ends "whatever the CEL condition". The note stays out of the sentence, so the user's words
+condition ends "when its condition holds". The note stays out of the sentence, so the user's words
 never mix with the rule's.
 
 ## The widening check
@@ -126,10 +131,13 @@ one, and widens otherwise. A looser outcome widens.
 
 The check never reports a widening as a narrowing. When the check tests whether pattern A lies
 inside pattern B, a wildcard in A counts as covered only by a wildcard in B, so the check returns
-"not inside" for a pair it cannot prove. Every edit to a rule with a CEL condition widens, because
-the check cannot read CEL. For a change made inside nixie, a wrong answer therefore costs a prompt
-or a refusal, and never access. A seed applies every edit whatever its class, as
-[rules in force](#rules-in-force) describes.
+"not inside" for a pair it cannot prove. An edit that adds, removes or changes a condition widens,
+because the check cannot read CEL and cannot tell whether the new condition is looser than the old
+one. An edit that keeps the condition text and the outcome is classed by the other fields, because
+the same condition holds on both sides. Dropping a destination pattern narrows an allow, which then
+covers fewer calls, and widens an ask or a deny, which then catches fewer calls. For a change made
+inside nixie, a wrong answer therefore costs a prompt or a refusal and gives no access. A seed
+applies every edit whatever its class, as [rules in force](#rules-in-force) describes.
 
 ## Rules in force
 
@@ -157,7 +165,7 @@ A widening that starts inside nixie asks the user first. Always allow on an appr
 device calls that change a rule refuse a widening, as
 [narrowing a rule from the client](#narrowing-a-rule-from-the-client) describes.
 
-Trusting the repo has 3 consequences:
+Because the seed trusts the repo:
 
 - A budget raise or a lift rule from the repo goes in force with no
   [passkey check](passkeys.md#which-answers-take-the-passkey). The same change made inside nixie
@@ -180,16 +188,15 @@ moved since:
   repo's version retires the runtime change and applies the definitions' version as seeded, with no
   widening check, because the user chose it. The rule store writes a record of each choice.
 
-A seed of the definitions in force reads the snapshot already in force, with no read of the repo. A
-runtime change, an approved proposal and a resolved conflict each take effect at once through one,
-as [skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote) do. Each rule has a
+A seed of the definitions in force skips the repo and reads the snapshot already in force. A runtime
+change, an approved proposal and a resolved conflict each take effect at once through one, as
+[skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote) do. Each rule has a
 revision, which goes up by one each time its version in force changes, and a decision names the rule
 and the revision that decided it. A log reset keeps the rule store, and the seed after the reset
 restores the rules of the snapshot in force, as [seeding](../core/definitions.md#seeding) describes.
 
 The [snapshot hash](../core/definitions.md#the-snapshot-hash) covers each rule in force with its
-revision, its origin and its runtime change, so each snapshot holds the revision of every rule in
-force.
+revision, its origin and its runtime change.
 
 ## Proposed rules
 

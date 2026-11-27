@@ -53,7 +53,7 @@ function buildHandoverTool(options: ComputerToolOptions): ToolDefinition {
       effects: ['note'],
       destinations: [],
       amount: null,
-      content: [],
+      content: ['reason'],
       results: { asked: 'owner_data', refused: 'untrusted' },
     },
     execution: 'direct',

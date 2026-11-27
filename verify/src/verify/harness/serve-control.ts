@@ -17,6 +17,7 @@ export interface ControlHandlers {
   ) => Promise<number>;
 
   readonly approveHeldMcp: (label: McpApprovalLabel) => Promise<number>;
+  readonly approveHeldMandate: () => Promise<number>;
 
   readonly runCallStep: (
     call: z.output<typeof controlRoutes.callStep.input>,
@@ -97,6 +98,11 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       [controlRoutes.approveHeldMcp.path]: {
         POST: makeRouteHandler(controlRoutes.approveHeldMcp, async (approval) => ({
           approved: await handlers.approveHeldMcp(approval.label),
+        })),
+      },
+      [controlRoutes.approveHeldMandate.path]: {
+        POST: makeRouteHandler(controlRoutes.approveHeldMandate, async () => ({
+          approved: await handlers.approveHeldMandate(),
         })),
       },
       [controlRoutes.layoutOnDevice.path]: {

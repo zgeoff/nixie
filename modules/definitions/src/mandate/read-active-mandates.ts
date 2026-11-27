@@ -1,6 +1,8 @@
-import { parseRule, renderRule } from '@heynixie/policy';
+import { describeCondition, parseRule, renderRule } from '@heynixie/policy';
+import type { RuleCondition } from '@heynixie/policy';
 import type { Kysely } from 'kysely';
 import type { DefinitionsTables } from '../types';
+import { pickNoteAuthor } from './pick-note-author';
 
 export interface ActiveMandate {
   readonly mandateID: string;
@@ -9,13 +11,20 @@ export interface ActiveMandate {
   // milliseconds since the epoch
   readonly expires: number;
   readonly changeIDs: readonly string[];
-  readonly rules: readonly { readonly ruleID: string; readonly sentence: string }[];
+  readonly rules: readonly {
+    readonly ruleID: string;
+    readonly sentence: string;
+    readonly condition?: RuleCondition;
+  }[];
 }
 
 // A mandate is active while a runtime change that its ID names is in force. A rule with the same
 // field in your definitions is an ordinary seeded rule, because only a mandate's own rules take
 // the mandate ID and a number as their ID.
-export async function readActiveMandates(db: Kysely<unknown>): Promise<readonly ActiveMandate[]> {
+export async function readActiveMandates(
+  db: Kysely<unknown>,
+  authors: ReadonlyMap<string, 'you' | 'nixie'> = new Map(),
+): Promise<readonly ActiveMandate[]> {
   const rows = await db
     .$extendTables<DefinitionsTables>()
     .selectFrom('runtime_rules')
@@ -45,11 +54,20 @@ export async function readActiveMandates(db: Kysely<unknown>): Promise<readonly 
       rules: [],
     };
 
+    const condition = describeCondition(rule, pickNoteAuthor(rule, authors));
+
     mandates.set(rule.mandate, {
       ...found,
       startedAt: Math.min(found.startedAt, row.changed_at),
       changeIDs: [...found.changeIDs, row.change_id],
-      rules: [...found.rules, { ruleID: rule.id, sentence: renderRule(rule) }],
+      rules: [
+        ...found.rules,
+        {
+          ruleID: rule.id,
+          sentence: renderRule(rule),
+          ...(condition === undefined ? {} : { condition }),
+        },
+      ],
     });
   }
 

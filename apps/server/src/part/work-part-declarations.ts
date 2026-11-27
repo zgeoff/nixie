@@ -471,6 +471,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           calls: parts.apiContext.calls,
           mail: reader.get('context').mail?.memory ?? null,
           notebook: reader.get('notebook'),
+          runInForceSeed: () => runInForceSeedAndWake(parts, null),
         });
 
         registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));

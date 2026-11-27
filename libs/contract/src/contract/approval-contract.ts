@@ -6,6 +6,7 @@ import { memoryProposalSchema } from './memory-view-contract';
 import { noPasskeyError } from './no-passkey-error';
 import { passkeyFailedError } from './passkey-failed-error';
 import { reusedIDErrors } from './reused-id-errors';
+import { conditionErrorSchema, ruleConditionSchema } from './rule-condition-schema';
 import { signedIn } from './signed-in';
 
 const stateSchema = z.enum(['pending', 'deferred', 'approved', 'declined', 'lapsed', 'withdrawn']);
@@ -47,10 +48,19 @@ const proposalPackageSchema = z.object({
   integrity: z.string(),
 });
 
+const cardConditionSchema = ruleConditionSchema.extend({ rule: z.int().nonnegative() });
+
 const bodySchema = z.object({
   sentence: z.string(),
   fields: z.record(z.string(), z.string()),
   ruleSentence: z.string().nullable(),
+
+  // the condition of each rule that the card proposes, with the note and the words; `rule` is the
+  // rule's place among the rules the card shows
+  ruleConditions: z.array(cardConditionSchema).optional(),
+
+  // each rule whose condition errored on the call, which a call that asks through one shows
+  conditionErrors: z.array(conditionErrorSchema).optional(),
 
   // the IDs of stored images the card shows, such as the photos a draw would send
   images: z.array(z.string()).optional(),

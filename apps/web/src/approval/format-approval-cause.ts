@@ -13,6 +13,7 @@ const causes: Readonly<Record<string, string>> = {
   always_ask: 'this kind of action always asks.',
   ask_rule: 'a rule of yours asks before it.',
   no_rule: 'no rule covers it yet.',
+  condition_error: 'the condition of a rule failed to run, so the call asks.',
   skill_write: 'nixie wants to change one of its skills.',
   proposed_rule: 'you approved this kind of action 3 times, so nixie suggests a rule for it.',
   mandate: 'a mandate lets nixie act on its own until it ends.',

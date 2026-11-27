@@ -2,14 +2,16 @@ import type { PolicyDecision } from '@heynixie/policy';
 import type { MemoryWriteVerdict } from '../types';
 
 // An ask rule on memory_write makes the write a memory proposal, which the memory gate writes, so
-// the call writes no action proposal.
+// the call writes no action proposal. A call with a rule whose condition errored takes the action
+// card instead, because only that card shows the rule ID and the error code.
 export function isMemoryRuleAsk(policy: PolicyDecision): boolean {
   return (
     policy.memoryWrite !== undefined &&
     policy.memoryWrite.holdsAsAction !== true &&
     policy.decision.outcome === 'ask' &&
     policy.decision.cause === 'ask_rule' &&
-    policy.decision.rule !== null
+    policy.decision.rule !== null &&
+    (policy.decision.conditionErrors ?? []).length === 0
   );
 }
 

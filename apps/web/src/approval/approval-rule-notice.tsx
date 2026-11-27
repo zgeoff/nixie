@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { RuleCondition } from '../rule/rule-condition';
 import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
@@ -108,6 +109,7 @@ export function ApprovalRuleNotice(props: ApprovalRuleNoticeProps): ReactNode {
           Undo
         </button>
       </div>
+      {rule.condition === undefined ? null : <RuleCondition condition={rule.condition} />}
       {isEditing ? (
         <fieldset className={field}>
           <legend>Keep these destinations</legend>

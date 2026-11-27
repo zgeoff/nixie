@@ -285,6 +285,9 @@ function toBody(
       ...(extra.status === 'fields' ? extra.fields : {}),
     },
     ruleSentence: erasable.ruleSentence ?? null,
+    ...(payload.conditionErrors === undefined || payload.conditionErrors.length === 0
+      ? {}
+      : { conditionErrors: payload.conditionErrors.map((error) => ({ ...error })) }),
     ...(extra.status === 'fields' && extra.images !== undefined ? { images: extra.images } : {}),
     ...(extra.status === 'fields' && extra.screen !== undefined ? { screen: extra.screen } : {}),
     ...(extra.status === 'fields' && extra.package !== undefined ? { package: extra.package } : {}),

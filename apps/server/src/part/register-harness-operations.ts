@@ -1,5 +1,9 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
-import { runActionProposalAnswer, runMcpProposalAnswer } from '@heynixie/api';
+import {
+  runActionProposalAnswer,
+  runMandateProposalAnswer,
+  runMcpProposalAnswer,
+} from '@heynixie/api';
 import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
@@ -14,16 +18,17 @@ import invariant from 'tiny-invariant';
 import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
 import { harnessSpeech } from './harness-speech';
 
-export interface HarnessHosts {
+export interface HarnessParts {
   readonly calls: CallsContext | undefined;
   readonly mail: MemoryMailHost | null;
   readonly notebook: NotebookStore;
+  readonly runInForceSeed: () => Promise<unknown>;
 }
 
 export function registerHarnessOperations(
   link: HarnessLink,
   context: TasksContext,
-  hosts: HarnessHosts,
+  parts: HarnessParts,
 ): void {
   const schemas = buildNixieOperationSchemas();
 
@@ -66,14 +71,14 @@ export function registerHarnessOperations(
     return outcome.status === 'controlled' ? outcome.sequence : null;
   });
 
-  registerCallOperations(link, hosts.calls);
+  registerCallOperations(link, parts.calls);
 
   link.registerOperation('deliverMail', schemas.deliverMail, (incoming) => {
-    if (hosts.mail === null) {
+    if (parts.mail === null) {
       throw new Error('the config sets no mail section, so the test build has no mailbox');
     }
 
-    return hosts.mail.deliver(incoming).hostMessageID;
+    return parts.mail.deliver(incoming).hostMessageID;
   });
 
   // The owner's approval of each pending device.addPackage call, which a journey cannot give with a
@@ -120,14 +125,14 @@ export function registerHarnessOperations(
   });
 
   link.registerOperation('forgetNoteBeside', schemas.forgetNoteBeside, async () => {
-    const written = await hosts.notebook.write(
+    const written = await parts.notebook.write(
       { writer: 'conversation', model: 'harness' },
       { title: 'Boiler notes', body: 'The boiler trips after a cold night.' },
     );
 
     invariant(written.status === 'written', 'the harness note was not written');
 
-    const begun = await hosts.notebook.forgetBeside(
+    const begun = await parts.notebook.forgetBeside(
       { note: written.shortID },
       { thread: 'harness' },
     );
@@ -135,6 +140,20 @@ export function registerHarnessOperations(
     invariant(begun.status === 'begun', 'the harness note forget did not begin');
 
     return null;
+  });
+
+  link.registerOperation('approveMandate', schemas.approveMandate, async () => {
+    const answers = await runMandateProposalAnswer(context, parts.runInForceSeed);
+
+    if (answers.refused.length > 0) {
+      throw new Error(`a mandate proposal was refused: ${answers.refused.join(', ')}`);
+    }
+
+    if (answers.approved === 0) {
+      throw new Error('no mandate proposal waits for an answer');
+    }
+
+    return answers.approved;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

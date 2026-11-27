@@ -54,6 +54,7 @@ test('it offers a rule that allows git status and refuses a chained command', ()
     task: null,
     destinations: [],
     sources: [],
+    contentArgs: [],
     at: 0,
   };
 
@@ -72,6 +73,7 @@ function setupTest() {
     context: 'conversation' as const,
     task: null,
     sources: [],
+    contentArgs: [],
     at: 0,
   };
 

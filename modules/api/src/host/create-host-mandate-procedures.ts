@@ -2,6 +2,7 @@
 import type { RuleContext } from '@heynixie/definitions';
 import {
   readActiveMandates,
+  readMandateAuthors,
   readMandateEndReason,
   readMandateTitles,
   runMandateEnd,
@@ -14,7 +15,8 @@ export function createHostMandateProcedures(context: RuleContext) {
 
   return {
     list: mandates.list.handler(async () => {
-      const active = await readActiveMandates(context.log.writer.db);
+      const authors = await readMandateAuthors(context.log);
+      const active = await readActiveMandates(context.log.writer.db, authors);
 
       const titles = await readMandateTitles(
         context.log,

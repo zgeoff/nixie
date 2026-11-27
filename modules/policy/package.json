@@ -16,6 +16,7 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/proposals": "workspace:*",
+    "@marcbachmann/cel-js": "catalog:",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
@@ -23,6 +24,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@zgeoff/testing": "catalog:",
     "ajv": "catalog:",
     "fast-check": "catalog:"
   }

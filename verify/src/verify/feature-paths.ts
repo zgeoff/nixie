@@ -54,6 +54,7 @@ export const featurePaths = {
   'chat-turn': [...everyJourney],
   'memory-approval': [...everyJourney],
   'policy-proposal': [...everyJourney],
+  'rule-condition': [...everyJourney],
   'task-control': [...everyJourney],
   'coding-session': [...everyJourney],
   'coding-supervision': [...codingSupervisionPaths],

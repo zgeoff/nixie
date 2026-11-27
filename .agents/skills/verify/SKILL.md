@@ -13,10 +13,9 @@ metadata:
 
 Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
-[Check a change](#check-a-change). You are done once the report is published and the run is ended.
-Hand back the PR link and each feature you could not verify, as the **Reply** line at the end says.
-Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
-description.
+[Check a change](#check-a-change). You are done once you have published the report, ended the run
+and given the **Reply** at the end. Leave `bun verify gate` to CI: it fails a PR that changes a
+feature with no verdict in its description.
 
 These cost the most time:
 
@@ -53,6 +52,7 @@ These cost the most time:
 | chat-turn          | Send a message, and see the reply after it                        | [references/feature-chat-turn.md](references/feature-chat-turn.md)                   |
 | memory-approval    | Approve a proposed memory                                         | [references/feature-memory-approval.md](references/feature-memory-approval.md)       |
 | policy-proposal    | Approve a call that an ask rule held unrun                        | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
+| rule-condition     | Approve a rule with a condition, and see it match                 | [references/feature-rule-condition.md](references/feature-rule-condition.md)         |
 | task-control       | Pause and resume a task                                           | [references/feature-task-control.md](references/feature-task-control.md)             |
 | coding-session     | Start a coding session from chat                                  | [references/feature-coding-session.md](references/feature-coding-session.md)         |
 | coding-supervision | Supervise a coding session from the live view                     | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |
@@ -134,8 +134,8 @@ command passed. It holds `<command> ok=<true|false>`, then `error.code` and `err
 
 Read `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure.
 `evidence` lists the files the command kept, under `.wringer/`. `truncatedPath` names the file that
-holds `data` when it was too large to print. When a command fails, do what its row in
-[Exit codes](references/exit-codes.md) says.
+holds `data` when it was too large to print. When a command fails, follow its row in
+[Exit codes](references/exit-codes.md).
 
 ## Targets
 

@@ -23,6 +23,9 @@ export interface ActionProposalFacts {
   readonly expectWindow?: JSONObject | undefined;
   readonly effects: readonly Effect[];
   readonly cause: AskCause;
+
+  // the rules whose condition errored on the call, which the card shows with their codes
+  readonly conditionErrors?: readonly { ruleID: string; revision: number; code: string }[];
   readonly input: JSONObject;
   readonly destinations: readonly CallDestination[];
 
@@ -106,7 +109,9 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
     definitions: facts.definitions,
     thread: facts.thread,
     parent: facts.callSequence,
-    promptCause: facts.cause,
+
+    // the record column keeps six causes, so the cause condition_error stores as ask_rule
+    promptCause: facts.cause === 'condition_error' ? 'ask_rule' : facts.cause,
     payload: actionProposedCodec.encode({
       proposalID,
       shortID,
@@ -125,6 +130,9 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
         : { expectWindow: JSON.stringify(facts.expectWindow) }),
       ...(facts.stepKey === undefined ? {} : { stepKey: facts.stepKey }),
       ...(facts.budgetReached === undefined ? {} : { budgetReached: facts.budgetReached }),
+      ...(facts.conditionErrors === undefined || facts.conditionErrors.length === 0
+        ? {}
+        : { conditionErrors: facts.conditionErrors.map((error) => ({ ...error })) }),
       ...(facts.deadlineAt === undefined || facts.deadlineAt === null
         ? {}
         : { deadlineAt: facts.deadlineAt }),

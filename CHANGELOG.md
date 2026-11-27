@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.123.0](https://github.com/zgeoff/nixie/compare/v0.122.0...v0.123.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** the first seed refuses a rules file that holds a rule with a `cel` key and no `note`. Add a note that says what the condition means before you upgrade.
+* **server:** switch google by config ([#1529](https://github.com/zgeoff/nixie/issues/1529))
+
+### Features
+
+* **coding:** show a supervised session in the live view ([#1523](https://github.com/zgeoff/nixie/issues/1523)) ([0f23146](https://github.com/zgeoff/nixie/commit/0f23146d3cb241a449f82175f19f9abe005cd80b))
+* **memory:** forget memory items through the erasure runner ([#1528](https://github.com/zgeoff/nixie/issues/1528)) ([f24c690](https://github.com/zgeoff/nixie/commit/f24c69056638752c76c04974c34bcc415cb07f09))
+* **policy:** match rules on condition expressions ([#1525](https://github.com/zgeoff/nixie/issues/1525)) ([63f4ecf](https://github.com/zgeoff/nixie/commit/63f4ecf21754071bc900cbbed5abdbf53f0491a2))
+* **prompt:** say the owner can interrupt a turn ([#1527](https://github.com/zgeoff/nixie/issues/1527)) ([9062be3](https://github.com/zgeoff/nixie/commit/9062be3315690702a16c22063aa68c8ffb841540))
+* **server:** switch google by config ([#1529](https://github.com/zgeoff/nixie/issues/1529)) ([872c801](https://github.com/zgeoff/nixie/commit/872c8015a2802e7eb1af85c0d5a442d6808545b2))
+
+
+### Bug Fixes
+
+* **server:** test the queue-check wait without spawning nixie twice ([#1524](https://github.com/zgeoff/nixie/issues/1524)) ([e2f93e5](https://github.com/zgeoff/nixie/commit/e2f93e50637629ea0e8dbb29833764e8cb6e6b50))
+* **verify:** finish the turn after a policy approval ([#1530](https://github.com/zgeoff/nixie/issues/1530)) ([1062e06](https://github.com/zgeoff/nixie/commit/1062e06b7ec72dafdde429a03e60b4b01c2e52dc))
+
 ## [0.122.0](https://github.com/zgeoff/nixie/compare/v0.121.0...v0.122.0) (2026-11-27)
 
 

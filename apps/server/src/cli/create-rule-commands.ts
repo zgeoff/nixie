@@ -1,5 +1,6 @@
 import invariant from 'tiny-invariant';
 import type { CLIFlags, CLIIO, Command, HostTransport } from '../types';
+import { toCLIListing } from './to-cli-listing';
 
 export function createRuleCommands(host: HostTransport): readonly (readonly [string, Command])[] {
   return [
@@ -19,7 +20,7 @@ async function runRulesList(host: HostTransport, flags: CLIFlags, io: CLIIO): Pr
     client.rules.list(),
   );
 
-  io.print(JSON.stringify(listed));
+  io.print(JSON.stringify(toCLIListing(listed)));
 
   return 0;
 }
@@ -31,7 +32,7 @@ async function runRuleConflicts(host: HostTransport, flags: CLIFlags, io: CLIIO)
     client.rules.conflicts(),
   );
 
-  io.print(JSON.stringify(conflicts));
+  io.print(JSON.stringify(toCLIListing(conflicts)));
 
   return 0;
 }
@@ -67,7 +68,7 @@ async function runProposalsList(host: HostTransport, flags: CLIFlags, io: CLIIO)
 
   const entries = [...pending.rules.map(toRuleEntry), ...pending.actions.map(toActionEntry)];
 
-  io.print(JSON.stringify(entries));
+  io.print(JSON.stringify(toCLIListing(entries)));
 
   return 0;
 }

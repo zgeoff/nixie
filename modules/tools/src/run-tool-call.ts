@@ -20,6 +20,7 @@ import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
 import type { PaidState } from './paid/try-prepare-paid-call';
 import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
 import type { PaidGate } from './paid/types';
+import { buildConditionNotice } from './policy-call/build-condition-notice';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { pickVariant } from './policy-call/pick-variant';
@@ -266,7 +267,12 @@ export async function runToolCall(
 
   const recorded = await recorder.writeSettled(written.sequence, settled);
 
-  return toCallToolResult(recorded.settled);
+  const result = toCallToolResult(recorded.settled);
+  const notice = buildConditionNotice(policy.decision.conditionErrors ?? []);
+
+  return notice === null
+    ? result
+    : { ...result, content: [...result.content, { type: 'text', text: notice }] };
 }
 
 // A refusal is nixie's own sentence, so it reaches the model as plain error text.

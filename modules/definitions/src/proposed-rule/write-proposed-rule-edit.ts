@@ -3,6 +3,7 @@ import type { ProposalContext, SharedProposalState } from '@heynixie/proposals';
 import { readProposal } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import { collectConditionFaults } from '../utils/collect-condition-faults';
 import { readProposalRecords } from '../utils/read-proposal-records';
 import { ruleProposedCodec } from './rule-proposed-codec';
 import { withdrawRuleProposal } from './withdraw-rule-proposal';
@@ -53,6 +54,14 @@ export async function writeProposedRuleEdit(
 
   if (parsed.data.outcome !== 'allow') {
     return { status: 'invalid', faults: ['outcome: an edited rule stays an allow rule'] };
+  }
+
+  const conditionFaults = collectConditionFaults([parsed.data]).map((fault) =>
+    fault.replace(/^rules\.1\./u, ''),
+  );
+
+  if (conditionFaults.length > 0) {
+    return { status: 'invalid', faults: conditionFaults };
   }
 
   const records = await readProposalRecords(context.log, tx, [row]);
