@@ -8,6 +8,7 @@ import { readPhoneSection } from './read-phone-section';
 function setupTest() {
   return {
     startNixie: startInProcessNixie,
+    parseSection: (input: unknown) => phoneSectionSchema.safeParse(input),
     readFrom: (settings: Readonly<Record<string, string>>) => {
       const file: SecretsFile = {
         deployment_key: 'not-a-real-key',
@@ -150,7 +151,9 @@ test('it refuses a settings entry that is no number, without quoting the entry',
 });
 
 test('it refuses a number that is neither a number nor a reference', () => {
-  const result = phoneSectionSchema.safeParse({
+  const ctx = setupTest();
+
+  const result = ctx.parseSection({
     number: 'phone_number',
     twilio: {
       account_sid: 'AC00000000000000000000000000000000',
