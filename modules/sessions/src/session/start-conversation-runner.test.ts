@@ -2339,7 +2339,7 @@ test('it ends a cleanup that waits on a stalled turn when the shutdown begins', 
 
   runner.stopCleanups();
 
-  await expect(cleanup).rejects.toThrow('nixie is stopping');
+  expect(cleanup).rejects.toThrow('nixie is stopping');
 
   stalled.resolve();
 
@@ -2567,7 +2567,7 @@ test('it answers a message that landed before the kept reply but was not read, a
     ctx.readKinds('model.reply'),
   ]);
 
-  expect(replies).toSatisfyAll((reply) => reply.sequence > secondSequence);
+  expect(replies.at(0)?.sequence).toBeGreaterThan(secondSequence);
   expect(replies).toHaveLength(1);
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'A biscuit, yes.' })));

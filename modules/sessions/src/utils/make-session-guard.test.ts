@@ -204,7 +204,7 @@ test('it rejects a cleanup that waits on a turn that never ends once the shutdow
 
   shutdown.abort(new Error('nixie is stopping'));
 
-  await expect(cleanup).rejects.toThrow('nixie is stopping');
+  expect(cleanup).rejects.toThrow('nixie is stopping');
 
   held.resolve();
 
@@ -227,8 +227,8 @@ test('it lets a turn that waits behind a stalled cleanup go once the shutdown be
 
   shutdown.abort(new Error('nixie is stopping'));
 
-  await expect(later).rejects.toThrow('nixie is stopping');
-  await expect(cleanup).rejects.toThrow('nixie is stopping');
+  expect(later).rejects.toThrow('nixie is stopping');
+  expect(cleanup).rejects.toThrow('nixie is stopping');
 
   held.resolve();
 
@@ -251,5 +251,5 @@ test('it rejects a cleanup whose own work never ends once the shutdown begins', 
 
   shutdown.abort(new Error('nixie is stopping'));
 
-  await expect(cleanup).rejects.toThrow('nixie is stopping');
+  expect(cleanup).rejects.toThrow('nixie is stopping');
 });
