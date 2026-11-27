@@ -152,8 +152,10 @@ cleanup invalidates the session
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). Each
 turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
 resumes no session when a newer invalidation exists, so a step that commits after an invalidation it
-never saw leaves the session invalid. When the guest instead reports the session lost, the step runs
-the turn again on a new session. A persona change invalidates the session as well, because the
+never saw leaves the session invalid. A cleanup that aborts a turn leaves the reply the turn
+recorded, and the rerun does not answer that message again; a shutdown ends each wait of a cleanup
+([voided replies](#records-of-a-turn)). When the guest instead reports the session lost, the step
+runs the turn again on a new session. A persona change invalidates the session as well, because the
 persona sits in the system prompt that a resumed session keeps. The session-opened record keeps the
 persona hash and the policy hash in force at the opening, and the step resumes the session only
 while its persona hash matches the persona in force. A change to the policy alone keeps the session
