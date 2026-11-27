@@ -43,11 +43,14 @@ the answer to every request and GPT-Live speaks it.
   accepted cost of Claude writing the answers.
 - A call costs $0.05 for each minute GPT-Live is active, plus nixie's Claude turns, at OpenAI's
   [GPT-Live model page](https://developers.openai.com/api/docs/models/gpt-live-1).
-- GPT-Live runs in the US and the EU only, and OpenAI does not serve Hong Kong. A deployment whose
-  host sits where OpenAI does not serve gets no voice calls.
+- GPT-Live works from a host in Australia: the
+  [sideband spike](../../research/gpt-live-sideband/results.md) ran its sessions from there. A list
+  of regions on OpenAI's pages may not match where GPT-Live works. A host that OpenAI refuses gets
+  no voice calls.
 
 ## Changes
 
+- 2026-11-27: The region risk follows the sideband spike, whose sessions worked from Australia.
 - 2026-11-25: The 30-day abuse-monitoring retention is added, after the
   [sideband spike](../../research/gpt-live-sideband/results.md).
 - 2026-11-25: The cost comparison follows the providers' price pages, and the region risk is added.

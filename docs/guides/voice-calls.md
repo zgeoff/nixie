@@ -8,8 +8,8 @@ so until it ships, only the API starts a call.
 
 ## Before you start
 
-- An OpenAI API key with access to GPT-Live. OpenAI serves GPT-Live in the US and the EU only, so a
-  host elsewhere gets no calls.
+- An OpenAI API key with access to GPT-Live. GPT-Live works from a host in Australia, and a list of
+  regions on OpenAI's pages may not match where it works. A host that OpenAI refuses gets no calls.
 - Your audio goes to OpenAI. OpenAI keeps each call for 30 days for abuse monitoring, as
   [decision 0014](../decisions/0014-voice-pipeline.md#consequences) says.
 - A checkout of your definitions repo whose `nixie.yaml` holds `format: 5`.
