@@ -59,39 +59,6 @@ test('it keeps the leases and the tasks that each start swept', async () => {
   ]);
 });
 
-test('it waits for the queue check of the latest start, not an earlier one', async () => {
-  const nixie = await startSpawnedNixie();
-
-  const first = nixie.harness.start();
-
-  await first.ready;
-
-  await nixie.waitForQueueCheck();
-  await first.kill();
-
-  const second = nixie.harness.start([{ point: 'claim.after', kind: 'action' }]);
-
-  await second.ready;
-
-  const checked = (async () => {
-    await nixie.waitForQueueCheck();
-
-    return nixie.readRecords();
-  })();
-
-  const arrival = await second.waitForArrival('claim.after');
-
-  second.release(arrival);
-
-  const records = await checked;
-
-  expect(
-    records
-      .filter((record) => record.kind === 'action.outcome' && record.thread === 'queue-check')
-      .map((record) => record.payload['status']),
-  ).toStrictEqual(['done', 'done']);
-});
-
 test('it removes its directory once the test finishes', async () => {
   const nixie = await startSpawnedNixie();
 

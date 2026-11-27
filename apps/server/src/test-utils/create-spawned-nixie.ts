@@ -43,6 +43,7 @@ import { readTestRecords } from './read-test-records';
 import { runHostCommand } from './run-host-command';
 import type { AdvanceSteps, MatchRecord, SweptState, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
+import { waitForQueueCheck } from './wait-for-queue-check';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
@@ -294,7 +295,7 @@ export async function createSpawnedNixie(
     markKnownContact: async (destination) => {
       await runHostCommand(files.configPath, ['contacts', 'mark-known', destination]);
     },
-    waitForQueueCheck: () => waitForQueueCheck(reader.readRecords),
+    waitForQueueCheck: () => waitForQueueCheck(reader.readRecords, recordTimeoutMs),
     waitForModelCalls: (count) => waitForModelCalls(doubles.model, count),
     ...buildAdvanceHelpers(harness, reader.readRecords),
     readDataFiles: () => readDataFiles(files.dataDir),
@@ -596,29 +597,6 @@ function writeReleaseManifest(files: BootFiles, imageKeys: readonly string[]): B
   writeFileSync(manifestPath, JSON.stringify(Object.fromEntries(kept)));
 
   return { ...files, manifestPath };
-}
-
-// Each start of nixie checks its action queue with an action of its own, which reaches every
-// action fault point, so a test arms those points once this check is done.
-async function waitForQueueCheck(readRecords: SpawnedNixie['readRecords']): Promise<void> {
-  await waitForCondition(
-    async () => {
-      const records = await readRecords();
-
-      const started = records.findLast((record) => record.kind === 'server.started');
-
-      return (
-        started !== undefined &&
-        records.some(
-          (record) =>
-            record.sequence > started.sequence &&
-            record.kind === 'action.outcome' &&
-            record.thread === 'queue-check',
-        )
-      );
-    },
-    { timeoutMs: recordTimeoutMs },
-  );
 }
 
 async function waitForModelCalls(model: ScriptedModel, count: number): Promise<void> {
