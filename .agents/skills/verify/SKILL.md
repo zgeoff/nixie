@@ -70,6 +70,7 @@ These cost the most time:
 | computer-screen    | Click a point of the assistant's desktop                          | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
 | computer-watch     | Watch the assistant's desktop                                     | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
 | computer-off       | See that a nixie with no computer offers none                     | [references/feature-computer-off.md](references/feature-computer-off.md)             |
+| trusted-places     | Trust a site once                                                 | [references/feature-trusted-places.md](references/feature-trusted-places.md)         |
 | spend-routes       | Read each route's counts                                          | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
 | device-in-browser  | Open the browser's own device full screen                         | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
 | device-view        | Open the browser's own device                                     | [references/feature-device-view.md](references/feature-device-view.md)               |
@@ -149,7 +150,7 @@ neither runs on the registry's first target.
 
 <!-- repo: targets -->
 
-Read [Targets](references/targets.md) for start commands and access.
+[Targets](references/targets.md) lists start commands.
 
 <!-- /repo -->
 
@@ -165,8 +166,7 @@ target refuses each `[write]` command except `publish`, which writes no app data
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
-  snapshot.
+- `browser type` and `browser click` take `--role` with `--name`, or `--ref`.
 
 <!-- /repo -->
 
@@ -175,8 +175,8 @@ target refuses each `[write]` command except `publish`, which writes no app data
 <!-- repo: registry -->
 
 Declare targets, actions, commands, checks and features in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts), and their globs
-in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts), with globs in
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 <!-- /repo -->
 

@@ -203,6 +203,12 @@ export const controlRoutes = {
     input: z.strictObject({}),
     output: z.strictObject({ approved: z.int().positive() }),
   },
+  trustSite: {
+    method: 'POST',
+    path: '/control/trust-site',
+    input: z.strictObject({ domain: z.string().min(1) }),
+    output: z.strictObject({ place: z.string().min(1) }),
+  },
   advanceClock: {
     method: 'POST',
     path: '/control/advance-clock',
@@ -217,6 +223,7 @@ export const controlRoutes = {
         'browser',
         'browser-navigate',
         'browser-two-tabs',
+        'fetch-and-open',
         'shell',
         'shell-processes',
         'screen',

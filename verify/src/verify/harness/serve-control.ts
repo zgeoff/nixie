@@ -19,6 +19,9 @@ export interface ControlHandlers {
   readonly approveHeldMcp: (label: McpApprovalLabel) => Promise<number>;
   readonly approveHeldMandate: () => Promise<number>;
 
+  // adds the site to the directory at read, and returns the short ID of its entry
+  readonly trustSite: (domain: string) => Promise<string>;
+
   readonly runCallStep: (
     call: z.output<typeof controlRoutes.callStep.input>,
   ) => Promise<z.input<typeof controlRoutes.callStep.output>>;
@@ -136,6 +139,11 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.gmailRequests.path]: {
         GET: makeRouteHandler(controlRoutes.gmailRequests, () => handlers.readGmailRequests()),
+      },
+      [controlRoutes.trustSite.path]: {
+        POST: makeRouteHandler(controlRoutes.trustSite, async (site) => ({
+          place: await handlers.trustSite(site.domain),
+        })),
       },
       [controlRoutes.useComputer.path]: {
         POST: makeRouteHandler(controlRoutes.useComputer, async (use) => ({

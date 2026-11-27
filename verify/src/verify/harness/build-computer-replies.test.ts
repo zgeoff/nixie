@@ -71,3 +71,21 @@ test('it queues the 2 opens and the reply for the browser-two-tabs kind', () => 
     { text: 'I opened 2 tabs.' },
   ]);
 });
+
+test('it queues the fetch, the open and the reply for the fetch-and-open kind', () => {
+  const replies = buildComputerReplies(
+    { kind: 'fetch-and-open', text: 'I fetched and opened it.' },
+    'http://pages.test:4000/',
+  );
+
+  expect(replies).toStrictEqual([
+    { toolUse: { name: 'mcp__nixie__web_fetch', input: { url: 'http://pages.test:4000/' } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__computer_browser_open',
+        input: { url: 'http://pages.test:4000/' },
+      },
+    },
+    { text: 'I fetched and opened it.' },
+  ]);
+});
