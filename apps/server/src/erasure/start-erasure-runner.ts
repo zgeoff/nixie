@@ -3,6 +3,7 @@ import type { CodeSandboxLister } from '@heynixie/connectors';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import { localDataStorage, makeErasureRunner } from '@heynixie/log';
+import { buildTextErasable, phoneTextErasableDescriptor } from '@heynixie/phone';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -32,7 +33,7 @@ export function startErasureRunner(
   const conversation = reader.get('conversation_imp');
   const tasks = reader.get('sandbox_runner');
 
-  return makeErasureRunner({
+  const runner = makeErasureRunner({
     log: parts.context.log,
     definitions: parts.context.definitions,
     effects: {
@@ -73,4 +74,10 @@ export function startErasureRunner(
           : Promise.resolve(),
     },
   });
+
+  // Registered whether or not the phone is on, because a forget of a text that a crash cut short
+  // finishes at the next start, and the entry reads only the log.
+  runner.register({ ...phoneTextErasableDescriptor, ...buildTextErasable() });
+
+  return runner;
 }

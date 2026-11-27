@@ -10,6 +10,7 @@ import { resolveDefinitionsExport } from '../definition/resolve-definitions-expo
 import { readDeploymentConfig } from '../deployment/read-deployment-config';
 import { listImageNeeds } from '../part/list-image-needs';
 import { serverPartDeclarations } from '../part/server-part-declarations';
+import { createPhoneInputs } from '../phone/create-phone-inputs';
 import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
 import { pickNeededImages } from '../sandbox/pick-needed-images';
 import { resolveSandboxSettings } from '../sandbox/resolve-sandbox-settings';
@@ -29,6 +30,7 @@ export type ServerInputs = Pick<
   | 'sandbox'
   | 'definitionsExport'
   | 'search'
+  | 'phone'
   | 'imageSettings'
   | 'spend'
   | 'log'
@@ -76,6 +78,14 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
   });
 
   const search = createSearchSettings(loaded.search, credentials);
+
+  const phone = createPhoneInputs(loaded.phone, {
+    credentials,
+    wake: loaded.wake_rules,
+    isFaked: options.harness !== undefined,
+    now: () => Date.now(),
+  });
+
   const imageSettings = createImageSettings(loaded.images, credentials);
 
   const spend = createSpendInputs(loaded.spendStop, credentials, {
@@ -99,6 +109,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     sandbox,
     definitionsExport,
     search,
+    phone,
     imageSettings,
     spend,
     log,

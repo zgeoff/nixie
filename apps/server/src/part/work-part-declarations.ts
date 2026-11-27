@@ -151,6 +151,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'trigger_sources',
     needs: ['server_parts', 'context', 'conversation_task', 'reminder_moves'],
+    uses: ['phone'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const writer = parts.context.log.writer;
@@ -165,6 +166,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const coding = reader.get('context').coding;
       const mail = reader.get('context').mail;
       const mailContext = buildServerMailContext(mail, parts.context, parts.log);
+      const phone = reader.find('phone') ?? null;
       const core = buildTriggerCore(parts);
 
       const sources = await startTriggerSources(
@@ -174,6 +176,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           ...(mail === null || mailContext === null
             ? []
             : [buildMailSource(mailContext, mail.host)]),
+          ...(phone === null ? [] : [phone.source]),
         ],
         core,
       );
@@ -182,7 +185,10 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       // the held matches of a wake rule wake their target here, once a rule's window is over
       const flush = startWakeFlush(core, {
-        liveSources: parts.config.google === undefined ? [] : [gmailSourceID],
+        liveSources: [
+          ...(parts.config.google === undefined ? [] : [gmailSourceID]),
+          ...(phone === null ? [] : [phone.source.id]),
+        ],
       });
 
       await parts.cleanup.defer(() => flush.stop());
@@ -441,7 +447,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'ready',
     needs: ['inputs', 'context', 'server_parts', 'seed_poll', 'notebook', 'erasure'],
-    uses: ['takeover_restart', 'connections', 'gmail_source'],
+    uses: ['takeover_restart', 'connections', 'gmail_source', 'phone'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 
@@ -462,6 +468,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         registerHarnessOperations(harness.link, parts.context, {
           calls: parts.apiContext.calls,
           mail: reader.get('context').mail?.memory ?? null,
+          phone: reader.find('phone')?.fake ?? null,
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
         });
 

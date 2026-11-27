@@ -270,6 +270,8 @@
         "@heynixie/models": "workspace:*",
         "@heynixie/notebook": "workspace:*",
         "@heynixie/ops": "workspace:*",
+        "@heynixie/phone": "workspace:*",
+        "@heynixie/phone-twilio": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",

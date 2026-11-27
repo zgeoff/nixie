@@ -16,6 +16,8 @@ import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 import { listFeaturesOn } from '../feature/list-features-on';
 import { fillGoogleLists } from '../google/fill-google-lists';
 import { registerServerRecordTopics } from '../part/register-server-record-topics';
+import type { PhoneInputs } from '../phone/create-phone-inputs';
+import { fillPhoneLists } from '../phone/fill-phone-lists';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
 import type { SandboxSettings } from '../sandbox/resolve-sandbox-settings';
@@ -77,6 +79,7 @@ export interface ServerPartsOptions extends ServerOptions {
 
   readonly definitionsExport: DefinitionsExportSettings | null;
   readonly search: SearchSettings | null;
+  readonly phone: PhoneInputs | null;
   readonly imageSettings: ImageSettings | null;
 
   // the gateway that counts every model request, or null when the config sets no spendStop
@@ -95,6 +98,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
 
   fillComputerLists(inputs.config);
   fillGoogleLists(inputs.config);
+  fillPhoneLists(inputs.config);
 
   const cleanup = buildCleanup();
   const encoder = inputs.encoder;
