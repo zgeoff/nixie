@@ -1,4 +1,4 @@
-import { createApprovedAction, failHeldAction } from '@heynixie/actions';
+import { createApprovedAction, failHeldAction, readHeldAction } from '@heynixie/actions';
 import { readMessageTimeZone } from '@heynixie/connectors';
 import {
   makeMandateHandler,
@@ -75,6 +75,7 @@ export function buildProposalCoreDeps(
         ),
       writeThreadRecord,
       queueApproved: (tx, approved) => createApprovedAction(tx, context, approved),
+      readHeldAction: (tx, request) => readHeldAction(tx, context, request),
       failHeld: (tx, row, reason) => failHeldAction(tx, context, { proposalID: row.id, reason }),
       writeRule: async (tx, change) => {
         await writeRuntimeRuleInTransaction(tx, context, {

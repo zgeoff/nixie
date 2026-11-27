@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
 import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
@@ -185,6 +186,15 @@ export async function runVerifyHarness(): Promise<void> {
       ...(gateway === null ? [] : [`atc_token: ${gateway.token}`]),
     ],
   });
+
+  // A start with NIXIE_VERIFY_HOLD_SPAWNS=1 adds a rule that asks before the coding spawn that
+  // follows an approved start, so the spawn waits behind a card of its own.
+  if (gateway !== null && process.env['NIXIE_VERIFY_HOLD_SPAWNS'] === '1') {
+    await writeFile(
+      join(dirname(nixie.configPath), 'definitions', 'rules', 'hold-spawns.yaml'),
+      'ask-coding-spawns:\n  outcome: ask\n  tools: [coding.spawn]\n',
+    );
+  }
 
   // how far the harness moved nixie's clock, which stamps a Gmail mail so it falls after its rule
   const advancedMs = { total: 0 };

@@ -41,12 +41,17 @@ result holds the session's short ID and never the adapter's ID.
 ## Starting and joining
 
 The conversation starts a coding task with `coding.start`, a tool of its own. `task.start` starts
-only sandbox tasks. The Agent SDK's harness drops a tool whose input schema has a `oneOf` at its
-root, so the conversation's model would never see a `task.start` that took both inputs. A start
-names a repo and an optional target; a join names a session by its short ID. The start checks the
-input in code and writes nothing when a check fails. The input must hold exactly one of a repo and a
-session, a repo URL must use https or ssh, a target must be one that the settings list, and a join
-must name no target, agent or model.
+only sandbox tasks, so it has no atc variant. The atc harness is on offer when the config holds a
+`coding.atc` block and the secrets file holds `atc_token`, because the server then builds
+`coding.start` and the coding runner. No probe decides whether `coding.start` is offered, and nixie
+keeps no list of the harnesses a start may use. The Agent SDK's harness drops a tool whose input
+schema has a `oneOf` at its root, so the conversation's model would never see a `task.start` that
+took both inputs.
+
+A start names a repo and an optional target; a join names a session by its short ID. The start
+checks the input in code and writes nothing when a check fails. The input must hold exactly one of a
+repo and a session, a repo URL must use https or ssh, a target must be one that the settings list,
+and a join must name no target, agent or model.
 
 Each start and each join is a call of `coding.start`, with the effect `coding_start`. The starter
 rule `ask-coding-sessions` asks before every one, even one that the user's own message asked for,

@@ -90,6 +90,11 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
           throw error;
         }
 
+        // the host keeps the refusal under this ID, so the next try needs its own
+        if (outcome.status === 'refused' && outcome.reason === 'client_action_id_reused') {
+          last.current = null;
+        }
+
         return outcome;
       }
     },
@@ -131,6 +136,10 @@ function toRefusal(error: unknown): ApprovalOutcome | null {
 
   if (error.code === 'CLOSED') {
     return { status: 'closed' };
+  }
+
+  if (error.code === 'CLIENT_ACTION_ID_REUSED') {
+    return { status: 'refused', reason: 'client_action_id_reused' };
   }
 
   if (error.code === 'NOT_ALLOWED') {

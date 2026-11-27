@@ -12,3 +12,4 @@ export { buildMockLiftedCall } from './build-mock-lifted-call';
 export { startTestBudgetedActions } from './start-test-budgeted-actions';
 export { buildTestActionsContext } from './build-test-actions-context';
 export { claimTestAction } from './claim-test-action';
+export { seedStoredArguments } from './seed-stored-arguments';
