@@ -5,6 +5,7 @@ import type {
   PasskeyGate,
   PasskeyRefusal,
   ProposalCoreDeps,
+  ProposalRefusal,
 } from '@heynixie/proposals';
 import { answerProposal } from '@heynixie/proposals';
 import { z } from 'zod';
@@ -71,6 +72,8 @@ export async function runApprovalAnswer(
         });
       },
     });
+
+    writeRefusalLog(context, answer.proposalID, outcome);
 
     return toRun(outcome);
   } catch (error) {
@@ -143,6 +146,27 @@ function buildAnswerInput(answer: ApprovalAnswer, caller: Identity) {
     identityID: caller.identityID,
     channel: 'browser' as const,
   };
+}
+
+// One line when nixie refuses an answer, so a card that says nothing leaves a reason in the log.
+function writeRefusalLog(context: APIContext, proposalID: string, outcome: AnswerOutcome): void {
+  if (outcome.status !== 'refused') {
+    return;
+  }
+
+  context.logger?.(
+    'approvals.answer_refused',
+    { proposalID, reason: pickRefusalReason(outcome.refusal) },
+    'warn',
+  );
+}
+
+function pickRefusalReason(refusal: ProposalRefusal): string {
+  if (refusal.error === 'NOT_ALLOWED') {
+    return refusal.reason;
+  }
+
+  return refusal.error === 'CLOSED' ? `closed_${refusal.state}` : refusal.error.toLowerCase();
 }
 
 function toRun(outcome: AnswerOutcome): ApprovalRun {

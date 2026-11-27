@@ -78,6 +78,7 @@ async function setupTest() {
 
   return {
     calls,
+    readLogged: () => api.logged,
     readAction: (actionID: string) => readTestAction(api.context.log.writer, actionID),
 
     // a runner queues the call through the real runner queue, and its attempt asks
@@ -120,6 +121,12 @@ async function setupTest() {
       await runNext(call.tool, asks(call));
 
       return queued.actionID;
+    },
+
+    readOpenProposalID: async () => {
+      const listed = await client.approvals.listItems();
+
+      return listed.items.at(0)?.proposal.proposalID;
     },
 
     approveOpenCard: async () => {
@@ -228,4 +235,26 @@ test('#approvals.answerProposal refuses with action_changed when the stored argu
     action: expect.objectContaining({ status: 'pending', is_approved: 0 }),
     calls: [],
   });
+});
+
+test('#approvals.answerProposal logs one line with the proposal and the reason when it refuses an answer', async () => {
+  const ctx = await setupTest();
+
+  await ctx.holdRunnerAction(
+    {
+      tool: 'coding.spawn',
+      effects: ['coding_start'],
+      input: { name: 'Fix the flaky test', brief: 'Find why it fails.' },
+      askedInput: { name: 'Fix the flaky test', brief: 'Something else.' },
+    },
+    ['spawn'],
+  );
+
+  const proposalID = await ctx.readOpenProposalID();
+
+  await ctx.approveOpenCard().catch(() => null);
+
+  expect(ctx.readLogged().map((line) => JSON.parse(line))).toStrictEqual([
+    { event: 'approvals.answer_refused', fields: { proposalID, reason: 'action_changed' } },
+  ]);
 });
