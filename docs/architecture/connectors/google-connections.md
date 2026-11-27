@@ -57,8 +57,9 @@ actions hash their input, and `registerClient` leaves the secret out of that has
 A checked action stores a marker before it runs, and stores its outcome under a `result` key, so an
 outcome with no data still counts as finished. `registerClient`, `setPicker`, `removeClient` and
 `startConsent` commit their outcome in the same transaction as their last write, so a crash never
-leaves a change with no stored outcome. When a `removeClient` removal committed and its record did
-not, a retry finishes the record and answers `ok`.
+leaves a change with no stored outcome. The log record of a `removeClient` removal is written after
+that transaction, so when the removal committed and its log record did not, a retry writes the log
+record and answers `ok`.
 
 ## The consent
 

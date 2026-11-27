@@ -53,19 +53,20 @@ and an origin: `you`, `proposal`, `card`, `seed` or `nixie_own`. The levels are:
 | Level     | Meaning                                                                         |
 | --------- | ------------------------------------------------------------------------------- |
 | `blocked` | every call that declares the place is denied                                    |
-| `known`   | the place passes stage 5, and the rules decide the call                         |
+| `known`   | the place passes [stage 5](decision-point.md#the-stages), and the rules decide  |
 | `read`    | a call with only reading effects is allowed                                     |
 | `act`     | a call with any effect but `spend` is allowed, and each such call is recorded   |
 | `self`    | one of your own addresses, numbers or handles; allows like `act` with no record |
 
 The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted`,
-which goes on the call's thread. Each add, change or removal runs the in-force seed in its own write
-transaction, which puts a definitions snapshot that holds the directory in force. When the seed
-refuses, the whole transaction rolls back and the write is not made. A call decides under the
-snapshot it started with, so a block takes effect for each call that starts after the commit. The
-snapshot lists each entry's level and the record its name came from, so a rename leaves an older
-snapshot's name of an address, phone number, handle or contact as it was. The seed that adds nixie's
-own entries runs the in-force seed itself, once all its entries are in.
+which goes on the call's thread. Each add, change or removal that the user or a tool makes runs the
+in-force seed in its own write transaction, which puts a definitions snapshot that holds the
+directory in force. The definitions seed writes the entries of `places.yaml` inside its own
+snapshot, and the seed of nixie's own entries runs the in-force seed once, after all its entries.
+When the seed refuses, the whole transaction rolls back and the write is not made. A call decides
+under the snapshot it started with, so a block takes effect for each call that starts after the
+commit. The snapshot lists each entry's level and the record its name came from, so a rename leaves
+an older snapshot's name of an address, phone number, handle or contact as it was.
 
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. A call uses an
 entry when its `tool_called` decision carries the entry's permission, whatever the outcome. The
@@ -81,12 +82,13 @@ A call that an `act` place allowed writes its `places.acted` record on the call'
 action queue admits the attempt, and a retry of the call reads the act records back and writes none
 a second time.
 
-A forget of one record of an address, phone number or handle entry, through `log.forget` or the
-conversation's forget, removes the key of every record of that entry: its `places.added`,
-`places.changed`, `places.removed` and `places.acted` records, and the marking record when the entry
-is a contact you marked. Any of those records is a forget target. `places.added`, `places.changed`,
-`places.removed` and the marking record carry no thread, so the forget accepts them with any
-conversation's thread, and `places.acted` takes its call's thread.
+A forget of one record of an address, phone number or handle entry, through
+[`log.forget`](../channels/api.md#forgetting-a-record) or the conversation's forget, removes the key
+of every record of that entry: its `places.added`, `places.changed`, `places.removed` and
+`places.acted` records, and the marking record when the entry is a contact you marked. Any of those
+records is a forget target. `places.added`, `places.changed`, `places.removed` and the marking
+record carry no thread, so the forget accepts them with any conversation's thread, and
+`places.acted` takes its call's thread.
 
 The forget's start record keeps the key of each record it found while the entry was readable. The
 cleanup reads the entry's records again, which finds an act written since the start, and removes the
@@ -104,13 +106,14 @@ key and IDs sit in the payload, where no key can erase them.
   reads every entry at `known`, whoever added it, and the consent check's typed-name match compares
   the canonical form of both addresses.
 - The addresses that are you, such as each connected Google account's own, are entries at `self`
-  that hold no record. The connections module keeps each address of a connection under a reference
-  of its own, sealed under the connection's key, and never changes it. A snapshot lists the
-  reference of each live connection's newest address, and a call reads the address kept under its
-  own snapshot's reference. A renewal that reaches a new address keeps a new reference, so a call
-  under an older snapshot still sees only the older address. A connection made or moved after a
-  snapshot needs a new snapshot, which the end of its consent runs, and forgetting a connection
-  takes every address away at once. They share one ID, so a decision never stores an address.
+  that hold no record. The [connections module](../connectors/google-connections.md) keeps each
+  address of a connection under a reference of its own, sealed under the connection's key, and never
+  changes it. A snapshot lists the reference of each live connection's newest address, and a call
+  reads the address kept under its own snapshot's reference. A renewal that reaches a new address
+  keeps a new reference, so a call under an older snapshot still sees only the older address. A
+  connection made or moved after a snapshot needs a new snapshot, which the end of its consent runs,
+  and forgetting a connection takes every address away at once. They share one ID, so a decision
+  never stores an address.
 - A feature adds its own addresses, numbers or sites at `act` as `nixie_own` through a source that
   the composition root lists. After each seed of the definitions, nixie adds each listed value
   unless it added that value before, so a value you removed stays removed, and runs the in-force
@@ -119,5 +122,6 @@ key and IDs sit in the payload, where no key can erase them.
 - `places.yaml` of [definitions format 7](../core/definitions.md#the-definitions-format) seeds sites
   and mail domains with the origin `seed`. The seed replaces an entry it added when the file changes
   its level or its name, and removes only an entry it added and nobody changed.
-- A key check refuses a raw or public-suffix key, a level the kind cannot hold, and a key that
-  another entry holds.
+- A key check of an entry that the user, a tool or a seed adds refuses a raw or public-suffix key, a
+  level the kind cannot hold, and a key that another entry holds. A contact's `raw` key comes from
+  its marking and meets no key check.

@@ -18,10 +18,10 @@ In your reply, list the feature as not verified because it needs `local`.
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey before [computer-browser](feature-computer-browser.md), or after
-  `bun verify up --restart`, `doctor` and sign-in-enrol. Once the user approves `pages.test` in
-  computer-browser, the browser no longer asks about it, and this journey no longer shows what
-  trusting the site changes.
+- The features table lists [computer-browser](feature-computer-browser.md) first. When it ran since
+  `up`, run `bun verify up --restart`, `doctor` and sign-in-enrol before this journey. Once the user
+  approves `pages.test` in computer-browser, the browser no longer asks about it, and this journey
+  no longer shows what trusting the site changes.
 - No page adds a place yet, so the `trust-site` action adds the entry that the places page will add.
 
 ## Journey

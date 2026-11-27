@@ -19,12 +19,14 @@ flowchart LR
 
 ## The tool
 
-The tool declares only the fetch effect and no destination, so the decision point allows it under an
-allow rule on that effect, such as the starter rule `allow-reads`, and it runs direct, inside the
-turn. Its result holds the final URL after redirects, the status code, the content type, the page
-ID, the part number and the count of parts, the text of one part, the truncated mark and the blocked
-reason, and `isCached`, which is true when the result is a stored copy. A fetched image reaches the
-model as image content beside the result, as [web fetch images](./web-fetch-images.md) describes.
+The tool declares only the fetch effect, and the host of the page as its destination, as
+[The fetch sandbox](#the-fetch-sandbox) says. The decision point allows it under an allow rule on
+that effect, such as the starter rule `allow-reads`, or under a place at `read`, and it runs direct,
+inside the turn. Its result holds the final URL after redirects, the status code, the content type,
+the page ID, the part number and the count of parts, the text of one part, the truncated mark and
+the blocked reason, and `isCached`, which is true when the result is a stored copy. A fetched image
+reaches the model as image content beside the result, as [web fetch images](./web-fetch-images.md)
+describes.
 
 Every field of the result and every image is outside content, except the endorsed types below,
 because the page and every redirect along the way came from someone other than the user. The result

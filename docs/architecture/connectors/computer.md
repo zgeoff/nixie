@@ -214,10 +214,10 @@ multiplies a point on the picture by 1280 divided by `width`. Each screenshot an
 result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or
 `{ kind: 'other' }`, and `isWatched`, which is `true` while a [watch](#watching) is open.
 
-While a device holds the desktop, the direct reads still run: `browser_read`, `browser_screenshot`,
-`screenshot` and `read_file`. A browser or screen scroll, a page open, a close, a download, a file
-write and a file export answer `TAKEN_OVER`, so the assistant never moves the person's view. A
-queued act stays pending, and the runner claims it after the hand-back, as
+While a device holds the desktop, 4 direct reads still run: `browser_read`, `browser_screenshot`,
+`screenshot` and `read_file`. A browser or screen scroll, though a direct read too, a page open, a
+close, a download, a file write and a file export answer `TAKEN_OVER`, so the assistant never moves
+the person's view. A queued act stays pending, and the runner claims it after the hand-back, as
 [Taking over](#taking-over) says. A queued act that was prepared before a hold began, and runs after
 it ended, answers `SCREEN_CHANGED`, because the person may have moved the page or the focus.
 

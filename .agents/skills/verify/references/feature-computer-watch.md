@@ -70,7 +70,8 @@ that turn no reply, so the turn fails.
    Expect: all three commands exit 0. The second visit watches again with a new address.
 
 5. Open 2 tabs in the assistant's browser, so the hand-back in step 8 has 2 tabs to list. Both opens
-   run at once, because they only fetch and no place of the directory names the site:
+   run at once, because they only fetch and no place of the
+   [directory](../../../../docs/architecture/policy/places.md) names the site:
 
    ```bash
    bun verify action use-computer --kind browser-two-tabs --text 'The assistant opened 2 tabs.'

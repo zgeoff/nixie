@@ -106,7 +106,7 @@ for each such place.
 A destination with no permission asks at stage 5 unless consent covers it. A call reads the places
 of its own snapshot with the level that snapshot holds, so a place removed since still covers a
 replay of an earlier call. A forget of an address, phone number or handle takes its key away, and
-the entry then covers nothing.
+the entry then covers nothing, in a replay too.
 
 The decision keeps the effects the call had once its tool's prepare step ran. Each rule and each
 place judges the call by the declared effects plus those, so a call that adds `send` is no read for
@@ -194,6 +194,6 @@ connector's tool at stage 7, so the [queue check](../core/actions.md#the-queue-c
 action queue on every start. A test build adds a rule that allows the crash tests' send tool. The
 bundler drops it from the release bundle.
 
-With no rule of yours in force, stages 3, 6 and 7 never match. A call that stages 1 and 2 do not
-deny and consent does not allow then asks at stage 9, except a memory write, which gets `gate`. The
-start logs a warning.
+With no rule of the user's in force and an empty directory, stages 3, 6 and 7 match only the code
+rules. A call that no earlier stage decides and consent does not allow then asks at stage 9, except
+a memory write, which gets `gate`. The start logs a warning.
