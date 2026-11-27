@@ -7,7 +7,11 @@ import { twilioAPIURL } from './mocks/twilio-api-url';
 import { twilioStore } from './mocks/twilio-store';
 
 async function setupTest() {
-  await twilioStore.keys.create({ accountSID: 'ACtest', keySID: 'SKtest', secret: 'secret-a' });
+  await twilioStore.keys.create({
+    accountSID: 'ACtest',
+    keySID: 'SKtest',
+    secret: 'secret-a',
+  });
 
   const basic = Buffer.from('SKtest:secret-a').toString('base64');
 
@@ -24,7 +28,12 @@ async function setupTest() {
 test('it reads the texts that the number received at its newest time, and leaves out the ones it sent', async () => {
   const ctx = await setupTest();
 
-  await twilioStore.messages.create({ sid: 'SM1', from: 'Example', body: 'First', sentAt: 1000 });
+  await twilioStore.messages.create({
+    sid: 'SM1',
+    from: 'Example',
+    body: 'First',
+    sentAt: 1000,
+  });
 
   await twilioStore.messages.create({
     sid: 'SM2',
@@ -45,7 +54,13 @@ test('it reads the texts that the number received at its newest time, and leaves
   const texts = await ctx.provider.readRecent();
 
   expect(texts).toStrictEqual([
-    { messageID: 'SM2', from: '+61422222222', receivedAt: 2000, precisionMs: 1000, body: 'Second' },
+    {
+      messageID: 'SM2',
+      from: '+61422222222',
+      receivedAt: 2000,
+      precisionMs: 1000,
+      body: 'Second',
+    },
   ]);
 });
 
@@ -69,14 +84,22 @@ test('it reads each text at or after a time, oldest first, across every page', a
 
 test('it sends a text from its own number and answers with the message ID', async () => {
   const ctx = await setupTest();
-  const sent = await ctx.provider.send({ to: '+61400000000', body: 'Running 10 minutes late.' });
+
+  const sent = await ctx.provider.send({
+    to: '+61400000000',
+    body: 'Running 10 minutes late.',
+  });
 
   const held = twilioStore.messages.findMany((query) => query.where({ direction: 'outbound-api' }));
 
   expect(sent).toStrictEqual({ kind: 'sent', messageID: held[0]?.sid ?? '' });
 
   expect(held).toMatchObject([
-    { from: '+61411111111', to: '+61400000000', body: 'Running 10 minutes late.' },
+    {
+      from: '+61411111111',
+      to: '+61400000000',
+      body: 'Running 10 minutes late.',
+    },
   ]);
 });
 
@@ -268,4 +291,53 @@ test('it finds a message that Twilio holds queued, with no sent time yet', async
   });
 
   expect(found).toStrictEqual([{ messageID: 'SMq', createdAt: 5000, precisionMs: 1000 }]);
+});
+
+test('it reads on past a page that holds a text whose webhook came late', async () => {
+  const ctx = await setupTest();
+
+  const sinceMs = Date.UTC(2027, 2, 9, 0, 10, 0);
+
+  // the first page holds a text created long ago whose webhook came late, among newer texts
+  const createdTimes = [
+    sinceMs - 600_000,
+    ...Array.from({ length: 99 }, (_, index) => sinceMs + 60_000 + index * 1000),
+  ];
+
+  const firstPage = createdTimes.map((createdMs, index) => ({
+    sid: `SMfirst${String(index)}`,
+    from: '+61422222222',
+    to: '+61411111111',
+    body: 'Hi',
+    direction: 'inbound',
+    date_sent: null,
+    date_created: new Date(createdMs).toUTCString(),
+  }));
+
+  const secondPage = [
+    {
+      sid: 'SMnext',
+      from: '+61422222222',
+      to: '+61411111111',
+      body: 'Hi',
+      direction: 'inbound',
+      date_sent: null,
+      date_created: new Date(sinceMs + 5000).toUTCString(),
+    },
+  ];
+
+  network.use(
+    http.get(`${twilioAPIURL}/2010-04-01/Accounts/ACtest/Messages.json`, (info) =>
+      new URL(info.request.url).searchParams.get('Page') === '1'
+        ? HttpResponse.json({ messages: secondPage, next_page_uri: null })
+        : HttpResponse.json({
+            messages: firstPage,
+            next_page_uri: '/2010-04-01/Accounts/ACtest/Messages.json?To=%2B61411111111&Page=1',
+          }),
+    ),
+  );
+
+  const texts = await ctx.provider.readInbound(sinceMs);
+
+  expect(texts.map((text) => text.messageID)).toContain('SMnext');
 });

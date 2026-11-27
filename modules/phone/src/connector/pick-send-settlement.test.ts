@@ -22,8 +22,13 @@ test.each<[string, Partial<SendEvidence>, ReturnType<typeof pickSendSettlement>]
     { kind: 'claim', messageID: 'SM1' },
   ],
   [
-    'claims a text that the provider created in the second the attempt began',
+    'asks about a text whose rounded timestamp falls before the attempt began',
     { candidates: [{ messageID: 'SM1', createdAt: 9500, precisionMs: 1000 }] },
+    { kind: 'inconclusive' },
+  ],
+  [
+    'claims a text whose rounded timestamp is after the attempt began',
+    { candidates: [{ messageID: 'SM1', createdAt: 11_000, precisionMs: 1000 }] },
     { kind: 'claim', messageID: 'SM1' },
   ],
   [

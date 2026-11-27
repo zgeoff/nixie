@@ -119,11 +119,11 @@ refusal ends the action with `SEND_FAILED`.
 A send of unknown outcome reconciles with a read-only check. The connector looks for texts to the
 same number with the same body, created from a minute before the attempt began, to allow for the
 provider's clock. In one write transaction the check reads the claims and the other open sends. It
-settles as found only when exactly one such text has no row in `phone_send_claims`, the provider may
-have created it at or after the attempt began, and no other open send carries the same number and
-body. It then claims that text in the same transaction. When the check finds no text, finds more
-than one, finds one from before the attempt, or cannot read the provider, the queue asks the user,
-because a match cannot show which send made the message.
+settles as found only when exactly one such text has no row in `phone_send_claims`, the provider
+stamps it at or after the attempt began, and no other open send carries the same number and body. It
+then claims that text in the same transaction. When the check finds no text, finds more than one,
+finds one from before the attempt, or cannot read the provider, the queue asks the user, because a
+match cannot show which send made the message.
 
 ## Forgetting a text
 

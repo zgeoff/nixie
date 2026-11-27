@@ -1267,6 +1267,14 @@ test('it tells the model to hand over a sign-up that wants a phone number it can
   );
 });
 
+test('it tells the model to hand over a sign-up whose site refuses the phone number it gave', async () => {
+  const ctx = await setupTest({});
+
+  expect(ctx.describeTool('computer.handover')).toContain(
+    'a site that refuses the phone number you gave it',
+  );
+});
+
 test('it opens a handover ask with a reason, and refuses a second one while it stands', async () => {
   const ctx = await setupTest({});
   const first = await ctx.call('computer.handover', { reason: 'itch.io asks for a CAPTCHA' });

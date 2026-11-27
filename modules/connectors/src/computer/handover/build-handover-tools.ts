@@ -24,7 +24,8 @@ function buildHandoverTool(options: ComputerToolOptions): ToolDefinition {
     description: [
       'Asks the user to take over the computer, for what only a person can do: a CAPTCHA or other ',
       'human check, a bank check, a page that wants a person, or a sign-up that asks for a phone ',
-      'number or a code by text when you have no tool that reads texts. The reason is shown to the user ',
+      'number or a code by text when you have no tool that reads texts, or a site that refuses the ',
+      'phone number you gave it. The reason is shown to the user ',
       'on a banner on every open client, so say what they will find and why it needs them. The ',
       'call changes nothing else: the computer stays yours until the user presses Take over. ',
       'Your clicks, typing and commands then wait, and you read the screen. You learn that the ',

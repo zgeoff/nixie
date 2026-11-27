@@ -21,9 +21,9 @@ export interface SendEvidence {
   readonly open: readonly TextRequest[];
 }
 
-// Claims a message only when exactly one candidate has no claim, the provider may have created it at
-// or after the attempt began, and no other begun send carries the same number and body. Every other
-// match asks the user, because it cannot show which send made the message.
+// Claims a message only when exactly one candidate has no claim, its timestamp is at or after the
+// attempt began, and no other begun send has the same number and body. A provider that rounds its
+// timestamps down may stamp an earlier text with the attempt's own tick, so that text asks the user.
 export function pickSendSettlement(evidence: SendEvidence): SendSettlementPick {
   if (evidence.candidates.length === 0) {
     return { kind: 'not_found' };
@@ -35,11 +35,7 @@ export function pickSendSettlement(evidence: SendEvidence): SendSettlementPick {
 
   const [only] = free;
 
-  if (
-    free.length !== 1 ||
-    only === undefined ||
-    only.createdAt + only.precisionMs <= evidence.attemptStartedAt
-  ) {
+  if (free.length !== 1 || only === undefined || only.createdAt < evidence.attemptStartedAt) {
     return { kind: 'inconclusive' };
   }
 

@@ -25,8 +25,9 @@ const pageSize = 100;
 // Twilio stamps each message to the second.
 const precisionMs = 1000;
 
-// The list runs newest first by a time that sits a few seconds from a message's creation time, so a
-// read goes on until a page holds a message this much older than the ones it wants.
+// The list runs newest first by the time a message was sent, which can sit far from its creation
+// time, such as when a webhook was late. So a read goes on until a whole page holds messages this
+// much older than the ones it wants, and one old message among newer ones never ends it.
 const orderSlackMs = 60_000;
 const dayMs = 24 * 60 * 60_000;
 
@@ -56,16 +57,18 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
 
   const readMessages = async (
     query: URLSearchParams,
-    isDone: (messages: readonly TwilioMessage[]) => boolean,
+    isDone: (page: readonly TwilioMessage[], read: readonly TwilioMessage[]) => boolean,
   ): Promise<TwilioMessage[]> => {
     const messages: TwilioMessage[] = [];
     let path: string | null = `${messagesPath}?${query.toString()}`;
+    let isFinished = false;
 
-    while (path !== null && !isDone(messages)) {
+    while (path !== null && !isFinished) {
       const page = await readPage(path);
 
       messages.push(...page.messages);
 
+      isFinished = isDone(page.messages, messages);
       path = page.next_page_uri;
     }
 
@@ -74,14 +77,24 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
 
   return {
     readRecent: async () => {
-      const query = new URLSearchParams({ To: options.number, PageSize: String(pageSize) });
+      const query = new URLSearchParams({
+        To: options.number,
+        PageSize: String(pageSize),
+      });
 
-      const messages = await readMessages(query, (read) => {
-        const times = read
+      const messages = await readMessages(query, (page, read) => {
+        const pageTimes = page
           .flatMap((message) => toInboundText(message))
           .map((text) => text.receivedAt);
 
-        return times.some((time) => time < Math.max(...times) - orderSlackMs);
+        const newest = Math.max(
+          ...read.flatMap((message) => toInboundText(message)).map((text) => text.receivedAt),
+        );
+
+        return (
+          pageTimes.length === page.length &&
+          pageTimes.every((time) => time < newest - orderSlackMs)
+        );
       });
 
       const texts = messages.flatMap((message) => toInboundText(message));
@@ -96,11 +109,16 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
         'DateSent>=': new Date(sinceMs - dayMs).toISOString().slice(0, 10),
       });
 
-      const messages = await readMessages(query, (read) =>
-        read
+      const messages = await readMessages(query, (page) => {
+        const pageTimes = page
           .flatMap((message) => toInboundText(message))
-          .some((text) => text.receivedAt < sinceMs - orderSlackMs),
-      );
+          .map((text) => text.receivedAt);
+
+        return (
+          pageTimes.length === page.length &&
+          pageTimes.every((time) => time < sinceMs - orderSlackMs)
+        );
+      });
 
       return messages
         .flatMap((message) => toInboundText(message))
@@ -153,8 +171,11 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
         PageSize: String(pageSize),
       });
 
-      const messages = await readMessages(search, (read) =>
-        read.some((message) => toCreatedAt(message) < query.fromMs - orderSlackMs),
+      const messages = await readMessages(
+        search,
+        (page) =>
+          page.length > 0 &&
+          page.every((message) => toCreatedAt(message) < query.fromMs - orderSlackMs),
       );
 
       return messages
@@ -178,7 +199,15 @@ function toInboundText(message: TwilioMessage): ProviderText[] {
   const receivedAt = Date.parse(message.date_created ?? message.date_sent ?? '');
 
   return message.direction === 'inbound' && Number.isFinite(receivedAt)
-    ? [{ messageID: message.sid, from: message.from, receivedAt, precisionMs, body: message.body }]
+    ? [
+        {
+          messageID: message.sid,
+          from: message.from,
+          receivedAt,
+          precisionMs,
+          body: message.body,
+        },
+      ]
     : [];
 }
 

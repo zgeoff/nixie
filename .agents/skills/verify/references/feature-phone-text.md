@@ -83,22 +83,26 @@ Before you start:
    The last command shows only that the wake reached the model, because the wake holds the code.
    Step 6 checks that the read returned it.
 
-6. Check the wake, the outside content, the read and the held text:
+6. Check the wake, the read's result, the outside content and the held text:
 
    ```bash
+   bun verify model input --contains '"body":"Your code is 481516."'
    bun verify db query "select count(*) as wakes from records where kind = 'trigger.mail_woke'"
    bun verify db query "select json_extract(called.payload, '$.tool') as tool, json_extract(result.payload, '$.outcome') as outcome, result.content_source from records as called join records as result on result.kind = 'tool_result' and json_extract(result.payload, '$.callID') = json_extract(called.payload, '$.callID') where called.kind = 'tool_called' order by called.sequence"
    bun verify db query "select json_extract(payload, '$.tool') as tool from records where kind = 'policy.action_proposed' order by sequence"
    ```
 
-   Expect: `wakes` is 1. The second query lists `phone.list`, `phone.read` and `phone.send` in that
-   order. The `outcome` of `phone.list` and `phone.read` is `result`, which an unknown text ID would
-   fail, and their `content_source` is `untrusted`. The third query lists `phone.send`: the text
-   waits for your approval and never reaches a provider.
+   Expect: the first command exits 0, because the model's input holds the read's result with the
+   text's body in a `body` field, which the wake never writes. `wakes` is 1. The second query lists
+   `phone.list`, `phone.read` and `phone.send` in that order. The `outcome` of `phone.list` and
+   `phone.read` is `result`, which an unknown text ID would fail, and their `content_source` is
+   `untrusted`. The third query lists `phone.send`: the text waits for your approval and never
+   reaches a provider.
 
 ## End state
 
 - Step 3: the wake rule holds the library's number, with a window of 1 minute.
 - Step 4: the text that no rule matches is stored and wakes nothing.
 - Step 6: the matching text woke the conversation once, the model listed and read it with results
-  that succeeded and are marked untrusted, and its reply text waits for your approval.
+  that succeeded and are marked untrusted, the read returned the text's body, and its reply text
+  waits for your approval.

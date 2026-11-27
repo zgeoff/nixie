@@ -302,4 +302,5 @@ test('it tells the model that its own number goes to a sign-up, and how the code
   );
 
   expect(list?.description).toContain('type its code into the page');
+  expect(list?.description).toContain('When the site refuses the number, call computer.handover');
 });

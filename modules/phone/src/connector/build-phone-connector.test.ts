@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildActionSeeder, createTestStep } from '@heynixie/actions/test-utils';
 import { readRecords } from '@heynixie/log';
+import type { TransactionBuilder } from 'kysely';
 import invariant from 'tiny-invariant';
 import { startTestPhone } from '../test-utils';
 import type { PhoneActionAttempt } from '../types';
@@ -267,28 +268,39 @@ test('it answers a check from its own claim when the provider cannot be read', a
   });
 });
 
-test('it asks the user when an identical send begins while the provider is read', async () => {
+test('it asks the user when an identical send begins after the provider is read, before the claim commits', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.tasks);
 
   ctx.provider.addSent({ to: '+61400000000', body: 'Running late.' });
 
+  // Opens the other send just before the claim transaction starts, which is after the provider read
+  // and after any read of the open sends made outside that transaction.
+  const runAfterOtherSend = async (run: Parameters<TransactionBuilder<unknown>['execute']>[0]) => {
+    await ctx.seed.unknownAction({
+      step,
+      tool: phoneToolNames.send,
+      arguments: { to: '+61400000000', body: 'Running late.' },
+    });
+
+    return ctx.writer.db.transaction().execute(run);
+  };
+
+  const racingDB = new Proxy(ctx.writer.db, {
+    get: (target, property) => {
+      if (property === 'transaction') {
+        return () => ({ execute: runAfterOtherSend });
+      }
+
+      const value: unknown = Reflect.get(target, property);
+
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+
   const racing = buildPhoneConnector({
     ...ctx.context,
-    provider: {
-      ...ctx.provider,
-      readSentTexts: async (query) => {
-        const found = await ctx.provider.readSentTexts(query);
-
-        await ctx.seed.unknownAction({
-          step,
-          tool: phoneToolNames.send,
-          arguments: { to: '+61400000000', body: 'Running late.' },
-        });
-
-        return found;
-      },
-    },
+    log: { ...ctx.context.log, writer: { ...ctx.context.log.writer, db: racingDB } },
   }).get(phoneToolNames.send);
 
   const response = await racing?.check(ctx.buildAttempt('action-2'));
