@@ -36,8 +36,8 @@ field but the outcome is optional, and a field that is missing matches every cal
 | `expires`      | When the rule stops matching, as an ISO date and time; a rule with `mandate` needs one                    |
 | `mandate`      | The mandate the rule belongs to                                                                           |
 | `lift`         | On an allow rule: `perAction` dollars and a `budget` ID, as [budgets](budgets.md#lifts) describes         |
-| `cel`          | A CEL condition                                                                                           |
-| `note`         | The user's own words about the rule                                                                       |
+| `cel`          | A CEL condition, as [rule conditions](rule-conditions.md) describes; it needs a `note`                    |
+| `note`         | The user's own words about the rule; a rule with `cel` must have one                                      |
 
 The parser refuses an empty list, a pattern with a space and an unknown field inside a check, and
 lists each fault with its file. A rule that holds an unknown top-level field fails closed, so a
@@ -84,8 +84,9 @@ the tool and each of its variants, so `task.start` matches `task.start/sandbox`,
 `task.start/sandbox` matches only that variant. A rule stops matching at its expiry, compared with
 the time of the call, so a replay agrees.
 
-nixie evaluates no CEL, so a rule with a CEL condition fails closed: an allow with one covers no
-call, and an ask or a deny with one catches on its other fields alone.
+A rule with a `cel` condition matches only when its other fields match and the condition is true. A
+condition that errors makes an allow cover nothing and an ask catch the call, and a deny that errors
+makes the call ask, as [rule conditions](rule-conditions.md#evaluating-a-condition) describes.
 
 ## Evaluation
 
@@ -101,8 +102,7 @@ Each rule renders as one sentence from a fixed template per field, such as "**Al
 when every destination matches `sam@example.com`." The outcome leads the sentence, the tools or "a
 call" follow it, and each other field adds a condition after "when". A `task.start` variant renders
 in words, so `task.start/sandbox` reads "starting a task in sandbox". The sentence for a rule with a
-CEL condition says how the rule fails closed: an allow reads "**Allow** no call", and an ask or a
-deny ends "whatever the CEL condition". The note stays out of the sentence, so the user's words
+condition ends "when its condition holds". The note stays out of the sentence, so the user's words
 never mix with the rule's.
 
 ## The widening check
@@ -126,10 +126,12 @@ one, and widens otherwise. A looser outcome widens.
 
 The check never reports a widening as a narrowing. When the check tests whether pattern A lies
 inside pattern B, a wildcard in A counts as covered only by a wildcard in B, so the check returns
-"not inside" for a pair it cannot prove. Every edit to a rule with a CEL condition widens, because
-the check cannot read CEL. For a change made inside nixie, a wrong answer therefore costs a prompt
-or a refusal, and never access. A seed applies every edit whatever its class, as
-[rules in force](#rules-in-force) describes.
+"not inside" for a pair it cannot prove. An edit that adds, removes or changes a condition widens,
+because the check cannot read CEL. An edit that keeps the condition text and the outcome is classed
+by the other fields, because the same condition holds on both sides, so dropping a destination
+narrows. For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and
+never access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
+describes.
 
 ## Rules in force
 

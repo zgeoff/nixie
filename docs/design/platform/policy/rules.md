@@ -40,9 +40,8 @@ the widening check decidable in plain code, and you read the pattern at a glance
 expression would give the check a problem it cannot solve in general. A saved contact name in the
 consent check matches as literal text between word boundaries, never as a pattern.
 
-A rule with a CEL condition is valid only when the fixed checks cannot express it. The widening
-check cannot analyse CEL, so it treats every edit to such a rule's condition as a widening. No
-starter rule uses CEL. [CEL conditions on rules](../../queue/cel-rules.md) sets the library, the
+A rule with a CEL condition is valid only when the fixed checks cannot express it. No starter rule
+uses CEL. [Rule conditions](../../../architecture/policy/rule-conditions.md) sets the library, the
 subset, the limits and the card.
 
 Each rule also carries metadata outside its match: its source (a definitions commit, or the approval

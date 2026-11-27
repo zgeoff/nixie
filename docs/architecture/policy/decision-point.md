@@ -109,7 +109,9 @@ checker counts as unreachable.
 
 An ask writes the `tool_called` record and a `policy.action_proposed` record in one transaction, and
 the model reads "Waiting for approval as `<shortID>`". The model keeps working. An ask's cause is
-`outside_steering`, `always_ask`, `ask_rule`, `no_rule`, `direct_request` or `repeat`.
+`outside_steering`, `always_ask`, `ask_rule`, `no_rule`, `direct_request`, `repeat` or
+`condition_error`. The last is a call that asks because a deny rule's condition errored, as
+[rule conditions](rule-conditions.md#evaluating-a-condition) describes.
 
 `nixie proposals approve <shortID>` and `nixie proposals reject <shortID>`, or the page for actions,
 answer it. The answer lands in the inbox of the task that asked. Approving queues the call once, and

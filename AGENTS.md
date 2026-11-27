@@ -94,6 +94,7 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 - imp's client: `adapters/sandbox-imp`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
 - ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
+- The CEL library: `modules/policy`.
 
 ## Working here
 

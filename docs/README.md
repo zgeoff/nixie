@@ -86,6 +86,8 @@ holds the design for a piece of work that is not built yet: `design/platform/` i
   rule, effect declarations and the test rule
 - [Rules](architecture/policy/rules.md) — the rule format, matching, evaluation, rendering and the
   widening check
+- [Rule conditions](architecture/policy/rule-conditions.md) — the CEL subset, its check, evaluation
+  and the card
 - [The model gateway](architecture/policy/model-gateway.md) — routes, the count and its store, the
   spending limit and the refusals
 - [Metering](architecture/policy/metering.md) — the one helper for periods, the one source of each
