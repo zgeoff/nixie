@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import { toolShapes } from '../utils/tool-shapes';
 import { buildAlwaysAllowRule } from './build-always-allow-rule';
 import { isRuleMatch } from './is-rule-match';
 
@@ -160,4 +161,60 @@ test('it offers no rule for a move of a topic, whose endpoints no check can pin'
   });
 
   expect(rule).toBeNull();
+});
+
+test('it pins the command of a tool that a shape names as a command tool', () => {
+  toolShapes.set([{ kind: 'command', tool: 'ops.run', argument: 'line' }]);
+
+  const rule = buildAlwaysAllowRule({
+    shortID: 'ab12cd34ef',
+    tool: 'ops.run',
+    input: { line: 'git status -s' },
+    destinations: [],
+    content: ['line'],
+  });
+
+  expect(rule?.form.checks).toStrictEqual([{ arg: 'line', op: 'matches', value: 'git status *' }]);
+});
+
+test('it pins every argument of a tool that no shape names, a command included', () => {
+  toolShapes.set([]);
+
+  const rule = buildAlwaysAllowRule({
+    shortID: 'ab12cd34ef',
+    tool: 'computer.run',
+    input: { command: 'git status -s' },
+    destinations: [],
+    content: [],
+  });
+
+  expect(rule?.form.checks).toStrictEqual([{ arg: 'command', op: 'eq', value: 'git status -s' }]);
+});
+
+test('it shares one rule between the tools of a destination shape, and pins the host alone', () => {
+  toolShapes.set([{ kind: 'destination', name: 'ops-acts', tools: ['ops.click', 'ops.type'] }]);
+
+  const rule = buildAlwaysAllowRule({
+    shortID: 'ab12cd34ef',
+    tool: 'ops.click',
+    input: { x: 4, y: 9 },
+    destinations: ['shop.example.com'],
+    content: [],
+  });
+
+  expect(rule?.form.tools).toStrictEqual(['ops.click', 'ops.type']);
+});
+
+test('it offers no rule for a tool of a destination shape that has no destination', () => {
+  toolShapes.set([{ kind: 'destination', name: 'ops-acts', tools: ['ops.click', 'ops.type'] }]);
+
+  expect(
+    buildAlwaysAllowRule({
+      shortID: 'ab12cd34ef',
+      tool: 'ops.click',
+      input: { x: 4, y: 9 },
+      destinations: [],
+      content: [],
+    }),
+  ).toBeNull();
 });

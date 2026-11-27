@@ -1,6 +1,7 @@
 import { readUncountedCharges } from '@heynixie/budgets';
 import type { SpeechLayer } from '@heynixie/calls';
 import type { Clock } from '@heynixie/clock';
+import type { FeatureID } from '@heynixie/contract';
 import type { Secrets } from '@heynixie/credentials';
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
@@ -8,9 +9,11 @@ import type { Logger } from '@heynixie/logger';
 import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { writeMissedTurns } from '@heynixie/spend';
+import { fillComputerLists } from '../computer/fill-computer-lists';
 import type { HeldSlot } from '../credential/create-held-slot';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
+import { listFeaturesOn } from '../feature/list-features-on';
 import { registerServerRecordTopics } from '../part/register-server-record-topics';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
@@ -89,6 +92,8 @@ export interface ServerPartsOptions extends ServerOptions {
 export async function startServer(options: ServerOptions): Promise<Server> {
   const inputs = await loadServerInputs(options);
 
+  fillComputerLists(inputs.config);
+
   const cleanup = buildCleanup();
   const encoder = inputs.encoder;
 
@@ -99,6 +104,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   try {
     const writer = await startLoggedWriter(inputs.config.server.dataDir, {
       log: inputs.log,
+      features: listFeaturesOn(inputs.config),
       cleanup,
       ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     });
@@ -124,6 +130,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
 
 interface LoggedWriterOptions {
   readonly log: Logger;
+  readonly features: readonly FeatureID[];
   readonly cleanup: Cleanup;
 
   readonly clock?: Clock;
@@ -136,7 +143,7 @@ async function startLoggedWriter(dataDir: string, options: LoggedWriterOptions):
     ...(options.clock === undefined ? {} : { clock: options.clock }),
   });
 
-  registerServerRecordTopics(writer);
+  registerServerRecordTopics(writer, options.features);
 
   await options.cleanup.defer(() => writer.stop());
 

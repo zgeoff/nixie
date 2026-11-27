@@ -13,10 +13,13 @@ import { deriveSecretHash } from '../utils/derive-secret-hash';
 async function setupTest() {
   const readOnlyToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
 
-  const api = await startTestAPI({
-    ...defaultAPISettings,
-    readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
-  });
+  const api = await startTestAPI(
+    {
+      ...defaultAPISettings,
+      readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
+    },
+    { features: ['computer'] },
+  );
 
   api.setWatch(() => ({
     receive: () => {},
@@ -578,4 +581,37 @@ test('#computer.handBack says the computer is unavailable before it starts', asy
   await Promise.allSettled([refused]);
 
   expect(refused).rejects.toMatchObject({ code: 'COMPUTER_UNAVAILABLE' });
+});
+
+test.each(['watch', 'takeOver', 'handBack'] as const)(
+  'it answers FEATURE_OFF to computer.%s when the computer is off',
+  async (procedure) => {
+    const api = await startTestAPI(defaultAPISettings);
+    const owner = await createDeviceSession(api.context, 'laptop');
+
+    const client = buildTestClient(api.url, owner.token, 'https://nixie.test');
+    const answer = client.computer[procedure]({ clientActionID: crypto.randomUUID() });
+
+    await Promise.allSettled([answer]);
+
+    expect(answer).rejects.toMatchObject({
+      code: 'FEATURE_OFF',
+      data: { feature: 'computer' },
+    });
+  },
+);
+
+test('it answers FEATURE_OFF to computer.readHandover when the computer is off', async () => {
+  const api = await startTestAPI(defaultAPISettings);
+  const owner = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, owner.token, 'https://nixie.test');
+  const answer = client.computer.readHandover();
+
+  await Promise.allSettled([answer]);
+
+  expect(answer).rejects.toMatchObject({
+    code: 'FEATURE_OFF',
+    data: { feature: 'computer' },
+  });
 });

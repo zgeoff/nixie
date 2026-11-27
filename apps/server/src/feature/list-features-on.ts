@@ -3,6 +3,8 @@ import type { FeatureID } from '@heynixie/contract';
 
 // The parts of the deployment config that decide a feature. DeploymentConfig satisfies it.
 export interface FeatureConfig {
+  readonly computer?: unknown;
+  readonly code?: unknown;
   readonly voice?: unknown;
   readonly images: unknown;
   readonly mail?: unknown;
@@ -15,8 +17,8 @@ export interface FeatureConfig {
 // feature's switch lands, each feature is on by today's rule for it.
 export function listFeaturesOn(config: FeatureConfig): readonly FeatureID[] {
   const isOn: Record<FeatureID, boolean> = {
-    computer: true,
-    code: true,
+    computer: config.computer !== undefined,
+    code: config.code !== undefined,
     devices: true,
     google: true,
     mcp: true,

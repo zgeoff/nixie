@@ -9,6 +9,7 @@ import { collectNameFaults } from '../test-utils/collect-name-faults';
 import { collectNeedlessLeakingTags } from '../test-utils/collect-needless-leaking-tags';
 import { collectStaleImportExceptions } from '../test-utils/collect-stale-import-exceptions';
 import { collectStaleNameExceptions } from '../test-utils/collect-stale-name-exceptions';
+import { collectStaleOwnedPaths } from '../test-utils/collect-stale-owned-paths';
 import { isInside } from '../test-utils/is-inside';
 import { readNameLeaks } from '../test-utils/read-name-leaks';
 import { readRepoPackages } from '../test-utils/read-repo-packages';
@@ -49,9 +50,10 @@ test.each([0, 1, 2, 3, 4, 5, 6, 7])(
     );
 
     expect({
-      faults: collectNameFaults(leaks, leakExceptions.names),
+      faults: collectNameFaults(leaks, leakExceptions.names, leakExceptions.owned),
       stale: collectStaleNameExceptions(leaks, exceptions),
-    }).toStrictEqual({ faults: [], stale: [] });
+      staleOwned: collectStaleOwnedPaths(leaks, leakExceptions.owned, packageDirs),
+    }).toStrictEqual({ faults: [], stale: [], staleOwned: [] });
   },
 );
 

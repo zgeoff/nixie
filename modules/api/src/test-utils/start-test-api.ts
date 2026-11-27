@@ -8,6 +8,7 @@ import type { TestCallsContext, TestCallsOptions } from '@heynixie/calls/test-ut
 import { buildTestCallsContext } from '@heynixie/calls/test-utils';
 import type { Clock } from '@heynixie/clock';
 import type { ConnectionsPort } from '@heynixie/connections';
+import { computerTakeoverRecordTopics } from '@heynixie/connectors';
 import {
   checkPromptProposal,
   readDefinitionNotices,
@@ -141,7 +142,7 @@ export async function startTestAPI(
     ...(options.writerClock === undefined ? {} : { clock: options.writerClock }),
   });
 
-  for (const topics of collectModuleRecordTopicMaps()) {
+  for (const topics of [...collectModuleRecordTopicMaps(), computerTakeoverRecordTopics]) {
     registerRecordTopics(writer, topics);
   }
 

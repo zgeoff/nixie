@@ -45,7 +45,7 @@ export { startRecordWake } from './record/start-record-wake';
 export { markChanged } from './record/mark-changed';
 export { publishChanged } from './record/publish-changed';
 export type { RecordTopics } from './record/register-record-topics';
-export { registerRecordTopics } from './record/register-record-topics';
+export { getRecordTopics, registerRecordTopics } from './record/register-record-topics';
 export { subscribeToChanged } from './record/subscribe-to-changed';
 export { subscribeToCommits } from './record/subscribe-to-commits';
 export { subscribeToRecordCommits } from './record/subscribe-to-record-commits';

@@ -1,4 +1,5 @@
 import type { EnvelopeRecord } from '@heynixie/log';
+import { inboxKinds } from './inbox-kinds';
 import { isInboxRecord } from './is-inbox-record';
 import { isQueuedApproval } from './is-queued-approval';
 import { taskMessageCodec } from './task-message-codec';
@@ -21,20 +22,14 @@ export function isWakingRecord(
     return false;
   }
 
-  // A person taking the desktop wakes nothing: the assistant reads that with its next input, and
-  // its queued acts stay pending until the desktop comes back, which does wake it.
-  // the connectors module registers this kind, and tasks depends on no connector
+  // A kind that a feature adds says for itself whether it wakes.
+  const added = inboxKinds.byKind(record.kind);
+
+  if (added !== null) {
+    return added.wakes(record.payload);
+  }
+
   const kind: string = record.kind;
-
-  if (kind === 'computer.takeover_started' || kind === 'computer.handover_asked') {
-    return false;
-  }
-
-  // The assistant's own cancel wakes nothing. An ask that lapsed wakes the conversation, which
-  // would otherwise wait on an answer that is not coming.
-  if (kind === 'computer.handover_closed') {
-    return record.payload['by'] === 'expired';
-  }
 
   // The call's own thread: what the user said and the speech layer said is read with the next
   // hand-off, which alone starts a turn.

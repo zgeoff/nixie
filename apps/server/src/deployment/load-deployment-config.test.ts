@@ -89,7 +89,6 @@ test('it reads every section, with the default of each setting the file leaves o
       ],
       secretOwnValueMinChars: 8,
     },
-    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
     images: null,
     search: {
       daily_call_cap: 200,
@@ -549,4 +548,43 @@ test("it draws on an OpenAI profile by default in the Kubernetes manifest's conf
   const config = await loadDeploymentConfig(ctx.path);
 
   expect(config.images?.profiles[config.images.default]?.provider).toBe('openai');
+});
+
+test.each([
+  {
+    title: 'leaves the computer and the code tool off when their sections are absent',
+    sections: [],
+    computer: undefined,
+    code: undefined,
+  },
+  {
+    title: 'turns them on, with the computer defaults, when each section is empty',
+    sections: ['computer: {}', 'code: {}'],
+    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
+    code: {},
+  },
+])('it $title', async (row) => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      ...row.sections,
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect({ computer: config.computer, code: config.code }).toStrictEqual({
+    computer: row.computer,
+    code: row.code,
+  });
 });

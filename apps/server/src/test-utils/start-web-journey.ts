@@ -25,15 +25,22 @@ export interface WebJourneyOptions {
   // gives nixie calls, priced at this many dollars a minute, on the test build's fake speech layer
   readonly voicePricePerMinute?: number;
 
+  // leaves the computer and the code tool's sections out of nixie's config
+  readonly isComputerOff?: boolean;
+  readonly isCodeOff?: boolean;
+
   // a script that every page runs first, such as a microphone stand-in
   readonly headScript?: string;
 }
 
 export async function startWebJourney(options: WebJourneyOptions = {}): Promise<WebJourney> {
-  const nixieOptions =
-    options.voicePricePerMinute === undefined
+  const nixieOptions = {
+    ...(options.voicePricePerMinute === undefined
       ? {}
-      : { voicePricePerMinute: options.voicePricePerMinute };
+      : { voicePricePerMinute: options.voicePricePerMinute }),
+    ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
+    ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
+  };
 
   const nixie = await startSpawnedNixie(nixieOptions);
 

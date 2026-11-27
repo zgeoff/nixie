@@ -33,6 +33,9 @@ models:
     conversation: chat
 sandbox:
   adapter: test
+# the assistant's computer and its code tool, which each need their sandbox image
+computer: {}
+code: {}
 definitions:
   source:
     kind: path

@@ -74,6 +74,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'computer',
+    feature: 'computer',
     needs: ['inputs', 'context', 'sandbox_adapter'],
     images: () => ['computer'],
     start: (parts) =>
@@ -96,6 +97,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'code_run',
+    feature: 'code',
     needs: ['inputs', 'context', 'sandbox_adapter'],
     images: () => ['code'],
     start: (parts) =>
@@ -122,7 +124,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'actions',
-    needs: ['inputs', 'context', 'computer', 'google_tools'],
+    needs: ['inputs', 'context', 'google_tools'],
+    uses: ['computer'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
@@ -135,7 +138,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       });
 
       const withForget = addLogForget(actions, buildLogForgetTool(apiContext));
-      const withComputer = addComputerConnector(withForget, parts.get('computer'));
+      const withComputer = addComputerConnector(withForget, parts.find('computer'));
       const withCoding = addCodingConnectors(withComputer, parts.get('context').coding);
       const mail = parts.get('context').mail;
       const mailContext = buildServerMailContext(mail, apiContext, options.log);
@@ -150,15 +153,15 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'inputs',
       'context',
       'web_fetch',
-      'computer',
       'render',
-      'code_run',
       'worker',
       'actions',
       'decisions',
       'google_tools',
     ],
     uses: [
+      'computer',
+      'code_run',
       'memory',
       'notebook',
       'server_parts',
@@ -189,15 +192,15 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         },
         {
           webFetch: parts.get('web_fetch').tool,
-          computer: parts.get('computer').tools,
+          computer: parts.find('computer')?.tools ?? [],
           render: parts.get('render'),
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
           google: parts.get('google_tools').actions.map((action) => action.tool),
 
           buildCodingStart: buildServerCodingStart(parts.get('context')),
-          codeRun: parts.get('code_run').tool,
-          fileSend: parts.get('code_run').sendTool,
+          codeRun: parts.find('code_run')?.tool ?? null,
+          fileSend: parts.find('code_run')?.sendTool ?? null,
           forget: parts.get('actions').forget.tool,
           readErasure: makeReadErasureStuckPort(() => parts.find('erasure'), {
             nowMs: () => parts.get('context').apiContext.clock.now(),

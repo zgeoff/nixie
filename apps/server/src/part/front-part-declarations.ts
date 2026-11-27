@@ -1,4 +1,5 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
+import { makeCodeRunCleanup } from '@heynixie/connectors';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { buildRunSettings } from '@heynixie/sessions';
 import { buildServerSpeech } from '../call/build-server-speech';
@@ -33,7 +34,15 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: ['session_cleanup', 'code_run', 'notebook', 'computer', 'erasure', 'connections', 'mcp'],
+    uses: [
+      'session_cleanup',
+      'sandbox_adapter',
+      'notebook',
+      'computer',
+      'erasure',
+      'connections',
+      'mcp',
+    ],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -128,7 +137,16 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         apiContext: {
           ...context.apiContext,
           logger: options.log,
-          readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
+
+          // Built from the adapter, so a forget destroys the code sandboxes that remain while the code
+          // tool is off.
+          readCodeCleanup: () => {
+            const adapter = parts.find('sandbox_adapter');
+
+            return adapter === null
+              ? null
+              : makeCodeRunCleanup(context.apiContext.log, adapter).destroyForRecords;
+          },
           readNotebook: () => parts.find('notebook') ?? null,
           readConnections: () => parts.find('connections') ?? null,
           readPickedFiles: (connection, files) =>

@@ -10,19 +10,22 @@ cluster. [Kubernetes](../architecture/deployment/kubernetes.md) explains the sha
 
 1. Copy `deploy/kubernetes/` into your deployment repo.
 2. Replace every placeholder: the host name in `ingress.yaml`, and impd's URL, the node's addresses,
-   the cluster's pod and service ranges and the model profiles in `config.yaml`.
+   the cluster's pod and service ranges and the model profiles in `config.yaml`. `config.yaml` holds
+   `computer: {}`, which keeps the assistant's computer on. The image that `nixie.yaml` pins keeps
+   the code tool on, and refuses a `code` section. When you run a release that switches the code
+   tool by config, add `code: {}` there to keep it.
 3. Replace the `nixie-definitions` ConfigMap with your own persona, or with your definitions source.
 4. Create the namespace, the TLS Secret `nixie-tls`, and the `nixie-secrets` Secret from your sops
-   file and your host's age key, as `secret.example.yaml` shows. `kustomization.yaml` leaves that
+   file and your host's age key, following `secret.example.yaml`. `kustomization.yaml` leaves that
    example out, so applying the folder never replaces a real Secret.
 5. Apply the folder as a kustomization with your cluster's client.
 
 To move to a new release, or back, follow the [upgrade runbook](../runbooks/upgrades.md).
 
 The watch socket connects to `/rpc/computer/watch-stream` with a one-use ticket in the query. The
-`/rpc` rule already sends it to nixie. When your ingress controller logs requests or errors, drop
-the query of that path from each log line, so a log never holds a ticket. Set the controller's
-WebSocket idle timeout to more than a few minutes, because a quiet desktop sends nothing.
+`/rpc` rule sends it to nixie. When your ingress controller logs requests or errors, drop the query
+of that path from each log line, so a log never holds a ticket. Set the controller's WebSocket idle
+timeout to more than a few minutes, because a quiet desktop sends nothing.
 
 ## Check them
 

@@ -1,10 +1,9 @@
 import { callAnsweredCodec, callEndedCodec, callStartedCodec } from '@heynixie/calls';
 import type { LogRecord } from '@heynixie/log';
-import { renderSystemMessage } from '@heynixie/wire';
+import { capitalizeFirst, renderSystemMessage } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
-import { capitalizeFirst } from './capitalize-first';
 
 // What the conversation reads when a call opens, is answered or ends, in the owner's name, or "the
 // user" when none is set. The call runs on a thread of its own, so the notice tells the model that

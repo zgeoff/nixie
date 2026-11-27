@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadSecrets } from '@heynixie/credentials';
 import { loadDeploymentConfig } from '../deployment/load-deployment-config';
+import { listFeaturesOn } from '../feature/list-features-on';
 import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
 import { writeBootFiles } from './write-boot-files';
 
@@ -331,4 +332,69 @@ test('it leaves the prices of each profile out when a gateway prices the replies
   const text = await Bun.file(join(ctx.directory, 'config.yaml')).text();
 
   expect(text).not.toInclude('prices:');
+});
+
+test.each([
+  {
+    title: 'the computer and the code tool on',
+    extras: {},
+    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
+    code: {},
+    features: ['computer', 'code', 'devices', 'google', 'mcp'],
+  },
+  {
+    title: 'the computer off',
+    extras: { isComputerOff: true },
+    computer: undefined,
+    code: {},
+    features: ['code', 'devices', 'google', 'mcp'],
+  },
+  {
+    title: 'the code tool off',
+    extras: { isCodeOff: true },
+    computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
+    code: undefined,
+    features: ['computer', 'devices', 'google', 'mcp'],
+  },
+])('it writes a configuration with $title, and these features on: $features', async (row) => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    ...row.extras,
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect({
+    computer: config.computer,
+    code: config.code,
+    features: listFeaturesOn(config),
+  }).toStrictEqual({ computer: row.computer, code: row.code, features: row.features });
+});
+
+test.each([
+  {
+    title: 'neither feature',
+    extras: { isComputerOff: true, isCodeOff: true },
+    has: { computer: false, code: false },
+  },
+  { title: 'the computer', extras: { isComputerOff: true }, has: { computer: false, code: true } },
+  { title: 'every feature', extras: {}, has: { computer: true, code: true } },
+])('it leaves out the sandbox image of a feature that is off: $title', async (row) => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    ...row.extras,
+  });
+
+  const images = await loadSandboxManifest(files.manifestPath);
+
+  expect({
+    computer: images.computer !== undefined,
+    code: images.code !== undefined,
+  }).toStrictEqual(row.has);
 });

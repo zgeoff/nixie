@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { startActionRunners } from '@heynixie/actions';
 import { createTestStep, queueTestAction } from '@heynixie/actions/test-utils';
-import { buildTestClient, createDeviceSession, startTestAPI } from '@heynixie/api/test-utils';
+import { buildTestClient, createDeviceSession } from '@heynixie/api/test-utils';
 import type { ActionAttempt, ProviderResponse, TakeOverResult } from '@heynixie/connectors';
 import { makeTakeoverRecords, startComputer } from '@heynixie/connectors';
 import { buildStubSandboxAdapter } from '@heynixie/connectors/test-utils';
@@ -9,9 +9,10 @@ import { readRecords } from '@heynixie/log';
 import { stopWithoutGrace, waitForCondition } from '@heynixie/testing';
 import { runComputerGuest } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import { startTestComputer } from './test-utils/start-test-computer';
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestComputer();
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   const clock = createFakeClock({ startMs: 0 });

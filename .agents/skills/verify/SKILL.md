@@ -67,6 +67,7 @@ These cost the most time:
 | computer-browser   | Open a page in the assistant's browser                            | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
 | computer-screen    | Click a point of the assistant's desktop                          | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
 | computer-watch     | Watch the assistant's desktop                                     | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
+| computer-off       | See that a nixie with no computer offers none                     | [references/feature-computer-off.md](references/feature-computer-off.md)             |
 | spend-routes       | Read each route's counts                                          | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
 | device-in-browser  | Open the browser's own device full screen                         | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
 | device-view        | Open the browser's own device                                     | [references/feature-device-view.md](references/feature-device-view.md)               |

@@ -101,3 +101,7 @@ GEO-1824: POST /live/follow added `subschema #3, subschema #4` to the `oneOf[sub
 GEO-1842: POST /live/follow added the new `mcp` enum value to the `oneOf[subschema #1]/data/anyOf[subschema #3]/topics/items/` response property for the response status `200`
 # GEO-2805: a client of the last release still works, because the stream sends a `data` event only when a declared fetch of a page refreshes, and no release before this one can declare a fetch. The web client comes from the same build as the API, so it never follows a stream that is newer than itself. The device event only gains the `data` member.
 GEO-2805: POST /live/follow added `subschema #4` to the `oneOf[subschema #1]/data/anyOf[subschema #4]/event` response property `anyOf` list for the response status `200`
+# GEO-2878: a client of the last release still works, because nixie answers FEATURE_OFF only when its config has no computer section, and every release before this one runs the computer whatever its config. The web client comes from the same build as the API, and it hides the computer when nixie.read leaves it out of the features. The 409 answer only gains the FEATURE_OFF error.
+GEO-2878: POST /computer/handBack added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2878: POST /computer/takeOver added `subschema #1` to the response body `oneOf` list for the response status `409`
+GEO-2878: POST /computer/watch added `subschema #1` to the response body `oneOf` list for the response status `409`

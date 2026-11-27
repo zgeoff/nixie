@@ -4,21 +4,77 @@ import type { LeakExceptions } from '../types';
 // retrofit removes it, or says why an ordinary word that matches a feature stays. A test fails on an
 // entry that matches nothing.
 export const leakExceptions: LeakExceptions = {
+  owned: {
+    computer: [
+      'libs/contract/src/contract/computer-contract.ts',
+      'libs/contract/src/contract/contract.ts',
+      'libs/contract/src/contract/live-topic-schema.ts',
+      'modules/api/src/computer',
+      'modules/api/src/index.ts',
+      'modules/api/src/types.ts',
+      'modules/sandbox/src/sandbox/sandbox-image-keys.ts',
+      'modules/sandbox/src/sandbox/sandbox-spec-schema.ts',
+      'modules/sandbox/src/types.ts',
+    ],
+    code: [
+      'libs/contract/src/contract/contract.ts',
+      'libs/contract/src/file/code-file-schema.ts',
+      'modules/api/src/image/write-image-forget.ts',
+      'modules/api/src/record/write-record-forget.ts',
+      'modules/api/src/types.ts',
+      'modules/sandbox/src/sandbox/sandbox-image-keys.ts',
+      'modules/sandbox/src/sandbox/sandbox-kinds.ts',
+      'modules/sandbox/src/sandbox/sandbox-sizes.ts',
+    ],
+  },
   names: [
     {
-      where: 'libs/contract',
-      names: ['computer'],
-      removedBy: 'GEO-2878',
+      where: 'modules/tasks/src/index.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the code-made summary of a run end, text that code wrote and no sandbox',
     },
     {
-      where: 'libs/contract/src/contract/contract.ts',
+      where: 'modules/tasks/src/report/code-made-summaries.ts',
       names: ['code'],
-      removedBy: 'GEO-2878',
+      removedBy: 'never',
+      reason: 'the code-made summary of a run end, text that code wrote and no sandbox',
     },
     {
-      where: 'libs/contract/src/file/code-file-schema.ts',
+      where: 'modules/tasks/src/run/write-run-end-in-transaction.ts',
       names: ['code'],
-      removedBy: 'GEO-2878',
+      removedBy: 'never',
+      reason: 'the code-made summary of a run end, text that code wrote and no sandbox',
+    },
+    {
+      where: 'modules/log/src/record/decision-schema.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the code check of a policy decision, a check that code runs and no sandbox',
+    },
+    {
+      where: 'modules/log/src/types.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the code check of a policy decision, a check that code runs and no sandbox',
+    },
+    {
+      where: 'modules/policy/src/consent/check-consent.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the code check of a policy decision, a check that code runs and no sandbox',
+    },
+    {
+      where: 'modules/policy/src/rule/make-decision-point.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the code check of a policy decision, a check that code runs and no sandbox',
+    },
+    {
+      where: 'modules/policy/src/rule/to-stored-decision.ts',
+      names: ['code'],
+      removedBy: 'never',
+      reason: 'the code check of a policy decision, a check that code runs and no sandbox',
     },
     {
       where: 'libs/contract/src/contract/passkey-contract.ts',
@@ -48,27 +104,25 @@ export const leakExceptions: LeakExceptions = {
       removedBy: 'GEO-2881',
     },
     {
-      where: 'modules/api',
-      names: ['computer'],
-      removedBy: 'GEO-2878',
-    },
-    {
-      where: 'modules/api/src/image/write-image-forget.ts',
+      where: 'modules/api/src/enrolment/claim-enrolment-code.ts',
       names: ['code'],
-      removedBy: 'GEO-2878',
+      removedBy: 'never',
+      reason: 'the enrolment code, a one-time code and no sandbox',
     },
     {
-      where: 'modules/api/src/record/write-record-forget.ts',
+      where: 'modules/api/src/enrolment/create-secret.ts',
       names: ['code'],
-      removedBy: 'GEO-2878',
+      removedBy: 'never',
+      reason: 'the enrolment code, a one-time code and no sandbox',
     },
     {
-      where: 'modules/api/src/types.ts',
+      where: 'modules/api/src/enrolment/write-enrolment-code.ts',
       names: ['code'],
-      removedBy: 'GEO-2878',
+      removedBy: 'never',
+      reason: 'the enrolment code, a one-time code and no sandbox',
     },
     {
-      where: 'modules/api/src/enrolment',
+      where: 'modules/api/src/enrolment/write-issued-code.ts',
       names: ['code'],
       removedBy: 'never',
       reason: 'the enrolment code, a one-time code and no sandbox',
@@ -139,11 +193,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/log',
-      names: ['code'],
-      removedBy: 'GEO-2878',
-    },
-    {
-      where: 'modules/log',
       names: ['coding', 'spend'],
       removedBy: 'GEO-2881',
     },
@@ -166,11 +215,6 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/policy',
-      names: ['code'],
-      removedBy: 'GEO-2878',
-    },
-    {
-      where: 'modules/policy',
       names: ['coding', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
@@ -181,18 +225,8 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/sandbox',
-      names: ['code', 'computer'],
-      removedBy: 'GEO-2878',
-    },
-    {
-      where: 'modules/sandbox',
       names: ['coding'],
       removedBy: 'GEO-2881',
-    },
-    {
-      where: 'modules/sessions',
-      names: ['computer'],
-      removedBy: 'GEO-2878',
     },
     {
       where: 'modules/sessions',
@@ -209,11 +243,6 @@ export const leakExceptions: LeakExceptions = {
       names: ['search'],
       removedBy: 'never',
       reason: 'the search mode of memory recall, and not the web search feature',
-    },
-    {
-      where: 'modules/tasks',
-      names: ['code'],
-      removedBy: 'GEO-2878',
     },
     {
       where: 'modules/skills',

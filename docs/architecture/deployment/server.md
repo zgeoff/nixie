@@ -144,6 +144,15 @@ of its images and offers none of its tools or pages. Read
     override instead: `gpt-live` for `speech-gpt-live`, and `model-gateway` for
     `spend-model-gateway`, because the model gateway is core.
   - The imports check fails when a module that is not tagged `feature` depends on one that is.
+- A feature's own code in a core package, such as the computer's procedures in `modules/api` and its
+  contract in `libs/contract`, may hold the feature's name. List its path under the feature's ID in
+  `owned` of `leak-exceptions.ts`, and the name is no leak inside that path. A path covers only the
+  name of its feature, and the test fails on an owned path that holds none.
+- Keep each list that a feature adds to in a core module, and fill it from the composition root. The
+  computer fills the tasks module's inbox kinds and the policy module's tool shapes in
+  `fillComputerLists`, which runs at the start of each server and leaves both empty when the
+  computer is off. A list is global to the process, so a test that sets one resets it when the test
+  ends.
 - List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
   work item whose retrofit removes it. Only the leak test reads the file, and the test fails when an
   exception matches nothing.
@@ -208,14 +217,13 @@ clears it. A turn that the model API refused for its credential, or with a refus
 the user, such as a quota, turns the part unready at once, because no retry passes until the user
 changes something outside nixie. The reason names the model API's kind of refusal. The start
 sequence reads the conversation's stored errors in a row once the database passes its check at
-start, so a restart while turns fail keeps the part unready instead of reporting turns that no run
-has checked. The read also finds a conversation that waits for a retry, which keeps the part
-unready, because no retry runs until the user acts. That read counts errors and never their cause,
-so a restart after a credential failure under the error limit reports the part ready until the
-retried turn fails again. A database that fails its check leaves the part unready, because the start
-reads nothing from it. A turn that fails because an imp cannot wake therefore leaves nixie in its
-Service, and the API, the web UI and the health endpoint keep answering while the conversation
-retries.
+start. Without that read, a restart while turns fail would report the part ready before nixie checks
+a turn. The read also finds a conversation that waits for a retry, which keeps the part unready,
+because no retry runs until the user acts. That read counts errors and never their cause, so a
+restart after a credential failure under the error limit reports the part ready until the retried
+turn fails again. A database that fails its check leaves the part unready, because the start reads
+nothing from it. A turn that fails because an imp cannot wake leaves nixie in its Service, and the
+API, the web UI and the health endpoint keep answering while the conversation retries.
 
 ## Logs
 

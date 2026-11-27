@@ -1,6 +1,7 @@
 import type { LogRecord } from '@heynixie/log';
+import { inboxKinds } from '@heynixie/tasks';
 import type { SystemMessageType } from '@heynixie/wire';
-import { renderSystemMessage } from '@heynixie/wire';
+import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import { formatMessageWhen } from '../message/format-message-when';
 import type { TaskMessageView } from '../task/render-task-message';
@@ -14,8 +15,6 @@ import { renderApprovalAnswer } from './render-approval-answer';
 import { renderCallNotice } from './render-call-notice';
 import { renderCallThreadLine } from './render-call-thread-line';
 import type { HeardCut } from './render-call-thread-line';
-import { renderHandoverAsked } from './render-handover-asked';
-import { renderHandoverClosed } from './render-handover-closed';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderMailWoke } from './render-mail-woke';
 import { renderPageEventMessage } from './render-page-event-message';
@@ -25,8 +24,6 @@ import { renderRecoveryNotice } from './render-recovery-notice';
 import type { ReminderRead } from './render-reminder-notice';
 import { renderReminderNotice } from './render-reminder-notice';
 import { renderSpendWaitNotice } from './render-spend-wait-notice';
-import { renderTakeoverEnded } from './render-takeover-ended';
-import { renderTakeoverStarted } from './render-takeover-started';
 import { renderToolChangeNote } from './render-tool-change-note';
 
 // What the inbox read fetched beside the record, for the kinds that show it.
@@ -84,20 +81,14 @@ export function renderInboxMessage(
     return renderToolChangeNote(record, times);
   }
 
-  if (record.kind === 'computer.takeover_started') {
-    return renderTakeoverStarted(record, times, view.messaging.ownerName);
-  }
+  const added = inboxKinds.byKind(record.kind);
 
-  if (record.kind === 'computer.takeover_ended') {
-    return renderTakeoverEnded(record, times, view.messaging.ownerName);
-  }
-
-  if (record.kind === 'computer.handover_closed') {
-    return renderHandoverClosed(record, times, view.messaging.ownerName);
-  }
-
-  if (record.kind === 'computer.handover_asked') {
-    return renderHandoverAsked(record, times, view.messaging.ownerName);
+  if (added !== null) {
+    return added.render(record, {
+      at: formatMessageTime(record.recordedAt, null, times),
+      ownerName: view.messaging.ownerName,
+      mint: mintBlockID,
+    });
   }
 
   if (

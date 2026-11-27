@@ -19,6 +19,14 @@ flowchart LR
   endpoint -->|"tool_result in one transaction"| store
 ```
 
+## The switch
+
+The code tool is on only when the config has a `code` section. `code: {}` turns it on, and the
+section takes no setting yet. With no `code` section, the `code_run` server part never starts, nixie
+needs no code image, and the model is offered neither `code.run` nor `file.send`. A forget still
+destroys any code sandbox that a call left behind while the tool was on, because the cleanup reads
+the sandbox adapter and ignores the `code` section.
+
 ## The call
 
 The input schema is strict. A call names a `language` (`python`, `javascript`, `typescript` or
@@ -177,8 +185,8 @@ task or an open started task, so a code sandbox that a crash left goes at the ne
 ## The image
 
 The `code` image key follows every rule of the image set. The `code_run` server part declares it, so
-every deployment pulls it. The image is Python 3.13 on a slim Debian base, with numpy, pandas,
-scipy, duckdb, matplotlib with Pillow, openpyxl, pdfplumber and python-docx, Bun for `javascript`
-and `typescript`, and bash, sqlite, jq, ripgrep, git and the common file and text tools. It holds no
-package installer, no ffmpeg, no polars and no ImageMagick. The build pins every version, and the
-non-root user `code` runs the program.
+every deployment with a `code` section pulls it. The image is Python 3.13 on a slim Debian base,
+with numpy, pandas, scipy, duckdb, matplotlib with Pillow, openpyxl, pdfplumber and python-docx, Bun
+for `javascript` and `typescript`, and bash, sqlite, jq, ripgrep, git and the common file and text
+tools. It holds no package installer, no ffmpeg, no polars and no ImageMagick. The build pins every
+version, and the non-root user `code` runs the program.

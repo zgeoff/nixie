@@ -1,5 +1,4 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { startTestAPI } from '@heynixie/api/test-utils';
 import {
   buildComputerTools,
   makeHandoverRecords,
@@ -16,9 +15,10 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { runComputerGuest } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
+import { startTestComputer } from './test-utils/start-test-computer';
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestComputer();
 
   await createConversationTask(api.context);
 

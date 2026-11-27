@@ -2,7 +2,7 @@ import { actionsRecordTopics } from '@heynixie/actions';
 import { budgetRecordTopics } from '@heynixie/budgets';
 import { callRecordTopics } from '@heynixie/calls';
 import { codingRecordTopics } from '@heynixie/coding';
-import { computerTakeoverRecordTopics, imagesRecordTopics } from '@heynixie/connectors';
+import { imagesRecordTopics } from '@heynixie/connectors';
 import {
   definitionTaskRecordTopics,
   definitionsSeededRecordTopics,
@@ -35,7 +35,6 @@ export function collectModuleRecordTopicMaps() {
     budgetRecordTopics,
     callRecordTopics,
     codingRecordTopics,
-    computerTakeoverRecordTopics,
     definitionTaskRecordTopics,
     definitionsSeededRecordTopics,
     devicesRecordTopics,

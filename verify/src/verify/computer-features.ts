@@ -22,4 +22,9 @@ export const computerFeatures = [
     summary: "Watch the assistant's desktop",
     paths: featurePaths['computer-watch'],
   },
+  {
+    name: 'computer-off',
+    summary: 'See that a nixie with no computer offers none',
+    paths: featurePaths['computer-off'],
+  },
 ] as const;

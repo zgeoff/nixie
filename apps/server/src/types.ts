@@ -216,7 +216,7 @@ interface NameExceptionBase {
 
 // A name that a retrofit removes
 interface RetrofitNameException extends NameExceptionBase {
-  readonly removedBy: 'GEO-2878' | 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
+  readonly removedBy: 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
 }
 
 // An ordinary word that has nothing to do with the feature it matches, so no retrofit removes it
@@ -233,13 +233,18 @@ export interface ImportException {
 
   // the feature modules that the package depends on
   readonly imports: readonly string[];
-  readonly removedBy: 'GEO-2878' | 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
+  readonly removedBy: 'GEO-2879' | 'GEO-2880' | 'GEO-2881';
 
   // why the retrofit removes it, when the package is no feature's own
   readonly reason?: string;
 }
 
+// The paths that belong to one feature, keyed by its ID. A feature's own name is no leak inside them,
+// and no retrofit removes them: they are the feature's own code that a core package hosts.
+export type OwnedPaths = Readonly<Partial<Record<FeatureID, readonly string[]>>>;
+
 export interface LeakExceptions {
+  readonly owned: OwnedPaths;
   readonly names: readonly NameException[];
   readonly imports: readonly ImportException[];
 }

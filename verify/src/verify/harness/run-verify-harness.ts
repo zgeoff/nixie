@@ -113,7 +113,11 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_CALLS=1 turns calls on, with the test build's fake speech layer.
   const isCallsOn = process.env['NIXIE_VERIFY_CALLS'] === '1';
 
+  // A start with NIXIE_VERIFY_NO_COMPUTER=1 leaves the computer's section out of the config.
+  const isComputerOff = process.env['NIXIE_VERIFY_NO_COMPUTER'] === '1';
+
   const nixie = await createSpawnedNixie(stack, {
+    ...(isComputerOff ? { isComputerOff: true } : {}),
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     googleURL: google.url,
     fetchSiteURL: deviceSite.url,

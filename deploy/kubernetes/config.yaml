@@ -46,6 +46,8 @@ data:
       egress_deny:
         - 10.42.0.0/16
         - 10.43.0.0/16
+    # the assistant's computer, which is on only while this section is here
+    computer: {}
     definitions:
       source:
         kind: path
@@ -79,6 +81,6 @@ metadata:
     app.kubernetes.io/component: server
 data:
   nixie.yaml: |
-    format: 1
+    format: 2
   persona.md: |
     You are nixie, a personal assistant that works for one person.

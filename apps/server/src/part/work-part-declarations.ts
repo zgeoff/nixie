@@ -108,6 +108,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     // open opens again with the time it had left. Their records need the definitions that the seed
     // puts in place, which the computer part starts before.
     name: 'takeover_restart',
+    feature: 'computer',
     needs: ['server_parts', 'definitions_seed', 'computer'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
@@ -438,16 +439,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: [
-      'inputs',
-      'context',
-      'server_parts',
-      'seed_poll',
-      'notebook',
-      'takeover_restart',
-      'connections',
-      'erasure',
-    ],
+    needs: ['inputs', 'context', 'server_parts', 'seed_poll', 'notebook', 'connections', 'erasure'],
+    uses: ['takeover_restart'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 

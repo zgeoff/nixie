@@ -1,4 +1,4 @@
-import { renderFenced } from '@heynixie/wire';
+import { renderFenced } from './render-fenced';
 
 // Text that a page or the model supplied, inside the markers that a page read shows. The text is
 // written as a JSON string, as a page read escapes it, so no text can write a closing marker.

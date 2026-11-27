@@ -12,7 +12,7 @@ services:
   # files keep their host owner and mode, so nixie's user could otherwise read neither. It runs on
   # every start, so a changed file on the host reaches nixie at the next up.
   setup:
-    image: ghcr.io/zgeoff/nixie:0.41.0@sha256:7755b0f04afa21c040484770d060fe80c4dda30edd2bfb1a1323268701b8ca5a
+    image: ghcr.io/zgeoff/nixie:0.121.0@sha256:8d6e02a405f8b356e21f843901adbd2c60a7df98d8881a62045361d8e02a8f42
     user: '0:0'
     entrypoint:
       - sh
@@ -47,7 +47,7 @@ services:
     restart: 'no'
 
   nixie:
-    image: ghcr.io/zgeoff/nixie:0.41.0@sha256:7755b0f04afa21c040484770d060fe80c4dda30edd2bfb1a1323268701b8ca5a
+    image: ghcr.io/zgeoff/nixie:0.121.0@sha256:8d6e02a405f8b356e21f843901adbd2c60a7df98d8881a62045361d8e02a8f42
     command: ['serve']
     environment:
       # sops finds the age key here when nixie decrypts its secrets file at start
@@ -73,7 +73,7 @@ services:
 
   # prints a code that signs one device in; start it with docker compose run --rm enrol
   enrol:
-    image: ghcr.io/zgeoff/nixie:0.41.0@sha256:7755b0f04afa21c040484770d060fe80c4dda30edd2bfb1a1323268701b8ca5a
+    image: ghcr.io/zgeoff/nixie:0.121.0@sha256:8d6e02a405f8b356e21f843901adbd2c60a7df98d8881a62045361d8e02a8f42
     command: ['enrol-code']
     profiles: ['enrol']
     volumes:
@@ -87,7 +87,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ghcr.io/zgeoff/nixie-web:0.41.0@sha256:440c8354d537a9423d43aca49d46011fa5fffa33566d67414d9e20725d88ea32
+    image: ghcr.io/zgeoff/nixie-web:0.121.0@sha256:34d7b2dfc09db7f6ac9abcc79fd7d89e3270463785c46e914540b762c8dd6fb5
     environment:
       NIXIE_API_URL: http://nixie:8080
     tmpfs:

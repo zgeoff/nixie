@@ -42,8 +42,9 @@ bun add @heynixie/pulumi-k8s
 
 ## Configuration
 
-`createNixie(name, args, opts)` takes the per-deployment values in `args`, and their types in
-[`src/types.ts`](src/types.ts) describe each one. Pass your Kubernetes provider in `opts`.
+Pass the per-deployment values to `createNixie(name, args, opts)` in `args`, and your Kubernetes
+provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value. Add
+`computer: {}` and `code: {}` to `config` to turn on the assistant's computer and its code tool.
 
 ```ts
 import { createNixie, nixieAPIPort, nixieWebPort } from '@heynixie/pulumi-k8s';

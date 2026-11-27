@@ -195,6 +195,10 @@ export interface SpawnedNixieOptions {
 
   // task definitions that the boot files hold, so the first seed arms their triggers
   readonly taskDefinitions?: BootFileExtras['taskDefinitions'];
+
+  // leaves the computer or the code tool's section out of the config, which turns the feature off
+  readonly isComputerOff?: boolean;
+  readonly isCodeOff?: boolean;
 }
 
 // A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
@@ -357,6 +361,8 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),
     ...(options.taskDefinitions === undefined ? {} : { taskDefinitions: options.taskDefinitions }),
+    ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
+    ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
   };
 }
 
