@@ -109,9 +109,6 @@ export interface DecisionInputs {
 
   // the effects a tool's prepare step set for the call, when it added to the declared ones
   readonly effects?: readonly string[];
-
-  // every effect the call had when the places judged it
-  readonly placeEffects?: readonly string[];
 }
 
 export interface Decision {

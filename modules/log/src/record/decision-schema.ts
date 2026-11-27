@@ -72,7 +72,6 @@ export const decisionSchema = z.object({
       turnMessageSequence: z.number().nullable(),
       onBehalfOf: z.number().array(),
       effects: z.string().array().exactOptional(),
-      placeEffects: z.string().array().exactOptional(),
     })
     .exactOptional(),
 }) satisfies z.ZodType<Decision>;
