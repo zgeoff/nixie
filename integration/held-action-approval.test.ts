@@ -51,8 +51,7 @@ async function setupTest() {
     decisions: (findDeclaration, overrides) =>
       makeDecisionPoint({
         findDeclaration,
-        readInputs: () =>
-          Promise.resolve({ rules: [], contacts: [], tools: new Map(), ownerDestinations: [] }),
+        readInputs: () => Promise.resolve({ rules: [], places: [], tools: new Map() }),
         findTaskDestinations: () => [],
         readConsent: overrides?.readConsent ?? (() => Promise.resolve(null)),
       }),
