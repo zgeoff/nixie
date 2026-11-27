@@ -10,7 +10,6 @@ import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
 import { startConnectionsPart } from './start-connections-part';
-import { startGoogleToolsPart } from './start-google-tools-part';
 import { startHeldCredentialsPart } from './start-held-credentials-part';
 import { startMcpPart } from './start-mcp-part';
 import { startNotebookPart } from './start-notebook-part';
@@ -26,13 +25,6 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
     uses: ['memory'],
     start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
-  },
-  {
-    // The Gmail tools, on late-bound ports for the connections and the fetch sandbox.
-    name: 'google_tools',
-    feature: 'google',
-    needs: ['inputs'],
-    start: (reader) => Promise.resolve(startGoogleToolsPart(reader.get('inputs'))),
   },
   {
     // The credential store's database backend, which the connections and the MCP proxy keep their

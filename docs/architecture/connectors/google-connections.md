@@ -5,6 +5,34 @@ connections module owns the client, the consent that makes a connection, and the
 client calls. [The credential database](credential-database.md) covers where the module keeps each
 sealed value, and [the credential store](credentials.md) covers the token exchange and the refresh.
 
+The connections module knows no provider. It owns the `Connector` interface, which holds a
+provider's OAuth endpoints, scopes, setup steps, tools and scope check, and it takes the connector
+from the server when it starts. The `connector-google` adapter holds Google's connector, with its
+Gmail, Calendar and Drive tools and the Gmail arrival source.
+
+## The switch
+
+Add a `google` section to the config to turn Google on, and write `google: {}` for the defaults.
+`google.gmail.poll_interval` sets how often the Gmail arrival source polls, and takes a duration
+such as `30s` or `2m`. The section holds the `gmail` section of earlier releases, and a config that
+still has `gmail` at the top level fails to load. With no `google` section, nixie has no Google:
+
+- the `google_tools`, `connections` and `gmail_source` server parts never start, so the model is
+  offered no Gmail, Calendar or Drive tool, no mailbox is polled and the daily scope check runs
+  nowhere;
+- the procedures of the `connections` namespace answer `FEATURE_OFF`, and a connection forget that
+  was open when nixie stopped stays open until the section returns, because the connection's
+  erasable registers with the connections part;
+- `nixie.read` leaves `google` out of `features`, the web client hides the Connections menu entry,
+  and the connections pages show the page that says the feature is off;
+- the credential store's database backend still starts, because the MCP proxy keeps its credentials
+  in it.
+
+Turning Google off keeps its connections, its mail and its wake rules, and turning it on again finds
+them as they were. Google adds one entry to a list that a core module owns: the API module's
+body-field readers, which word the card of a Gmail, Calendar or Drive call, filled from the
+composition root.
+
 ## The OAuth client
 
 The user registers one client per connector with `connections.registerClient`. The call passes the

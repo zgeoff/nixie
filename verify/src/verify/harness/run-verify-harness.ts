@@ -116,8 +116,12 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_NO_COMPUTER=1 leaves the computer's section out of the config.
   const isComputerOff = process.env['NIXIE_VERIFY_NO_COMPUTER'] === '1';
 
+  // A start with NIXIE_VERIFY_NO_GOOGLE=1 leaves the google section out of the config.
+  const isGoogleOff = process.env['NIXIE_VERIFY_NO_GOOGLE'] === '1';
+
   const nixie = await createSpawnedNixie(stack, {
     ...(isComputerOff ? { isComputerOff: true } : {}),
+    ...(isGoogleOff ? { isGoogleOff: true } : {}),
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : {}),
     googleURL: google.url,
     fetchSiteURL: deviceSite.url,

@@ -99,15 +99,12 @@ module depend on a feature module. Each row comes from the entries in
 
 | Place                 | Names or depends on                                                                             | Work item                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `libs/contract`       | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
 | `libs/contract`       | `devices`, `voice`                                                                              | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `libs/contract`       | `images`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/actions`     | the connectors module                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/api`         | `google`                                                                                        | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
 | `modules/api`         | `devices`, `voice`; the calls and devices modules                                               | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/api`         | `coding`, `images`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/budgets`     | `spend`                                                                                         | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/connections` | `google`; the connectors module                                                                 | [GEO-2879](https://linear.app/zgeoff/issue/GEO-2879) |
 | `modules/credentials` | `atc`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/definitions` | `voice`; the calls module                                                                       | [GEO-2880](https://linear.app/zgeoff/issue/GEO-2880) |
 | `modules/definitions` | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
@@ -123,9 +120,8 @@ module depend on a feature module. Each row comes from the entries in
 | `modules/tools`       | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 | `modules/triggers`    | `mail`                                                                                          | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 
-The connections module owns the core `Connector` interface. It depends on the connectors module only
-for Google's code, which moves into a `connector-google` adapter in
-[GEO-2879](https://linear.app/zgeoff/issue/GEO-2879).
+The connections module owns the core `Connector` interface, and the `connector-google` adapter holds
+Google's code behind it.
 
 The memory, notebook and skills modules reach a feature module only through another leaking module,
 such as the sessions module. They have no import entry, and carry the `leaking` tag until the

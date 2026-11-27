@@ -21,7 +21,7 @@ async function setupTest() {
     googleURL: google.url,
     googleAPI: google.api,
     isCheckerScripted: true,
-    extraConfig: ['gmail:', '  poll_interval: 1m'],
+    extraConfig: ['google:', '  gmail:', '    poll_interval: 1m'],
     routeModel: async (upstreamURL) => {
       const gateway = await startTestModelGateway({ upstreamURL });
 

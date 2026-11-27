@@ -166,11 +166,10 @@ rule that asks, or a call that follows outside content, can still hold one on a 
 
 ## Arrivals
 
-The `trigger_sources` part builds the Gmail arrival source beside the other sources that the trigger
-core runs, with the Google hosts of the `google_tools` part. The source has the id `gmail` and the
-kind `mail`. It polls each Google connection that holds `gmail.modify` and is not waiting for a new
-consent, one at a time, every `gmail.poll_interval` (default `2m`). It reads Gmail and never reaches
-the decision point.
+The `gmail_source` part starts the Gmail arrival source on the trigger core, with the Google hosts
+of the `google_tools` part. The source has the id `gmail` and the kind `mail`. It polls each Google
+connection that holds `gmail.modify` and is not waiting for a new consent, one at a time, every
+`google.gmail.poll_interval` (default `2m`). It reads Gmail and never reaches the decision point.
 
 - The first poll of a connection reads the profile's history ID and delivers no mail.
 - Each later poll reads `history.list` from the stored history ID, over every page, for added
@@ -183,7 +182,7 @@ the decision point.
 - When Google answers 404 for the stored history ID, the source reads the profile's history ID, and
   only then lists the mail that arrived since a margin before the last good poll. The margin is
   `lookbackMs` in
-  [`read-gmail-changes.ts`](../../../modules/connectors/src/google/gmail/poll/read-gmail-changes.ts).
+  [`read-gmail-changes.ts`](../../../adapters/connector-google/src/gmail/poll/read-gmail-changes.ts).
   A mail that arrives between the two reads is in the list or after the new cursor. The dedupe keys
   drop each mail already recorded.
 - The source rereads the mail since each reply rule's send, so a rule still wakes on a reply that
@@ -195,11 +194,12 @@ the decision point.
 - A failed poll keeps the cursor. The source polls again after a backoff, or after Google's retry
   time when that is longer. The backoff doubles after each further failure up to a cap, and both
   live in
-  [`build-poll-retry-ms.ts`](../../../modules/connectors/src/google/gmail/poll/build-poll-retry-ms.ts).
+  [`build-poll-retry-ms.ts`](../../../adapters/connector-google/src/gmail/poll/build-poll-retry-ms.ts).
   After 3 failed polls in a row of any polled connection it reports `unhealthy`, and it reports
   `running` once the last poll of every polled connection succeeded. A connection that needs a new
-  consent is skipped and counts for neither. The loop never sleeps past `gmail.poll_interval`, so a
-  connection that joins the list gets its first poll within an interval while another backs off.
+  consent is skipped and counts for neither. The loop never sleeps past
+  `google.gmail.poll_interval`, so a connection that joins the list gets its first poll within an
+  interval while another backs off.
 - A stop aborts each request in flight through the connection's context, so a shutdown never waits
   on Gmail, and an aborted poll doesn't count as a failure.
 - A mail's arrival ID is the connection's short ID, a dot and Google's message ID, as in the tools.

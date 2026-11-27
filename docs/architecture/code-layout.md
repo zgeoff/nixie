@@ -193,6 +193,8 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/definitions-repo-github` is the definitions repo on GitHub's API.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
+- `adapters/connector-google` is the connections module's connector for Google, with the Gmail,
+  Calendar and Drive tools and the Gmail arrival source.
 - `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
   and on the Gemini API.
 - `adapters/speech-gpt-live` is the calls module's speech layer on OpenAI's GPT-Live.

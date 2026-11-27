@@ -28,6 +28,7 @@ export interface WebJourneyOptions {
   // leaves the computer and the code tool's sections out of nixie's config
   readonly isComputerOff?: boolean;
   readonly isCodeOff?: boolean;
+  readonly isGoogleOff?: boolean;
 
   // a script that every page runs first, such as a microphone stand-in
   readonly headScript?: string;
@@ -40,6 +41,7 @@ export async function startWebJourney(options: WebJourneyOptions = {}): Promise<
       : { voicePricePerMinute: options.voicePricePerMinute }),
     ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
     ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
+    ...(options.isGoogleOff === true ? { isGoogleOff: true } : {}),
   };
 
   const nixie = await startSpawnedNixie(nixieOptions);

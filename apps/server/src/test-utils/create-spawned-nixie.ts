@@ -199,6 +199,7 @@ export interface SpawnedNixieOptions {
   // leaves the computer or the code tool's section out of the config, which turns the feature off
   readonly isComputerOff?: boolean;
   readonly isCodeOff?: boolean;
+  readonly isGoogleOff?: boolean;
 }
 
 // A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
@@ -363,6 +364,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     ...(options.taskDefinitions === undefined ? {} : { taskDefinitions: options.taskDefinitions }),
     ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
     ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
+    ...(options.isGoogleOff === true ? { isGoogleOff: true } : {}),
   };
 }
 

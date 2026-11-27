@@ -26,12 +26,20 @@ import { makeLazyToolSource } from './make-lazy-tool-source';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startComputerPart } from './start-computer-part';
+import { startGoogleToolsPart } from './start-google-tools-part';
 import { startRenderPart } from './start-render-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 import { startWorkerPart } from './start-worker-part';
 
 export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
+  {
+    // The Gmail tools, on late-bound ports for the connections and the fetch sandbox.
+    name: 'google_tools',
+    feature: 'google',
+    needs: ['inputs'],
+    start: (reader) => Promise.resolve(startGoogleToolsPart(reader.get('inputs'))),
+  },
   {
     name: 'sandbox_adapter',
     needs: ['inputs', 'context'],

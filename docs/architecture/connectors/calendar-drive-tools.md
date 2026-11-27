@@ -32,8 +32,8 @@ the check's wait has passed. A write that a check does not find runs again, beca
 one else. A send that a check does not find goes to the user on a card and runs again only after the
 user answers, because Google may have emailed the guests.
 
-[`buildGoogleActions`](../../../modules/connectors/src/google/build-google-actions.ts) builds the
-Gmail, Calendar and Drive actions together, and the
+[`buildGoogleActions`](../../../adapters/connector-google/src/actions/build-google-actions.ts)
+builds the Gmail, Calendar and Drive actions together, and the
 [`google_tools` part](../../../apps/server/src/part/start-google-tools-part.ts) holds them. The
 [action queue](../../../modules/actions/src/action/build-action-queue.ts) runs the queued ones.
 Every Calendar and Drive tool is one entry of the connector's `actions`, so the tool filter and the
@@ -169,8 +169,8 @@ guest. A change card shows each changed field before and after, a description in
 facts of a change, a cancel and a response are sealed on the call's record when `prepare` reads
 them, so a forget of the record removes them, and the card reads them from there. A time shows in
 the zone of the user's newest message, else the deployment's default zone.
-[`readGoogleBodyFields`](../../../modules/connectors/src/google/read-google-body-fields.ts) chains
-the Gmail, Calendar and Drive cards for the approvals API.
+[`readGoogleBodyFields`](../../../adapters/connector-google/src/actions/read-google-body-fields.ts)
+chains the Gmail, Calendar and Drive cards for the approvals API.
 
 ## The Drive picker
 
@@ -201,13 +201,13 @@ client's public ID comes back with the setup reading for this purpose.
 
 ## Testing
 
-The connector's [`test-utils` folder](../../../modules/connectors/src/test-utils/) holds a fake
-Calendar and a fake Drive beside the fake Gmail. The fake Drive holds a request on demand, and can
-answer leading list pages with no file. The fake Calendar pages its calendar list, and refuses a
+The connector's [`test-utils` folder](../../../adapters/connector-google/src/test-utils/) holds a
+fake Calendar and a fake Drive beside the fake Gmail. The fake Drive holds a request on demand, and
+can answer leading list pages with no file. The fake Calendar pages its calendar list, and refuses a
 stale `If-Match` with 412, an insert of an ID that exists with 409, and a delete of a cancelled
 event with 410. Each fake records its requests and writes, and fails or holds a request on demand.
-[`startGmailTools`](../../../modules/connectors/src/test-utils/start-gmail-tools.ts) builds all
-three groups of tools on one loopback HTTPS site. The test build's fake Google site serves the same
-fakes on their paths, with one event and one file, and the `calendar-tools` and `drive-tools` verify
-journeys run against them. A local journey cannot open Google's own picker window, so the choice of
-files runs only in the web client's tests, against stand-ins for Google's scripts.
+[`startGmailTools`](../../../adapters/connector-google/src/test-utils/start-gmail-tools.ts) builds
+all three groups of tools on one loopback HTTPS site. The test build's fake Google site serves the
+same fakes on their paths, with one event and one file, and the `calendar-tools` and `drive-tools`
+verify journeys run against them. A local journey cannot open Google's own picker window, so the
+choice of files runs only in the web client's tests, against stand-ins for Google's scripts.

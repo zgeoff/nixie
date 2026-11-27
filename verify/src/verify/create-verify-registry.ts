@@ -505,6 +505,11 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths['google-connections'],
       },
       {
+        name: 'google-off',
+        summary: 'See that a nixie with no google section offers none',
+        paths: featurePaths['google-off'],
+      },
+      {
         name: 'mcp-servers',
         summary: 'Connect an MCP server, and approve a tool',
         paths: featurePaths['mcp-servers'],

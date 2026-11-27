@@ -8,7 +8,7 @@ import { startTestAPI } from '../test-utils/start-test-api';
 async function setupTest() {
   const origin = 'https://nixie.example.org';
 
-  const api = await startTestAPI();
+  const api = await startTestAPI(undefined, { features: ['google'] });
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   const calls: (readonly unknown[])[] = [];
@@ -738,3 +738,30 @@ test('#connections.registerClient refuses a caller with no session before it rea
 
   expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
+
+test.each(['list', 'readSetup', 'checkPicked'] as const)(
+  'it answers FEATURE_OFF to connections.%s when google is off',
+  async (procedure) => {
+    const api = await startTestAPI();
+    const owner = await createDeviceSession(api.context, 'laptop');
+
+    const client = buildTestClient(api.url, owner.token, 'https://nixie.example.org');
+
+    const answers = {
+      list: () => client.connections.list(),
+      readSetup: () =>
+        client.connections.readSetup({ connector: 'google', origin: 'https://nixie.example.org' }),
+      checkPicked: () =>
+        client.connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['file-1'] }),
+    };
+
+    const answer = answers[procedure]();
+
+    await Promise.allSettled([answer]);
+
+    expect(answer).rejects.toMatchObject({
+      code: 'FEATURE_OFF',
+      data: { feature: 'google' },
+    });
+  },
+);
