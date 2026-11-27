@@ -10,13 +10,15 @@ visit to `/device-view` shows the page that says the feature is off in this nixi
 Run this journey on `local` only, on an `up` of its own, because every other device journey needs
 devices on:
 
-- On `local`, run `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` to start a test build of nixie
-  with the `devices` section taken out of the config.
+- On `local`, run `bun verify use --target local`, then
+  `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` to start a test build of nixie with the
+  `devices` section taken out of the config. The variable applies to that one `up`, so devices stay
+  off until the next `up --restart` without it.
 - On `preview`, skip this journey and list the feature as not verified there in your reply. The
   preview's config holds a `devices` section, so its devices are on.
 
 Before you start, run that `up` and `bun verify doctor`, then do
-[sign-in-enrol](feature-sign-in-enrol.md).
+[sign-in-enrol](feature-sign-in-enrol.md), because the journey needs a signed-in user.
 
 ## Journey
 
@@ -59,5 +61,11 @@ Once the end state matches, run `bun verify done`. When a command fails, follow 
 such as a menu that still shows a device entry or a tool list that holds a `device.` tool, skip
 `done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md). Fix the app's code when your
 change broke the feature. Otherwise list the feature in your reply with the end state you expected
-and the `data` you got. Whether the journey passed or failed, run `bun verify up --restart` and
-`bun verify doctor` last, so the next journey has devices on.
+and the `data` you got. When `done` itself fails, follow its row in Exit codes and run the journey
+again.
+
+Whether the journey passed or failed, run `bun verify up --restart` without
+`NIXIE_VERIFY_NO_DEVICES`, then `bun verify doctor`, so the next journey has devices on. When either
+fails, follow its row in Exit codes, and run both again before any other journey. To re-run this
+journey after a fix, start with `NIXIE_VERIFY_NO_DEVICES=1 bun verify up --restart` again, because a
+restart without it turns devices on.

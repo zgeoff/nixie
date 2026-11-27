@@ -94,8 +94,10 @@ The wire lib's `harnessIDs` is a second list of the models module's `harnesses`,
 allows: a test in the models module fails when the two lists differ.
 
 Each row of this table is a place where a core module names a feature ID or an outside service, or
-depends on a feature module. Each row comes from the entries in
-`apps/server/src/leak/leak-exceptions.ts`, and those entries go when the row's work item lands.
+depends on a feature module. In the middle column, a name in code font is a feature ID or an outside
+service that the place names, and a phrase such as "the connectors module" is a feature module that
+the place imports. Each row comes from the entries in `apps/server/src/leak/leak-exceptions.ts`.
+Remove a row and its entries together when the row's work item lands.
 
 | Place                 | Names or depends on                                                                             | Work item                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |

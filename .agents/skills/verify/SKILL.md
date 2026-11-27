@@ -93,9 +93,9 @@ feature with no verdict in its description.
    passes. Expect: `data.passed: true`. When a check fails, fix its cause, and run `doctor` again.
    After you edit the app's code while `up` runs it, run `bun verify up --restart` and `doctor`
    again, or the next app command fails with `doctor-required`.
-4. Run the journey from the feature's file, which the features table in [References](#references)
-   links. Its first line, `use --feature`, records each later command under that feature. Expect:
-   each command exits 0. When one fails, follow its row in [Exit codes](references/exit-codes.md).
+4. Run the journey from the feature's file, which the features table above links. Its first line,
+   `use --feature`, records each later command under that feature. Expect: each command exits 0.
+   When one fails, follow its row in [Exit codes](references/exit-codes.md).
 5. Compare the app with the feature's end state:
    - When it matches, and no command failed with `read-only`, go on to step 6.
    - When your change broke the feature, fix the app's code, run `bun verify up --restart` and

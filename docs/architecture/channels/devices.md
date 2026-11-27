@@ -423,7 +423,8 @@ among them.
 - `devices.list` marks `onCall: true` on the one device whose session is the call's carrying session
   while the call is `live`, and `false` on every other device, before the call is live and after it
   ends too. The server wires the carrying session from the calls module as a `ReadCallSession`
-  dependency of the device tools, so neither module imports the other.
+  dependency of the device tools, so neither module imports the other. When calls is off, no call is
+  live, so `onCall` is `false` on every device.
 - No tool takes "the call's device" as a target. The assistant passes the device's short ID from
   `devices.list`, as for any other device.
 - The call turn's prompt tells the assistant to keep a spoken reply to about 3 sentences, and to put
@@ -597,8 +598,9 @@ clock or a countdown ticks each second from the browser's own time, with no even
 The page renders markdown like a reply and an image on black: `whole` scales it to fit and centres
 it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the window
 resizes, at most once per debounce window and only when the size differs from the one the server
-has, so the assistant reads the new size within a second. The server has the size from the latest
-stream connect or answered resize.
+has, so the assistant reads the new size within a second. The server takes the size from the
+stream's connect until a resize is answered. After that, the resize's size stands against a later
+connect, until every stream of the device has closed.
 
 While the screen is on, the page hides its close, full-screen, screen-off and sign-out buttons until
 a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves full

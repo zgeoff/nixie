@@ -119,10 +119,11 @@ sidecar's first checkout can, therefore seeds within seconds.
 A feature is an optional part of nixie, such as the computer, calls, devices or Google. A feature is
 on only when its section is in the deployment config: `computer`, `google` and `devices` switch the
 feature of the same name, and the `voice` section switches calls, whose feature ID is `voice`. A
-feature that is off starts none of its parts, needs none of its images and offers none of its tools
-or pages. Read [the design](../../design/queue/feature-switches.md) for the full rules. The code
-still breaks them in a few places. Find each one in `apps/server/src/leak/leak-exceptions.ts`, or as
-a table in [the ports doc](../ports.md).
+deployment that already has a `voice` section keeps calls on. A feature that is off starts none of
+its parts, needs none of its images and offers none of its tools or pages. Read
+[the design](../../design/queue/feature-switches.md) for the full rules. The code still breaks them
+in a few places. Find each one in `apps/server/src/leak/leak-exceptions.ts`, or as a table in
+[the ports doc](../ports.md).
 
 - `featureIDs` in `libs/contract` is the one list of features. Derive every union and schema that
   names a feature from it.
@@ -155,24 +156,29 @@ a table in [the ports doc](../ports.md).
   name is no leak inside that path. A path covers only the name of its feature, and the test fails
   on an owned path that holds none.
 - Keep each list that a feature adds to in a core module, and fill it from the composition root. The
-  computer fills the tasks module's inbox kinds and the policy module's tool shapes in
-  `fillComputerLists`, which runs at the start of each server and leaves both empty when the
-  computer is off. `fillBodyFieldReaders` fills the API module's body-field readers, which word the
-  card of a Gmail, Calendar, Drive or package-install call, from the google and devices sections.
-  `fillInboxKinds` fills the inbox kinds of the computer, calls and devices, and `fillCallsLists`
-  fills the definitions module's sections with the voice folder. The root also fills the API's
-  session hooks, which keep each feature's rows in step with a session, and its feature procedures,
-  which supply the calls and devices procedures. Core names no inbox kind of calls or devices: the
-  root fills in which of their records are in the inbox and which wake a task. A list is global to
-  the process, so a test that sets one resets it when the test ends.
+  server fills each list in a function that runs before any part starts, and each function leaves
+  its list empty when its feature is off:
+  - `fillComputerLists` fills the policy module's tool shapes with the computer's.
+  - `fillInboxKinds` fills the tasks module's inbox kinds with those of the computer, calls and
+    devices, from the `computer`, `voice` and `devices` sections.
+  - `fillBodyFieldReaders` fills the API module's body-field readers, which word the card of a
+    Gmail, Calendar, Drive or package-install call, from the google and devices sections.
+  - `fillCallsLists` fills the definitions module's sections with the voice folder.
+
+  The root also fills the API's session hooks, which keep each feature's rows in step with a
+  session, and its feature procedures, which supply the calls and devices procedures. Core names no
+  inbox kind of calls or devices: the root fills in which of their records are in the inbox and
+  which wake a task. A list is global to the process, so a test that sets one resets it when the
+  test ends.
+
 - A feature that is off leaves its parts out of the plan, and the parts that serve it: the call
   claim pool of the task runners starts only with calls, the device fetch sandbox only with devices,
   and the render sandbox is a devices part. A session that is revoked or renamed while devices are
   off leaves its device row behind, so the devices part brings the rows in step with the sessions at
   each start.
 - List each leak that the code still holds in `apps/server/src/leak/leak-exceptions.ts`, with the
-  work item whose retrofit removes it. Only the leak test reads the file, and the test fails when an
-  exception matches nothing.
+  work item whose retrofit removes it. Read the file for the retrofits still open. Only the leak
+  test reads the file, and the test fails when an exception matches nothing.
 - `turbo boundaries` reads no exceptions. It checks each module's tags in its `turbo.json` against
   the root `turbo.json`:
   - A `core` module depends only on `core` modules and libs.

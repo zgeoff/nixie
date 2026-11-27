@@ -70,11 +70,11 @@ after the cut.
 
 Other rules of the adapter:
 
-- `answer` sends the whole answer as one commentary on the delegation. The provider takes at most
-  500 tokens in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than
-  its tokens. A text past 400 bytes goes as several commentaries of at most 400 bytes each, split at
-  the end of a sentence. Every word of the text goes out in order. `final` marks the end inside
-  nixie, because the provider has no close for a delegation.
+- `answer` sends the answer as commentaries on the delegation. The provider takes at most 500 tokens
+  in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than its tokens. A
+  text of 400 bytes or fewer goes as one commentary. A longer text goes as several of at most 400
+  bytes each, split at the end of a sentence. Every word of the text goes out in order. `final`
+  marks the end inside nixie, because the provider has no close for a delegation.
 - `say` sends a commentary with no delegation, which the speech layer words as its own. It splits a
   long line the same way.
 - `close` waits for the line that the speech layer is speaking, for a bounded time, and then closes
@@ -232,12 +232,12 @@ with these differences:
 - The task holds one sandbox, as any task that keeps sandboxes does.
 - The turn runs on the profile that `models.roles.call` names. When the role is unset, it runs on
   the conversation's profile. The turn-input log can capture the `call` role.
-- The session's prompt is the conversation's prompt followed by the voice-call prompt, which adds a
-  rule for the call's turn: keep a spoken reply to about 3 sentences, put a longer answer on a
-  device with the device tools, and say where it is. The speech layer's own prompt holds no such
-  rule. A real GPT-Live session summarised or cut short a 2,400-character answer in 3 of 3 tries,
-  and short answers worked every time. [Devices](devices.md#the-calls-device) describes how the turn
-  finds the call's device.
+- The session's prompt is the conversation's prompt followed by the voice prompt and a rule for the
+  call's turn: keep a spoken reply to about 3 sentences, put a longer answer on a device with the
+  device tools, and say where it is. The rule goes to the call's turn only. The speech layer's
+  instructions hold the voice prompt without that rule. A real GPT-Live session summarised or cut
+  short a 2,400-character answer in 3 of 3 tries, and short answers worked every time.
+  [Devices](devices.md#the-calls-device) describes how the turn finds the call's device.
 - A new session opens with two threads: the conversation's summary and recent turns through
   `seedThrough`, then the call's own thread. The call's thread shows the user's speech, the speech
   layer's small talk and the replies.
@@ -323,8 +323,8 @@ charged before.
 
 ## Limits of the speech layer
 
-- The speech layer's instructions hold the voice-call prompt, never a memory block. Its small talk
-  saves nothing to memory, and `dictated` text never counts as memory evidence.
+- The speech layer's instructions hold the voice prompt, never a memory block. Its small talk saves
+  nothing to memory, and `dictated` text never counts as memory evidence.
 - The speech layer answers small talk only, and hands every request to nixie's turn, so Claude
   writes each answer.
 - One call runs at a time, because nixie works for one person.
@@ -345,8 +345,12 @@ Both places that hold settings are optional.
   [voice setup guide](../../guides/voice-calls.md) gives the steps.
 - The `voice/` folder of the [definitions](../core/definitions.md) holds `voice.yaml`, with `voice`,
   `hold_after_ms` and `price_per_minute`, and `lines.yaml`, with the fixed lines `holding`,
-  `reconnect`, `couldnt_finish` and `budget`. Every key is optional. A missing key takes the default
-  in the module, except `price_per_minute`, which has none.
+  `reconnect`, `couldnt_finish` and `budget`. Every key is optional. A missing key takes its default
+  from `defaultVoiceDefinitions` in
+  [`voice-definitions-schema.ts`](../../../modules/calls/src/voice/voice-definitions-schema.ts),
+  except `price_per_minute`, which has none. The sweep's interval and its limits for a `connecting`
+  call and a reconnect wait are constants in
+  [`modules/calls/src/meter/`](../../../modules/calls/src/meter/); no config sets them.
 
 A voice file that fails to parse never stops the server or the seed. The seed leaves the file
 unapplied and logs `definitions.voice_file_skipped` with the file and its fault. Calls then use the

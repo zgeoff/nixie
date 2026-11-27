@@ -18,7 +18,7 @@ The component registers nixie's StatefulSet, the web client and the backup job i
 the shape each nixie release ships. Each release of nixie publishes the component at its own
 version, so a deployment takes a change to that shape with a version bump. To start, install the
 package, call `createNixie` with your namespace and images, and point your ingress at its 2
-Services.
+Services: one for nixie's API, on `nixieAPIPort`, and one for the web client, on `nixieWebPort`.
 
 ## Install
 
@@ -41,7 +41,9 @@ program installs. Add it with `bun add @heynixie/pulumi-k8s`.
 Pass the per-deployment values to `createNixie(name, args, opts)` in `args`, and your Kubernetes
 provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value.
 
-`args.config` is the text of nixie's `config.yaml`, which the component passes through unread. A
+`args.config` is the text of nixie's `config.yaml`, which the component passes through unread.
+[Deployment configuration](../../docs/architecture/deployment/configuration.md) describes the file,
+and the [Kubernetes guide](../../docs/guides/kubernetes.md) walks through the secrets and keys. A
 feature is on only when its section is in that text. To turn on the assistant's computer, its code
 tool, Google and devices, add the sections `computer`, `code`, `google` and `devices`, each empty as
 `{}`. Keep your `voice` section as it is, because calls stay on through it and it needs a `provider`
