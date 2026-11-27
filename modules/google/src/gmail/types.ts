@@ -43,13 +43,13 @@ export interface LinkedText {
   readonly tags: readonly TagSpan[];
 }
 
-export interface PageLinks {
+interface PageLinks {
   readonly pageURL: string;
   readonly targets: readonly string[];
   readonly numbers: ReadonlyMap<string, number>;
 }
 
-export type FittedImage =
+type FittedImage =
   | {
       readonly kind: 'image';
       readonly image: ToolImage;
@@ -64,17 +64,17 @@ interface CodeFileRow {
   readonly mediaType: string;
 }
 
-export interface LinkTagContext {
+interface LinkTagContext {
   readonly pageHost: string | null;
   readonly linkPathChars: number;
 }
 
-export interface CodeFileRef {
+interface CodeFileRef {
   readonly thread: string;
   readonly fileID: string;
 }
 
-export type CodeFileEntry =
+type CodeFileEntry =
   | { readonly kind: 'missing' }
   | { readonly kind: 'forgotten'; readonly row: CodeFileRow }
   | {
@@ -84,7 +84,7 @@ export type CodeFileEntry =
       readonly isStream: boolean;
     };
 
-export type CodeFileRead =
+type CodeFileRead =
   | { readonly kind: 'missing' }
   | { readonly kind: 'forgotten' }
   | { readonly kind: 'ok'; readonly bytes: Uint8Array<ArrayBuffer> };
