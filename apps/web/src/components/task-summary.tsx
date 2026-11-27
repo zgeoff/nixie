@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
+import { SessionLine } from '../coding/session-line';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { isTaskShownPaused } from '../pause/is-task-shown-paused';
 import { css } from '../styled-system/css';
@@ -59,6 +60,7 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
           </span>
         ) : null}
       </div>
+      <SessionLine task={task} />
       {isHydrated ? <TaskSchedule task={task} /> : null}
       {task.brief === '' ? null : <TaskBrief brief={task.brief} isExpandable={!props.isLinked} />}
       {task.waitingOn === undefined ? null : (

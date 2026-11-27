@@ -28,9 +28,10 @@ import { codingProjections } from '../projection/coding-projections';
 import { buildCodingRunner } from '../runner/build-coding-runner';
 import { buildCodingStartTool } from '../tool/build-coding-start-tool';
 import { buildCodingTools } from '../tool/build-coding-tools';
-import type { CodingContext, CodingSettings } from '../types';
+import type { CodingContext } from '../types';
 import type { FakeCodingAdapter } from './build-fake-coding-adapter';
 import { buildFakeCodingAdapter } from './build-fake-coding-adapter';
+import { testCodingSettings } from './wire-test-coding';
 
 export interface TestCoding {
   readonly clock: FakeClock;
@@ -75,19 +76,6 @@ export interface TestCoding {
   readonly startTask: (claim: StartedClaim, input: object) => Promise<string>;
 }
 
-const testSettings: CodingSettings = {
-  wake: {
-    started: ['waiting', 'idle', 'blocked', 'decision', 'ended', 'gone'],
-    joined: ['waiting', 'ended', 'gone'],
-  },
-  targets: [
-    { daemon: 'laptop', target: 'local' },
-    { daemon: 'cloud', target: 'cloud' },
-  ],
-  defaultTarget: { daemon: 'cloud', target: 'cloud' },
-  toolWaitMs: 0,
-};
-
 const maxRuns = 50;
 
 // A tasks and actions log that folds the trigger and coding records too, with a conversation task
@@ -112,7 +100,7 @@ export async function startTestCoding(): Promise<TestCoding> {
 
   const coding: CodingContext = {
     tasks: tasksWithoutRunners,
-    settings: testSettings,
+    settings: testCodingSettings,
     ownerName: 'the user',
     logEvent: (event, fields) => {
       logged.push({ event, fields });

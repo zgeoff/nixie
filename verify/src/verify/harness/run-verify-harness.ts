@@ -283,6 +283,17 @@ export async function runVerifyHarness(): Promise<void> {
     deliverMail: async (mail) => {
       await server.request('deliverMail', mail);
     },
+    setSessionState: (state) => {
+      if (gateway === null) {
+        throw new Error('the harness runs no coding gateway: start it with NIXIE_VERIFY_CODING=1');
+      }
+
+      for (const session of gateway.sessions.values()) {
+        session.state = state;
+      }
+
+      return gateway.sessions.size;
+    },
     deliverGmail: (mail) => {
       google.gmail.seed({ ...mail, sentAtMs: Date.now() + advancedMs.total });
     },

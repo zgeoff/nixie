@@ -64,6 +64,9 @@ export function buildServerCoding(options: ServerCodingOptions): ServerCoding | 
     targets: settings.targets,
     log: options.log,
     cursors: buildStartCursorStore(context, 'atc', Date.now),
+
+    // a gateway double changes a session's state at a journey's command, so the read comes soon
+    ...(options.testGatewayURL === null ? {} : { stateReadMs: 1000 }),
   });
 
   options.log('coding.configured', { adapter: adapter.id, principal: atc.principal });

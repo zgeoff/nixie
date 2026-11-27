@@ -7,7 +7,14 @@ export { forgettableKinds } from './contract/forgettable-kinds';
 export { contract } from './contract/contract';
 export type { DefinitionNotice } from './contract/definition-notice-schema';
 export { hostContract } from './contract/host-contract';
-export { listedStateSchema, runFireSchema } from './contract/listed-task-schema';
+
+export {
+  listedSessionSchema,
+  listedStateSchema,
+  runFireSchema,
+  taskStateSchema,
+} from './contract/listed-task-schema';
+
 export { workerViewSchema } from './contract/worker-view-schema';
 export { clipRecordPayloads } from './contract/clip-record-payloads';
 export { payloadClipBytes } from './contract/payload-clip-bytes';

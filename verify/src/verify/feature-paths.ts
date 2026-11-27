@@ -28,6 +28,7 @@ export const featurePaths = {
   'policy-proposal': [...everyJourney],
   'task-control': [...everyJourney],
   'coding-session': [...everyJourney],
+  'coding-supervision': [...everyJourney],
   'call-hand-off': [...everyJourney],
   'call-screen': [...everyJourney],
   'call-device-show': [...everyJourney],

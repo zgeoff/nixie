@@ -2,6 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LiveConnection } from '../live/live-connection';
+import { featureStore } from '../mocks/feature-store';
 import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
@@ -50,6 +51,157 @@ test('it lists the conversation, then the working and the held tasks, with who w
   );
 
   expect(rendered.queryByText('Tiler booking')).toBeNull();
+});
+
+test('it lists a task that supervises a session in its own group, with the session state and the time of its last event', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({
+    name: 'Fix the flaky login test',
+    runner: 'atc',
+    session: {
+      lastEventAt: new Date('2027-03-09T10:00:00.000Z'),
+      origin: 'started',
+      state: 'waiting',
+    },
+    state: 'waiting',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  await store.tasks.create({ name: 'Garden plan', state: 'running', taskID: 'p7hd2wq9zn' });
+
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
+
+  const coding = await rendered.findByRole('region', { name: 'Coding sessions' });
+
+  const row = within(coding).getByRole('listitem', { name: 'Fix the flaky login test' });
+
+  expect(coding).toHaveTextContent('These sessions run in another program, outside nixie.');
+  expect(row).toHaveTextContent('Coding session, outside nixie: started by nixie');
+  expect(within(row).getByLabelText('Session state')).toHaveTextContent('Waiting for you');
+
+  await waitFor(() => {
+    expect(row).toHaveTextContent('Last event');
+  });
+
+  expect(
+    within(rendered.getByRole('region', { name: 'Working' })).queryByText(
+      'Fix the flaky login test',
+    ),
+  ).toBeNull();
+});
+
+test('it moves the shown session state when the session changes, with no reload', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const task = await store.tasks.create({
+    name: 'Fix the flaky login test',
+    runner: 'atc',
+    session: { lastEventAt: null, origin: 'started', state: 'running' },
+    state: 'waiting',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  const rendered = render(
+    <>
+      <LiveConnection />
+      <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />
+    </>,
+  );
+
+  const row = await rendered.findByRole('listitem', { name: 'Fix the flaky login test' });
+
+  expect(within(row).getByLabelText('Session state')).toHaveTextContent('Running');
+
+  await store.tasks.update(task, {
+    data(draft) {
+      draft.session = {
+        lastEventAt: new Date('2027-03-09T10:05:00.000Z'),
+        origin: 'started',
+        state: 'idle',
+      };
+    },
+  });
+
+  await waitFor(() => {
+    expect(
+      within(rendered.getByRole('listitem', { name: 'Fix the flaky login test' })).getByLabelText(
+        'Session state',
+      ),
+    ).toHaveTextContent('Idle');
+  });
+});
+
+test('it keeps a task that supervises a session in the working group while coding is off', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await featureStore.featuresOff.create({ feature: 'coding' });
+
+  await store.tasks.create({
+    name: 'Fix the flaky login test',
+    runner: 'atc',
+    session: { lastEventAt: null, origin: 'started', state: 'running' },
+    state: 'waiting',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
+
+  const working = await rendered.findByRole('region', { name: 'Working' });
+  const row = await within(working).findByRole('listitem', { name: 'Fix the flaky login test' });
+
+  expect(rendered.queryByRole('region', { name: 'Coding sessions' })).toBeNull();
+  expect(row).not.toHaveTextContent('Coding session');
+});
+
+test('it says what a stop does to the session of a task that nixie started and of one it joined', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({
+    name: 'Started fix',
+    runner: 'atc',
+    session: { lastEventAt: null, origin: 'started', state: 'running' },
+    taskID: 'k3vq8m2xpa',
+  });
+
+  await store.tasks.create({
+    name: 'Joined refactor',
+    runner: 'atc',
+    session: { lastEventAt: null, origin: 'joined', state: 'running' },
+    taskID: 'p7hd2wq9zn',
+  });
+
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
+
+  const started = await rendered.findByRole('group', { name: 'Controls for Started fix' });
+
+  await ctx.user.click(within(started).getByRole('button', { name: 'Stop' }));
+
+  const startedLine = await within(started).findByText('This also stops its coding session.');
+
+  expect(startedLine).toBeVisible();
+
+  const joined = rendered.getByRole('group', { name: 'Controls for Joined refactor' });
+
+  await ctx.user.click(within(joined).getByRole('button', { name: 'Stop' }));
+
+  const joinedLine = await within(joined).findByText('Its coding session keeps running, as yours.');
+
+  expect(joinedLine).toBeVisible();
 });
 
 test('it pauses a task from the dashboard', async () => {

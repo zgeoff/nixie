@@ -42,6 +42,7 @@ export function readMockTaskList(input: ContractInputs['tasks']['list'] = {}) {
         name: task.name,
         nextRunAt: task.nextRunAt,
         runner: task.runner,
+        session: task.session,
         state: task.state,
         taskID: task.taskID,
         wakeable: task.wakeable,

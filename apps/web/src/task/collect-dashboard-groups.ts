@@ -4,6 +4,9 @@ import type { ListedTask } from './use-live-task-list';
 export interface DashboardGroups {
   readonly conversation: ListedTask | undefined;
   readonly held: readonly ListedTask[];
+
+  // the tasks that supervise a coding session; empty while the feature is off
+  readonly supervised: readonly ListedTask[];
   readonly working: readonly ListedTask[];
 }
 
@@ -18,13 +21,24 @@ const workingStates: ReadonlySet<ListedState> = new Set([
 
 const heldStates: ReadonlySet<ListedState> = new Set(['paused', 'stopped', 'failed']);
 
-// A task from a server that gives no listed state groups by its stored state.
-export function collectDashboardGroups(tasks: readonly ListedTask[]): DashboardGroups {
+// A task that supervises a session groups apart from the other tasks, in any listed state, while
+// the coding feature is on. A task from a server that gives no listed state groups by its stored
+// state.
+export function collectDashboardGroups(
+  tasks: readonly ListedTask[],
+  isCodingOn: boolean,
+): DashboardGroups {
   const others = tasks.filter((task) => task.taskID !== 'conversation');
+  const isSupervised = (task: ListedTask): boolean => isCodingOn && task.session !== undefined;
+  const supervised = others.filter((task) => isSupervised(task));
+  const unsupervised = others.filter((task) => !isSupervised(task));
 
   return {
     conversation: tasks.find((task) => task.taskID === 'conversation'),
-    held: others.filter((task) => heldStates.has(task.listedState ?? task.state)),
-    working: others.filter((task) => workingStates.has(task.listedState ?? task.state)),
+    held: unsupervised.filter((task) => heldStates.has(task.listedState ?? task.state)),
+    supervised: supervised.filter(
+      (task) => !['done', 'closed'].includes(task.listedState ?? task.state),
+    ),
+    working: unsupervised.filter((task) => workingStates.has(task.listedState ?? task.state)),
   };
 }

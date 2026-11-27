@@ -4,6 +4,7 @@ import {
   pickListedTaskState,
   pickResolvedControls,
   readListedNextRun,
+  readListedRunnerFields,
   readNewestRun,
   readOpenRun,
   readOwnerMessageTakers,
@@ -16,6 +17,7 @@ import {
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import type { APIContext } from '../types';
+import { parseListedSession } from './parse-listed-session';
 import { pickShownTaskState } from './pick-shown-task-state';
 import { readTaskRunFire } from './read-task-run-fire';
 
@@ -68,6 +70,8 @@ export async function readListedTasks(
     listedIDs.map((taskID) => context.runners.resolve(context, taskID)),
   );
 
+  const runnerViews = await readListedRunnerFields(context, listedIDs);
+
   const marks = await Promise.all(
     listedIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
   );
@@ -98,6 +102,7 @@ export async function readListedTasks(
     const actions = counts.get(task.id);
     const runner = runners[index];
     const closedBy = closedByTask.get(task.id);
+    const session = parseListedSession(runnerViews.get(task.id)?.fields);
 
     invariant(actions);
     invariant(runner);
@@ -122,6 +127,7 @@ export async function readListedTasks(
       name: task.name,
       nextRunAt: nextRuns[index] ?? undefined,
       runner: toRunnerKey(runner),
+      session,
       state: task.state,
       taskID: task.id,
       wakeable: task.wakeable,

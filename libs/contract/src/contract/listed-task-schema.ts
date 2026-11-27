@@ -24,6 +24,14 @@ const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close',
 
 export const actionCountSchema = z.int().nonnegative();
 
+// The session that a supervised task works with, which runs in another program. Its state is the
+// session's own, as the task last saw it, and `lastEventAt` is null before the first event.
+export const listedSessionSchema = z.object({
+  lastEventAt: z.date().nullable(),
+  origin: z.enum(['started', 'joined']),
+  state: z.enum(['running', 'waiting', 'idle', 'ended', 'gone']),
+});
+
 export const listedTaskSchema = z.object({
   actions: z.object({
     cancelled: actionCountSchema,
@@ -44,6 +52,7 @@ export const listedTaskSchema = z.object({
   name: z.string(),
   nextRunAt: z.string().optional(),
   runner: z.string(),
+  session: listedSessionSchema.optional(),
   state: taskStateSchema,
   taskID: threadSchema,
   wakeable: z.boolean().optional(),

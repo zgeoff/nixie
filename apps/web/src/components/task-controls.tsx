@@ -2,8 +2,11 @@ import type { TaskControl } from '@heynixie/task-control';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { formatSessionRelease } from '../coding/format-session-release';
 import { formatStopPreview } from '../conversation/format-stop-preview';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
+import { isFeatureOn } from '../features/is-feature-on';
+import { useFeatures } from '../features/use-features';
 import { collectOfferedControls } from '../pause/collect-offered-controls';
 import { css } from '../styled-system/css';
 import { runTaskControl } from '../task/run-task-control';
@@ -46,6 +49,8 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
   const [confirming, setConfirming] = useState<'stop' | 'close' | null>(null);
   const [attempt, setAttempt] = useState<ControlAttempt | null>(null);
   const task = props.task;
+  const features = useFeatures();
+  const release = isFeatureOn(features, 'coding') ? formatSessionRelease(task.session) : null;
 
   const refreshList = (): void => {
     void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.tasks.key() });
@@ -107,6 +112,7 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
           onKeep={() => {
             setConfirming(null);
           }}
+          release={release}
           taskID={task.taskID}
         />
       ) : null}
@@ -114,6 +120,7 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
         <CloseConfirmation
           isPending={sent.isPending}
           name={task.name}
+          release={release}
           onConfirm={() => {
             send('close');
           }}
@@ -133,6 +140,7 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
 
 interface StopConfirmationProps {
   readonly taskID: string;
+  readonly release: string | null;
 
   readonly isPending: boolean;
   readonly onConfirm: () => void;
@@ -165,6 +173,7 @@ function StopConfirmation(props: StopConfirmationProps): ReactNode {
       {actions.data === undefined
         ? null
         : formatStopPreview(actions.data).map((line) => <p key={line}>{line}</p>)}
+      {props.release === null ? null : <p>{props.release}</p>}
       <button
         disabled={props.isPending || !actions.isSuccess}
         onClick={props.onConfirm}
@@ -181,6 +190,7 @@ function StopConfirmation(props: StopConfirmationProps): ReactNode {
 
 interface CloseConfirmationProps {
   readonly name: string;
+  readonly release: string | null;
 
   readonly isPending: boolean;
   readonly onConfirm: () => void;
@@ -191,6 +201,7 @@ function CloseConfirmation(props: CloseConfirmationProps): ReactNode {
   return (
     <div aria-label="Close the task" role="group">
       <p>Close {props.name} for good? It takes no more messages, and you can still read it.</p>
+      {props.release === null ? null : <p>{props.release}</p>}
       <button disabled={props.isPending} onClick={props.onConfirm} type="button">
         Close the task
       </button>
