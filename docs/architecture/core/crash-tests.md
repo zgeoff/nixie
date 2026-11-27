@@ -141,8 +141,8 @@ stops at the parts of a start that need a real sandbox.
 ## Fault points of the erasure runner
 
 The [erasure runner](../memory/store.md#forgetting) holds at 5 fault points behind the test-build
-flag, in the order of its steps. A test arms a point, makes a note forget or a moment destroy reach
-it, stops nixie there and starts it again, and checks that the erasure finishes, no key of the
+flag, in the order of its steps. A test arms a point, makes a memory item, note or moment forget
+reach it, stops nixie there and starts it again, and checks that the erasure finishes, no key of the
 target remains and `erasure.finished` follows `erasure.started`.
 
 | Fault point                   | Reached                                                                                                    |

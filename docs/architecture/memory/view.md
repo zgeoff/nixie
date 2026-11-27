@@ -105,10 +105,10 @@ forget runs the store's forget ([forgetting](./store.md#forgetting)) with the us
 item that changed after the preview refuses it as stale and nothing is destroyed.
 
 The forget is a checked action like the other changes, and its result commits in the transaction
-that marks the item forgetting. A retry with the same client action ID therefore finds the result
-and runs the forget's cleanup again, so a forget whose session cleanup failed after its start
-completes on the retry instead of waiting for the store's next start. That rerun touches only an
-item that is still forgetting, so it never deletes the key of an item no forget began.
+that writes `erasure.started`. A retry with the same client action ID therefore finds the result and
+finishes the item's open erasure, so a forget whose session cleanup failed after its start completes
+on the retry instead of waiting for the store's next start. The retry finishes only an erasure that
+is open, so it never deletes the key of an item no forget began.
 
 The web page's confirmation shows the history from the preview, what the forget destroys, and what
 it cannot reach. A disk snapshot that the user took by hand of nixie's host or its volumes still
@@ -123,23 +123,23 @@ A forget whose start committed and whose cleanup failed lists as forgetting, and
 lists, such as a pin of another item, moves it out of the row that held its confirmation. The page
 therefore keeps each forget call in the query client, apart from every row, and the forgetting
 item's row in the forgotten list offers to finish the forget while its last call failed. That retry
-sends the same client action ID, so the server runs the cleanup again.
+sends the same client action ID, so the server finishes the open erasure.
 
-## Deleting retired items
+## Forgetting retired items
 
 The retired list offers one checked action that forgets selected retired items, or all of them, in a
 [bulk forget](./store.md#forgetting-retired-items-in-bulk). Its preview lists the oldest retired
 items up to a cap, each at its version with what its forget destroys, and says when more remain. The
-confirmation starts with every listed item selected, states that the deletion cannot be undone and
+confirmation starts with every listed item selected, states that the forget cannot be undone and
 that chat records stay, and sends the selected items with the versions the preview showed.
 
 The page keeps the set it first showed while the confirmation is open, so a refresh of the lists
 never changes what the user confirmed. A stale set closes the confirmation with the reason, and
-nothing is deleted. A run whose cleanup failed keeps the confirmation open with a count of deleted
-and pending items, which the status read returns, and offers to finish the run. That retry sends the
-same client action ID, so the server runs the cleanup of each pending item again. The page keeps
-each bulk call in the query client, as it keeps each single forget, so the retired list still offers
-to finish a failed run after the user leaves the page and comes back.
+nothing is forgotten. A run whose cleanup failed keeps the confirmation open with a count of
+forgotten and pending items, which the status read returns, and offers to finish the run. That retry
+sends the same client action ID, so the server finishes the open erasure of each pending item. The
+page keeps each bulk call in the query client, as it keeps each single forget, so the retired list
+still offers to finish a failed run after the user leaves the page and comes back.
 
 ## Proposals
 

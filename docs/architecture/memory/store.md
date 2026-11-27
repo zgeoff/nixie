@@ -225,9 +225,10 @@ the purge fails as stale. After the commit the purge deletes the closed keys and
 `memory.evidence_purged`.
 
 An item whose own [forget](#forgetting) has begun gets no closing commit, because that forget
-deletes every key of the item. The purge runs the forget's cleanup to its end, then writes
-`memory.evidence_purged`. So `record.forgotten` always follows the delete of every key that holds
-the record's text, even when the item's forget stopped before its key delete.
+deletes every key of the item. The purge deletes the item's key family itself and checkpoints the
+key store, then writes `memory.evidence_purged`, and the forget finds no key left to delete. So
+`record.forgotten` always follows the delete of every key that holds the record's text, even when
+the item's own forget has not reached its key delete.
 
 The memory view's history shows a bridge with its text and "Kept when a message was removed", with
 no change or origin. Recall shows its change as `kept`, with the line "kept when a message it quoted
@@ -530,22 +531,24 @@ the forget begins, so a recall never delivers the text of an item after its forg
 
 ## Forgetting
 
-A forget binds to the revision the confirmation showed, so a later edit makes it stale. It runs as a
-durable operation in 2 parts:
+A forget binds to the revision the confirmation showed, so a later edit makes it stale. An item
+forgets through the erasure runner in `modules/log`, as a note and a moment do, and writes
+`erasure.started` and `erasure.finished` in clear. It runs in 2 parts:
 
-1. Under the delivery lock, nixie checks the item and its revision, appends a record that marks the
-   item forgetting, and drops the item from the index. From here a recall never delivers the item.
-2. The cleanup deletes the item's keys and checkpoints the key store, drops the index entry again,
-   runs the session cleanup for every live session, and appends the record that marks the item
-   forgotten.
+1. Under the delivery lock, nixie checks the item and its revision, writes `erasure.started` with
+   what the forget deletes, and drops the item from the index, the labels, the vectors and the
+   triggers. From here a recall never delivers the item, and the item's row reads forgetting.
+2. The runner deletes the item's keys and checkpoints the key store, drops the item from the indexes
+   again, runs the session cleanup for every live session, removes the turn inputs that can hold the
+   text, and writes `erasure.finished`. That record marks the item forgotten and makes a backup due.
 
-A note and a moment forget through the erasure runner in `modules/log` and write `erasure.started`
-and `erasure.finished` in place of their own forget records, as
-[the notebook](./notebook.md#forgetting-a-note) and [moments](./moments.md#destroying-a-moment)
-describe. The runner owns the steps after the start: it captures every key and session target in
-`erasure.started`, deletes the keys of the target and of each child, runs the session cleanup,
-removes the turn inputs, and writes `erasure.finished`, which makes a backup due. An item's forget
-keeps its own pipeline.
+`erasure.started` names the item's key family, which is every key whose ID is the item's UUID or
+starts with it, and each key of a held move's card that names the item. It also holds the session
+cause, `{ itemID }`, and the turn-input scope: the conversation's thread, the threads of the
+sessions the cleanup closes, and the first log sequence that can hold the item's text. A moment
+registers the same way, as [moments](./moments.md#destroying-a-moment) describes, and
+[the notebook](./notebook.md#forgetting-a-note) describes a note's. The runner owns the steps after
+the start, and an item has no child.
 
 The runner holds these rules, which the code enforces:
 
@@ -571,11 +574,27 @@ The runner holds these rules, which the code enforces:
   the kind, the short ID and the minutes open, never the erasure's own ID. A retry goes through the
   runner's queue, so it never runs beside the watch's retry.
 
-Every step of the cleanup is safe to run twice. A crash between the 2 parts, or anywhere inside the
-cleanup, leaves the item forgetting, and the store's start runs the cleanup for every forgetting
-item before it builds the index and before any runner claims work. A deleted key never returns while
-a forget waits, and the forget completes only after the session cleanup returns.
-[Memory in context](./context.md#forgetting-and-the-live-session) covers what that cleanup removes.
+The projections fold `erasure.started` and `erasure.finished` for the kind `memory_item`, as they
+folded the earlier `memory.forget_started` and `memory.forgotten`. `erasure.started` marks the item
+forgetting, clears its pin and end time, removes its moment links, and blocks the messages the item
+quotes from new quotes. The block reads the item's quotes from the version and proposal rows at the
+record, which is what the earlier start record carried. `erasure.finished` marks the item forgotten
+and keeps its sequence, which the backup state reads. A rebuild gives the same rows as the live
+projection. The earlier records and their folds stay, so a rebuild still reads every forget an
+earlier release wrote.
+
+Every step is safe to run twice. A crash between the 2 parts, or anywhere inside the second, leaves
+the item forgetting with `erasure.started` open, and the catch-up at the server's start finishes it
+before the store builds its index and before any runner claims work. A forget that an earlier
+release left in forgetting, with `memory.forget_started` and no `erasure.started`, gets one at that
+start, as the actor `user`, because only the user forgot an item then, and finishes the same way. A
+deleted key never returns while a forget waits, and the forget completes only after the session
+cleanup returns. [Memory in context](./context.md#forgetting-and-the-live-session) covers what that
+cleanup removes.
+
+The cleanup also removes the key of each fold order whose topic no remaining item holds, because a
+fold order keeps the name of its topic. It reads the other items after the item left the labels, so
+the last item of a topic takes the name with it.
 
 The key deletion and its checkpoint are the ones [erasable fields](../core/erasable-fields.md)
 describes, so neither the key store file nor its write-ahead log keeps the wrapped key. The version
@@ -604,25 +623,25 @@ after the forget exists until the backup job's next job run.
 
 ### Forgetting retired items in bulk
 
-A bulk forget deletes a fixed set of retired items, each bound to the revision its preview showed.
-In one transaction under the delivery lock, nixie checks every item and revision and appends one
-record per item that marks it forgetting. A stale or unretired target rolls the transaction back, so
-the bulk forget deletes no key unless every target holds. A restore after the preview moves its item
+A bulk forget takes a fixed set of retired items, each bound to the revision its preview showed. The
+first item's start transaction checks every item and revision, so a stale or unretired target rolls
+that transaction back and the bulk forget takes no item. A restore after the preview moves its item
 past the revision the preview showed, so that item fails as stale. An item retired after the preview
 was never in the set, so the bulk forget leaves it alone.
 
-The forgetting state reserves each item, because restore, undo and edit refuse an item that is
-forgetting. The store then runs each item's cleanup in turn, stops at the first failure, and writes
-each item its own forgotten record. A crash leaves the rest of the set forgetting, for the store's
-start to finish.
+Each item then has an erasure of its own, started in turn under the delivery lock. The forgetting
+state reserves each item, because restore, undo and edit refuse an item that is forgetting. The
+store finishes each erasure in turn, stops at the first failure, and the reply names the items done
+and the items pending. A crash leaves the rest of the set forgetting with `erasure.started` open,
+for the catch-up to finish.
 
 ### Forgetting every item
 
 The reset of the memories, a host command, forgets every item that is active or retired, at its
-current revision. The store reads the set inside the transaction that marks each item forgetting,
-under the delivery lock, so a write that lands before the reset joins the set and a write that lands
-after it waits for the lock. An item that an earlier forget took stays out of the set. The cleanup
-then runs as in a bulk forget of retired items.
+current revision. The store reads the set under the delivery lock, in the same hold that starts the
+erasures, so a write that lands before the reset joins the set and a write that lands after it waits
+for the lock. An item that an earlier forget took stays out of the set. Each erasure then runs as in
+a bulk forget of retired items.
 
 ## The model's tools
 

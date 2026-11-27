@@ -47,10 +47,10 @@ records its forget wrote before it moved to the erasure runner, which still make
 `ErasableDescriptor` in `modules/log` holds the shape. The server registers the descriptors at
 start, and `bun run --cwd apps/server forgettable-kinds` generates the contract's forgettable kinds
 list from them. A CI check fails on a hand edit of that list, and a test puts each record kind in
-exactly one descriptor list. The forget of a note or a moment writes `erasure.started` and
-`erasure.finished` in clear, because a forget must not need the text it deletes. Only
-`erasure.started` carries the selection of keys to delete; `erasure.finished` carries the count of
-keys removed.
+exactly one descriptor list. The forget of a memory item, a note or a moment writes
+`erasure.started` and `erasure.finished` in clear, because a forget must not need the text it
+deletes. Only `erasure.started` carries the selection of keys to delete; `erasure.finished` carries
+the count of keys removed.
 
 ## The key store
 

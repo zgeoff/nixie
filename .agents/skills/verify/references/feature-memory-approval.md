@@ -10,7 +10,9 @@ that table.
 
 Once an item is active, a later call that sets a reminder, starts or defines a task, or writes a
 skill applies at once and its result lists the active items that match its text, as `related`. The
-journey ends with that check for a reminder.
+journey checks that for a reminder, then forgets the item from the memory page. A forget runs on the
+erasure runner: `erasure.started` holds the keys to delete, and `erasure.finished` ends the forget
+once the keys, the indexes and the sessions are clean.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up`, `attach` and `done`, and the `data` field
@@ -134,6 +136,36 @@ item's fact would make nixie keep the item at once, with no proposal.
    Expect: `reminders` is 1, `notes` is 1, and the one row of the third query holds the short ID
    that the note's body carries. Read the body on the notebook page, `/notebook`.
 
+9. On `preview`, skip this step and step 10: the preview keeps its items. Forget the item from the
+   memory page. Take the `ref` of the item's "Forget" button from the first snapshot, and take no
+   other snapshot before the first click.
+
+   ```bash
+   bun verify browser goto /memory
+   bun verify browser snapshot
+   bun verify browser click --ref '<forget_ref>'
+   bun verify browser snapshot --until-text 'Forget for good'
+   bun verify browser click --role button --name 'Forget for good'
+   ```
+
+   Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
+   exit 0.
+
+10. Check the erasure states of the forget and the memory page:
+
+    ```bash
+    bun verify db query "select state from memory_items"
+    bun verify db query "select kind, json_extract(payload, '$.kind') as erased, json_extract(payload, '$.by') as by_whom, json_extract(payload, '$.removedKeys') as removed_keys from records where kind in ('erasure.started', 'erasure.finished') order by sequence"
+    bun verify db query "select count(*) as open_forgets from records s where s.kind = 'erasure.started' and not exists (select 1 from records f where f.kind = 'erasure.finished' and json_extract(f.payload, '$.erasureID') = json_extract(s.payload, '$.erasureID'))"
+    bun verify browser goto /memory
+    bun verify browser snapshot
+    ```
+
+    Expect: the first query returns one row with `state` `forgotten`. The second returns 2 rows:
+    `erasure.started`, then `erasure.finished`, each with `erased` `memory_item` and `by_whom`
+    `user`, and `removed_keys` set on the finished row. The third returns `open_forgets` 0. The
+    memory page no longer shows the item's text.
+
 ## End state
 
 - The approvals page of step 4 listed the item.
@@ -143,5 +175,7 @@ item's fact would make nixie keep the item at once, with no proposal.
   allotment.".
 - On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the
   approved item: the reminder's result listed it as `related`, and the call applied first.
+- On `local`, the forget of step 9 left the item `forgotten` with one finished erasure and no open
+  one, and the memory page shows no item.
 - On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case
   from step 4.
