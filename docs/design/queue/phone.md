@@ -90,9 +90,9 @@ phone_send_claims      -- phone module; action ID → the provider's message ID 
 - The phone module owns `PhoneProvider`, and `adapters/phone-twilio` is its one adapter. No core
   module names the phone or the provider. The phone part fills the triggers module's list of wake
   sources with the `phone` source.
-- The adapter takes its secret through `resolveCredential` and the credential store's fetcher, bound
-  to the provider's API origin. The fetcher sends it as HTTP Basic, with the API key SID as the
-  user, so the adapter never holds the secret.
+- The adapter names its secret with `resolveCredential` and calls the provider through the
+  credential store's fetcher, bound to the provider's API origin. The fetcher adds the secret as
+  HTTP Basic, with the API key SID as the user, so the adapter never holds the secret.
 - A text that no wake rule matches wakes nothing, and `phone.list` still finds it.
 - A wake rule matches `from` as a number in E.164 form, or as a sender name without case. Anyone can
   send a text under any sender name, so a code from a named sender is only as good as a code from a
