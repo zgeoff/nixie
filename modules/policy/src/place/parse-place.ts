@@ -9,11 +9,13 @@ const hostPattern = /^[^\s/@?#\\]+$/u;
 // Reads what a call reaches as one concrete place, or null when the text is no place. It tries a URL,
 // an address, a phone number, a handle, then a host with an optional port.
 export function parsePlace(text: string): Destination | null {
-  const trimmed = text.normalize('NFC').trim();
-
-  if (trimmed.includes('://')) {
-    return parseURLSite(trimmed);
+  // A URL parser reads the text as it is, so a URL is read before normalising, to name the host the
+  // parser names.
+  if (text.includes('://')) {
+    return parseURLSite(text.trim());
   }
+
+  const trimmed = text.normalize('NFC').trim();
 
   if (addressPattern.test(trimmed)) {
     return { kind: 'address', address: trimmed.toLowerCase() };

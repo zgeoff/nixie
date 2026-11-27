@@ -19,6 +19,11 @@ test.each<[string, string, Destination | null]>([
     'custom://MiXeD.Example/x',
     { kind: 'site', domain: 'mixed.example' },
   ],
+  [
+    'a custom scheme with a combining mark',
+    'custom://é.example/x',
+    { kind: 'site', domain: 'e%cc%81.example' },
+  ],
   ['a backslash in a host', String.raw`foo\bar`, null],
   ['a backslash after the host of a URL', String.raw`https://example.org\path`, null],
   ['a backslash in the host of a URL', String.raw`https://example.org\@evil.test/x`, null],
