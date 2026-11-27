@@ -17,6 +17,9 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
    [`starter.yaml`](../../deploy/compose/definitions/rules/starter.yaml): ask on `coding.start`, and
    allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
    call, so a join of a coding session needs no approval.
+4. When a rule in your definitions has a `cel` key and no `note`, add a note that says what the
+   condition means. The first seed refuses a rules file that holds such a rule, and the
+   [rule conditions](../architecture/policy/rule-conditions.md) doc says what a condition reads.
 
 ## Upgrade
 

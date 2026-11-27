@@ -1,8 +1,11 @@
 import type { ParseResult } from '@marcbachmann/cel-js';
 import { buildConditionView } from './build-condition-view';
-import { maxConditionChars } from './constants';
+import { maxConditionChars, maxConditionDepth } from './constants';
+import { getConditionDepth } from './get-condition-depth';
 import { makeConditionEnvironment } from './make-condition-environment';
+import { normalizeConditionLiterals } from './normalize-condition-literals';
 import { pickRefusedConstruct } from './pick-refused-construct';
+import { rewriteTimeMethods } from './rewrite-time-methods';
 import type { ConditionCheck, ConditionSource } from './types';
 
 export interface CompiledCondition {
@@ -19,15 +22,14 @@ const cache = new Map<string, CompiledCondition>();
 // nixie checks each condition text once, and reuses the result. The key holds the text with
 // whether the rule has a note, because the note is the first step of the check.
 export function readCompiledCondition(source: ConditionSource): CompiledCondition {
-  const text = source.cel.normalize('NFC');
-  const key = `${source.note === undefined ? '-' : 'n'}${text}`;
+  const key = `${source.note === undefined ? '-' : 'n'}${source.cel}`;
   const cached = cache.get(key);
 
   if (cached !== undefined) {
     return cached;
   }
 
-  const compiled = compile(text, source.note !== undefined);
+  const compiled = compile(source.cel, source.note !== undefined);
 
   if (cache.size >= cacheLimit) {
     cache.clear();
@@ -60,11 +62,21 @@ function compile(text: string, hasNote: boolean): CompiledCondition {
     return refuse(fault, describeError(error));
   }
 
+  normalizeConditionLiterals(parsed.ast);
+
+  if (getConditionDepth(parsed.ast) > maxConditionDepth) {
+    return refuse('condition_too_large', `deeper than ${maxConditionDepth} levels`);
+  }
+
   const construct = pickRefusedConstruct(parsed.ast);
 
   if (construct !== null) {
     return refuse('condition_not_allowed', construct);
   }
+
+  const view = buildConditionView(parsed.ast);
+
+  rewriteTimeMethods(parsed.ast);
 
   const checked = parsed.check();
 
@@ -76,7 +88,7 @@ function compile(text: string, hasNote: boolean): CompiledCondition {
     return refuse('condition_type', `the condition gives ${checked.type}, and it must give bool`);
   }
 
-  return { check: { ok: true, view: buildConditionView(parsed.ast) }, run: parsed };
+  return { check: { ok: true, view }, run: parsed };
 }
 
 function refuse(

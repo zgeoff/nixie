@@ -60,7 +60,7 @@ export function buildPromptWriteTool(context: PromptToolsContext): ToolDefinitio
       effects: ['note'],
       destinations: [],
       amount: null,
-      content: [],
+      content: ['reason'],
       results: { status: 'owner_data', proposalID: 'owner_data', message: 'owner_data' },
     },
     execution: 'direct',

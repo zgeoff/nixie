@@ -24,6 +24,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@zgeoff/testing": "catalog:",
     "ajv": "catalog:",
     "fast-check": "catalog:"
   }

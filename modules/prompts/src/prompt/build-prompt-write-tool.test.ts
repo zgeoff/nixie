@@ -232,3 +232,16 @@ test('it refuses a proposal before any definitions are in force', async () => {
 
   expect(outcome).toStrictEqual({ status: 'error', message: 'no definitions are in force yet' });
 });
+
+test('it declares the reason as content, so a rule condition never reads it', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildPromptWriteTool({
+    log: ctx.log,
+    clock: createFakeClock({ startMs: 0 }),
+    readInForce: () => null,
+    checkProposal: () => [],
+  });
+
+  expect(tool.declaration.content).toStrictEqual(['reason']);
+});

@@ -51,9 +51,9 @@ export type PromptCause =
 
 // The record column keeps the six causes above, so an ask with the cause condition_error stores
 // ask_rule there and the full cause in the decision.
-export type DecisionCause = PromptCause | 'condition_error';
+type DecisionCause = PromptCause | 'condition_error';
 
-export interface DecisionConditionError {
+interface DecisionConditionError {
   readonly ruleID: string;
   readonly revision: number;
   readonly code: string;

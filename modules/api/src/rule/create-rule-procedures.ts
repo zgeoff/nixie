@@ -1,6 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { readCurrentRule } from '@heynixie/definitions';
-import { describeRuleCondition, renderRule } from '@heynixie/policy';
+import { pickNoteAuthor, readCurrentRule, readMandateAuthors } from '@heynixie/definitions';
+import { describeCondition, renderRule } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
@@ -24,11 +24,13 @@ export function createRuleProcedures(context: RuleProcedureContext) {
         throw options.errors.NOT_FOUND();
       }
 
+      const authors = await readMandateAuthors(context.log);
+
       return {
         ruleID: options.input.ruleID,
         revision: current.revision,
         sentence: renderRule(current.rule),
-        ...toConditionField(describeRuleCondition(current.rule, current.origin)),
+        ...toConditionField(describeCondition(current.rule, pickNoteAuthor(current.rule, authors))),
         outcome: current.rule.outcome,
         destinations: current.rule.destinations ?? [],
       };

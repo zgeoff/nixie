@@ -25,7 +25,23 @@ test('it names the missing argument of an allow rule that a missing key stopped'
       },
     ]),
   ).toBe(
-    'The rule `allow-term-mail` would allow this call, but its condition needs the argument `subject`, which the call left out. Call again with it.',
+    'The rule `allow-term-mail` would allow this call, but its condition failed with the error no_such_key: the call left out the argument `subject`. Call again with it.',
+  );
+});
+
+test('it names a missing key that needs quotes in a condition', () => {
+  expect(
+    buildConditionNotice([
+      {
+        ruleID: 'allow-term-mail',
+        outcome: 'allow',
+        revision: 1,
+        code: 'no_such_key',
+        missing: 'cc address',
+      },
+    ]),
+  ).toBe(
+    'The rule `allow-term-mail` would allow this call, but its condition failed with the error no_such_key: the call left out the argument `cc address`. Call again with it.',
   );
 });
 

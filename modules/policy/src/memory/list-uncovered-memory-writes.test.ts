@@ -270,8 +270,8 @@ test('#listUncoveredMemoryWrites counts a condition as an error, so a rule with 
     id: 'allow-conditional-memory',
     outcome: 'allow',
     effects: ['memory_write'],
-    cel: 'now.getHours("UTC") < 17',
-    note: 'Only in the day.',
+    cel: 'now.getFullYear("UTC") > 2000',
+    note: 'Only after the year 2000.',
   };
 
   expect(listUncoveredMemoryWrites(rule)).toContain('a new fact');

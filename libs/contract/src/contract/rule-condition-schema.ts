@@ -5,8 +5,9 @@ import { z } from 'zod';
 export const ruleConditionSchema = z.object({
   note: z.string(),
 
-  // 'you' for a rule from the definitions repo or from your edit through rules.editProposedRule;
-  // 'nixie' for a rule nixie proposed through rules.propose_mandate
+  // 'you' for a rule from the definitions repo, from your edit through rules.editProposedRule or
+  // from a mandate you proposed; 'nixie' for a rule of a mandate nixie proposed through
+  // rules.propose_mandate
   noteBy: z.enum(['you', 'nixie']),
 
   // the condition as one sentence, such as "the hour in Europe/London is before 17, and ..."

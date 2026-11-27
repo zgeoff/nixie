@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { updateEnv } from '@zgeoff/testing';
+import { buildBalancedCondition } from '../test-utils/build-balanced-condition';
 import { buildRuleCall } from '../test-utils/build-rule-call';
 import { evaluateCondition } from './evaluate-condition';
 
@@ -282,6 +284,20 @@ test('it normalises a string literal of the condition to NFC in the rule', () =>
   expect(ctx.evaluate(nfd, call)).toStrictEqual({ kind: 'true' });
 });
 
+test('it normalises an escaped decomposed literal to match the NFC text of the call', () => {
+  const ctx = setupTest();
+  const call = { args: { name: 'é' } };
+
+  expect(ctx.evaluate(String.raw`args.name == "é"`, call)).toStrictEqual({ kind: 'true' });
+});
+
+test('it matches a decomposed argument to an escaped composed literal', () => {
+  const ctx = setupTest();
+  const call = { args: { name: 'é' } };
+
+  expect(ctx.evaluate(String.raw`args.name == "é"`, call)).toStrictEqual({ kind: 'true' });
+});
+
 test.each([
   ['an integral number against an int literal', 5, 'args.num == 5', { kind: 'true' }],
   ['an integral number against a double literal', 5, 'args.num == 5.0', { kind: 'true' }],
@@ -367,6 +383,65 @@ test.each([
   const ctx = setupTest();
 
   expect(ctx.evaluate(cel, { at: Date.parse(at) })).toMatchObject(expected);
+});
+
+// 2026-03-08T02:30:00Z is 02:30 in UTC, a time that does not exist in New York on that day, when the
+// clocks go from 02:00 to 03:00. 2026-11-01T05:30:00Z is 01:30 in New York, which occurs twice
+// that day, and 05:30 in UTC.
+test.each(
+  ['UTC', 'America/New_York'].flatMap((hostZone) =>
+    (
+      [
+        ['hour in the gap of New York', '2026-03-08T02:30:00Z', 'now.getHours("UTC") == 2'],
+        ['minute in the gap of New York', '2026-03-08T02:30:00Z', 'now.getMinutes("UTC") == 30'],
+        ['weekday in the gap of New York', '2026-03-08T02:30:00Z', 'now.getDayOfWeek("UTC") == 0'],
+        ['date in the gap of New York', '2026-03-08T02:30:00Z', 'now.getDate("UTC") == 8'],
+        ['month in the gap of New York', '2026-03-08T02:30:00Z', 'now.getMonth("UTC") == 2'],
+        ['year in the gap of New York', '2026-03-08T02:30:00Z', 'now.getFullYear("UTC") == 2026'],
+        [
+          'hour of New York after the gap',
+          '2026-03-08T07:30:00Z',
+          'now.getHours("America/New_York") == 3',
+        ],
+        [
+          'hour of New York before the gap',
+          '2026-03-08T06:30:00Z',
+          'now.getHours("America/New_York") == 1',
+        ],
+        [
+          'hour of London in the fall-back hour of New York',
+          '2026-11-01T05:30:00Z',
+          'now.getHours("Europe/London") == 5',
+        ],
+        [
+          'hour of New York at the first 01:30',
+          '2026-11-01T05:30:00Z',
+          'now.getHours("America/New_York") == 1',
+        ],
+        [
+          'hour of New York at the second 01:30',
+          '2026-11-01T06:30:00Z',
+          'now.getHours("America/New_York") == 1',
+        ],
+        [
+          'day in a zone that is a day ahead',
+          '2026-03-08T23:30:00Z',
+          'now.getDate("Pacific/Auckland") == 9',
+        ],
+        [
+          'year at the end of a year in a zone ahead',
+          '2026-12-31T23:30:00Z',
+          'now.getFullYear("Asia/Tokyo") == 2027',
+        ],
+      ] as const
+    ).map(([label, at, cel]) => [hostZone, label, at, cel] as const),
+  ),
+)('it gives the same time under the host zone %s: %s', (hostZone, _label, at, cel) => {
+  const ctx = setupTest();
+
+  updateEnv('TZ', hostZone);
+
+  expect(ctx.evaluate(cel, { at: Date.parse(at) })).toStrictEqual({ kind: 'true' });
 });
 
 test('it errors a time condition that also reads a missing key', () => {
@@ -522,10 +597,11 @@ test('it errors every condition with input_too_large on strings past 262,144 uni
 test('it evaluates the costliest condition the limits allow over the largest input in 50 ms', () => {
   const words = Array.from({ length: 1000 }, (_, index) => 'w'.repeat(250) + String(index));
 
-  const predicate = Array.from(
-    { length: 12 },
-    (_, index) => `word.contains("${'x'.repeat(8)}${index}")`,
-  ).join(' || ');
+  // a balanced tree stays within the depth limit where a flat chain of 12 terms would not
+  const predicate = buildBalancedCondition(
+    Array.from({ length: 12 }, (_, index) => `word.contains("${'x'.repeat(8)}${index}")`),
+    '||',
+  );
 
   const cel = `args.words.exists(word, ${predicate})`;
   const call = buildRuleCall({ args: { words } });

@@ -1,11 +1,14 @@
 import type { RuleContext, RuleInForceEntry, StoredRule } from '@heynixie/definitions';
 import {
+  pickNoteAuthor,
+  readMandateAuthors,
   readPendingRuleProposals,
   readRuleConflicts,
+  readRuleVersions,
   readRulesInForce,
   writeRuleResolution,
 } from '@heynixie/definitions';
-import { describeRuleCondition, renderRule } from '@heynixie/policy';
+import { describeCondition, renderRule } from '@heynixie/policy';
 import { runRuleProposalAnswer } from '../proposal/run-rule-proposal-answer';
 import { buildRuleProposalEntry } from '../utils/build-rule-proposal-entry';
 import { toConditionField } from '../utils/to-condition-field';
@@ -17,8 +20,9 @@ export function createHostRuleProcedures(context: RuleContext) {
   return {
     list: rules.list.handler(async () => {
       const inForce = await readRulesInForce(context.log.writer.db);
+      const authors = await readMandateAuthors(context.log);
 
-      return inForce.map((entry) => buildRuleEntry(entry));
+      return inForce.map((entry) => buildRuleEntry(entry, authors));
     }),
 
     conflicts: rules.conflicts.handler(async () => {
@@ -56,7 +60,16 @@ export function createHostRuleProcedures(context: RuleContext) {
       list: rules.proposals.list.handler(async () => {
         const pending = await readPendingRuleProposals(context.log.writer.db, context.clock.now());
 
-        return pending.map((entry) => buildRuleProposalEntry(entry));
+        const hashes = pending.flatMap((entry) =>
+          entry.proposal.changes.flatMap((change) => [change.before?.hash, change.after?.hash]),
+        );
+
+        const versions = await readRuleVersions(
+          context.log.writer.db,
+          hashes.filter((hash) => hash !== undefined),
+        );
+
+        return pending.map((entry) => buildRuleProposalEntry(entry, versions));
       }),
 
       approve: rules.proposals.approve.handler((options) =>
@@ -70,13 +83,15 @@ export function createHostRuleProcedures(context: RuleContext) {
   };
 }
 
-function buildRuleEntry(entry: RuleInForceEntry) {
+function buildRuleEntry(entry: RuleInForceEntry, authors: ReadonlyMap<string, 'you' | 'nixie'>) {
   return {
     ruleID: entry.ruleID,
     revision: entry.revision,
     ruleHash: entry.rule.hash,
     sentence: renderRule(entry.rule.rule),
-    ...toConditionField(describeRuleCondition(entry.rule.rule, entry.origin)),
+    ...toConditionField(
+      describeCondition(entry.rule.rule, pickNoteAuthor(entry.rule.rule, authors)),
+    ),
     origin: entry.origin,
     changeID: entry.changeID,
     lastFiredAt: entry.lastFiredAt === null ? null : new Date(entry.lastFiredAt),
@@ -89,6 +104,6 @@ function toRuleVersion(stored: StoredRule | null) {
     : {
         ruleHash: stored.hash,
         sentence: renderRule(stored.rule),
-        ...toConditionField(describeRuleCondition(stored.rule, null)),
+        ...toConditionField(describeCondition(stored.rule, 'you')),
       };
 }

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildBalancedCondition } from '../test-utils/build-balanced-condition';
 import { checkCondition } from './check-condition';
 
 function setupTest() {
@@ -23,6 +24,15 @@ test('it checks the length before the parse', () => {
   expect(ctx.check(`args.s == "${'a'.repeat(1000)}`)).toMatchObject({
     fault: 'condition_too_large',
   });
+});
+
+test('it counts the length of the raw text, so decomposed text over 1,000 units is refused', () => {
+  const ctx = setupTest();
+
+  // 500 decomposed letters are 1,000 units and 500 once normalised
+  const text = 'e\u0301'.repeat(500);
+
+  expect(ctx.check(`args.s == "${text}"`)).toMatchObject({ fault: 'condition_too_large' });
 });
 
 test('it refuses a condition that does not parse with condition_syntax', () => {
@@ -96,19 +106,36 @@ test('it refuses a condition of 1,001 characters with condition_too_large', () =
   });
 });
 
-test('it accepts 100 parsed nodes', () => {
+test('it accepts exactly 100 parsed nodes', () => {
   const ctx = setupTest();
+  const terms = Array.from({ length: 50 }, () => 'true');
+  const cel = `!${buildBalancedCondition(terms, '&&')}`;
 
-  expect(ctx.check(Array.from({ length: 50 }, () => 'true').join(' && '))).toMatchObject({
-    ok: true,
-  });
+  expect(ctx.check(cel)).toMatchObject({ ok: true });
 });
 
 test('it refuses 101 parsed nodes with condition_too_large', () => {
   const ctx = setupTest();
+  const terms = Array.from({ length: 51 }, () => 'true');
+  const cel = buildBalancedCondition(terms, '&&');
 
-  expect(ctx.check(Array.from({ length: 51 }, () => 'true').join(' && '))).toMatchObject({
+  expect(ctx.check(cel)).toMatchObject({ fault: 'condition_too_large' });
+});
+
+test('it accepts a flat chain of 13 literals, 12 levels deep', () => {
+  const ctx = setupTest();
+
+  expect(ctx.check(Array.from({ length: 13 }, () => 'true').join(' && '))).toMatchObject({
+    ok: true,
+  });
+});
+
+test('it refuses a flat chain of 14 literals, 13 levels deep, with condition_too_large', () => {
+  const ctx = setupTest();
+
+  expect(ctx.check(Array.from({ length: 14 }, () => 'true').join(' && '))).toMatchObject({
     fault: 'condition_too_large',
+    detail: 'deeper than 12 levels',
   });
 });
 
@@ -222,50 +249,9 @@ test.each<readonly [string, string]>([
   ['a uint literal', 'args.count == 5u'],
   ['a method of a built-in', 'args.name.charAt(0) == "T"'],
   ['a macro inside a macro', 'args.list.exists(x, args.list.all(y, y == x))'],
-  ['a timestamp method with no zone', 'now.getHours() == 1'],
-  ['a timestamp method with an unknown zone', 'now.getHours("Nowhere/Land") == 1'],
-  ['a timestamp method with a zone that is not a literal', 'now.getHours(args.name) == 1'],
-])('it refuses %s with condition_not_allowed', (_label, cel) => {
-  const ctx = setupTest();
-  const checked = ctx.check(cel);
-
-  expect(checked).toStrictEqual({
-    ok: false,
-    fault: 'condition_not_allowed',
-    detail: expect.any(String),
-  });
-});
-
-test('it refuses two literals of different number types at the type check', () => {
-  const checked = checkCondition({ cel: '1 == 1.0', note: 'a note' });
-
-  expect(checked).toStrictEqual({
-    ok: false,
-    fault: 'condition_type',
-    detail: expect.any(String),
-  });
-});
-
-test.each<readonly [string, string]>([
-  ['arithmetic', 'args.count + 1 == 6'],
-  ['?:', '(args.count == 5 ? true : false)'],
-  ['a map literal', '{"a": 1} == args.to'],
-  ['matches', 'args.name.matches("T.*")'],
-  ['matches as a function', 'matches(args.name, "T.*")'],
-  ['bytes', 'b"abc" == args.count'],
-  ['a bytes method', 'bytes("a") == bytes("a")'],
-  ['map', 'args.list.map(x, x) == [1]'],
-  ['filter', 'size(args.list.filter(x, x > 1)) == 2'],
-  ['exists_one', 'args.list.exists_one(x, x == 1)'],
-  ['cel.bind', 'cel.bind(v, 1, v == args.count)'],
-  ['int()', 'int("1") == args.count'],
-  ['timestamp()', 'timestamp("2026-01-01T00:00:00Z") == now'],
-  ['duration()', 'duration("1h") == duration("1h")'],
-  ['an optional type', 'optional.none().hasValue()'],
-  ['null', 'args.count == null'],
-  ['a uint literal', 'args.count == 5u'],
-  ['a method of a built-in', 'args.name.charAt(0) == "T"'],
-  ['a macro inside a macro', 'args.list.exists(x, args.list.all(y, y == x))'],
+  ['a macro in the receiver of a macro', 'args.list.exists(x, x == 1).exists(y, y)'],
+  ['a macro over a map', 'args.exists(key, key == "a")'],
+  ['a macro over a map with all', 'args.all(key, key == "a")'],
   ['a timestamp method with no zone', 'now.getHours() == 1'],
   ['a timestamp method with an unknown zone', 'now.getHours("Nowhere/Land") == 1'],
   ['a timestamp method with a zone that is not a literal', 'now.getHours(args.name) == 1'],

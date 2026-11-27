@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import { describeRuleCondition, parseRule, renderRule } from '@heynixie/policy';
+import { describeCondition, parseRule, renderRule } from '@heynixie/policy';
 import type { RuleCondition } from '@heynixie/policy';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
@@ -30,6 +30,7 @@ export type MandateEvent =
         readonly shortID: string;
         readonly mandateID: string;
         readonly expires: number;
+        readonly proposedBy: 'owner' | 'nixie';
       };
       readonly fields: JSONObject | null;
     }
@@ -77,6 +78,7 @@ const proposedFieldsSchema = z.object({ title: z.string(), rules: z.array(z.unkn
 
 function buildProposedMandate(event: Extract<MandateEvent, { type: 'proposed' }>): ListedMandate {
   const parsed = event.fields === null ? null : proposedFieldsSchema.parse(event.fields);
+  const noteBy = event.proposed.proposedBy === 'nixie' ? 'nixie' : 'you';
 
   return {
     shortID: event.proposed.shortID,
@@ -85,15 +87,16 @@ function buildProposedMandate(event: Extract<MandateEvent, { type: 'proposed' }>
     state: 'pending',
     expires: event.proposed.expires,
     sentences: parsed?.rules.map((rule) => renderRule(parseRule(rule))) ?? [],
-    conditions: collectConditions(parsed?.rules ?? []),
+    conditions: collectConditions(parsed?.rules ?? [], noteBy),
   };
 }
 
 function collectConditions(
   rules: readonly unknown[],
+  noteBy: 'you' | 'nixie',
 ): readonly (RuleCondition & { readonly rule: number })[] {
   return rules.flatMap((rule, index) => {
-    const condition = describeRuleCondition(parseRule(rule), 'nixie');
+    const condition = describeCondition(parseRule(rule), noteBy);
 
     return condition === undefined ? [] : [{ ...condition, rule: index + 1 }];
   });

@@ -21,6 +21,10 @@ export function buildConditionContext(call: RuleCall): ConditionContext {
   try {
     const content = new Set(call.contentArgs);
 
+    if (Object.keys(call.args).length > maxInputListElements) {
+      throw new InputTooLargeError();
+    }
+
     const args = Object.fromEntries(
       Object.entries(call.args)
         .filter(([name]) => !content.has(name))
@@ -83,6 +87,10 @@ function convertValue(value: unknown, budget: Budget, depth: number): unknown {
   }
 
   if (typeof value === 'object' && value !== null) {
+    if (Object.keys(value).length > maxInputListElements) {
+      throw new InputTooLargeError();
+    }
+
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         convertText(key, budget),

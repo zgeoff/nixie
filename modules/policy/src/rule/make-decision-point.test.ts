@@ -237,6 +237,44 @@ test('it asks at stage 4 for a spend call with another always-ask effect', async
   expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4 });
 });
 
+test.each([
+  ['true', 'args.order.total < 15', 'allow', 7],
+  ['false', 'args.order.total > 15', 'ask', 4],
+  ['an error', 'args.order.missing < 15', 'ask', 4],
+] as const)(
+  'it lifts a purchase at stage 4 only when the condition of the lifting rule is %s',
+  async (_title, cel, outcome, stage) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({
+        effects: ['spend'],
+        destinations: ['merchant'],
+        amount: 'order.total',
+      }),
+      rules: [
+        buildRuleEntry('allow-groceries', {
+          outcome: 'allow',
+          tools: ['shop.order'],
+          destinations: ['orders@grocer.example'],
+          lift: { perAction: 20, budget: 'shopping-month' },
+          cel,
+          note: 'Small orders only.',
+        }),
+      ],
+    });
+
+    const decided = await ctx.decide(
+      buildPolicyCall({
+        tool: 'shop.order',
+        toolList: ['shop.order'],
+        args: { order: { total: 12.5 } },
+        destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+      }),
+    );
+
+    expect(decided.decision).toMatchObject({ outcome, stage });
+  },
+);
+
 test('it asks at stage 4 when the lifting rule does not match the call', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({
@@ -1077,6 +1115,32 @@ test('it asks at stage 9 and lists the error when the condition of an allow rule
   });
 });
 
+test('it names a missing key that needs quotes in the condition error', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-cc', {
+        outcome: 'allow',
+        effects: ['read'],
+        cel: 'args["cc address"] == "x"',
+        note: 'Reads that copy someone.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision.conditionErrors).toStrictEqual([
+    {
+      ruleID: 'allow-cc',
+      outcome: 'allow',
+      revision: 2,
+      code: 'no_such_key',
+      missing: 'cc address',
+    },
+  ]);
+});
+
 test('it asks with the cause condition_error at stage 6 when the condition of a deny rule errors', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
@@ -1103,6 +1167,41 @@ test('it asks with the cause condition_error at stage 6 when the condition of a 
     conditionErrors: [
       {
         ruleID: 'deny-big-reads',
+        outcome: 'deny',
+        revision: 2,
+        code: 'no_such_key',
+        missing: 'count',
+      },
+    ],
+  });
+});
+
+test('it asks with the cause condition_error when an ask rule with an earlier ID also matches', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['read'], destinations: [] }),
+    rules: [
+      buildRuleEntry('a-ask-reads', { outcome: 'ask', effects: ['read'] }),
+      buildRuleEntry('z-deny-big-reads', {
+        outcome: 'deny',
+        effects: ['read'],
+        cel: 'args.count > 5',
+        note: 'Big reads.',
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 6,
+    rule: { id: 'z-deny-big-reads', revision: 2, others: ['a-ask-reads'] },
+    cause: 'condition_error',
+    destinations: [],
+    snapshot: 'snapshot-1',
+    conditionErrors: [
+      {
+        ruleID: 'z-deny-big-reads',
         outcome: 'deny',
         revision: 2,
         code: 'no_such_key',
@@ -1198,9 +1297,41 @@ test('it never lets a condition read a content argument of the declaration', asy
   expect(decided.decision).toMatchObject({
     outcome: 'ask',
     cause: 'no_rule',
-    conditionErrors: [{ ruleID: 'allow-friendly-reads', code: 'no_such_key', missing: 'body' }],
+    conditionErrors: [
+      { ruleID: 'allow-friendly-reads', outcome: 'allow', revision: 2, code: 'no_such_key' },
+    ],
   });
 });
+
+test.each(['please', 'a different reason', ''])(
+  'it gives the same verdict whatever the reason argument holds: %j',
+  async (reason) => {
+    const ctx = buildTestDecisionPoint({
+      declaration: buildTestDeclaration({
+        effects: ['note'],
+        destinations: [],
+        content: ['reason'],
+      }),
+      rules: [
+        buildRuleEntry('allow-polite-notes', {
+          outcome: 'allow',
+          effects: ['note'],
+          cel: 'args.reason.contains("please")',
+          note: 'Polite notes.',
+        }),
+      ],
+    });
+
+    const decided = await ctx.decide(buildPolicyCall({ args: { reason } }));
+
+    expect(decided.decision).toMatchObject({
+      outcome: 'ask',
+      stage: 9,
+      cause: 'no_rule',
+      conditionErrors: [{ ruleID: 'allow-polite-notes', code: 'no_such_key' }],
+    });
+  },
+);
 
 test.each([
   ['true', 'args.count < 5', 'allow', 7],

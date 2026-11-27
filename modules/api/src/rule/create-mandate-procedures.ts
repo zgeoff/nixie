@@ -3,6 +3,7 @@ import { readMessageTimeZone } from '@heynixie/connectors';
 import {
   mandateInputSchema,
   readActiveMandates,
+  readMandateAuthors,
   readMandateEndReason,
   readMandateTitles,
   writeMandateEnd,
@@ -178,7 +179,8 @@ export function createMandateProcedures(context: RuleProcedureContext) {
     listMandates: rules.listMandates.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const active = await readActiveMandates(context.log.writer.db);
+      const authors = await readMandateAuthors(context.log);
+      const active = await readActiveMandates(context.log.writer.db, authors);
 
       const titles = await readMandateTitles(
         context.log,

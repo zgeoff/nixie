@@ -14,6 +14,7 @@ import { startWriter } from '@heynixie/log';
 import { buildProposalsProjection } from '@heynixie/proposals';
 import { createRouterClient } from '@orpc/server';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import invariant from 'tiny-invariant';
 import { createHostRuleProcedures } from './create-host-rule-procedures';
 
 async function setupTest() {
@@ -223,6 +224,60 @@ test('#proposals.list shows a pending rule change proposal with the sentence of 
       effectChanges: [],
       createdAt: new Date(Date.UTC(2026, 9, 16, 9, 0)),
       lapseAt: expect.any(Date),
+    },
+  ]);
+});
+
+test('#proposals.list shows the condition of each version of a rule, so a change of the condition alone reads', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    [
+      'allow-term-mail:',
+      '  outcome: allow',
+      '  tools: [mail.send]',
+      '  cel: now.getHours("Europe/London") < 17',
+      '  note: Term mail goes out in the working day.',
+      '',
+    ].join('\n'),
+  );
+
+  await ctx.runSeed();
+
+  const [inForce] = await ctx.client.list();
+
+  invariant(inForce, 'the seed put the rule in force');
+
+  await seedLegacyRuleProposal(ctx.context.log, {
+    changes: [
+      {
+        ruleID: 'allow-term-mail',
+        before: { hash: inForce.ruleHash, sentence: inForce.sentence },
+        after: { hash: inForce.ruleHash, sentence: inForce.sentence },
+        fields: [{ field: 'cel', before: 'now.getHours("UTC") < 17', after: null }],
+      },
+    ],
+    effectChanges: [],
+  });
+
+  const [proposal] = await ctx.client.proposals.list();
+
+  const condition = {
+    note: 'Term mail goes out in the working day.',
+    noteBy: 'you',
+    words: 'the hour in Europe/London is before 17',
+    source: 'now.getHours("Europe/London") < 17',
+  } as const;
+
+  expect(proposal?.changes).toStrictEqual([
+    {
+      ruleID: 'allow-term-mail',
+      before: { ruleHash: inForce.ruleHash, sentence: inForce.sentence, condition },
+      after: { ruleHash: inForce.ruleHash, sentence: inForce.sentence, condition },
     },
   ]);
 });

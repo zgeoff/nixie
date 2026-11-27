@@ -356,7 +356,9 @@ function collectConditionErrors(
               outcome: entry.rule.outcome,
               revision: entry.revision,
               code: matched.code,
-              ...(matched.missing === undefined ? {} : { missing: matched.missing }),
+              ...(matched.missing === undefined || ruleCall.contentArgs.includes(matched.missing)
+                ? {}
+                : { missing: matched.missing }),
             },
           ]
         : [];
@@ -411,23 +413,30 @@ interface AskVerdict {
   readonly isErroredDeny: boolean;
 }
 
-// The lowest ID among the ask rules that match and the deny rules whose condition errored decides
-// the ask, and the others are listed.
+// A deny rule whose condition errored decides the ask ahead of any ask rule, whatever the IDs. The
+// lowest ID among those decides, or among the matching ask rules when no deny errored, and the
+// others are listed.
 function pickAskVerdict(entries: readonly RuleEntry[], ruleCall: RuleCall): AskVerdict | null {
-  const candidates = entries
-    .filter((entry) =>
-      entry.rule.outcome === 'ask'
-        ? isRuleMatch(entry.rule, ruleCall)
-        : entry.rule.outcome === 'deny' && matchRule(entry.rule, ruleCall).kind === 'error',
+  const erroredDenies = entries
+    .filter(
+      (entry) => entry.rule.outcome === 'deny' && matchRule(entry.rule, ruleCall).kind === 'error',
     )
-    .toSorted((left, right) => (left.id < right.id ? -1 : 1));
+    .toSorted(compareByID);
 
-  const [first, ...rest] = candidates;
+  const asks = entries
+    .filter((entry) => entry.rule.outcome === 'ask' && isRuleMatch(entry.rule, ruleCall))
+    .toSorted(compareByID);
+
+  const [first, ...rest] = [...erroredDenies, ...asks];
 
   return first === undefined
     ? null
     : {
         verdict: { entry: first, others: rest.map((entry) => entry.id) },
-        isErroredDeny: first.rule.outcome === 'deny',
+        isErroredDeny: erroredDenies.length > 0,
       };
+}
+
+function compareByID(left: RuleEntry, right: RuleEntry): number {
+  return left.id < right.id ? -1 : 1;
 }

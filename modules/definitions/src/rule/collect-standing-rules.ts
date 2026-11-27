@@ -1,4 +1,4 @@
-import { describeRuleCondition, renderRule } from '@heynixie/policy';
+import { describeCondition, renderRule } from '@heynixie/policy';
 import type { RuleCondition } from '@heynixie/policy';
 import type { RuleInForceEntry } from './read-rules-in-force';
 
@@ -28,7 +28,7 @@ export function collectStandingRules(
 }
 
 function toStandingRule(entry: RuleInForceEntry): StandingRule {
-  const condition = describeRuleCondition(entry.rule.rule, entry.origin);
+  const condition = describeCondition(entry.rule.rule, 'you');
 
   return {
     ruleID: entry.rule.rule.id,

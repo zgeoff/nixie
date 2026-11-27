@@ -25,7 +25,9 @@ A condition sees 8 names, each declared with its CEL type, and nothing else:
   `double`, and every string and key is in Unicode NFC. A number compares with an `int` or a
   `double` literal alike, but two literals of different number types fail the type check.
 - A content argument never reaches `args`, so a condition that reads one errors with `no_such_key`,
-  and text from outside never steers a rule.
+  and text from outside never steers a rule. A tool lists as content each argument that holds
+  model-written text, such as the `reason` of `prompt.write`.
+- A map in the input holds at most 1,000 keys, and `args` itself too.
 - A condition never reads memory, secrets, contacts, budgets, the conversation or another call's
   result, because the call holds none of them.
 
@@ -39,23 +41,30 @@ A rule may use only this subset, and the conformance suite covers each row:
 | Access            | the names above, `.field` and `[index]`                                                                 |
 | Operators         | `==` `!=` `<` `<=` `>` `>=`, `&&` `\|\|` `!`, `in`                                                      |
 | Functions         | `size`, `has`, and on a string `startsWith`, `endsWith`, `contains`, `lowerAscii`                       |
-| Macros            | `exists` and `all` on a list, never one inside another                                                  |
+| Macros            | `exists` and `all` on a list, never one inside another or in another's receiver                         |
 | Timestamp methods | `getHours`, `getMinutes`, `getDayOfWeek`, `getDate`, `getMonth`, `getFullYear`, each with a zone string |
 
 A timestamp method needs a zone name that the runtime knows. As in CEL, `getMonth` and
-`getDayOfWeek` count from 0. The card's words name the month and the day.
+`getDayOfWeek` count from 0. The card's words name the month and the day. The library reads a zone's
+wall time by parsing text in the host's own zone, which moves the hour in a gap of the host's
+daylight saving. nixie registers its own method for each part, which reads the part from the zone
+alone, and points each timestamp method of a checked condition at it, so a replay gives the same
+verdict on every host.
 
 The check refuses every other construct with `condition_not_allowed`, such as arithmetic, `?:`, map
 literals, `matches` (a JavaScript regular expression can backtrack for seconds), `bytes`, `map`,
-`filter`, conversions and optional types.
+`filter`, conversions and optional types. A macro over `args` itself is refused too, because a map
+loops over its keys.
 
 ## Checking a condition
 
 `checkCondition` runs in this order and stops at the first fault:
 
 1. The note: a rule with `cel` needs a `note`, else `condition_note_missing`.
-2. The length limit on the raw text, else `condition_too_large`.
-3. The library's parse with the node and depth limits, else `condition_syntax` or
+2. The length limit on the raw text, before any normalization, else `condition_too_large`.
+3. The library's parse with the node limit, else `condition_syntax` or `condition_too_large`. Each
+   string literal is then put in NFC, after the parser decoded its escapes. A walk over the parsed
+   tree then counts the levels of the tree itself, so a flat chain of `&&` is bound too, else
    `condition_too_large`.
 4. A walk over the parsed tree that refuses each construct outside the subset. The library cannot
    drop a built-in from an environment, so the walk is the only gate.
@@ -68,7 +77,7 @@ to a call. The rules-file parser reports a fault as a problem of the rule's file
 `<rule>.cel: <fault>: <detail>`, and the seed fails. `rules.editProposedRule` and
 `rules.propose_mandate` run the same check and refuse with the faults. A stored condition that fails
 the check evaluates as an error with the code `condition_invalid`. nixie caches each parse and check
-by note presence and NFC text, up to 1,000 entries.
+by note presence and text, up to 1,000 entries.
 
 ## Evaluating a condition
 
@@ -90,12 +99,15 @@ error, as CEL defines.
   condition over the largest input.
 - A deny that errors never refuses a call unseen. The deny stage sets it aside, and the ask-rule
   stage counts it as an ask rule, so a deny that errors and a missing argument ask where the deny
-  meant to refuse. A deny that matches wins over one that errored. To refuse a call that omits an
-  argument, write the condition so a missing argument gives true, such as `!has(args.to) || …`.
+  meant to refuse, whatever the order of the rule IDs. A deny that matches wins over one that
+  errored. To refuse a call that omits an argument, write the condition so a missing argument gives
+  true, such as `!has(args.to) || …`.
 - The decision lists each rule that errored in `conditionErrors`, with the rule ID, its revision and
   the code, and never the library's message, which can quote argument text. The approval card shows
-  each entry, and the call's result tells the model the rule's short ID and the code, and the
-  missing argument for `no_such_key`.
+  each entry, and the call's result tells the model the rule's ID and the code. For an allow rule
+  that a missing argument stopped, it also names the argument, quoted or not, and asks for a new
+  call with it. It never names a content argument. An ask rule that matches a memory write beside an
+  error holds the call as an action card, because the memory proposal has no place for the entry.
 - The lift check and the destination permissions read allow rules through `isRuleMatch`, so they
   evaluate a condition the same way. `listUncoveredMemoryWrites` matches against a call it builds,
   so it counts every condition as an error.
@@ -103,15 +115,19 @@ error, as CEL defines.
 ## The card
 
 `describeCondition` builds a `RuleCondition` for each rule with a condition: the note, `noteBy`
-(`you` for a rule from the definitions repo or from an edit through `rules.editProposedRule`,
-`nixie` for a rule from `rules.propose_mandate`), the words and the raw CEL as `source`. The host
-renders the words from the view, so every client shows the same sentence. A card for a rule with a
-condition shows, in order:
+(`you` for a rule from the definitions repo, from an edit through `rules.editProposedRule` or from a
+mandate that the user proposed, `nixie` for a rule of a mandate that nixie proposed through
+`rules.propose_mandate`), the words and the raw CEL as `source`. The host renders the words from the
+view, so every client shows the same sentence. A card for a rule with a condition shows, in order:
 
 1. The rule's sentence, which ends "when its condition holds".
 2. The note, labelled "Your note" or "nixie's note".
 3. The condition in words. A part with no phrase shows inline as code.
 4. The raw CEL behind a "Show the expression" control.
+
+A card for a mandate with several rules shows each condition under its own rule. The host's proposal
+list carries the condition of each version of a changed rule, and `nixie rules list` and
+`nixie proposals list` print the note and the words, with no raw CEL.
 
 The approval card, the rule notice after an answer, the mandates page, the `rules.list` tool and
 `nixie rules list` show these parts. The web client's rule form keeps a rule's condition as it is.

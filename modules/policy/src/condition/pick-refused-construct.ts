@@ -116,9 +116,14 @@ function pickRefusedMethod(args: MethodArgs, isInMacro: boolean): string | null 
 function pickRefusedMacro(target: ASTNode, params: readonly ASTNode[]): string | null {
   const [, predicate] = params;
 
+  // The receiver is read once, outside the loop, so a macro in it is as nested as one in the
+  // predicate. A map receiver loops over its keys, which the list cap does not bound.
+  if (target.op === 'id' && target.args === 'args') {
+    return 'a macro over a map';
+  }
+
   return (
-    pickRefusedConstruct(target, false) ??
-    (predicate ? pickRefusedConstruct(predicate, true) : null)
+    pickRefusedConstruct(target, true) ?? (predicate ? pickRefusedConstruct(predicate, true) : null)
   );
 }
 
