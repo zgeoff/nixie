@@ -1,4 +1,5 @@
 import { writeBackupFloor } from '@heynixie/backup';
+import { makeCodeRunCleanup } from '@heynixie/connectors';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import { localDataStorage, makeErasureRunner } from '@heynixie/log';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
@@ -29,15 +30,11 @@ export function startErasureRunner(
         parts.turnInputs.releaseCaptures(erasureID);
       },
       destroySandboxes: async (callIDs) => {
-        const destroy = reader.find('code_run')?.cleanup.destroyForRecords;
-
-        if (callIDs.length === 0) {
-          return;
-        }
-
-        invariant(destroy, 'the code tool is started when an erasure holds a code call');
-
-        await destroy(callIDs.map(Number));
+        // Built from the adapter, so an erasure destroys the code sandboxes that remain while the code
+        // tool is off.
+        await makeCodeRunCleanup(parts.context.log, parts.tools.adapter).destroyForRecords(
+          callIDs.map(Number),
+        );
       },
       cleanupSessions: async (cause) => {
         await conversation.cleanupSessions(cause);

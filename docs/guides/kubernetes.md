@@ -10,9 +10,10 @@ cluster. [Kubernetes](../architecture/deployment/kubernetes.md) explains the sha
 
 1. Copy `deploy/kubernetes/` into your deployment repo.
 2. Replace every placeholder: the host name in `ingress.yaml`, and impd's URL, the node's addresses,
-   the cluster's pod and service ranges and the model profiles in `config.yaml`. Keep `computer: {}`
-   and `code: {}` there to give the assistant its computer and its code tool, and delete a section
-   to turn that feature off.
+   the cluster's pod and service ranges and the model profiles in `config.yaml`. The pinned image
+   keeps the assistant's computer and its code tool on, and refuses a `computer` or `code` section.
+   When you run a release that switches them by config, add `computer: {}` and `code: {}` there to
+   keep them.
 3. Replace the `nixie-definitions` ConfigMap with your own persona, or with your definitions source.
 4. Create the namespace, the TLS Secret `nixie-tls`, and the `nixie-secrets` Secret from your sops
    file and your host's age key, as `secret.example.yaml` shows. `kustomization.yaml` leaves that

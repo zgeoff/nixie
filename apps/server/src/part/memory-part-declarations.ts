@@ -23,7 +23,7 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   {
     name: 'erasure',
     needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
-    uses: ['memory', 'code_run'],
+    uses: ['memory'],
     start: (reader) => Promise.resolve(startErasureRunner(reader.get('server_parts'), reader)),
   },
   {

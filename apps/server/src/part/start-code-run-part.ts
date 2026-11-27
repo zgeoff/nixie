@@ -1,5 +1,4 @@
-import type { CodeRunCleanup } from '@heynixie/connectors';
-import { buildCodeRunTool, buildFileSendTool, makeCodeRunCleanup } from '@heynixie/connectors';
+import { buildCodeRunTool, buildFileSendTool } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import { buildNoteBodies } from '@heynixie/notebook';
@@ -19,7 +18,6 @@ export interface CodeRunPartInputs {
 export interface CodeRunPart {
   readonly tool: ToolDefinition;
   readonly sendTool: ToolDefinition;
-  readonly cleanup: CodeRunCleanup;
 }
 
 export function startCodeRunPart(inputs: CodeRunPartInputs): Promise<CodeRunPart> {
@@ -41,6 +39,5 @@ export function startCodeRunPart(inputs: CodeRunPartInputs): Promise<CodeRunPart
         readConversationSkills(inputs.log, inputs.readInForce(), run, names),
     }),
     sendTool: buildFileSendTool({ log: inputs.log }),
-    cleanup: makeCodeRunCleanup(inputs.log, inputs.adapter),
   });
 }

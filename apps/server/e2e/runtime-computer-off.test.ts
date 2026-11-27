@@ -1,5 +1,11 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, sendClientMessage, startE2ENixie } from '@heynixie/server/test-utils';
+import {
+  createTestClient,
+  seedOpenHandover,
+  seedOpenTakeover,
+  sendClientMessage,
+  startE2ENixie,
+} from '@heynixie/server/test-utils';
 
 async function setupTest() {
   // the manifest of this nixie holds neither the computer image nor the code image, so a start that
@@ -40,7 +46,7 @@ test('it reports neither the computer nor the code tool as a feature that is on'
   ).toStrictEqual([]);
 });
 
-test('it answers a procedure of the computer with FEATURE_OFF, and writes no take-over or handover record', async () => {
+test('it answers a procedure of the computer with FEATURE_OFF', async () => {
   const ctx = await setupTest();
 
   const handover = ctx.api.client.computer.readHandover();
@@ -49,8 +55,40 @@ test('it answers a procedure of the computer with FEATURE_OFF, and writes no tak
     code: 'FEATURE_OFF',
     data: { feature: 'computer' },
   });
+});
 
-  const records = await ctx.nixie.readRecords();
+test('it leaves a take-over that was open when nixie stopped open, because no recovery of the computer runs', async () => {
+  const nixie = await startE2ENixie({ isComputerOff: true, isCodeOff: true });
 
-  expect(records.filter((record) => record.kind.startsWith('computer.'))).toStrictEqual([]);
+  await seedOpenTakeover(nixie);
+
+  const server = nixie.harness.start();
+
+  await server.ready;
+
+  await server.kill();
+
+  const records = await nixie.readRecords();
+
+  expect(
+    records.map((record) => record.kind).filter((kind) => kind.startsWith('computer.')),
+  ).toStrictEqual(['computer.takeover_started']);
+});
+
+test('it leaves an ask for a take-over that expired while nixie was stopped open, because no recovery of the computer runs', async () => {
+  const nixie = await startE2ENixie({ isComputerOff: true, isCodeOff: true });
+
+  await seedOpenHandover(nixie);
+
+  const server = nixie.harness.start();
+
+  await server.ready;
+
+  await server.kill();
+
+  const records = await nixie.readRecords();
+
+  expect(
+    records.map((record) => record.kind).filter((kind) => kind.startsWith('computer.')),
+  ).toStrictEqual(['computer.handover_asked']);
 });

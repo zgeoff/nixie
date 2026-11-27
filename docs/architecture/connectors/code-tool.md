@@ -23,8 +23,9 @@ flowchart LR
 
 The code tool is on only when the config has a `code` section. `code: {}` turns it on, and the
 section takes no setting yet. With no `code` section, the `code_run` server part never starts, nixie
-needs no code image, and the model is offered neither `code.run` nor `file.send`. The forget of a
-record or an image then has no code sandbox to remove.
+needs no code image, and the model is offered neither `code.run` nor `file.send`. A forget still
+destroys any code sandbox that a call left behind while the tool was on, because the cleanup reads
+the sandbox adapter and not the tool.
 
 ## The call
 

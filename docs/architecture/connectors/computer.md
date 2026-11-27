@@ -35,7 +35,9 @@ The computer adds to the lists that core modules own, each filled from the compo
 inbox kinds of take-over and handover records in the tasks module, which also decide whether each
 wakes, and the policy's tool shapes, which tell it that `computer.run` holds a command line and that
 the two screen acts share one always-allow rule. When the computer is off, both lists hold none of
-its entries. Turning it off keeps its records, and turning it on again finds them as they were.
+its entries, and the log registers the topics of its records only when it is on. Turning it off
+keeps its records, and the restart sweep keeps the desktop sandbox whatever its image, so turning it
+on again finds both as they were.
 
 ## The sandbox
 

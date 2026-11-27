@@ -1,8 +1,11 @@
 import { expect, mock, test } from 'bun:test';
+import { network } from '@heynixie/mock-server';
+import { http } from 'msw';
 import { featureStore } from '../mocks/feature-store';
 import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { FeaturesProbe } from '../test-utils/features-probe';
 import { render } from '../test-utils/render';
 import { SignedInPage } from './signed-in-page';
 
@@ -98,7 +101,7 @@ test('it shows the handover banner above the page of a live session while the co
   expect(banner).toBeVisible();
 });
 
-test('it shows no handover banner while the computer is off', async () => {
+test('it asks for no handover and shows no banner once the features show the computer is off', async () => {
   await createDeviceSession();
 
   await featureStore.featuresOff.create({ feature: 'computer' });
@@ -108,15 +111,28 @@ test('it shows no handover banner while the computer is off', async () => {
     message: { text: 'itch.io asks for a CAPTCHA' },
   });
 
+  const handoverReads: string[] = [];
+
+  // answers nothing, so the mock procedure still answers, and records that the page asked
+  network.use(
+    http.post('https://nixie.test/rpc/computer/readHandover', () => {
+      handoverReads.push('readHandover');
+    }),
+  );
+
   const rendered = render(
     <SignedInPage onRefresh={() => {}} session="live">
-      <p>Stub page</p>
+      <FeaturesProbe />
     </SignedInPage>,
   );
 
-  await rendered.findByText('Stub page');
+  await rendered.findByText(/^features: /u);
 
-  expect(
-    rendered.queryByRole('region', { name: 'the assistant asks you to take over the computer' }),
-  ).toBeNull();
+  expect({
+    handoverReads,
+    hasBanner:
+      rendered.queryByRole('region', {
+        name: 'the assistant asks you to take over the computer',
+      }) !== null,
+  }).toStrictEqual({ handoverReads: [], hasBanner: false });
 });

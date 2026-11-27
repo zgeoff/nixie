@@ -1,7 +1,9 @@
 import { expect, test } from 'bun:test';
 import { collectModuleRecordTopicMaps } from '@heynixie/api';
 import { connectionRecordTopics } from '@heynixie/connections';
+import { computerTakeoverRecordTopics } from '@heynixie/connectors';
 import { credentialRecordTopics } from '@heynixie/credentials';
+import { getRecordTopics } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
 import { readDeclaredRecordKinds } from '../test-utils/read-declared-record-kinds';
@@ -13,6 +15,7 @@ async function setupTest() {
   const registered = new Map<string, readonly string[]>(
     [
       ...collectModuleRecordTopicMaps(),
+      computerTakeoverRecordTopics,
       connectionRecordTopics,
       credentialRecordTopics,
       sandboxRecordTopics,
@@ -124,6 +127,25 @@ test('it registers every module on one writer without two owners for a kind', as
   const testLog = await startTestLog();
 
   expect(() => {
-    registerServerRecordTopics(testLog.writer);
+    registerServerRecordTopics(testLog.writer, ['computer']);
   }).not.toThrow();
+});
+
+test('it registers the computer topics when the computer is on', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['computer']);
+
+  expect(getRecordTopics(testLog.writer, 'computer.handover_asked')).toStrictEqual([
+    'computer',
+    'tasks',
+  ]);
+});
+
+test('it leaves the computer topics out when the computer is off', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, []);
+
+  expect(getRecordTopics(testLog.writer, 'computer.handover_asked')).toStrictEqual([]);
 });

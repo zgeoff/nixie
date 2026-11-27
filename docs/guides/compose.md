@@ -14,12 +14,16 @@ secret reaches the container's configuration or its disk.
 2. Replace every placeholder in `config.yaml`: impd's URL, the host's addresses, and the model
    profiles. Keep `harness: agent-sdk` on each profile, because nixie refuses a profile with no
    harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
-   list. Keep `computer: {}` and `code: {}` to give the assistant its computer and its code tool,
-   and delete a section to turn that feature off.
+   list.
 3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
    `definitions/rules/starter.yaml`. The pinned image reads definitions format 2, which leaves rule
    files unapplied. When you run a release that applies rule files, set `format: 3` in
    `definitions/nixie.yaml`. The next seed applies every rule in the files at once.
+
+   The pinned image keeps the assistant's computer and its code tool on, and refuses a `computer` or
+   `code` section. When you run a release that switches them by config, add `computer: {}` and
+   `code: {}` to `config.yaml` to keep them.
+
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape
    [the Kubernetes Secret example](../../deploy/kubernetes/secret.example.yaml) shows.

@@ -98,6 +98,7 @@ test('it spares the sandboxes of the conversation, the checker and each open sta
   await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
+    isComputerOn: true,
     currentImages: [],
     imageExemptOwners: [],
   });
@@ -118,6 +119,7 @@ test('it keeps the browser and shell sandboxes of an earlier release on images t
   await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
+    isComputerOn: true,
     currentImages: ['nixie-computer-new'],
     imageExemptOwners: [],
   });
@@ -126,4 +128,23 @@ test('it keeps the browser and shell sandboxes of an earlier release on images t
     'sandbox-of-computer-desktop',
     'sandbox-of-a-stranger',
   ]);
+});
+
+test('it keeps the desktop sandbox of a computer that is off, whatever its image', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.seed.sandbox('computer-desktop', 'nixie-computer-old'),
+    ctx.seed.sandbox('a-stranger', 'nixie-browser-old'),
+  ]);
+
+  await removeSweptSandboxes(ctx.context, {
+    logger: () => {},
+    adapter: ctx.adapter,
+    isComputerOn: false,
+    currentImages: ['nixie-fetch-new'],
+    imageExemptOwners: [],
+  });
+
+  expect(ctx.destroyed).toStrictEqual(['sandbox-of-a-stranger']);
 });

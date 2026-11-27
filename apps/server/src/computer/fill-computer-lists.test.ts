@@ -4,6 +4,10 @@ import { inboxKinds, isInboxRecord, isWakingRecord } from '@heynixie/tasks';
 import { fillComputerLists } from './fill-computer-lists';
 
 function setupTest() {
+  // the policy's test preload installs the computer's shapes before each test, so a server that has
+  // filled nothing starts with none
+  toolShapes.set([]);
+
   onTestFinished(() => {
     inboxKinds.set([]);
     toolShapes.set([]);

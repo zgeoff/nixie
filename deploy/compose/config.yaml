@@ -41,9 +41,6 @@ imp:
 # the sets
 backup:
   enabled: false
-# the assistant's computer and its code tool, which each need their sandbox image
-computer: {}
-code: {}
 definitions:
   source:
     kind: path

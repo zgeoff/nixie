@@ -9,6 +9,7 @@ import type { BegunPurgeOptions } from './seed-begun-purge';
 import { seedBegunPurge } from './seed-begun-purge';
 import { seedDefinitionConflict } from './seed-definition-conflict';
 import { seedHeldTasks } from './seed-held-tasks';
+import { seedOpenHandover } from './seed-open-handover';
 import { seedOpenTakeover } from './seed-open-takeover';
 import { seedRuleConflict } from './seed-rule-conflict';
 import { seedUncheckedRuleApprovals } from './seed-unchecked-rule-approvals';
@@ -35,6 +36,7 @@ export function buildBootSeeder(files: BootSeederFiles) {
   return {
     begunPurge: (options?: BegunPurgeOptions) => seedBegunPurge(files, options),
     heldTasks: () => seedHeldTasks(files),
+    openHandover: () => seedOpenHandover(files),
     openTakeover: () => seedOpenTakeover(files),
     ruleConflict: () => seedRuleConflict(files),
     uncheckedRuleApprovals: () => seedUncheckedRuleApprovals(files),
