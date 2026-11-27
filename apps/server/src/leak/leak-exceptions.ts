@@ -6,15 +6,18 @@ import type { LeakExceptions } from '../types';
 export const leakExceptions: LeakExceptions = {
   owned: {
     google: ['modules/api/src/connection'],
-    voice: ['libs/contract/src/contract/calls-contract.ts', 'modules/api/src/calls'],
+    voice: [
+      'libs/contract/src/contract/calls-contract.ts',
+      'modules/api/src/session/create-calls-off-procedures.ts',
+    ],
     devices: [
       'libs/contract/src/contract/contract.ts',
       'libs/contract/src/contract/devices-contract.ts',
-      'modules/api/src/device',
+      'modules/api/src/session/create-devices-off-procedures.ts',
+      'modules/api/src/session/feature-procedures.ts',
       'modules/api/src/enrolment/claim-enrolment-code.ts',
       'modules/api/src/live/create-live-procedures.ts',
       'modules/api/src/session/create-session-procedures.ts',
-      'modules/api/src/utils/feature-procedures.ts',
     ],
     computer: [
       'libs/contract/src/contract/computer-contract.ts',
