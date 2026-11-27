@@ -2,15 +2,15 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-A nixie whose config has no `voice` section has no calls. It starts no call part and leaves `voice`
-out of the features that `nixie.read` reports. The tool that ends a call sits in the tool registry
-and in no list that a journey can read, so the e2e suite of calls-off checks that it is absent. The
-web client hides the Call entry of its menu, and a direct visit to `/call` shows a page that reads
-"This feature is off in this nixie".
+A nixie whose config has no `voice` section has no calls. It starts no calls part and leaves `voice`
+out of the features that `nixie.read` reports. A journey cannot read the tool that ends a call,
+because it sits only in the tool registry. The calls-off e2e suite checks that the tool is absent.
+The web client hides the Call entry of its menu, and a direct visit to `/call` shows a page that
+reads "This feature is off in this nixie".
 
-Run this journey on a plain `up`: a test build turns calls on only when `NIXIE_VERIFY_CALLS=1`, so
-leave that variable unset in the shell. On `preview`, skip this journey and list the feature as not
-verified there in your reply, because the preview's config holds a `voice` section only when its
+Run this journey on a plain `up`, with `NIXIE_VERIFY_CALLS` unset in the shell, because a test build
+turns calls on only when that variable is 1. On `preview`, skip this journey and list the feature as
+not verified there in your reply, because the preview's config holds a `voice` section only when its
 deployment sets one.
 
 Before you start, run `env -u NIXIE_VERIFY_CALLS bun verify up --restart` and `bun verify doctor`,
