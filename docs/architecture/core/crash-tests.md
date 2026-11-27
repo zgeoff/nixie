@@ -120,10 +120,13 @@ beside the oracle in the test.
 
 ## Fault points of the forget
 
-The evidence purge of a [record forget](../memory/store.md#the-evidence-purge) holds at 5 fault
-points, one for each row of its kill table. Each point sits behind the test-build flag. A test arms
-a point, makes the forget or the purge reach it, stops nixie there and starts it again, and checks
-that the purge finishes and the current text of each item still reads.
+A forgotten record can leave evidence quotes in memory items. The evidence purge of a
+[record forget](../memory/store.md#the-evidence-purge) removes them, and it holds at 5 fault points,
+one for each row of its kill table. This is a different path from the erasure runner that the next
+section covers, which forgets a memory item, a note or a moment. Each point sits behind the
+test-build flag. A test arms a point, makes the forget or the purge reach it, stops nixie there and
+starts it again, and checks that the purge finishes and the current text of each item still reads.
+`recover-record-forget-purge.test.ts` does this.
 
 | Fault point                 | Reached                                                   |
 | --------------------------- | --------------------------------------------------------- |
@@ -133,17 +136,20 @@ that the purge finishes and the current text of each item still reads.
 | `memory.purge.keys_removed` | after the key deletes, before `memory.evidence_purged`    |
 | `record.forget.purged`      | after every item's purge, before `record.forgotten`       |
 
-The suite also starts the previous release on the data after each kill, and checks that it finishes
-the purge too, so a rollback by one release in the middle of a forget loses nothing. It runs that
-release's test build, which the e2e lane builds from the release's tag, because the release build
-stops at the parts of a start that need a real sandbox.
+Beside the oracle, this suite checks one more case. It starts the previous release on the data after
+each kill, and checks that it finishes the purge too, so a rollback by one release in the middle of
+a forget loses nothing. It runs that release's test build, which the e2e lane builds from the
+release's tag, because the release build stops at the parts of a start that need a real sandbox.
 
 ## Fault points of the erasure runner
 
 The [erasure runner](../memory/store.md#forgetting) holds at 5 fault points behind the test-build
-flag, in the order of its steps. A test arms a point, makes a memory item, note or moment forget
-reach it, stops nixie there and starts it again, and checks that the erasure finishes, no key of the
-target remains and `erasure.finished` follows `erasure.started`.
+flag, in the order of its steps. `recover-erasure.test.ts` arms each point for a note, and for a
+memory item. A test arms a point, makes the forget reach it, stops nixie there and starts it again.
+It checks that the erasure finishes, that none of the target's keys remains in the key store, and
+that `erasure.finished` follows `erasure.started`. The target's keys are its
+[key family](../memory/store.md#forgetting), which `erasure.started` names. These checks sit beside
+the oracle, which does not know about erasures.
 
 | Fault point                   | Reached                                                                                                    |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |

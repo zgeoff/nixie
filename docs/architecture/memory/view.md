@@ -18,7 +18,8 @@ alone, so each pages through its own items. Active and retired items list apart.
 holds each item a forget began, so an item whose forget a crash cut short still shows. Each listed
 item carries its current version's text while its key exists, the origin and source of that version,
 and when the item was created and last changed. A forgotten item carries no text and the time its
-forget completed, so it shows as a dated gap.
+forget completed, so it shows as a dated gap. An item whose forget has begun and not finished lists
+as forgetting, with no text and no completed time yet.
 
 ## Search
 
@@ -73,8 +74,8 @@ with the reason the message is missing.
 
 A retire, a restore, a pin and an unpin from the view each go through the store with the user as
 origin and source, as the host commands' changes do. Each binds to the version the view showed: the
-retire and the restore through their target, and the pin through the version it names, so an item
-that moved on since the user looked fails the change as stale and changes nothing.
+retire and the restore through their target, and the pin and the unpin through the version each
+names, so an item that moved on since the user looked fails the change as stale and changes nothing.
 
 Each change from a device is a checked action
 ([checked actions](../channels/api.md#checked-actions)). The store runs a caller's own write inside
@@ -105,10 +106,11 @@ forget runs the store's forget ([forgetting](./store.md#forgetting)) with the us
 item that changed after the preview refuses it as stale and nothing is destroyed.
 
 The forget is a checked action like the other changes, and its result commits in the transaction
-that writes `erasure.started`. A retry with the same client action ID therefore finds the result and
-finishes the item's open erasure, so a forget whose session cleanup failed after its start completes
-on the retry instead of waiting for the store's next start. The retry finishes only an erasure that
-is open, so it never deletes the key of an item no forget began.
+that writes `erasure.started`, the record that opens the item's erasure and lists every key the
+forget deletes ([forgetting](./store.md#forgetting)). A retry with the same client action ID
+therefore finds the result and finishes the item's open erasure, so a forget whose session cleanup
+failed after its start completes on the retry instead of waiting for the store's next start. The
+retry finishes only an erasure that is open, so it never deletes the key of an item no forget began.
 
 The web page's confirmation shows the history from the preview, what the forget destroys, and what
 it cannot reach. A disk snapshot that the user took by hand of nixie's host or its volumes still

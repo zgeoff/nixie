@@ -14,7 +14,7 @@ ID and a closed stream misses it.
 Two changes happen with no write, so the tab reads again on a timer. A task that comes due changes
 the task list, so the tab reads the list at the `changesAt` time the list returns, as well as on the
 `tasks` topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the stuck
-forgets on a timer alone. Roots such as `sessions` and `devices` have no topic either. See
+forgets on a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic either. See
 [Topics](#topics) for each.
 
 ```mermaid
@@ -72,15 +72,18 @@ sends the topics that wait between records, so a long replay never holds a topic
 
 The API writes a keepalive into a quiet stream at a fixed interval. oRPC's event iterator swallows
 the keepalive comment, so the web client watches the bytes of the response and treats a stream that
-sends no byte within its idle limit as dead. `liveStreamTiming` in the contract package holds the
+sends no byte within its idle limit as dead. `liveStreamTiming`, in
+[live-stream-timing.ts](../../../libs/contract/src/contract/live-stream-timing.ts), holds the
 interval and the idle limit, and a test asserts that 3 keepalive intervals fit in the idle limit.
 
 ## Topics
 
 A topic is the name of one root of the web client's query keys, and no two topics share a root. The
-contract's `liveTopicSchema` holds the list. A root can lack a topic, and the contract test keeps a
-list of those unfollowed roots, `erasure` among them. The test fails when a topic matches no root,
-or when a root has neither a topic nor a place on that list.
+contract's `liveTopicSchema`, in
+[live-topic-schema.ts](../../../libs/contract/src/contract/live-topic-schema.ts), holds the list. A
+root can lack a topic, and the contract test keeps a list of those unfollowed roots, `erasure` among
+them. The test fails when a topic matches no root, or when a root has neither a topic nor a place on
+that list.
 
 | Topic         | Reads under the root                             |
 | ------------- | ------------------------------------------------ |
@@ -128,8 +131,9 @@ A task that comes due on a schedule changes the task list with no write, so the 
 fires for it. `tasks.list` returns `changesAt`, the earliest next run of a listed task, and the
 client reads the list again at that time, besides reading it on the `tasks` topic.
 
-A forget turns stuck once it stays open long enough, with no write. The `erasure` root has no topic,
-and the web client reads `erasure.readStuck` again on a timer.
+A forget of any kind turns stuck once it stays open long enough, with no write. The `erasure` root
+has no topic, and the web client reads `erasure.readStuck` again on a timer. That timer covers only
+the stuck state. The erasure records mark `memory` and `notebook` as [Topics](#topics) says.
 
 ## The client registry
 

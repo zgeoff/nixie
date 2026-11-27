@@ -19,7 +19,8 @@ stateDiagram-v2
 ```
 
 nixie keeps each set's state in its own table, and one transition table refuses every move the
-diagram lacks. The job never reads that table: it reads only the files in the staging folder.
+diagram lacks. The job never reads that table. Of nixie's files it reads only those in the staging
+folder, and it also reads and writes the 2 restic repositories.
 
 ## Staging a set
 
@@ -38,16 +39,17 @@ every receipt that the job wrote, then stages a set when one is due:
    keys. The same transaction that writes `erasure.finished` writes `floor.json` into the staging
    folder, naming the highest set that exists then, and the job ships no set at or below it. The job
    reads `floor.json` again once a set's key snapshot is in the key repo, and again once its data
-   snapshot is in the data repo. The data retention, the removal of the other key snapshots and the
-   key prune run only after that last read passes. When an erasure finished before one of those
-   reads, the job removes the set's own key and data snapshots, prunes the key repo, keeps the
-   restore note and writes no receipt, so the previous published pair stays whole. A failure of that
-   removal fails the job, and the next publish removes the stale snapshot with the other old ones.
-   When an erasure finishes after the last read, the set still publishes, because nothing in the job
-   is atomic with the receipt's rename. That receipt does not cover the erasure, which waits for a
-   set that started after it. The withdrawal waits for the job's staging lock, so it never removes a
-   set that the job is shipping, and a pass that finds the lock held withdraws the set on the next
-   pass. A withdrawal that a failure stopped after the rename finishes on the next pass.
+   snapshot is in the data repo, whether that data snapshot passed or failed. The data retention,
+   the removal of the other key snapshots and the key prune run only after that last read passes.
+   When an erasure finished before one of those reads, the job removes the set's own key and data
+   snapshots, prunes the key repo, keeps the restore note and writes no receipt, so the previous
+   published pair stays whole. A failure of that removal fails the job, and the next publish removes
+   the stale snapshot with the other old ones. When an erasure finishes after the last read, the set
+   still publishes, because nothing in the job is atomic with the receipt's rename. That receipt
+   does not cover the erasure, which waits for a set that started after it. The withdrawal waits for
+   the job's staging lock, so it never removes a set that the job is shipping, and a pass that finds
+   the lock held withdraws the set on the next pass. A withdrawal that a failure stopped after the
+   rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
@@ -100,9 +102,10 @@ receipt. For each set it ships, the job:
    `legacy-set-`. Otherwise it copies both from the one it replaces, and takes `legacy-set-` when it
    is the first numbered one;
 4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
-   reads `floor.json` again, and applies the data retention once that read passes;
-5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's
-   data once the prune passes, whether the data snapshot passed or failed;
+   and reads `floor.json` again, whether the data snapshot passed or failed. When the read passes
+   and the data snapshot passed, it applies the data retention;
+5. once that read passes, forgets every other key snapshot by its ID, prunes every unused byte, and
+   checks the repository's data after the prune passes, whether the data snapshot passed or failed;
 6. removes the restore note from the staging folder, when one was there;
 7. writes the receipt with an fsync and a rename, so nixie never reads a partial one;
 8. removes the set's copies, unless nixie has removed the set folder first.

@@ -2,10 +2,11 @@
 
 nixie forgets text by destroying keys, never by rewriting the log. Every free-text field of a
 record, such as message text, tool arguments or a tool result, sits in the record's erasable fields,
-encrypted under a key that belongs to that record alone. The keys live in a key store, a SQLite file
-of their own beside the database. Deleting a record's key leaves the record in the log with its
-envelope and payload, and its text unreadable in every copy of the database that exists, backups
-included. This is crypto-shredding, chosen for memory in
+encrypted under a key that belongs to that record alone. The one exception is a memory version's
+text, which is sealed under its item's key, as [below](#keys) says. The keys live in a key store, a
+SQLite file of their own beside the database. Deleting a record's key leaves the record in the log
+with its envelope and payload, and its text unreadable in every copy of the database that exists,
+backups included. This is crypto-shredding, chosen for memory in
 [0007](../../decisions/0007-crypto-shredding.md). [The event log](./event-log.md) covers the record
 the fields belong to.
 
@@ -25,13 +26,15 @@ copied onto another record, or moved to another position, fails to decrypt. The 
 like the log, and a forget leaves its rows in place, unreadable with the record's text. The payload
 holds only what describes an attachment, such as an image's media type, and never its bytes.
 
-The payload never holds free text, and no projection reads the erasable fields. One kind of value in
-a payload is ciphertext and not free text: a memory version's text, sealed under its item's key,
-which the [memory store](../memory/store.md#items-and-versions) folds into its versions table. A
-forget destroys that key, so the payload's copy is unreadable with every other copy. A projection
-rebuilt after a forget therefore gives the same rows as before, and nothing outside the erasable
-fields keeps a copy of the text. The database holds no full-text index over erasable fields for the
-same reason: an index would keep the plaintext after its key is gone.
+The payload never holds free text, and no projection reads the erasable fields. The one exception is
+a memory version's text. The memory store seals it under its item's key, not under the key of the
+record that carries it, and the payload holds only that ciphertext, which the
+[memory store](../memory/store.md#items-and-versions) folds into its versions table. A forget
+destroys the item's key, so every copy of the sealed text becomes unreadable at once, the payload's
+copy and the versions table's copy alike. A projection rebuilt after a forget therefore gives the
+same rows as before, and no plaintext of the text survives outside the erasable fields. The database
+holds no full-text index over erasable fields for the same reason: an index would keep the plaintext
+after its key is gone.
 
 ## Declaring erasable kinds
 

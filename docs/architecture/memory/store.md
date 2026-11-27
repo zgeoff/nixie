@@ -31,12 +31,13 @@ Later, only an approved [subject change](./writes.md#subject-changes), an undo o
 `memory.retopic` call moves the item. The first two write a subject change record beside the version
 record that moves it; [a re-file](#moving-a-topic) writes a label record.
 
-The subject travels in records of its own because nixie keeps its log and tables readable by the
-release before it, so a rollback by one release works
+The subject travels in records of its own because the release that added subjects kept the log and
+tables readable by the release before it, so a rollback by one release worked
 ([migrations](../core/database.md#migrations)). That release skips a record kind it does not know,
-and refuses a version or proposal record with a field it does not know. For the same reason the
-items row keeps a kind column, `self` or `fact`. When a row's subject column is empty, the store
-reads `self` as the self subject and `fact` as owner.
+and refuses a version or proposal record with a field it does not know. The later migration that
+moved items onto the erasure runner ended that rollback, as [forgetting](#forgetting) explains. For
+the same reason the items row keeps a kind column, `self` or `fact`. When a row's subject column is
+empty, the store reads `self` as the self subject and `fact` as owner.
 
 The versions table holds one row per version: what changed, the state that version gave the item,
 the sealed text, its [end time](#end-times), and the provenance. A version's provenance is its
@@ -561,8 +562,8 @@ The runner holds these rules, which the code enforces:
 - `erasure.started` holds a count of the keys the capture names, taken in the start transaction.
   `erasure.finished` reports that count as `removedKeys`, so a recovery after the keys went still
   reports them.
-- At start, the catch-up finishes every open erasure after the session cleanup and before the
-  turn-input repair, the turn-input intake and the runners start.
+- At the server's start, the catch-up finishes every open erasure after the session cleanup and
+  before the turn-input repair, the turn-input intake and the runners start.
 - A forget open for the `erasure.stuck_after_minutes` of the config (5 by default) is stuck. On a
   fixed interval the watch retries such a forget, and logs `erasure.stuck` at the error level for
   each one that stays open. A younger forget is left alone, because it may wait on the step that
@@ -588,14 +589,14 @@ Every step is safe to run twice. A crash between the 2 parts, or anywhere inside
 the item forgetting with `erasure.started` open, and the catch-up at the server's start finishes it
 before the store builds its index and before any runner claims work. A forget that an earlier
 release left in forgetting, with `memory.forget_started` and no `erasure.started`, gets one at that
-start, as the actor `user`, because only the user forgot an item then, and finishes the same way. A
-deleted key never returns while a forget waits, and the forget completes only after the session
-cleanup returns. [Memory in context](./context.md#forgetting-and-the-live-session) covers what that
-cleanup removes.
+server start, as the actor `user`, because only the user forgot an item then, and finishes the same
+way. A deleted key never returns while a forget waits, and the forget completes only after the
+session cleanup returns. [Memory in context](./context.md#forgetting-and-the-live-session) covers
+what that cleanup removes.
 
-The start also captures the key of each fold order whose topic no other item holds, because a fold
-order keeps the name of its topic. The last item of a topic takes the name with it, and
-`removedKeys` counts that key with the rest.
+The erasure's start record also captures the key of each fold order whose topic no other item holds,
+because a fold order keeps the name of its topic. The last item of a topic takes the name with it,
+and `removedKeys` counts that key with the rest.
 
 A second forget of an item that is already forgetting, from a request with a new client action,
 joins the open erasure: it starts nothing and finishes the open one. A forget checks the caller's
@@ -613,7 +614,8 @@ no change to the record.
 
 The migration that moved items onto the runner raises the oldest reader. The release before
 registers only moments, so it cannot finish an open `memory_item` erasure, and it refuses to open a
-database that the new release wrote.
+database that the new release wrote. A rollback by one release is therefore no longer possible from
+that migration on.
 
 The key deletion and its checkpoint are the ones [erasable fields](../core/erasable-fields.md)
 describes, so neither the key store file nor its write-ahead log keeps the wrapped key. The version

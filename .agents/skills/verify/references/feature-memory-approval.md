@@ -18,6 +18,9 @@ Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journe
 for the targets `local` and `preview`, the commands `up`, `attach` and `done`, and the `data` field
 of each command's JSON output.
 
+When a command of this journey fails, follow its row in [Exit codes](exit-codes.md). The cases below
+are the ones this journey adds.
+
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up` or `attach`, run it
@@ -39,8 +42,9 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify action script-reply --memory 'The user keeps bees on the allotment.' --text 'I will ask you before I remember that.'
    ```
 
-   Expect: `data.replies` is 2: the memory call is one scripted step, and the text reply is the
-   other.
+   `action script-reply` queues the scripted model's next reply. `--memory` is the text of the item
+   the model proposes, and `--text` is its reply to the user. Expect: `data.replies` is 2: the
+   memory call is one scripted step, and the text reply is the other.
 
 2. Send the message. On `preview`, change the step:
    - Type a message that asks nixie to guess a fact about you and remember it, such as "Guess which
@@ -56,7 +60,8 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify conversation turn --message 'I took the bees some sugar water today.' --reply 'I will ask you before I remember that.'
    ```
 
-   Expect: `conversation turn` exits 0.
+   Expect: `conversation turn` exits 0. When it fails, run `bun verify browser snapshot` to see
+   whether the message reached the page, and do not go on to step 3.
 
 3. On `preview`, skip this step. On `local`, check that no memory item exists yet:
 
@@ -152,7 +157,9 @@ item's fact would make nixie keep the item at once, with no proposal.
    Expect: the second snapshot shows "Forget this item for good? You cannot undo it.". Both clicks
    exit 0. The last snapshot waits until the forgotten item's line shows a "forgotten" date, which
    appears only once `erasure.finished` is written. A line that reads "forgetting" means the erasure
-   is still open, so do not start step 10 until the date shows.
+   is still open, so do not start step 10 until the date shows. `--until-text` makes `snapshot` wait
+   for that text to show in the page. When the "forgotten" date never shows and the command fails,
+   skip `bun verify done`, run step 10's queries anyway, and list in your reply the rows you got.
 
 10. Check the erasure states of the forget and the memory page:
 
@@ -174,8 +181,8 @@ item's fact would make nixie keep the item at once, with no proposal.
 - The approvals page of step 4 listed the item.
 - On `local`, the first `db query` of step 6 returns one row, whose `state` is `active`, and the
   second returns one `proposals` row that is `approved` and names its approval.
-- The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
-  allotment.".
+- After step 6, the memory page shows the item's text from step 4: on `local`, "The user keeps bees
+  on the allotment.". Step 10 checks that the text is gone.
 - On `local`, the reminder of step 7 is active, and the note of step 8 holds the short ID of the
   approved item: the reminder's result listed it as `related`, and the call applied first.
 - On `local`, after step 9 the item is `forgotten`, with one finished erasure and no open one, and
