@@ -149,7 +149,7 @@ neither runs on the registry's first target.
 
 <!-- repo: targets -->
 
-[Targets](references/targets.md) lists each target's start commands and access.
+Read [Targets](references/targets.md) for start commands and access.
 
 <!-- /repo -->
 
