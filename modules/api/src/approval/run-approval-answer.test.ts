@@ -79,7 +79,10 @@ async function setupTest() {
       }),
     );
 
-    invariant(actionID, 'the runner queue queues the action');
+    invariant(
+      typeof actionID === 'string' && actionID !== '',
+      'the runner queue queues the action',
+    );
 
     return actionID;
   };
@@ -110,6 +113,25 @@ async function setupTest() {
   return {
     calls,
     readLogged: () => api.logged,
+    describeRefusal: (refusal: unknown): unknown => {
+      if (!(refusal instanceof ORPCError)) {
+        return refusal;
+      }
+
+      const code: unknown = refusal.code;
+      const data: unknown = refusal.data;
+
+      return { code, data };
+    },
+    describeRefusalCode: (refusal: unknown): unknown => {
+      if (!(refusal instanceof ORPCError)) {
+        return refusal;
+      }
+
+      const code: unknown = refusal.code;
+
+      return code;
+    },
     readAction: (actionID: string) => readTestAction(api.context.log.writer, actionID),
 
     // a runner queues the call through the real runner queue, and its attempt asks
@@ -195,7 +217,7 @@ test('#approvals.answerProposal refuses with action_changed when the stored argu
   const refusal = await ctx.approveOpenCard().catch((error: unknown) => error);
 
   expect({
-    refusal: refusal instanceof ORPCError ? { code: refusal.code, data: refusal.data } : refusal,
+    refusal: ctx.describeRefusal(refusal),
     action: await ctx.readAction(actionID),
     calls: ctx.calls,
   }).toStrictEqual({
@@ -221,7 +243,7 @@ test('#approvals.answerProposal refuses with held_action_gone when the task was 
   const refusal = await ctx.approveOpenCard().catch((error: unknown) => error);
 
   expect({
-    refusal: refusal instanceof ORPCError ? { code: refusal.code, data: refusal.data } : refusal,
+    refusal: ctx.describeRefusal(refusal),
     action: await ctx.readAction(actionID),
   }).toStrictEqual({
     refusal: { code: 'NOT_ALLOWED', data: { reason: 'held_action_gone' } },
@@ -251,7 +273,7 @@ test('#approvals.answerProposal logs one line with the proposal and the reason w
 
   await ctx.approveOpenCard().catch(() => null);
 
-  expect(ctx.readLogged().map((line) => JSON.parse(line))).toStrictEqual([
+  expect(ctx.readLogged().map((line): unknown => JSON.parse(line))).toStrictEqual([
     { event: 'approvals.answer_refused', fields: { proposalID, reason: 'action_changed' } },
   ]);
 });
@@ -273,7 +295,7 @@ test('#approvals.answerProposal logs the proposal and the reason when it refuses
 
   await ctx.approveOpenCard().catch(() => null);
 
-  expect(ctx.readLogged().map((line) => JSON.parse(line))).toStrictEqual([
+  expect(ctx.readLogged().map((line): unknown => JSON.parse(line))).toStrictEqual([
     { event: 'approvals.answer_refused', fields: { proposalID, reason: 'no_passkey' } },
   ]);
 });
@@ -302,8 +324,8 @@ test('#approvals.answerProposal logs the proposal and the reason when it refuses
     .catch((error: unknown) => error);
 
   expect({
-    refusal: refusal instanceof ORPCError ? refusal.code : refusal,
-    logged: ctx.readLogged().map((line) => JSON.parse(line)),
+    refusal: ctx.describeRefusalCode(refusal),
+    logged: ctx.readLogged().map((line): unknown => JSON.parse(line)),
   }).toStrictEqual({
     refusal: 'CLIENT_ACTION_ID_REUSED',
     logged: [

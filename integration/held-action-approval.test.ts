@@ -111,7 +111,10 @@ async function setupTest() {
         }),
       );
 
-      invariant(actionID, 'the runner queue queues the action');
+      invariant(
+        typeof actionID === 'string' && actionID !== '',
+        'the runner queue queues the action',
+      );
 
       return actionID;
     },
