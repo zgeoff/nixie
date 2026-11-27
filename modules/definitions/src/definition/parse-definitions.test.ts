@@ -896,7 +896,29 @@ test.each([
   });
 });
 
-test('it still refuses an unknown prompt key beside a retired one', () => {
+test.each([2, 3])(
+  'it names a retired prompt key under format %i, whatever the key holds',
+  (format) => {
+    const files = new Map([
+      [
+        'nixie.yaml',
+        new TextEncoder().encode(
+          `format: ${format}\nprompts:\n  writer: 42\n  consolidator: [1]\n`,
+        ),
+      ],
+      ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ]);
+
+    const parsed = parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    );
+
+    expect(parsed.retiredPromptKeys).toStrictEqual(['prompts.writer', 'prompts.consolidator']);
+  },
+);
+
+test('it still refuses an unknown prompt key beside a retired one, and names only the unknown key', () => {
   const files = new Map([
     ['nixie.yaml', new TextEncoder().encode('format: 3\nprompts:\n  writer: {}\n  greeter: {}\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
@@ -907,5 +929,5 @@ test('it still refuses an unknown prompt key beside a retired one', () => {
       { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
       buildTestTaskSeed(),
     ),
-  ).toThrow(/greeter/u);
+  ).toThrow(/^(?!.*writer).*greeter/u);
 });

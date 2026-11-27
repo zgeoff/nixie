@@ -113,9 +113,10 @@ A manifest may still hold the retired `prompts.writer` or `prompts.consolidator`
 the prompts of the memory tasks that nixie no longer has. The seed drops each one, whatever it
 holds, keeps every other prompt and the rest of the manifest, and logs one
 `definitions.prompt_key_retired` warning that names each key it dropped. Any other unknown prompt
-key still refuses the repo. The published JSON Schema accepts both retired keys for the same reason.
-In `config.yaml`, the retired `memory_writer` and `memory_consolidation` sections and the
-`memory-writer` and `memory-consolidator` model roles are unknown keys, which
+key still refuses the repo. Under format 2, which ignores the rest of the prompts map, the seed
+still names each retired key it finds. The published JSON Schema accepts both retired keys for the
+same reason. In `config.yaml`, the retired `memory_writer` and `memory_consolidation` sections and
+the `memory-writer` and `memory-consolidator` model roles are unknown keys, which
 [the loader](../deployment/configuration.md#the-schema) removes with a `config.unknown_key` warning.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the

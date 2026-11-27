@@ -227,9 +227,7 @@ function parseManifest(text: string | undefined): Manifest {
     return {
       format: result.data.format,
       prompts,
-      retiredPromptKeys: retiredPromptIDs
-        .filter((id) => prompts !== undefined && id in prompts)
-        .map((id) => `prompts.${id}`),
+      retiredPromptKeys: getRetiredPromptKeys(findManifestField(manifest, 'prompts')),
     };
   }
 
@@ -269,6 +267,16 @@ function findManifestField(manifest: unknown, field: string): unknown {
   return manifest !== null && typeof manifest === 'object' && field in manifest
     ? Object.getOwnPropertyDescriptor(manifest, field)?.value
     : undefined;
+}
+
+// Reads the raw prompts field, so a retired key is named under every readable format, including
+// format 2, which ignores the rest of the prompts map.
+function getRetiredPromptKeys(prompts: unknown): readonly string[] {
+  if (prompts === null || typeof prompts !== 'object' || Array.isArray(prompts)) {
+    return [];
+  }
+
+  return retiredPromptIDs.filter((id) => id in prompts).map((id) => `prompts.${id}`);
 }
 
 function parsePersona(text: string | undefined): string {
