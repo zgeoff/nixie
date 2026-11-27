@@ -48,9 +48,9 @@ keeps its name and screen.
    screen as the row holds it.
 
 `live.follow` in its device form, `devices.setCapability`, `devices.readImage` and `devices.resize`
-act on the caller's own row. A full session whose row is missing gets `NOT_A_DEVICE` and may
-register to get one. A device session whose row a revoke removed gets the refusal of a missing
-session.
+act on the caller's own row. A full session whose row is missing, a case the server does not expect
+but still answers, gets `NOT_A_DEVICE` and may register to get one. A device session whose row a
+revoke removed gets the refusal of a missing session.
 
 A device session may call only `live.follow` in its device form, `devices.resize`,
 `devices.pageError`, `devices.pageEvent`, `devices.pageData`, `devices.setCapability`,
@@ -585,20 +585,20 @@ Device mode is the route `/device` of the web client, a separate page from the
 - A browser with a device session comes back with the screen as the row holds it, which starts off.
   A button switches the screen.
 
-While the screen is off, the page keeps the tab's device stream open, so the device stays online.
-Sign out ends a live call before it signs the session out, so the call's microphone and peer
+While the screen is off, the page keeps the device form of `live.follow` open, so the device stays
+online. Sign out ends a live call before it signs the session out, so the call's microphone and peer
 connection close with it.
 
-With the screen on, the page opens the device form of `live.follow`. A layout draws as a CSS grid,
-and each region keeps its place as another updates. A region with a `background` draws it, with
-black or white text, whichever has the higher WCAG contrast ratio on it. Markdown and a live value
-grow to the largest size that fits their region, and fit again when the region's size or the text
-changes. A clock or a countdown ticks each second from the browser's own time, with no event from
-the server. The page renders markdown like a reply and an image on black: `whole` scales it to fit
-and centres it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the
-window resizes, at most once per debounce window and only when the size differs from the one the
-server has, so the assistant reads the new size within a second. The server has the size from the
-latest stream connect or answered resize.
+With the screen on, the page keeps that same stream open. A layout draws as a CSS grid, and each
+region keeps its place as another updates. A region with a `background` draws it, with black or
+white text, whichever has the higher WCAG contrast ratio on it. Markdown and a live value grow to
+the largest size that fits their region, and fit again when the region's size or the text changes. A
+clock or a countdown ticks each second from the browser's own time, with no event from the server.
+The page renders markdown like a reply and an image on black: `whole` scales it to fit and centres
+it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the window
+resizes, at most once per debounce window and only when the size differs from the one the server
+has, so the assistant reads the new size within a second. The server has the size from the latest
+stream connect or answered resize.
 
 While the screen is on, the page hides its close, full-screen, screen-off and sign-out buttons until
 a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves full
@@ -620,5 +620,5 @@ devices.
 When the section is there, the server gives the API the device procedures, the device page routes
 and the device stream through its feature procedures, adds the device row's session hook, and adds
 the device inbox kinds and the package-install card reader to the core lists. The
-[feature switches](../deployment/server.md#feature-switches) section of the server doc describes the
-mechanism.
+[feature switches](../deployment/server.md#feature-switches) section of the server doc defines the
+feature procedures and the core lists.

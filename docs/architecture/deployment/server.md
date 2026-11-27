@@ -90,11 +90,13 @@ start applies. Only then do the runners claim work.
 
 The first seed, the restore pause, the restart sweep, adding the images, starting the conversation
 imp and the memory store, and writing the start record each wait and run again when they fail, with
-a log line per attempt. nixie therefore stays live and unready while impd is down or the definitions
-refuse to seed, and the container runtime sees why in the readiness report instead of a restart
-loop. Any other failure in the sequence logs the error and ends the process, so the container
-runtime restarts it instead of leaving it live with no runners. A stop during the sequence ends it
-at the next step, and waits for the step in flight before any part closes.
+a log line per attempt. While impd is down, nixie stays live, the imp host part stays unready and
+the status is degraded. While the definitions refuse to seed, the definitions part stays unready and
+the status is unready ([health](#health) sorts the parts into tiers). Either way the container
+runtime sees why in the readiness report instead of a restart loop. Any other failure in the
+sequence logs the error and ends the process, so the container runtime restarts it instead of
+leaving it live with no runners. A stop during the sequence ends it at the next step, and waits for
+the step in flight before any part closes.
 
 Each part's declaration names the parts it needs, which start before it, and the parts it uses,
 which it reads only later, such as the tool endpoint that the sandbox adapter resolves when a guest
