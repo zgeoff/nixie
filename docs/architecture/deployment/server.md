@@ -119,14 +119,15 @@ on only when its section is in the deployment config: `computer`, `google` and `
 feature of the same name, and the `voice` section switches calls, whose feature ID is `voice`. A
 feature that is off starts none of its parts, needs none of its images and offers none of its tools
 or pages. Read [the design](../../design/queue/feature-switches.md) for the full rules. The code
-still breaks them in a few places, which `apps/server/src/leak/leak-exceptions.ts` lists and
-[the ports doc](../ports.md) shows as a table.
+still breaks them in a few places. `apps/server/src/leak/leak-exceptions.ts` lists each one, and
+[the ports doc](../ports.md) shows the same list as a table.
 
 - `featureIDs` in `libs/contract` is the one list of features. Derive every union and schema that
   names a feature from it.
-- `listFeaturesOn` in `apps/server` works out the features that are on from the config. It is the
-  only place that maps a config section to a feature, and `nixie.read` reports its answer to the web
-  client.
+- `listFeaturesOn` in `apps/server` works out the list of features that are on from the config. The
+  part plan and `nixie.read` use that list, and `nixie.read` reports it to the web client. The
+  functions that fill the lists below do not call it: each reads the config section of its own
+  feature and tests that the section is there, by the same rule.
 - Set `feature` on a part declaration to the feature it belongs to, and `requires` to the other
   features whose parts it needs. The part plan leaves out each part whose feature is off, and the
   images of that part. `parts.find` answers null for a part left out, so list a feature part in a

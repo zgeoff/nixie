@@ -1,14 +1,13 @@
 # Devices
 
 A device is a browser that shows what the assistant puts on its screen. Every client that the user
-signs in is a device: a browser or an app with a full session holds a client device (a full session
-made before devices existed holds none until it registers), and a browser with no session enrols
-with a device code and a name, and gets a screen device with a device session of its own. A client
-is one signed-in browser or app and its session, so ten tabs of one browser are one device. The
-device opens the device form of the live stream and sends its screen size. The assistant lists
-devices and shows markdown or an image on a screen that is on. On a call, it may put a long answer
-on the call's device. The camera, the speaker and the microphone are not built: a device record
-holds their capabilities, and every one of them stays off.
+signs in is a device: a browser or an app with a full session holds a client device, and a browser
+with no session enrols with a device code and a name, and gets a screen device with a device session
+of its own. A client is one signed-in browser or app and its session, so ten tabs of one browser are
+one device. The device opens the device form of the live stream and sends its screen size. The
+assistant lists devices and shows markdown or an image on a screen that is on. On a call, it may put
+a long answer on the call's device. The camera, the speaker and the microphone are not built: a
+device record holds their capabilities, and every one of them stays off.
 
 The `devices` module owns the record, the screen state, the open streams and the tools. The
 [API](api.md) owns registration, enrolment and the session scope, and the [web client](client.md)
@@ -23,14 +22,15 @@ takes the scope of its code: a device code makes only a device session, and a fu
 session.
 
 A device row belongs to one session, and a session holds at most one, from its enrolment until a
-revoke or a sign-out removes the row. Enrolment always writes the row, so only a full session made
-before devices existed can lack one, until the migration below gives it one. The row's `device_kind`
-is `client` for a full session and `screen` for a device session. A client device starts with its
-screen on, so the assistant may draw on it, and the user sees what it drew only when they open the
-[device view](client.md#the-device-view). A screen device starts with every capability off, and its
-screen stays off until the device switches it on. The migration that adds `device_kind` gives each
-existing full session with no row a client row, named with its label and with the screen on, and
-makes the row that `devices.register` wrote a client row that keeps its name and screen.
+revoke or a sign-out removes the row. Enrolment always writes the row, and the migration below gives
+each earlier client session one, so a client session holds a row from the day it is made. The row's
+`device_kind` is `client` for a full session and `screen` for a device session. A client device
+starts with its screen on, so the assistant may draw on it, and the user sees what it drew only when
+they open the [device view](client.md#the-device-view). A screen device starts with every capability
+off, and its screen stays off until the device switches it on. The migration that adds `device_kind`
+gives each existing client session that is not revoked and has no row a client row, named with its
+label and with the screen on, and makes the row that `devices.register` wrote a client row that
+keeps its name and screen.
 
 1. A signed-in client calls `sessions.issueCode({ scope: 'device' })`, and the page `/add-device`
    shows the code. `nixie enrol-code device` issues the same code from the host.
@@ -48,9 +48,9 @@ makes the row that `devices.register` wrote a client row that keeps its name and
    screen as the row holds it.
 
 `live.follow` in its device form, `devices.setCapability`, `devices.readImage` and `devices.resize`
-act on the caller's own row. A full session whose row is missing, which only a session from before
-the migration can be, gets `NOT_A_DEVICE` and may register to get one. A device session whose row a
-revoke removed gets the refusal of a missing session.
+act on the caller's own row. A full session whose row is missing gets `NOT_A_DEVICE` and may
+register to get one. A device session whose row a revoke removed gets the refusal of a missing
+session.
 
 A device session may call only `live.follow` in its device form, `devices.resize`,
 `devices.pageError`, `devices.pageEvent`, `devices.pageData`, `devices.setCapability`,

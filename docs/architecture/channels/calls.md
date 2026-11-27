@@ -10,8 +10,9 @@ provider and the secrets file holds its credential. When the config has no `voic
 are off. The server starts no calls part, offers the model no call tool, leaves `voice` out of
 `nixie.read`, and answers each `calls` procedure with `FEATURE_OFF` to a signed-in session. When the
 secrets file lacks the `voice` section's credential, the server wires no adapter, and `calls.start`
-answers `SPEECH_UNAVAILABLE`. A test build wires the fake that the next section describes in place
-of the adapter.
+answers `SPEECH_UNAVAILABLE`. The `voice` section is the only switch for calls. The `devices`
+section switches [devices](devices.md) on its own, and a call needs no `devices` section to run. A
+test build wires the fake that the next section describes in place of the adapter.
 
 ## The speech layer
 

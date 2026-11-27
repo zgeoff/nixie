@@ -56,7 +56,8 @@ google: {}
 devices: {}
 ```
 
-Calls stay on through their `voice` section, so keep it. A release that does not know a section
+Each of these 4 sections is valid empty, as `{}`. Calls stay on through their `voice` section, which
+needs a `provider` and a `credential`, so keep it as it is. A release that does not know a section
 ignores it and leaves that feature off, so bump to a release that reads it before you rely on it.
 
 `createNixie` returns the Services `api` and `web`. Point your ingress at them. `nixieAPIPort` and

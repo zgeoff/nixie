@@ -17,7 +17,8 @@ then [sign-in-enrol](feature-sign-in-enrol.md).
 
 ## Journey
 
-1. Record every later command of this journey under this feature, and open the conversation page:
+1. Start recording under this feature, because `done` records its verdict for the feature that
+   `use --feature` set. Then open the conversation page:
 
    ```bash
    bun verify use --feature calls-off

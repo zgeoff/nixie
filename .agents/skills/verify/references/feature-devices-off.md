@@ -55,6 +55,9 @@ Before you start, run that `up` and `bun verify doctor`, then
 - In step 3, the model's tool list held no `device.` tool.
 
 Once the end state matches, run `bun verify done`. When a command fails, follow its row in
-[Exit codes](exit-codes.md), and skip `done` as step 5 of Check a change in [SKILL.md](../SKILL.md)
-says. Whether the journey passed or failed, run `bun verify up --restart` and `bun verify doctor`
-last, so the next journey has devices on.
+[Exit codes](exit-codes.md), and skip `done`. When every command exits 0 but the end state differs,
+such as a menu that still shows a device entry or a tool list that holds a `device.` tool, skip
+`done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md): fix the app's code when your
+change broke the feature, and otherwise list the feature in your reply with the end state you
+expected and the `data` you got. Whether the journey passed or failed, run `bun verify up --restart`
+and `bun verify doctor` last, so the next journey has devices on.
