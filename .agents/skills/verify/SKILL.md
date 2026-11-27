@@ -13,8 +13,8 @@ metadata:
 
 Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
-[Check a change](#check-a-change). You are done once the report is published and the run is ended.
-Finish with the **Reply** line at the end: the PR link and each feature you could not verify. Leave
+[Check a change](#check-a-change). Then end the run, and give the **Reply** at the end of this file:
+the PR link and each feature you could not verify. You are done after the Reply. Leave
 `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its description.
 
 These cost the most time:
@@ -189,7 +189,8 @@ files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read
 [Edit the skill](references/edit-the-skill.md) before you edit this skill or a feature file, and run
-`bun verify lint` after you change this skill, a feature file or the registry.
+`bun verify lint` after you change this skill, a feature file or the registry. When `lint` fails,
+read its `error.code` and `error.hint`, fix the file they name, and run `lint` again.
 
 **Reply:** the PR link that `bun verify publish` returned in `data.pr.url`, and each feature you
 could not verify, with the command that failed and its `error.code`, or the end state you expected

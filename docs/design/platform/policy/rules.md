@@ -9,10 +9,11 @@ database, seeded from your definitions, and the [decision point](decision-point.
 of its stages. Among the rules that match a call, the strictest outcome wins. Each rule keeps one ID
 for its life and a revision per edit, and code tells whether an edit widens access.
 
-This design is for the owner, who approves it, and for an agent that builds or changes rule
-matching, rule identity, the snapshot hash, the widening check or the starter rule set. An agent
-checks a change against it before the change lands, then follows the links to the decision point and
-the architecture docs for the parts around it.
+This design is for the user, who approves it, and for an agent that builds or changes rule matching,
+rule identity, the snapshot hash, the widening check or the starter rule set. An agent checks a
+change against it before the change lands. To build, start from the rule format and matching, then
+rule identity, the snapshot hash and the widening check, and follow the links to the decision point
+and the architecture docs for the parts around them.
 
 ## The rule format
 
@@ -36,7 +37,8 @@ Every field except the ID and the outcome is optional, and a missing match field
 | `note`         | Your own words about the rule                                                               |
 
 Rule files in the definitions repo are YAML, checked against a JSON Schema that nixie generates from
-the rule format, both when the repo seeds the database and when nixie exports runtime rules.
+the rule format, both when the repo seeds the database and when nixie exports runtime rules. The
+[architecture doc](../../../architecture/policy/rules.md) names the published schema file.
 
 The checks are `eq` against one value, `in` against a list, and `matches` against a pattern. Strings
 compare in Unicode NFC on both sides. A pattern uses `*` as its only wildcard and matches the whole
@@ -45,10 +47,13 @@ the widening check decidable in plain code, and you read the pattern at a glance
 expression would give the check a problem it cannot solve in general. A saved contact name in the
 consent check matches as literal text between word boundaries.
 
-A rule with a CEL condition is valid only when the fixed checks cannot express it. No starter rule
-uses CEL. Adding or changing a condition is a widening, so it always needs approval. A condition
-that errors never lets a deny rule refuse a call unseen: the call asks. For the library, the subset,
-the limits and the card, see [Rule conditions](../../../architecture/policy/rule-conditions.md).
+A rule with a CEL condition matches only when its fixed fields match and the condition is true. The
+condition is valid only when the fixed checks cannot express the rule, and the policy module checks
+it when the rule is written and refuses a rule that fails. No starter rule uses CEL. Adding or
+changing a condition is a widening, so it always needs approval, and a rule that holds one is never
+compared field by field: the widening check treats any edit to it as a widening. A condition that
+errors never lets a deny rule refuse a call unseen: the call asks. For the library, the subset, the
+limits and the card, see [Rule conditions](../../../architecture/policy/rule-conditions.md).
 
 Each rule also carries metadata outside its match: its source (a definitions commit, or the approval
 that created it), who proposed it (you, or nixie from a task), when it was created, and when it last

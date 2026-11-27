@@ -7,17 +7,19 @@ with a note. The rule matches a call only when its fixed fields match and the co
 approval card shows the rule's sentence, the note, the condition in words and the expression behind
 a control.
 
-Run this journey on `local` only, once per `up`, after [sign-in-enrol](feature-sign-in-enrol.md).
-The test build's scripted model proposes a mandate whose one allow rule covers `memory.remember`
-under a condition on its `subject` argument. A memory item that the user's own words do not state
-waits for approval unless an allow rule covers the write. The starter rules cover no memory write,
-so a write that the condition does not cover waits, and a write that it covers is kept at once. The
-scripted call leaves `subject` out, so the subject is `owner`. The first condition is never true and
-the second always is.
+Run this journey on `local` only, because the scripted model exists only in the test build. Run it
+once per `up`, after [sign-in-enrol](feature-sign-in-enrol.md), because it needs an enrolled,
+signed-in user. The test build's scripted model proposes a mandate whose one allow rule covers
+`memory.remember` under a condition on its `subject` argument. A memory item that the user's own
+words do not state waits for approval unless an allow rule covers the write. The starter rules cover
+no memory write, so a write that the condition does not cover waits, and a write that it covers is
+kept at once. The scripted call leaves `subject` out, so the subject is `owner`. The first condition
+is never true and the second always is.
 
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
+- Step 1 records every later command under this feature, so run the steps in order in one session.
 - Run this journey once per `up`: a second pass fails at step 5, where the `memory_items` table must
   be empty. Before a second pass, run `bun verify up --restart` and `bun verify doctor`, then
   sign-in-enrol.

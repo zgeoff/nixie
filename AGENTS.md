@@ -57,7 +57,7 @@ preview/           throwaway test build of one pull request
 docs/
   architecture/    what is built
   decisions/       numbered decision records
-  design/          designs for work not yet built; only the owner opens one
+  design/          designs for work not yet built; only the user opens one
   guides/          steps a user does
   runbooks/        operator and contributor procedures
   reference/       generated reference
@@ -98,10 +98,10 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 
 ## Working here
 
-- **Choices that need the owner.** The owner decides architecture, framework, library and technology
-  choices, naming, and anything about how nixie feels to use. Bring each such choice to the owner
+- **Choices that need the user.** The user decides architecture, framework, library and technology
+  choices, naming, and anything about how nixie feels to use. Bring each such choice to the user
   with its options, a recommendation and the trade-off. A decision record exists only for what the
-  owner agreed. Run spikes, close questions that evidence or an existing decision settles, and set
+  user agreed. Run spikes, close questions that evidence or an existing decision settles, and set
   configurable defaults for tuning values without asking.
 - **Repo-sync PRs.** A sync PR that repo-sync opens merges without asking, once CI is green.
 - **Agent SDK bump PRs.** Never merge a PR that changes the `@anthropic-ai/claude-agent-sdk` version
@@ -149,12 +149,12 @@ a secret value, and never write one to a file in the repo.
 
 ## Toolchain
 
-- Bun is pinned in `.bun-version`. `bun run format` fixes formatting. `bun run check` chains every
-  check that CI runs, `lint:full` among them. Locally, run the scripts it chains one at a time and
-  leave `lint:full` out.
+- Bun is pinned in `.bun-version`. `bun run format` fixes formatting.
+- `bun run check` chains every check that CI runs, `lint:full` among them, so CI is where it runs.
+  Locally, run the scripts it chains one at a time, and leave out `lint:full`.
 - lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
   the host may have little memory.
-- `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass and its type check.
-  oxlint runs both through `tsrs-lint`, which the `tsrs` package ships and oxlint finds on its own,
-  in tsgolint's place, because stock tsgolint runs out of memory under 2 GiB. The script sets
-  `TSRS_FAST=1`, tsrs's fast mode. `lint:full` is CI-only: never run it locally.
+- `bun run lint` runs oxlint on its syntax rules. `bun run lint:full` adds the type-aware pass and
+  its type check. Both call oxlint, which finds `tsrs-lint`, a binary the `tsrs` package ships, and
+  runs it in tsgolint's place, because stock tsgolint runs out of memory under 2 GiB. The script
+  sets `TSRS_FAST=1`, tsrs's fast mode. `lint:full` is CI-only: never run it locally.

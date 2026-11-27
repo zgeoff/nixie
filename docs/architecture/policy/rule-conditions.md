@@ -63,10 +63,10 @@ receiver is no list ends the evaluation with an error.
 
 1. The note: a rule with `cel` needs a `note`, else `condition_note_missing`.
 2. The length limit on the raw text, before any normalization, else `condition_too_large`.
-3. The library's parse with the node limit, else `condition_syntax` or `condition_too_large`. Each
-   string literal is then put in NFC, after the parser decoded its escapes. A walk over the parsed
-   tree then counts the levels of the tree itself, so a flat chain of `&&` is bound too, else
-   `condition_too_large`.
+3. The library's parse, which enforces the node limit, else `condition_syntax` or
+   `condition_too_large`. Each string literal is then put in NFC, after the parser decoded its
+   escapes. A walk over the parsed tree then counts the levels, so a flat chain of `&&` is bound
+   too, else `condition_too_large`.
 4. A walk over the parsed tree that refuses each construct outside the subset. The library cannot
    drop a built-in from an environment, so the walk is the only gate.
 5. The library's type check against the declared names. The result must be `bool`, so `args.flag`
@@ -76,9 +76,10 @@ receiver is no list ends the evaluation with an error.
 The limits are 1,000 characters, 100 nodes, 12 levels, 50 elements in a list literal and 3 arguments
 to a call. The rules-file parser reports a fault as a problem of the rule's file, as
 `<rule>.cel: <fault>: <detail>`, and the seed fails. `rules.editProposedRule` and
-`rules.propose_mandate` run the same check and refuse with the faults. A stored condition that fails
-the check evaluates as an error with the code `condition_invalid`. nixie caches each parse and check
-by note presence and text, up to 1,000 entries.
+`rules.propose_mandate` run the same check and refuse with the one fault it stops at. A stored
+condition that fails the check evaluates as an error with the code `condition_invalid`. nixie caches
+each parse and check by note presence and text, up to 1,000 entries. The key holds note presence
+because step 1 reads it.
 
 ## Evaluating a condition
 
@@ -108,8 +109,8 @@ error, as CEL defines.
   each entry, and the call's result tells the model the rule's ID and the code. For an allow rule
   that a missing argument stopped, it also names the argument, which is a key of the call and not
   argument text, and asks for a new call with it. It never names a content argument. An ask rule
-  that matches a memory write beside an error holds the call as an action card, because the memory
-  proposal has no place for the entry.
+  that matches a memory write beside an error holds the call as an action card, which asks about the
+  call as it is, because the card that proposes a memory entry has no place to show the error.
 - The lift check and the destination permissions read allow rules through `isRuleMatch`, so they
   evaluate a condition the same way. `listUncoveredMemoryWrites` matches against a call it builds,
   so it counts every condition as an error.
@@ -132,8 +133,8 @@ list carries the condition of each version of a changed rule.
 
 The approval card, the rule notice after an answer, the mandates page and the `rules.list` tool show
 all 4 parts. `nixie rules list` and `nixie proposals list` print only the note and the words, never
-the raw CEL. No client form edits a condition: the web client's rule form and `rules.editRule` keep
-a rule's condition as it is.
+the raw CEL. No client form edits a condition: the web client's rule form calls `rules.editRule`,
+and both keep a rule's condition as it is.
 
 ## How a rule with a condition arrives
 

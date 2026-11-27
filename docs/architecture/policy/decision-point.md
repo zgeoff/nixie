@@ -1,13 +1,13 @@
 # The decision point
 
-Every tool call passes the decision point before it acts, and the decision point answers allow, ask
-or deny. It decides from what the tool declares it does, the rules in force, who the call sends to,
-and whether you asked for it. The record of the call keeps the decision beside the snapshot hash of
-the definitions in force, and a replay rebuilds the decision from that record. A call to a listed
-tool whose input breaks the tool's input schema never reaches the decision point, because the
-[tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first. `modules/policy`
-owns the decision point and the effect declarations. [Tool calls](../connectors/tool-calls.md)
-covers how a call reaches it, and the
+The decision point answers allow, ask or deny for each tool call before the call acts. It decides
+from what the tool declares it does, the rules in force, who the call sends to, and whether you
+asked for it. The record of the call keeps the decision beside the snapshot hash of the definitions
+in force, and a replay rebuilds the decision from that record. The one call that gets no decision is
+a call to a listed tool whose input breaks the tool's input schema: the
+[tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first and rejects it,
+so it never reaches the decision point. `modules/policy` owns the decision point and the effect
+declarations. [Tool calls](../connectors/tool-calls.md) covers how a call reaches it, and the
 [decision point design](../../design/platform/policy/decision-point.md) covers what is still to
 build.
 
@@ -176,5 +176,6 @@ log-only connector's tool at stage 7, so the [queue check](../core/actions.md#th
 reaches the action queue on every start. A test build adds a rule that allows the crash tests' send
 tool. The bundler drops it from the release bundle.
 
-With no rule of yours in force, every call that consent does not allow asks, and the start logs a
-warning.
+With no rule of yours in force, stages 3, 6 and 7 never match. A call that stages 1 and 2 do not
+deny and consent does not allow then asks at stage 9, except a memory write, which gets `gate`. The
+start logs a warning.

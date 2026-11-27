@@ -1,9 +1,10 @@
 # Upgrade and roll back
 
 An upgrade or a rollback by one release is one merged pull request in your deployment repo that
-moves the 3 pinned images: nixie, web and backup. These steps cover the pull request and the deploy,
-on Compose, on Kubernetes with the reference manifests, and on Kubernetes with the Pulumi component.
-[Upgrades](../design/platform/deployment/upgrades.md) gives the design.
+moves the pinned images: nixie, web, and backup when the deployment runs a backup job. These steps
+cover the pull request and the deploy, on Compose, on Kubernetes with the reference manifests, and
+on Kubernetes with the Pulumi component. [Upgrades](../design/platform/deployment/upgrades.md) gives
+the design.
 
 ## Before an upgrade
 
@@ -18,15 +19,15 @@ on Compose, on Kubernetes with the reference manifests, and on Kubernetes with t
    allow on `coding.spawn`. Without the edit, your allow rule covers the model's `coding.start`
    call, so a join of a coding session needs no approval.
 4. Open the rules files in your deployment repo's `definitions/rules/` folder. When a rule has a
-   `cel` key and no `note`, add a `note` in plain words that says what the condition checks. The
-   next seed refuses a rules file that holds such a rule. This applies only to a rule you write by
-   hand in that folder. See [rule conditions](../architecture/policy/rule-conditions.md) for what a
-   condition reads.
+   `cel` key and no `note`, add a `note`: one plain sentence that says what the condition checks.
+   The next seed refuses the whole rules file when it holds such a rule. Only a rule you write by
+   hand in that folder needs this. A rule that arrives through a proposal carries its own note. See
+   [rule conditions](../architecture/policy/rule-conditions.md) for what a condition reads.
 
 ## Upgrade
 
 Make the change in a pull request in the deployment repo. Take each tag and digest from the release
-notes, and move all 3 pins together.
+notes, and move every pin together.
 
 1. Change the pins:
    - Compose: every `ghcr.io/zgeoff/nixie` image, in the `setup`, `nixie` and `enrol` services, the
