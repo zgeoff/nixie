@@ -100,5 +100,5 @@ test('it loads the released migrations from their files in released order, each 
 });
 
 test('it holds the places migration as the oldest reader', () => {
-  expect(nixieSchema.oldestReader).toBe(99);
+  expect(nixieSchema.oldestReader).toBe(100);
 });

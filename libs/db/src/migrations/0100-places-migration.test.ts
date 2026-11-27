@@ -34,7 +34,7 @@ async function setupTest() {
     upgrade: () => runMigrations(db, { schema: nixieSchema, copyDir: directory }),
     startPreviousRelease: () =>
       runMigrations(db, {
-        schema: { migrations: nixieSchema.migrations.slice(0, 98), oldestReader: 0 },
+        schema: { migrations: nixieSchema.migrations.slice(0, 99), oldestReader: 0 },
         copyDir: directory,
       }),
     readPlaces: () =>
@@ -56,9 +56,9 @@ async function setupTest() {
   };
 }
 
-test('it registers as migration 99, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(placesMigration) + 1).toBe(99);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(99);
+test('it registers as migration 100, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(placesMigration) + 1).toBe(100);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(100);
 });
 
 test('it refuses to open the upgraded database to the release before it', async () => {

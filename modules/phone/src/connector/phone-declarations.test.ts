@@ -1,6 +1,18 @@
 import { expect, test } from 'bun:test';
+import { parsePlace } from '@heynixie/policy';
 import { buildPolicyCall, buildTestDecisionPoint } from '@heynixie/policy/test-utils';
+import { checkSendArguments } from './check-send-arguments';
 import { phoneDeclarations } from './phone-declarations';
+
+test.each(['+1234567', '+61455501234', '+123456789012345'])(
+  'it reads the to of a send that the checks accept, %s, as a phone place',
+  (to) => {
+    expect({
+      refusal: checkSendArguments({ to, body: 'On my way.' }),
+      place: parsePlace(to),
+    }).toStrictEqual({ refusal: null, place: { kind: 'phone', e164: to } });
+  },
+);
 
 test('it reads a send to a number as a phone place, which a phone entry at act allows', async () => {
   const ctx = buildTestDecisionPoint({

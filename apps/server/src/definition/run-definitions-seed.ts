@@ -35,14 +35,16 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       readSelfPlaces: readLiveConnectionIDs,
     });
 
+    const final = result.status === 'refused' ? result : await runOwnPlacesSeed(parts, result);
+
     parts.state.update({
       definitions:
-        result.status === 'refused'
-          ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
+        final.status === 'refused'
+          ? { isReady: false, reason: `the last snapshot was refused: ${final.error.name}` }
           : { isReady: true, reason: null },
     });
 
-    return result.status === 'refused' ? result : await runOwnPlacesSeed(parts, result);
+    return final;
   });
 }
 
