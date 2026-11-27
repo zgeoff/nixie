@@ -154,8 +154,9 @@ for a moment. A test arms a point, makes the forget reach it, stops nixie there 
 It checks 3 things beside the oracle, which does not know about erasures:
 
 - The erasure finishes.
-- None of the target's keys remains in the key store. These are the keys of its
-  [key family](../memory/store.md#forgetting), which `erasure.started` names.
+- None of the target's encryption keys remains in the key store. These are the keys of its
+  [key family](../memory/store.md#forgetting), which `erasure.started` names, and deleting them is
+  what makes the target unreadable.
 - `erasure.finished` follows `erasure.started`.
 
 | Fault point                   | Reached                                                                                                    |

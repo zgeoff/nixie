@@ -19,7 +19,9 @@ for the targets `local` and `preview`, the commands `up`, `attach` and `done`, a
 of each command's JSON output.
 
 When a command of this journey fails, follow its row in [Exit codes](exit-codes.md). The cases below
-are the ones this journey adds.
+are the ones this journey adds. When a command exits 0 but its Expect line does not hold, follow
+step 5 of [Check a change](../SKILL.md#check-a-change): skip `bun verify done`, and list in your
+reply the end state you expected and the `data` you got.
 
 Before you start:
 
@@ -128,7 +130,9 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify conversation turn --message 'Remind me to check on the bees.' --reply 'The reminder is set.'
    ```
 
-   Expect: `script-reply` shows `data.replies` of 3, and `conversation turn` exits 0.
+   Expect: `script-reply` shows `data.replies` of 3, and `conversation turn` exits 0. Each
+   `script-reply` reports only the steps it queues, so the count starts again here: the reminder
+   call, the note write and the text reply are 3 steps.
 
    When `conversation turn` fails, run `bun verify browser snapshot` to read the error, skip step 8
    and `bun verify done`, and say in your reply that the reminder's result listed no `related` item.

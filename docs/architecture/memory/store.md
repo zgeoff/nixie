@@ -62,7 +62,8 @@ of 1 to 60, each on one line. The gist sums up the item, the topic groups it, an
 holds words that should bring it up. Recall lists items by their labels, so the model can choose
 which items to open. The labels sit sealed under the item's key, in a `memory_labels` table with one
 row per labelling, written by a `memory.labelled` record. The store keeps the current labels of
-every item in memory, loads them at start, and drops an item's entry when a forget removes its keys.
+every item in memory, loads them at the server's start, and drops an item's entry when a forget
+removes its keys.
 
 A label edit adds no version, because the version counts changes to the text and the state. The
 item's revision counts both: it is the version plus the items row's count of label edits, and the
@@ -254,7 +255,7 @@ purge set, leaves its quotes in the items, and the user forgets such an item fro
 A kill at any step leaves a state that the next start finishes, because each step finds its own
 record or a missing key and writes nothing more when it runs again:
 
-| A kill after                          | The start finds                                    | The start does                          |
+| A kill after                          | The server start finds                             | The server start does                   |
 | ------------------------------------- | -------------------------------------------------- | --------------------------------------- |
 | the forget's first transaction        | `record.forget_started` with no `record.forgotten` | the rest of the forget                  |
 | the new keys, before the commit       | no closing record for the item                     | the item's purge again, with fresh keys |
@@ -271,10 +272,10 @@ The server's start finishes each purge that no open record forget owns, where an
 `record.forgotten` yet. The release before this one can end a forget with such a purge left: it
 skips an item whose own forget began, deletes that item's keys at its start before any record
 forget, and never marks the item purged. No code writes a purge set with no record forget behind it,
-and the start scrubs nothing. A scrub of each merge change of the consolidator would be needed only
-because a change sat under the key of its first input. The migration that removed the consolidator's
-records and tables ran at every earlier release's first start, before memory starts, so no database
-that this release opens holds such a change.
+and the server's start scrubs nothing. A scrub of each merge change of the consolidator would be
+needed only because a change sat under the key of its first input. The migration that removed the
+consolidator's records and tables ran at every earlier release's first start, before memory starts,
+so no database that this release opens holds such a change.
 
 ### Reading a key
 
