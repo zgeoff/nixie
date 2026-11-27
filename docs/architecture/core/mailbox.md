@@ -180,11 +180,19 @@ stores each in a `trigger.wake_rule_set` record, and the `wake_rules` table fold
 - **Target.** A rule wakes one target, the conversation or a task. The call that sets the rule names
   it, and when a call from a task names none, the rule wakes that task. A rule whose task ended ends
   with it.
-- **Expiry.** The expiry is optional, so a rule can stay for good. The tool's schema sets the
-  longest expiry. A rule matches only mail received before its expiry.
+- **Expiry.** The expiry is optional, so a rule can stay for good. A rule matches only mail that the
+  host received from the rule's start up to its expiry, even when the mail is delivered after the
+  expiry. A rule that a tool sets starts when the tool sets it, so `mail.wake_set` also lists the
+  recent mail that the rule would have taken. The tool's description asks the model to set a rule
+  before it asks a site for a code.
 - **Window.** The window is the shortest time between two wakes by one rule. The deployment's
-  `wake_rules.window` sets the default, and a call can set a window of a minute or more. Each rule
+  `wake_rules.window` sets the default, and a call can set a window of a minute or more. Every
+  expiry and window lies within one range, which the config and the tool schemas share. Each rule
   keeps its own window, and no limit holds for the mailbox as a whole.
+- **No definition.** A rule is not a task definition. A busy or held task gets its mail in its
+  inbox, never as a skip. A definition that must see every mail runs on a schedule and searches
+  since its last task run. No tool waits for mail or mutes it. To wait for mail, a task sets a short
+  rule and ends its turn, and the trigger core wakes it.
 - **Replace.** A rule with the match and target of a live rule replaces it and keeps its ID.
 
 Mail is silent by default. The triggers module writes no record for a mail that no rule matches.
@@ -215,10 +223,11 @@ drops a repeat arrival by its dedupe key. Then it reads the live rules and match
 3. A rule that never woke, or whose last wake is a window ago or more, is ready. For each target
    that has a ready rule, the core writes one `trigger.mail_woke` record to the target's inbox,
    which wakes it. The record lists the rules and holds the arriving mail only.
-4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval.
-   It wakes the target of each held match whose rule is ready, with every held mail of that target
-   in one record, whichever mailbox the mail came from. Each mail in the record carries its mailbox,
-   so a forget of one Gmail connection finds the wakes that show its mail.
+4. A match that no ready rule takes is held in `wake_held`. The wake flush runs on a short interval,
+   so a held match wakes its target soon after its rule becomes ready. It wakes the target of each
+   held match whose rule is ready, with every held mail of that target in one record, whichever
+   mailbox the mail came from. Each mail in the record carries its mailbox, so a forget of one Gmail
+   connection finds the wakes that show its mail.
 
 `trigger.mail_woke` renders for the model as the rules that matched, a mail count, and each sender
 and subject as outside content, with the mail's short ID. A mail forgotten since shows as forgotten.
@@ -226,7 +235,8 @@ The model then opens a mail with `mail.read`.
 
 The wake flush runs inside the write transaction that writes the wakes, so an arrival that wakes a
 rule at the same time cannot let the flush wake it again inside its window. The flush drops the held
-matches of a cancelled rule and of a rule whose task has ended.
+matches of a rule whose task has ended. A cancelled rule matches nothing more, but its held matches
+still flush, because each matched while the rule stood.
 
 The arrival's erasable fields keep their key while a held match refers to the arrival. The core adds
 each arrival to `wake_arrival_cleanup` when it writes it. After each batch that holds a mail, and at
@@ -236,7 +246,7 @@ destroys the arrival's sender and subject.
 
 ## What is not built
 
-The [mail design](../../design/queue/mail/README.md) covers the rest, and
+The [mail host design](../../design/queue/mail-host.md) covers the rest, and
 [the mail issue](https://linear.app/zgeoff/issue/GEO-2816) tracks it.
 
 - A mail host other than the host in memory, so a release build has no mailbox.

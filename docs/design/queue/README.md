@@ -19,15 +19,13 @@ what is still to build.
 | Area            | Designs                                                                                       |
 | --------------- | --------------------------------------------------------------------------------------------- |
 | Features        | [feature switches](feature-switches.md)                                                       |
-| Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)                                        |
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                         |
 | The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md) |
-| Web             | [the hop gate](hop-gate.md)                                                                   |
 | Vault           | [trusted places](trusted-places.md), [locked entries](locked-entries.md)                      |
 | Forgetting      | [one way to forget](erasure.md)                                                               |
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                       |
 | Policy          | [the decision point cutover](decision-point-cutover.md)                                       |
-| Mail            | [mail and wake rules](mail/README.md)                                                         |
+| Mail            | [the assistant's mail host](mail-host.md)                                                     |
 | Connections     | [Google connections](google-connections.md)                                                   |
 | Google tools    | [the Google tool rules and the Gmail tools not built yet](gmail-calendar-drive-tools.md)      |
 | Channels        | [the push notice](push-notice.md)                                                             |
