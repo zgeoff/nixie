@@ -3167,7 +3167,7 @@ test('it seeds a repo whose extras file is bad, reports the file and holds no ex
   expect([result.status, reported, stored?.sections['extras']]).toStrictEqual([
     'seeded',
     ['extras/extras.yaml'],
-    null,
+    undefined,
   ]);
 });
 
@@ -3225,7 +3225,7 @@ test('it seeds a repo whose extras file is not UTF-8 text, and reports the file'
   expect([result.status, reported, stored?.sections['extras']]).toStrictEqual([
     'seeded',
     [{ path: 'extras/extras.yaml', reason: 'the file is not UTF-8 text' }],
-    null,
+    undefined,
   ]);
 });
 
