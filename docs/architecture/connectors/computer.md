@@ -124,16 +124,16 @@ it may retry. A reset destroys the old sandboxes too.
 | ----------------------------- | -------------------- | ------ | ------------------------------------------------------------------- |
 | `computer.browser_open`       | `fetch`              | direct | a new tab and its page text                                         |
 | `computer.browser_navigate`   | `fetch`              | direct | a new address loaded in an open tab, and its page text              |
-| `computer.browser_reload`     | `note`               | direct | the open tab loaded again, and its page text                        |
-| `computer.browser_read`       | `note`               | direct | the page again, as `text` or as a `snapshot` that marks controls    |
-| `computer.browser_screenshot` | `note`               | direct | the viewport's picture, or one control's box, beside the result     |
-| `computer.browser_scroll`     | `note`               | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
+| `computer.browser_reload`     | `fetch`              | direct | the open tab loaded again, and its page text                        |
+| `computer.browser_read`       | `fetch`              | direct | the page again, as `text` or as a `snapshot` that marks controls    |
+| `computer.browser_screenshot` | `fetch`              | direct | the viewport's picture, or one control's box, beside the result     |
+| `computer.browser_scroll`     | `fetch`              | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
 | `computer.browser_close`      | `note`               | direct | the tab closed                                                      |
 | `computer.browser_download`   | `fetch`              | direct | a file saved to `downloads/` in the files                           |
 | `computer.browser_fill`       | `send`               | queued | the page after the typed value, with `submit` to press Enter        |
-| `computer.browser_click`      | `send`               | queued | the page after the click                                            |
-| `computer.screenshot`         | `note`               | direct | the whole desktop's picture and the window in focus                 |
-| `computer.screen_scroll`      | `note`               | direct | the wheel turned over a point, the picture and the window in focus  |
+| `computer.browser_click`      | `fetch`, or `send`   | queued | the page after the click                                            |
+| `computer.screenshot`         | `fetch`              | direct | the whole desktop's picture and the window in focus                 |
+| `computer.screen_scroll`      | `fetch`              | direct | the wheel turned over a point, the picture and the window in focus  |
 | `computer.screen_click`       | `send`               | queued | a click at a point, the window in focus and the picture after it    |
 | `computer.screen_type`        | `send`               | queued | text or one key chord typed, the window in focus and the picture    |
 | `computer.run`                | `computer_run`       | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
@@ -156,12 +156,13 @@ the server, so a restart never reuses one.
 
 **Navigating and reloading.** `browser_navigate` takes a `tab` and a `url`, and loads the address in
 that tab, which keeps its name and its place among the 5 tabs. It declares the new address's host as
-its destination, as `browser_open` does, so the decision point asks about an untrusted site the same
-way. `browser_reload` takes a `tab`, loads the address the tab shows, and is a `note` with no
-destination, so it never asks. Both return the page as `browser_open` does. A tab that nixie does
-not hold returns `TAB_GONE` before the decision point runs, so a navigation of a missing tab never
-asks, and an address that is not http or https returns `BAD_URL`. A load that fails leaves the tab
-open. A hold on the desktop refuses both with `TAKEN_OVER`, as it does `browser_open`.
+its destination, as `browser_open` does, so a site on the [directory](../policy/places.md) at
+`blocked` denies the call. `browser_reload` takes a `tab` and loads the address the tab shows. Its
+`prepare` hook reads that address from the guest, so a tab that a redirect or a click took to a
+blocked site denies the reload too. Both return the page as `browser_open` does. A tab that nixie
+does not hold returns `TAB_GONE` before the decision point runs, so a navigation of a missing tab
+never asks, and an address that is not http or https returns `BAD_URL`. A load that fails leaves the
+tab open. A hold on the desktop refuses both with `TAKEN_OVER`, as it does `browser_open`.
 
 **Blocked pages.** When `browser_open` or `browser_navigate` loads a page that a bot protection
 answered in place of the site, the result carries a `blocked` reason. The guest finds it from the
@@ -242,17 +243,28 @@ as an attachment of the result record, so a forget of that record erases them.
 ## Reads and acts
 
 A read changes nothing outside nixie, so `browser_open`, `browser_navigate` and `browser_download`
-are `fetch` effects, and the decision point asks about each site on its first visit, with the site's
-host and port as the destination. `browser_reload` is a `note`, because it loads an address the tab
-already shows.
+are `fetch` effects, with the site's host and port as the destination. Each read tool of a tab
+(`browser_read`, `browser_screenshot`, `browser_scroll` and `browser_reload`) is a `fetch` too, and
+its `prepare` hook reads the tab's address from the guest, because the result shows that page
+whoever opened it. `screenshot` and `screen_scroll` are `fetch` effects with the host of the browser
+tab in front, and no destination when another window is in front. A site at `blocked` denies each of
+these. A site that no entry covers is read without asking, and an entry at `read` gives the same
+answer.
 
-A click or a fill can post a form, so each is a queued `send`. The tool's `prepare` hook reads the
-tab's URL before the decision. The host becomes the call's destination, and the URL becomes
-`expectURL`, which the action hash covers. When the action runs, the guest compares the tab's URL
-with `expectURL` and returns `PAGE_CHANGED` when they differ. It also returns `STALE_ELEMENT` for a
-control that no longer holds its number, and `CROSS_ORIGIN_SUBMIT` for a form that posts to another
-origin. Nixie keeps `expectURL` in memory, so a restart between the call and the action makes the
-action refuse with `PAGE_CHANGED`, never run against a page nobody looked at.
+A fill can post a form, so it is a queued `send`. A click declares `fetch`, and its `prepare` hook
+adds `send` unless the control is a plain link: an `<a>` with an http or https address, outside a
+form and with no `onclick`. The hook asks the guest for the control, and the destinations of a plain
+link are the tab's host and the link's host. Any other control has the tab's host alone. When the
+action runs, the tool reads the control again and refuses with `PAGE_CHANGED` when its kind or its
+destinations differ from the ones the decision covered. A script's click handler is invisible to
+`prepare`, so a plain link that a script turns into an action runs without asking.
+
+Both tools read the tab's URL before the decision. The host becomes the call's destination, and the
+URL becomes `expectURL`, which the action hash covers. When the action runs, the guest compares the
+tab's URL with `expectURL` and returns `PAGE_CHANGED` when they differ. It also returns
+`STALE_ELEMENT` for a control that no longer holds its number, and `CROSS_ORIGIN_SUBMIT` for a form
+that posts to another origin. Nixie keeps `expectURL` in memory, so a restart between the call and
+the action makes the action refuse with `PAGE_CHANGED`, never run against a page nobody looked at.
 
 A screen act is a queued `send`. Its `prepare` hook asks the guest for the window the act would land
 on: the one under the point for a click, and the focused one for typing. That window is the

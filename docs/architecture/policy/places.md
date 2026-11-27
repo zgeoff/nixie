@@ -26,9 +26,13 @@ parsePlacePattern('*.github.io'); // null: the key would cover a whole public su
 
 - `parsePlace` tries a URL with `://`, an address, a phone number, a handle, then a host with an
   optional port. A phone number parses only from `+` and its digits. A handle parses only as
-  `<channel>:<id>` with a channel on the fixed list of chat connector names.
+  `<channel>:<id>` with a channel that a chat feature that is on named. Core names none: the
+  composition root fills the list from the features, so a name such as `telegram:51234` reads as a
+  host and a port until that feature is on.
 - A site's normal form is lower case IDNA ASCII, with no port, no trailing dot and no leading
-  `www.`, unless what remains is a public suffix. A mail domain keeps its `www.`.
+  `www.`, unless what remains is a public suffix. A mail domain keeps its `www.`. A host or mail
+  domain with a backslash, a `?` or a `#` is no place. A name that the public-suffix list does not
+  hold, such as `localhost`, is no public suffix.
 - A key is one of `site` and `mail_domain` (each with `subdomains`), `address`, `phone`, `handle` or
   `raw`. A `raw` key is a contact that `parsePlace` cannot read, and it matches the exact string. A
   destination that parses to `null` matches only a `raw` key.
@@ -53,22 +57,36 @@ and an origin: `you`, `proposal`, `card`, `seed` or `nixie_own`. The levels are:
 | `act`     | a call with any effect but `spend` is allowed, and each such call is recorded   |
 | `self`    | one of your own addresses, numbers or handles; allows like `act` with no record |
 
-The directory writes `places.added`, `places.changed` and `places.removed`, each of which makes a
-new definitions snapshot, and `places.acted`, which goes on the call's thread and makes none. The
-`places` projection keeps each entry's IDs, kind, level, sequences and last use. It keeps the key of
-a site or mail domain. The key and the name of an address, phone number or handle are erasable
-fields of `places.added` and `places.changed`, read back at each call. A forget of such an entry
-takes its key away, so the entry covers nothing. A removed entry keeps its row, so a replay of an
-older call finds its key.
+The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted`,
+which goes on the call's thread. After each add, change or removal that took effect, the writer runs
+the in-force seed, which puts a definitions snapshot that holds the directory in force. A call
+decides under the snapshot it started with, so a block takes effect for the next call. The seed that
+adds nixie's own entries publishes the snapshot itself.
+
+The `places` projection keeps each entry's IDs, kind, level, sequences and last use. It keeps the
+key of a site or mail domain. The key and the name of an address, phone number or handle are
+erasable fields of `places.added` and `places.changed`, read back at each call. A removed entry
+keeps its row, so a replay of an older call finds its key.
+
+A forget of one record of an address, phone number or handle entry, through `log.forget` or the
+conversation's forget, removes the keys of every `places.added` and `places.changed` record of that
+entry, so no later change of its name keeps what the forget meant to erase, and the entry covers
+nothing. These records carry no thread, so the forget accepts them with any conversation's thread. A
+call that an `act` place allowed writes its `places.acted` record once the action queue admits the
+attempt, and a retry of the call writes none a second time.
 
 - The directory holds at most one entry per key, checked inside the write transaction against the
   keys read back, and contact entries count.
 - Contacts you marked read as entries at `known` with no new records: the projection folds the
   contact records, the entry's ID is the contact ID, and the key comes from `parsePlace`. A contact
   that is not an address, phone number or handle, or whose key another entry holds, gets a `raw`
-  key.
+  key. The projection row holds the kind `contact` until `writeContactKinds` sets it to the key's
+  kind: a rebuild, a new marking and the start of the server run it. The contact list of the host
+  reads every entry at `known`, whoever added it, and the consent check's typed-name match compares
+  the canonical form of both addresses.
 - The addresses that are you, such as each connected Google account's own, are entries at `self`
-  that hold no record, so forgetting a connection takes its address away.
+  that hold no record, so forgetting a connection takes its address away. They share one ID, so a
+  decision never stores an address.
 - A feature adds its own addresses, numbers or sites at `act` as `nixie_own` through a source that
   the composition root lists. Before each seed, nixie adds each listed value unless it added that
   value before, so a value you removed stays removed. No feature lists one yet.

@@ -108,8 +108,9 @@ of its own snapshot with the level that snapshot holds, so a place removed since
 replay of an earlier call. A forget of an address, phone number or handle takes its key away, and
 the entry then covers nothing.
 
-The decision keeps the effects the call had once its tool's prepare step ran, because a place judges
-the call by them: a call that adds `send` is not a read.
+The decision keeps the effects the call had once its tool's prepare step ran. Each rule and each
+place judges the call by the declared effects plus those, so a call that adds `send` is no read for
+either.
 
 ## Consent
 

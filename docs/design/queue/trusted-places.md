@@ -50,41 +50,17 @@ flowchart LR
 ### What the tools declare
 
 Built: `web_fetch` declares its host, `computer.screen_click` and `computer.screen_type` carry the
-flag that stops an allow with no destination, and the hop gate refuses a `blocked` site. The rest is
-still to build:
+flag that stops an allow with no destination, the hop gate refuses a `blocked` site, and the
+computer's read tools, its click, its desktop picture and its act tools declare their hosts and
+effects, and the act tools read the tab's host at each call, as the
+[computer doc](../../architecture/connectors/computer.md#reads-and-acts) says. The rest is still to
+build:
 
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
   host too, in their own work items.
-- `computer.screenshot` and `computer.screen_scroll` declare `fetch` with the host of the browser
-  tab in front when a browser window is in front, because the result shows that page. With no
-  browser window in front they declare `note` and no destination. The browser read tools, such as
-  `computer.browser_read`, declare `fetch` with the tab's host.
-- A `blocked` host denies these reads whoever opened the page, and the refusal tells the model that
-  a blocked site is on screen.
-- `computer.browser_click` declares `fetch`, and adds `send` in `prepare` unless its element is a
-  plain link. The tab's host is its destination, and a plain link adds the link's host.
-
-`prepare` of `computer.browser_click` reads the clicked element from the guest:
-
-```ts
-// computer module, the guest's reply to an element read at prepare.
-interface ClickedElement {
-  role: string; // the snapshot's role; 'link' is an <a> with an http(s) href and no download
-  href: string | null; // the absolute target of an <a>
-  isInForm: boolean; // the element sits inside a <form>
-  hasClickHandler: boolean; // an onclick attribute, or role="button"
-}
-// A plain link: role 'link', isInForm and hasClickHandler false. Any other element is a button.
-```
-
-- A click on a plain link runs without asking at a `read` place. Only a place at `act` or `self`
-  allows a click on a button.
-- The queued attempt of a click reads the element again, and refuses when its effects or
-  destinations differ from the ones decided.
-- A click handler that a script adds is invisible to `prepare`, so a plain-link click can start a
-  script's action without asking. The design accepts this risk; a click inside a form still asks.
-- The browser act tools read the tab's host at each call, so the next act on a tab that a redirect
-  or a click took to a `blocked` site is denied.
+- A `blocked` host denies a read of a tab or of the desktop whoever opened the page, and the refusal
+  tells the model that a blocked site is on screen. Today the refusal names the blocked place, and
+  does not say the page is on screen.
 - A phone feature lists its number as a `nixie_own` place and declares a `phone.send` destination
   that `parsePlace` reads as a phone place.
 
