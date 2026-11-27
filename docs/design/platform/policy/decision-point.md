@@ -11,9 +11,10 @@ ask, the prompt cause. It runs a fixed pipeline of deterministic stages, and a c
 settles asks you, or goes to auto-mode once auto-mode is on. Every decision is part of a record in
 the [event log](../core/event-log.md).
 
-Read this doc before you add a tool, an effect or a rule, or change the pipeline. Start with the
-effects, because a new tool declares them first. [Where to go next](#where-to-go-next) lists the
-docs for what this one leaves out.
+This doc is for whoever builds nixie, whether the owner or an agent, before they add a tool, an
+effect or a rule, or change the pipeline.
+[What to do when you change it](#what-to-do-when-you-change-it) gives the steps for each change, and
+[Where to go next](#where-to-go-next) lists the docs for what this one leaves out.
 
 ## The pipeline
 
@@ -235,6 +236,20 @@ The scripted scenarios in the [policy rules spike](../../../../research/policy-r
 calls, messages and answers through the decision point with the starter rule set and auto-mode off,
 and fail on any prompt the script does not expect. CI runs them on every change to the starter rule
 set or the pipeline.
+
+## What to do when you change it
+
+- **Add a tool.** Declare its [effects](#effects), then its destinations, its amount argument, its
+  free-text arguments and the source of each result field, all in the tool registry. A tool without
+  an effect declaration is denied at stage 1.
+- **Add an effect.** Add a row to the effects table, then decide whether it joins the always-ask
+  set, and write every rule that must match it.
+- **Add or change a rule.** Follow [rules](rules.md): its format, its evaluation order and the
+  widening check. Then run the scripted scenarios in the
+  [policy rules spike](../../../../research/policy-rules/).
+- **Change the pipeline.** Keep every stage that can deny or hold back a call before any stage that
+  can allow one, and keep one decision per call. Update the stage table here and run the scripted
+  scenarios.
 
 ## Where to go next
 

@@ -11,8 +11,9 @@ The coding runner, its tools, the `coding-atc` adapter and the supervision of a 
 view are built. For the runner, read [Coding tasks](../../architecture/core/coding-tasks.md), and
 for the adapter, read [the atc adapter](../../architecture/connectors/coding-atc.md). The one part
 still open is the `coding.start` call for an atc coding task in a real deployment. The work item
-states the outcome and gives no steps. No doc in the repo describes the harness probes or
-`oneOfStartHarnesses`, so the contributor who picks it up records the steps in the work item.
+states the outcome and gives no steps. No doc in the repo describes the harness probes or where
+`oneOfStartHarnesses` gets filled. The contributor who picks it up finds both in the code and
+records the steps in the work item.
 
 ## Start in a real deployment
 
@@ -25,9 +26,10 @@ build reaches the gateway double through `NIXIE_TEST_ATC_URL`.
 - The work is done when the probes run, `oneOfStartHarnesses` lists the atc harness, and a start
   works in a real deployment.
 - A start in a real deployment still meets the user's policy rules, which decide whether an action
-  runs, asks first or is refused. It declares `coding_start`, the effect that every start, join and
-  stop of a started session declares. A start acts on a coding session outside nixie, which nixie
-  does not see call by call, so it needs an effect of its own. See
+  runs, asks first or is refused. It declares `coding_start`. The coding module already defines that
+  effect, and the start, the join and the stop of a started session all declare it. It is separate
+  from `code_run`, which covers only code in nixie's own sandbox, because a start acts on a coding
+  session outside nixie that nixie does not see call by call. See
   [the policy of a coding task](../../architecture/core/coding-tasks.md#policy).
 
 ## Out of scope

@@ -90,8 +90,10 @@ The conversation view merges three sources into one list:
 - the records the live stream delivers after that page, each sequence shown once
 - the messages this device sent that the list does not show yet, from the outbox
 
-The page never refetches while the view shows: the live stream keeps it current from the sequence it
-was read at, and a dropped stream reconnects from the last sequence it delivered. Leaving the view
+The conversation read sits under no topic, so a `changed` event, a first open and a reconnect leave
+it alone, and the page never refetches it while the view shows. The live stream keeps it current
+from the sequence it was read at, and a dropped stream reconnects from the last sequence it
+delivered. Only a `log_reset` record makes the view read the conversation again. Leaving the view
 drops the page with the stream's records, so a return reads a fresh page and never shows the text of
 a message forgotten in between.
 

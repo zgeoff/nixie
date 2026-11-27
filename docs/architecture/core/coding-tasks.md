@@ -220,8 +220,8 @@ them.
 
 ## Supervising in the live view
 
-A coding task shows in the live view like any task, with its session added to the listing. Keep
-these true when you change it:
+A coding task shows in the live view like any task, and `tasks.list` adds its session to the
+listing. Keep these true when you change it:
 
 - **The source of the session.** The sessions row and the `tasks` topic are the only source. The
   runner's list fields give `tasks.list` and `tasks.read` a `session` for each task that binds one:
@@ -236,8 +236,9 @@ these true when you change it:
 - **Which sessions show.** A session in atc that nixie never started or joined has no row, so the
   source drops its events and it never shows. A task that started its session shows in the group
   "Coding sessions", and a finished task stays there with its session's last state until the user
-  closes it. A task that joined a session shows in its ordinary group with no session line, because
-  the user already watches that session in atc.
+  closes it. A task that joined a session shows in its ordinary group. `tasks.list` still gives it a
+  `session`, but the web client draws no session line for it, because the user already watches that
+  session in atc. The client makes that choice. The listing never omits a session.
 - **The controls.** A coding runner offers pause, resume, stop and close, with no restart or
   interrupt, so a stopped coding task can only be closed. When nixie started the session, the stop
   and close confirmations tell the user that the session stops. They mention no session for a task

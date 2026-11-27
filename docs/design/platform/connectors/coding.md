@@ -59,8 +59,9 @@ onto the gateway's tools.
 ## The built-in adapter
 
 The built-in adapter runs a single session in an imp, with Claude Code's built-in tools inside the
-imp and nixie's tools reached through the same route every imp uses. The session holds the model
-credential. Any other grant, such as a git host or a package registry, comes from your rule for the
-coding context, which asks once because it widens. The imp's egress allows the hosts its grants name
-and the hosts your rule lists. The first build designs only this adapter's interface, so build
-nothing for it yet.
+imp. This imp differs from the code tool's imp, which has no tool route: it reaches nixie's tools
+through the route that nixie's other tool-using imps use. The session holds the model credential.
+Any other grant, such as a git host or a package registry, comes from your rule for the coding
+context, which asks once because it widens. The imp's egress allows the hosts its grants name and
+the hosts your rule lists. The first build designs only this adapter's interface, so build nothing
+for it yet.
