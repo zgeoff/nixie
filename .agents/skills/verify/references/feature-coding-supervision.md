@@ -34,8 +34,8 @@ as [Exit codes](exit-codes.md) says.
    nixie", and its state reads "Running" or "Idle".
 
 2. Tell the coding gateway that the session waits for you. The `--state` values of this journey are
-   `needs_you` and `done`. Run no `browser goto` after this, so the next snapshot shows what the
-   live stream moved.
+   `needs_you` and `done`; they are session states, and `bun verify done` is a separate command. Run
+   no `browser goto` after this, so the next snapshot shows what the live stream moved.
 
    ```bash
    bun verify action set-session-state --state needs_you
@@ -45,7 +45,7 @@ as [Exit codes](exit-codes.md) says.
    Expect: `data.sessions` is 1. nixie reads the session's state about once a second, so the first
    snapshot can still show the old state. Take another snapshot, up to 5 in all, until the entry
    "Login fix" reads "Waiting for you". After the fifth snapshot that still shows the old state,
-   skip `done` and the steps after it, and report the last snapshot.
+   stop the journey, run no later step and no `bun verify done`, and report the last snapshot.
 
 3. Tell the gateway that the agent finished its turn:
 
@@ -55,7 +55,7 @@ as [Exit codes](exit-codes.md) says.
    ```
 
    Expect: the entry reads "Idle" and shows "Last event" with a time. Take up to 5 snapshots, as in
-   step 2.
+   step 2. After the fifth snapshot that still shows another state, stop the journey as in step 2.
 
 4. Press Stop of the task "Login fix", and read the confirmation. The conversation also offers Stop,
    so a click on the name alone matches both buttons. In the snapshot, find the group "Controls for

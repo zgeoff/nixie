@@ -5,7 +5,8 @@ tools of several daemons as one MCP server, and nixie calls it over HTTP as the 
 `service:nixie`. The `coding-atc` package implements the coding module's adapter interface with
 those tools, and it is the one package that calls the gateway. It speaks MCP with the workspace's
 MCP client, so nixie writes none of atc's wire protocol. atc owns its tool schemas, its daemon
-config and the format of the gateway's token file, and this doc covers none of them.
+config and the format of the gateway's token file. This doc states only the tools, error codes,
+scopes and grants that the adapter relies on.
 
 Read this doc before you change the adapter, or the coding source's reads.
 [Coding tasks](../core/coding-tasks.md) covers the runner, the tools and the records that sit above

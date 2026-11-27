@@ -1,19 +1,19 @@
 # The live view and the dashboard
 
-The dashboard shows every task's state and what it waits on, and the live view extends it with
-finished tasks and what each did and why. Both read the same projections as the conversation's
-`tasks.list` tool, so you and the conversation see the same state. The
-[event log design](../core/event-log.md) owns the projections, and [tasks](../core/tasks.md) owns
-the conversation's task tools and task states.
+The dashboard shows every task's state and what it waits on, and the finished ones from the last 7
+days. The live view adds the history of tasks that finished earlier, and what each task did and why.
+Both read the same projections as the conversation's `tasks.list` tool, so you and the conversation
+see the same state. The [event log design](../core/event-log.md) owns the projections, and
+[tasks](../core/tasks.md) owns the conversation's task tools and task states.
 
 Read this before you build or change the dashboard, a task's view, the task controls or the stream
-the client follows. [The client architecture](../../../architecture/channels/client.md) describes
-what is built, so check it before you change code.
+the client follows. Then read [the client architecture](../../../architecture/channels/client.md),
+which describes what is built, before you change code.
 
-| Tier | View      | Holds                                                                      |
-| ---- | --------- | -------------------------------------------------------------------------- |
-| 1    | Dashboard | Every task's row, a task opened as a conversation, and the task controls   |
-| 2    | Live view | Finished-task history, the skipped or late trigger report, and raw records |
+| Tier | View      | Holds                                                                                          |
+| ---- | --------- | ---------------------------------------------------------------------------------------------- |
+| 1    | Dashboard | Every task's row, a task opened as a conversation, and the task controls                       |
+| 2    | Live view | History of tasks finished over 7 days ago, the skipped or late trigger report, and raw records |
 
 Tier 2 adds views over the same projections and no new data model.
 
@@ -57,5 +57,9 @@ event carries one record and the projection rows its transaction changed, so the
 the log itself. The stream covers every thread, with full payloads only for the thread on screen. A
 payload whose key is destroyed arrives as a gap.
 
-[The client doc](../../../architecture/channels/client.md#the-task-dashboard) describes the
-coding-session group as built.
+## After reading
+
+Build tier 1 first: the dashboard, a task as a conversation and the controls. Build tier 2 as views
+over the same projections. For the coding-session group, its controls and its stream events, read
+[the client doc](../../../architecture/channels/client.md#the-task-dashboard) and
+[supervising in the live view](../../../architecture/core/coding-tasks.md#supervising-in-the-live-view).

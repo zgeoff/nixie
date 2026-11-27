@@ -19,9 +19,10 @@ image, with egress `none`, no grants and no tool route, destroyed when the call 
 runs on the host, so the decision point decides every code run and the record holds it.
 
 A code run has fixed limits: 60 s of wall time, 512 MiB of memory, 1 MiB of output per stream, 20
-MiB of files out and 1 vCPU. They are constants with no config key, so no rule or user raises them.
-Input files are files an earlier code run wrote and pages the web fetch stored. A `skills` list
-places each named skill's folder read-only in the sandbox, as the
+MiB of files out and 1 vCPU. They bound each code run, and the output limits bound how far the
+database and its backups grow. They are constants with no config key, so no rule or user raises
+them. Input files are files an earlier code run wrote and pages the web fetch stored. A `skills`
+list places each named skill's folder read-only in the sandbox, as the
 [skills design](../skills.md#scripts) sets out. A program that needs outside data gets it through
 another tool first, because the code imp has no route out.
 [The code tool](../../../architecture/connectors/code-tool.md) holds the contracts, the limits and

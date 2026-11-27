@@ -19,8 +19,9 @@ docs for what this one leaves out.
 
 The stages run in a fixed order, and the first stage that decides returns. Every stage that can deny
 or hold back a call runs before any stage that can allow one, so an allow never skips a check. Every
-call gets exactly one decision: from stage 9, or, for a call with the `memory_write` effect, from
-the memory gate in place of stages 8 and 9.
+call gets exactly one decision, from the first stage that decides it. Stage 9 always decides, so a
+call that stages 1 to 8 leave open gets its decision there. A call with the `memory_write` effect
+that stages 1 to 7 leave open gets its decision from the memory gate in place of stages 8 and 9.
 
 | Stage              | Decides                                                          | Outcome | Prompt cause       |
 | ------------------ | ---------------------------------------------------------------- | ------- | ------------------ |
@@ -155,9 +156,11 @@ Your own direct message can carry consent for a call. Consent needs 2 checks, an
    call. It sees your message with its pasted spans marked and the call as structured fields, never
    any tool output, so injected content cannot reach it.
 
-A call with no destination, such as turning on a light, rests on the checker alone. Consent
-satisfies stage 5 and allows a call at stage 8. It never overrides a deny rule, the always-ask set
-or your ask rule. A checker that refuses, is unsure or cannot be reached counts as no consent.
+A call with no destination, such as turning on a light, rests on the checker alone. Stage 5 counts
+consent as standing permission, so it does not ask for a consented call. The call then passes stages
+6 and 7, and stage 8 allows it when neither decides it. Consent never overrides a deny rule, the
+always-ask set or your ask rule. A checker that refuses, is unsure or cannot be reached counts as no
+consent.
 
 ## Taint in the first build
 

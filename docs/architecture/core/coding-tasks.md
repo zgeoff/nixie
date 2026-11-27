@@ -220,26 +220,28 @@ them.
 
 ## Supervising in the live view
 
-A coding task shows in the live view like any task, with its session added to the listing. The
-runner's list fields give `tasks.list` and `tasks.read` a `session` for each task that binds one,
-from the sessions row: the session's origin, its state and the time of its last event, which is null
-before the first event, and whether the task let go of the session at a stop, a close or a failure.
-A task that binds no session lists none.
+A coding task shows in the live view like any task, with its session added to the listing. Keep
+these true when you change it:
 
-The web client shows the session on the dashboard and on the task's page when the `coding` feature
-is on, as [the client doc](../channels/client.md#the-task-dashboard) describes. The state moves
-without a reload because every record that changes the row marks the `tasks` topic, and the client
-reads the list again on that topic, as [live updates](../channels/live-updates.md#topics) describes.
-No other stream carries the session. A session in atc that nixie never started or joined has no row,
-so the source drops its events and it never shows. The live view shows each session that nixie
-started, in the group "Coding sessions", and keeps a finished task there with its session's last
-state until the user closes it. A task that joined a session shows in its ordinary group with no
-session line, because the user already watches that session in atc.
-
-A coding runner offers pause, resume, stop and close, with no restart or interrupt, so a stopped
-coding task can only be closed. When nixie started the session, the stop and close confirmations
-tell the user that the session stops. They mention no session for a task that joined one, or for a
-close after a stop has let go of the session.
+- **The source of the session.** The sessions row and the `tasks` topic are the only source. The
+  runner's list fields give `tasks.list` and `tasks.read` a `session` for each task that binds one:
+  the session's origin, its state, the time of its last event (null before the first event) and
+  whether the task let go of the session at a stop, a close or a failure. A task that binds no
+  session lists none. No other stream carries the session.
+- **Live updates.** The web client shows the session on the dashboard and on the task's page only
+  when the `coding` feature is on, as [the client doc](../channels/client.md#the-task-dashboard)
+  describes. The state moves without a reload because every record that changes the row marks the
+  `tasks` topic, and the client reads the list again on that topic, as
+  [live updates](../channels/live-updates.md#topics) describes.
+- **Which sessions show.** A session in atc that nixie never started or joined has no row, so the
+  source drops its events and it never shows. A task that started its session shows in the group
+  "Coding sessions", and a finished task stays there with its session's last state until the user
+  closes it. A task that joined a session shows in its ordinary group with no session line, because
+  the user already watches that session in atc.
+- **The controls.** A coding runner offers pause, resume, stop and close, with no restart or
+  interrupt, so a stopped coding task can only be closed. When nixie started the session, the stop
+  and close confirmations tell the user that the session stops. They mention no session for a task
+  that joined one, or for a close after a stop has let go of the session.
 
 ## The atc adapter and the server
 
