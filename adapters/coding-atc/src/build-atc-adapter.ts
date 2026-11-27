@@ -9,16 +9,15 @@ import type {
   TargetRef,
 } from '@heynixie/coding';
 import type { Logger } from '@heynixie/logger';
-import type { z } from 'zod';
-import { atcSchemas } from './atc-schemas';
-import type { ATCConnection } from './call/make-atc-caller';
-import { makeATCCaller } from './call/make-atc-caller';
-import { toReply } from './call/to-reply';
+import type { ATCConnection } from './call/connect-atc';
+import { connectATC } from './call/connect-atc';
+import { runATCCall } from './call/run-atc-call';
 import type { KnownSession } from './events/read-atc-events';
 import { readATCEvents } from './events/read-atc-events';
 import { buildSpawnArguments } from './session/build-spawn-arguments';
 import { mapATCState } from './session/map-atc-state';
 import { readTranscriptTail } from './session/read-transcript-tail';
+import type { SessionEntry } from './types';
 
 export interface ATCAdapterOptions extends ATCConnection {
   // the targets nixie lists, joins and starts on
@@ -38,38 +37,31 @@ export interface ATCAdapterOptions extends ATCConnection {
 // session's first minute.
 const earlyNoteMs = 60_000;
 
-// The coding adapter of atc, through atc-gateway's MCP tools as the service client the token names.
+// The coding adapter of atc, through atc-gateway's typed fleet API as the service client the token
+// names.
 export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
-  const call = makeATCCaller(options);
+  const atc = connectATC(options);
   const now = options.now ?? Date.now;
 
   const known = new Map<string, KnownSession>();
 
-  const run = async <Value>(
-    tool: string,
-    args: Readonly<Record<string, unknown>>,
-    schema: z.ZodType<Value>,
-    key?: string,
-  ): Promise<AdapterReply<Value>> => {
-    const outcome = await call(tool, args);
-
-    return toReply(outcome, schema, { tool, isKeyed: key !== undefined });
-  };
-
   const readCursor = async (): Promise<AdapterReply<string>> => {
-    const page = await run('atc_events_read', { limit: 1 }, atcSchemas.eventsPage);
+    const page = await runATCCall(() => atc.events.read({ limit: 1 }), {
+      procedure: 'events.read',
+      isKeyed: false,
+    });
 
     return page.status === 'ok' ? { status: 'ok', value: page.value.cursor } : page;
   };
 
-  const isConfiguredTarget = (entry: z.infer<typeof atcSchemas.sessionEntry>): boolean =>
+  const isConfiguredTarget = (entry: SessionEntry): boolean =>
     options.targets.some(
       (target) =>
         target.daemon === entry.locator.daemon && target.target === entry.locator.targetID,
     );
 
-  const mapState = (id: string, entry: z.infer<typeof atcSchemas.sessionEntry>): SessionState => {
-    const state = mapATCState(entry.state, entry.lifecycle?.harness);
+  const mapState = (id: string, entry: SessionEntry): SessionState => {
+    const state = mapATCState(entry.state, entry.lifecycle.harness);
 
     if (state === null) {
       options.log('coding.atc_unknown_state', { value: entry.state }, 'warn');
@@ -117,7 +109,10 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
   };
 
   const readSession = async (session: SessionRef) => {
-    const read = await run('atc_session_get', { session: session.id }, atcSchemas.sessionGet);
+    const read = await runATCCall(() => atc.session.get({ session: session.id }), {
+      procedure: 'session.get',
+      isKeyed: false,
+    });
 
     return read.status === 'ok'
       ? ({
@@ -128,11 +123,12 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
   };
 
   const readSessionAgeMs = async (session: SessionRef): Promise<number | null> => {
-    const read = await run('atc_session_get', { session: session.id }, atcSchemas.sessionGet);
+    const read = await runATCCall(() => atc.session.get({ session: session.id }), {
+      procedure: 'session.get',
+      isKeyed: false,
+    });
 
-    return read.status === 'ok' && read.value.session.createdAt !== undefined
-      ? now() - read.value.session.createdAt
-      : null;
+    return read.status === 'ok' ? now() - read.value.session.createdAt : null;
   };
 
   return {
@@ -144,11 +140,9 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         return cursor;
       }
 
-      const spawned = await run(
-        'atc_session_spawn',
-        buildSpawnArguments(brief, idempotencyKey),
-        atcSchemas.sessionEntry,
-        idempotencyKey,
+      const spawned = await runATCCall(
+        () => atc.session.spawn(buildSpawnArguments(brief, idempotencyKey)),
+        { procedure: 'session.spawn', isKeyed: true },
       );
 
       if (spawned.status === 'refused') {
@@ -159,13 +153,14 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         return spawned;
       }
 
-      const state = mapState(spawned.value.id, spawned.value);
+      const entry = spawned.value.session;
+      const state = mapState(entry.id, entry);
 
-      known.set(spawned.value.id, { state, readAtMs: now() });
+      known.set(entry.id, { state, readAtMs: now() });
 
       return {
         status: 'ok',
-        value: { session: { id: spawned.value.id }, state, fromCursor: cursor.value },
+        value: { session: { id: entry.id }, state, fromCursor: cursor.value },
       };
     },
     join: async (session) => {
@@ -193,10 +188,26 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
       };
     },
     list: async () => {
-      const listed = await run('atc_sessions_list', {}, atcSchemas.sessionsList);
+      const listed = await runATCCall(() => atc.session.list({}), {
+        procedure: 'session.list',
+        isKeyed: false,
+      });
 
       if (listed.status !== 'ok') {
         return listed;
+      }
+
+      const notUp = listed.value.daemons.filter(
+        (daemon) =>
+          daemon.state !== 'up' && options.targets.some((target) => target.daemon === daemon.name),
+      );
+
+      for (const daemon of notUp) {
+        options.log(
+          'coding.atc_daemon_not_up',
+          { daemon: daemon.name, state: daemon.state },
+          'warn',
+        );
       }
 
       const sessions = listed.value.sessions.flatMap((entry): ReachableSession[] =>
@@ -213,7 +224,12 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
           : [],
       );
 
-      return { status: 'ok', value: sessions };
+      const [first] = notUp;
+
+      // A list that is empty because its daemon cannot be reached is a refusal, never an empty list.
+      return sessions.length === 0 && first !== undefined
+        ? { status: 'refused', canClear: first.state === 'down', reason: `daemon_${first.state}` }
+        : { status: 'ok', value: sessions };
     },
     read: async (session, readOptions) => {
       const read = await readSession(session);
@@ -222,7 +238,7 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         return read;
       }
 
-      const tail = await readTranscriptTail(call, session.id, readOptions.tailTurns);
+      const tail = await readTranscriptTail(atc, session.id, readOptions.tailTurns);
 
       if (tail.status !== 'ok') {
         return tail;
@@ -249,20 +265,17 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
         return { status: 'refused', canClear: false, reason: 'menu_open' };
       }
 
-      const typed = await run(
-        'atc_terminal_type',
-        { session: session.id, text },
-        atcSchemas.anyAnswer,
-      );
+      const typed = await runATCCall(() => atc.session.submit({ session: session.id, text }), {
+        procedure: 'session.submit',
+        isKeyed: false,
+      });
 
       return typed.status === 'ok' ? { status: 'ok', value: { typed: true } } : typed;
     },
     message: async (session, text, idempotencyKey) => {
-      const sent = await run(
-        'atc_message_send',
-        { session: session.id, text, idempotencyKey },
-        atcSchemas.messageSent,
-        idempotencyKey,
+      const sent = await runATCCall(
+        () => atc.session.message({ session: session.id, text, idempotencyKey }),
+        { procedure: 'session.message', isKeyed: true },
       );
 
       if (sent.status === 'ok') {
@@ -278,20 +291,19 @@ export function buildATCAdapter(options: ATCAdapterOptions): CodingAdapter {
       return sent;
     },
     stop: async (session) => {
-      const stopped = await run(
-        'atc_session_stop',
-        { session: session.id },
-        atcSchemas.sessionStop,
-      );
+      const stopped = await runATCCall(() => atc.session.kill({ session: session.id }), {
+        procedure: 'session.kill',
+        isKeyed: false,
+      });
 
       return stopped.status === 'ok'
-        ? { status: 'ok', value: { stopped: stopped.value.stopped } }
+        ? { status: 'ok', value: { stopped: stopped.value.stopped === true } }
         : stopped;
     },
     events: (cursor, signal, readBound) =>
       readATCEvents(
         {
-          call,
+          atc,
           known,
           log: options.log,
           now,

@@ -1,3 +1,5 @@
+type FakeATCSessionState = 'running' | 'needs_you' | 'done' | 'exited';
+
 export interface FakeATCSession {
   readonly id: string;
   name: string;
@@ -5,11 +7,11 @@ export interface FakeATCSession {
   readonly daemon: string;
   readonly targetID: string;
 
-  // atc's own state: running, needs_you, done or exited
-  state: string;
+  // atc's own state
+  state: FakeATCSessionState;
 
-  // lifecycle.harness: running, suspended or exited
-  harness: string;
+  // lifecycle.harness
+  harness: 'running' | 'suspended' | 'exited';
   readonly createdAt: number;
   prompt: string | null;
   pending: string | null;
@@ -17,7 +19,7 @@ export interface FakeATCSession {
 
   // false: the agent has no transcript reader
   hasTranscript: boolean;
-  rows: { role: string; text: string; tools?: { name: string; summary: string }[] }[];
+  rows: { role: 'user' | 'assistant'; text: string; tools?: { name: string; input: string }[] }[];
 }
 
 export interface FakeATCEvent {
@@ -27,17 +29,24 @@ export interface FakeATCEvent {
   readonly detail: string | null;
   readonly message?: string;
   readonly label?: string;
+
+  // the whole text of a note or an answer, which atc keeps apart from the trail's preview
   readonly text?: string;
+
+  // false: atc cut the text it keeps
   readonly complete?: boolean;
+
+  // set: atc cannot read the text it keeps
   readonly textError?: string;
 }
 
 export interface FakeATCCall {
-  readonly tool: string;
+  // the fleet procedure, such as `session.spawn`
+  readonly procedure: string;
   readonly args: Readonly<Record<string, unknown>>;
 }
 
-// A failure that the fake answers in place of a tool's next call. A `lost` call runs, and its
+// A failure that the fake answers in place of a procedure's next call. A `lost` call runs, and its
 // answer never arrives: the caller sees `outcome_unknown`.
 export type FakeATCFailure =
   | { readonly kind: 'code'; readonly code: string }
@@ -49,10 +58,17 @@ export interface FakeATCState {
   readonly trail: FakeATCEvent[];
   readonly calls: FakeATCCall[];
 
-  // each key's first answer, by tool and key
-  readonly answersByKey: Map<string, Record<string, unknown>>;
+  // the session that each spawn key started, and the message that each message key sent
+  readonly spawnKeys: Map<string, string>;
+  readonly messageKeys: Map<string, string>;
   readonly failures: Map<string, FakeATCFailure[]>;
   readonly messages: Map<string, { session: string; text: string }>;
+
+  // how the gateway reports the daemon `cloud`
+  daemonState: 'up' | 'down' | 'mismatched' | 'refused' | 'unauthorized' | 'changed';
+
+  // the major version of the contract the fake serves
+  readonly major: number;
   nextID: number;
   now: () => number;
 }

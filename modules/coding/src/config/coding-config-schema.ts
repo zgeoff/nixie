@@ -21,7 +21,7 @@ const targetSchema = z.strictObject({ daemon: z.string().min(1), target: z.strin
 
 const atcSchema = z
   .strictObject({
-    // the gateway's MCP endpoint
+    // the gateway's https URL, which the adapter calls under `/rpc`; a trailing `/mcp` is dropped
     url: z.url({ protocol: /^https$/u }),
 
     // the service client that the token belongs to, named in logs and errors

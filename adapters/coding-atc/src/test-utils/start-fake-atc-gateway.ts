@@ -1,5 +1,8 @@
-import { Server, createMcpHandler } from '@modelcontextprotocol/server';
-import { z } from 'zod';
+import { GATEWAY_MAJOR_HEADER } from '@atcx/contract';
+import { CONTRACT_MAJOR } from '@atcx/contract/light';
+import { RPCHandler } from '@orpc/server/fetch';
+import { buildError, createFakeATCRouter } from './create-fake-atc-router';
+import type { FakeATCContext } from './create-fake-atc-router';
 import type {
   FakeATCCall,
   FakeATCEvent,
@@ -7,17 +10,16 @@ import type {
   FakeATCSession,
   FakeATCState,
 } from './fake-atc-state';
-import { runFakeATCTool } from './run-fake-atc-tool';
 
 export interface FakeATCGatewayOptions {
-  // the gateway's MCP server version
-  readonly version?: string;
+  // the major version of the contract the gateway serves
+  readonly major?: number;
   readonly token?: string;
   readonly now?: () => number;
 }
 
 export interface FakeATCGateway {
-  // the MCP endpoint
+  // the gateway's base URL; its fleet API is under `/rpc`
   readonly url: string;
   readonly token: string;
   readonly calls: readonly FakeATCCall[];
@@ -29,30 +31,85 @@ export interface FakeATCGateway {
   // appends events to the trail
   readonly emit: (...events: readonly FakeATCEvent[]) => void;
 
-  // the next call of the tool answers this failure, once
-  readonly failNext: (tool: string, failure: FakeATCFailure) => void;
+  // the next call of the procedure, such as `session.spawn`, answers this failure, once
+  readonly failNext: (procedure: string, failure: FakeATCFailure) => void;
+
+  // how the gateway reports the daemon `cloud` from now on
+  readonly setDaemonState: (daemonState: FakeATCState['daemonState']) => void;
   readonly stop: () => Promise<void>;
 }
 
-// A fake atc-gateway: a real MCP server on a loopback port, with the tools the atc adapter calls,
-// over in-memory sessions and an event trail. It reports its version as the real gateway does.
+// A fake atc-gateway: a real HTTP server on a loopback port that serves atc's fleet contract over
+// in-memory sessions and an event trail. It checks the bearer and the contract's major version as
+// the real gateway does.
 export function startFakeATCGateway(options: FakeATCGatewayOptions = {}): FakeATCGateway {
   const token = options.token ?? 'atcs_test_token';
-  const version = options.version ?? 'atc-gateway/7.12.3';
 
   const state: FakeATCState = {
     sessions: new Map(),
     trail: [],
     calls: [],
-    answersByKey: new Map(),
+    spawnKeys: new Map(),
+    messageKeys: new Map(),
     failures: new Map(),
     messages: new Map(),
+    daemonState: 'up',
+    major: options.major ?? CONTRACT_MAJOR,
     nextID: 0,
     now: options.now ?? Date.now,
   };
 
-  const handler = createMcpHandler(() => createServer(state, version));
-  const answerRequest = makeRequestAnswerer(state, token, handler);
+  const handler = new RPCHandler<FakeATCContext>(createFakeATCRouter(state), {
+    clientInterceptors: [
+      async (call) => {
+        const procedure = call.path.join('.');
+
+        if (!call.context.isMajorMatching) {
+          throw buildError(
+            'protocol_mismatch',
+            `this gateway serves contract major ${state.major}`,
+          );
+        }
+
+        state.calls.push({ procedure, args: toArgs(call.input) });
+
+        const failure = state.failures.get(procedure)?.shift();
+
+        if (failure?.kind === 'code') {
+          throw buildError(failure.code);
+        }
+
+        const answer = await call.next();
+
+        if (failure?.kind === 'lost') {
+          throw buildError('outcome_unknown');
+        }
+
+        return answer;
+      },
+    ],
+  });
+
+  const answerRequest = async (request: Request): Promise<Response> => {
+    if (request.headers.get('authorization') !== `Bearer ${token}`) {
+      return new Response('unauthorized', { status: 401 });
+    }
+
+    const status = readHTTPFailure(state, request);
+
+    if (status !== null) {
+      return new Response('failed', { status });
+    }
+
+    const major = request.headers.get(GATEWAY_MAJOR_HEADER);
+
+    const result = await handler.handle(request, {
+      prefix: '/rpc',
+      context: { isMajorMatching: major === String(state.major) },
+    });
+
+    return result.matched ? result.response : new Response(null, { status: 404 });
+  };
 
   const server = Bun.serve({
     port: 0,
@@ -62,7 +119,7 @@ export function startFakeATCGateway(options: FakeATCGatewayOptions = {}): FakeAT
   });
 
   return {
-    url: `http://127.0.0.1:${String(server.port)}/mcp`,
+    url: `http://127.0.0.1:${String(server.port)}`,
     token,
     calls: state.calls,
     sessions: state.sessions,
@@ -90,94 +147,35 @@ export function startFakeATCGateway(options: FakeATCGatewayOptions = {}): FakeAT
     emit: (...events) => {
       state.trail.push(...events);
     },
-    failNext: (tool, failure) => {
-      state.failures.set(tool, [...(state.failures.get(tool) ?? []), failure]);
+    failNext: (procedure, failure) => {
+      state.failures.set(procedure, [...(state.failures.get(procedure) ?? []), failure]);
+    },
+    setDaemonState: (daemonState) => {
+      state.daemonState = daemonState;
     },
     stop: async () => {
-      await handler.close();
       await server.stop(true);
     },
   };
 }
 
-const toolNames = [
-  'atc_events_read',
-  'atc_session_spawn',
-  'atc_sessions_list',
-  'atc_session_get',
-  'atc_transcript_read',
-  'atc_terminal_type',
-  'atc_message_send',
-  'atc_session_stop',
-];
-
-// oxlint-disable-next-line typescript/no-deprecated -- the same low-level server the tool endpoint uses
-function createServer(state: FakeATCState, version: string): Server {
-  // oxlint-disable-next-line typescript/no-deprecated -- as above
-  const server = new Server(
-    { name: 'atc', version },
-    { capabilities: { tools: { listChanged: false } } },
-  );
-
-  server.setRequestHandler('tools/list', () => ({
-    tools: toolNames.map((name) => ({ name, inputSchema: { type: 'object' as const } })),
-  }));
-
-  server.setRequestHandler('tools/call', async (request) => {
-    const result = await runFakeATCTool(state, request.params.name, request.params.arguments ?? {});
-
-    return 'code' in result
-      ? {
-          isError: true,
-          content: [{ type: 'text' as const, text: result.code }],
-          structuredContent: { code: result.code },
-        }
-      : {
-          content: [{ type: 'text' as const, text: JSON.stringify(result.data) }],
-          structuredContent: { ...result.data },
-        };
-  });
-
-  return server;
+function toArgs(input: unknown): Readonly<Record<string, unknown>> {
+  return typeof input === 'object' && input !== null
+    ? Object.fromEntries(Object.entries(input))
+    : {};
 }
 
-function makeRequestAnswerer(
-  state: FakeATCState,
-  token: string,
-  handler: ReturnType<typeof createMcpHandler>,
-): (request: Request) => Promise<Response> {
-  return async (request) => {
-    if (request.headers.get('authorization') !== `Bearer ${token}`) {
-      return new Response('unauthorized', { status: 401 });
-    }
+// The HTTP status that an armed failure answers in place of the procedure this request names.
+function readHTTPFailure(state: FakeATCState, request: Request): number | null {
+  const procedure = new URL(request.url).pathname.split('/').slice(2).join('.');
 
-    const status = await readHTTPFailure(state, request);
+  const failure = state.failures.get(procedure)?.[0];
 
-    return status === null ? handler.fetch(request) : new Response('failed', { status });
-  };
-}
-
-const callBodySchema = z.object({ params: z.object({ name: z.string() }) });
-
-// The HTTP status that an armed failure answers in place of the tool call this request carries.
-async function readHTTPFailure(state: FakeATCState, request: Request): Promise<number | null> {
-  if (request.method !== 'POST') {
+  if (failure?.kind !== 'http') {
     return null;
   }
 
-  const body: unknown = await request
-    .clone()
-    .json()
-    .catch(() => null);
+  state.failures.get(procedure)?.shift();
 
-  const parsed = callBodySchema.safeParse(body);
-  const failures = parsed.success ? state.failures.get(parsed.data.params.name) : undefined;
-
-  if (failures?.[0]?.kind !== 'http') {
-    return null;
-  }
-
-  const failure = failures.shift();
-
-  return failure?.kind === 'http' ? failure.status : null;
+  return failure.status;
 }

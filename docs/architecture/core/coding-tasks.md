@@ -8,8 +8,8 @@ module holds the runner, its tools, the trigger source that reads the session's 
 release of a session when its task ends. It reaches the other program only through the coding
 adapter interface, one adapter per program.
 
-The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's MCP gateway.
-[The atc adapter](../connectors/coding-atc.md) covers its calls and
+The one adapter is `atc`, which `adapters/coding-atc/` implements over the program's typed fleet
+API. [The atc adapter](../connectors/coding-atc.md) covers its calls and
 [the wiring section](#the-atc-adapter-and-the-server) covers how the server builds it.
 
 A coding task runs no model and judges nothing about the session's work. An agent ends a turn while
