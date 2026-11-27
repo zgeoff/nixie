@@ -20,7 +20,7 @@ feature with no verdict in its description.
 These cost the most time:
 
 - Until `bun verify doctor` passes, each command that touches the app fails with exit code 3.
-- After you edit the app's code while `up` runs it, the next command that touches the app fails with
+- After you edit the app's code while `up` runs it, the next app command fails with
   `doctor-required`. Run `bun verify up --restart` and `doctor` again.
 
 ## Key rules
@@ -118,7 +118,7 @@ These cost the most time:
    check, in the order of the features table in [References](#references). Run the part of a journey
    that its feature's file marks as last after every other journey.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
-   step 5. Repeat steps 4 to 6 for each `stale` feature.
+   step 5. Redo steps 4 to 6 for each `stale` one.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
 10. Publish the report with [the publish steps](references/publish.md), even when you skipped a
     feature. Expect: `ok: true` and `data.local` of 0.
@@ -129,10 +129,9 @@ These cost the most time:
 Each command prints one JSON envelope as its last line, or text with `--human`. `doctor` and other
 streaming commands print JSON event lines first.
 
-Add `--brief` to print one short line and no event lines, when you only need to know whether the
-command passed. It holds `<command> ok=<true|false>`, then `error.code` and `error.message` or
-`data` (each cut at 200 characters), `truncatedPath` and `evidence=<count>`. It leaves out
-`error.hint`: run the command again without `--brief` to read it.
+Add `--brief` to print one short line and no event lines. It holds `<command> ok=<true|false>`, then
+`error.code` and `error.message` or `data` (each cut at 200 characters), `truncatedPath` and
+`evidence=<count>`. It leaves out `error.hint`: run the command again without `--brief` to read it.
 
 Read `ok`, then `data` on success, or `error.code`, `error.message` and `error.hint` on failure.
 `evidence` lists the files the command kept, under `.wringer/`. `truncatedPath` names the file that

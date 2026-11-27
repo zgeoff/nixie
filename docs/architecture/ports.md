@@ -93,8 +93,8 @@ The code breaks a rule in these places. New code follows the rules.
 The wire lib's `harnessIDs` is a second list of the models module's `harnesses`, which rule 10
 allows: a test in the models module fails when the two lists differ.
 
-The places in this table name a feature ID or an outside service in a core module, or make a core
-module depend on a feature module. Each row comes from the entries in
+Each row of this table is a place where a core module names a feature ID or an outside service, or
+depends on a feature module. Each row comes from the entries in
 `apps/server/src/leak/leak-exceptions.ts`, and those entries go when the row's work item lands.
 
 | Place                 | Names or depends on                                                                             | Work item                                            |

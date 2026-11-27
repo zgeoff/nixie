@@ -7,7 +7,7 @@ adapter that implements it. For the whole feature, see the
 [voice design](../../design/platform/channels/voice.md). The server wires the
 [GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
 provider and the secrets file holds its credential. When the config has no `voice` section, calls
-are off: the server starts no calls part, offers the model no call tool, leaves `voice` out of
+are off. The server starts no calls part, offers the model no call tool, leaves `voice` out of
 `nixie.read`, and answers each `calls` procedure with `FEATURE_OFF` once the session checks out.
 When the secrets file lacks the `voice` section's credential, the server wires no adapter, and
 `calls.start` answers `SPEECH_UNAVAILABLE`. A test build wires the fake that the next section

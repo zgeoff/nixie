@@ -611,8 +611,9 @@ the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.
 Devices are on only while the config has a `devices` section, and the section takes no field yet. A
 config without it starts no device part, offers the model no device tool, leaves `devices` out of
 `nixie.read`, answers each `devices` procedure and the device form of `live.follow` with
-`FEATURE_OFF`, refuses to issue a code for a device session, and serves no device page. A deployment
-that upgrades from a release before the section existed adds `devices: {}` to keep its devices.
+`FEATURE_OFF`, refuses to issue a code for a device session, and serves no device page. When
+upgrading from a release before the section existed, add `devices: {}` to the config to keep the
+devices.
 
 When the section is there, the server gives the API the device procedures, the device page routes
 and the device stream through its feature procedures, adds the device row's session hook, and adds
