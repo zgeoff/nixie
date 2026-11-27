@@ -27,8 +27,10 @@ export interface Secrets {
 
   readonly resolveCredential: ResolveCredential;
 
-  // the owner's name and pronouns, which the prompt needs
-  readonly readSetting: (reference: string) => string;
+  // a setting that the server needs in the clear: the owner's name and pronouns, which the prompt
+  // needs, and the phone's number and Twilio IDs; the config key, when given, goes in the error of
+  // a missing entry
+  readonly readSetting: (reference: string, configKey?: string) => string;
 
   // the file backend's read, for the credential store alone
   readonly readFileValue: (ref: FileCredentialRef) => string;
@@ -76,7 +78,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     definitionsExportAppKey: file.definitions_export_app_key ?? null,
     atcToken: file.atc_token ?? null,
     resolveCredential: createResolver(file),
-    readSetting: (reference) => readSetting(file, reference),
+    readSetting: (reference, configKey) => readSetting(file, reference, configKey),
     readFileValue: (ref) => {
       const value = file[ref.group][ref.name];
 

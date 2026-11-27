@@ -189,7 +189,9 @@ function collectNarrowingChanges(change: KeywordChange): readonly string[] {
   }
 
   if (change.before === undefined) {
-    return [`${formatPath(change.path)}: adds ${change.keyword}`];
+    return isReleasedSchemaAChoice(change)
+      ? []
+      : [`${formatPath(change.path)}: adds ${change.keyword}`];
   }
 
   const collect = narrowingCollectors[change.keyword] ?? collectAnyChange;
@@ -339,4 +341,25 @@ function pickRequiredConst(choice: SchemaNode, key: string): unknown {
     typeof property['const'] === 'string';
 
   return isTagged ? property['const'] : undefined;
+}
+
+// A schema that becomes an anyOf of itself and other choices accepts every value it did.
+function isReleasedSchemaAChoice(change: KeywordChange): boolean {
+  const isOnlyChoices = Object.keys(omitAnnotations(change.current)).every(
+    (key) => key === 'anyOf',
+  );
+
+  const released = omitAnnotations(change.released);
+
+  return (
+    change.keyword === 'anyOf' &&
+    isOnlyChoices &&
+    toArray(change.after).some((choice) =>
+      Bun.deepEquals(omitAnnotations(toNode(choice)), released),
+    )
+  );
+}
+
+function omitAnnotations(node: SchemaNode): SchemaNode {
+  return Object.fromEntries(Object.entries(node).filter(([key]) => !annotations.has(key)));
 }
