@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.122.0](https://github.com/zgeoff/nixie/compare/v0.121.0...v0.122.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **server:** switch the computer and the code tool by config ([#1522](https://github.com/zgeoff/nixie/issues/1522))
+* **proposals:** give every proposal one lifecycle ([#1515](https://github.com/zgeoff/nixie/issues/1515))
+
+### Features
+
+* **devices:** make every signed-in client a device ([#1511](https://github.com/zgeoff/nixie/issues/1511)) ([2c34cf9](https://github.com/zgeoff/nixie/commit/2c34cf9781b1311caa0bdd2dbfc83776f5decf06))
+* **proposals:** give every proposal one lifecycle ([#1515](https://github.com/zgeoff/nixie/issues/1515)) ([64e9b6b](https://github.com/zgeoff/nixie/commit/64e9b6b586614433f50828594ae5532cb302bf0c))
+* **server:** add the feature switch parts and the leak checks ([#1513](https://github.com/zgeoff/nixie/issues/1513)) ([675db19](https://github.com/zgeoff/nixie/commit/675db1941a1834dc641a2d70b24f6ba03a44b95d))
+* **server:** switch the computer and the code tool by config ([#1522](https://github.com/zgeoff/nixie/issues/1522)) ([e044e6b](https://github.com/zgeoff/nixie/commit/e044e6b5ba6202f94f0049e0a789928d0d135772))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.329 ([#1517](https://github.com/zgeoff/nixie/issues/1517)) ([a33383f](https://github.com/zgeoff/nixie/commit/a33383fc94f12d6eaa055ab769217582f1991ebe))
+* **deps:** update @tanstack/react-start to v1.169.7 ([#1508](https://github.com/zgeoff/nixie/issues/1508)) ([338a1c8](https://github.com/zgeoff/nixie/commit/338a1c8df8c8b10b5a111b863ad36ea2790f82a6))
+* **evals:** keep the gpt-live test out of the sdk contract lane ([#1520](https://github.com/zgeoff/nixie/issues/1520)) ([84c3d2b](https://github.com/zgeoff/nixie/commit/84c3d2b88fd7ce35e9606509836b1d646199bde7))
+* **web:** wait for the connection page to settle before the forget click ([#1516](https://github.com/zgeoff/nixie/issues/1516)) ([fd52d45](https://github.com/zgeoff/nixie/commit/fd52d45c8416c72daa30218a7cfbc3bf4e77b0c1))
+
 ## [0.121.0](https://github.com/zgeoff/nixie/compare/v0.120.0...v0.121.0) (2026-11-26)
 
 
