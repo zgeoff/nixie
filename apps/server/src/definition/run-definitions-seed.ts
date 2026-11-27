@@ -1,6 +1,6 @@
 import { readLiveConnectionIDs } from '@heynixie/connections';
 import type { SeedResult } from '@heynixie/definitions';
-import { runSeed } from '@heynixie/definitions';
+import { runInForceSeed, runSeed } from '@heynixie/definitions';
 import { writeContactKinds, writeOwnPlaces } from '@heynixie/policy';
 import { readArmedReminders } from '@heynixie/reminders';
 import { listOwnPlaceSources } from '../place/list-own-place-sources';
@@ -10,11 +10,6 @@ import { runQueuedSeed } from '../seed/run-queued-seed';
 export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, async () => {
     await writeContactKinds(parts.context.log);
-
-    await writeOwnPlaces(
-      { log: parts.context.log, definitions: parts.context.definitions },
-      listOwnPlaceSources(),
-    );
 
     const result = await runSeed({
       log: parts.context.log,
@@ -47,6 +42,34 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
           : { isReady: true, reason: null },
     });
 
+    return result.status === 'refused' ? result : await runOwnPlacesSeed(parts, result);
+  });
+}
+
+// Adds nixie's own places under the snapshot that the seed just put in force, since each record
+// names a snapshot and a first start has none before its seed. When it adds any, it runs the
+// in-force seed again, so the snapshot's directory holds them.
+async function runOwnPlacesSeed(parts: SeedParts, result: SeedResult): Promise<SeedResult> {
+  const snapshotHash = result.inForce?.snapshotHash;
+
+  if (snapshotHash === undefined) {
     return result;
+  }
+
+  const added = await writeOwnPlaces(
+    { log: parts.context.log, definitions: () => ({ snapshotHash }) },
+    listOwnPlaceSources(parts.config),
+  );
+
+  if (added === 0) {
+    return result;
+  }
+
+  return runInForceSeed({
+    log: parts.context.log,
+    buildPolicy: parts.buildPolicy,
+    builtInBudgets: parts.context.budgets?.builtIn() ?? [],
+    readExtraArmed: readArmedReminders,
+    readSelfPlaces: readLiveConnectionIDs,
   });
 }
