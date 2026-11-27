@@ -6,25 +6,18 @@ import { phoneSectionSchema } from './phone-section-schema';
 import { readPhoneSection } from './read-phone-section';
 
 function setupTest() {
-  return {
-    startNixie: startInProcessNixie,
-    parseSection: (input: unknown) => phoneSectionSchema.safeParse(input),
-    readFrom: (settings: Readonly<Record<string, string>>) => {
-      const file: SecretsFile = {
-        deployment_key: 'not-a-real-key',
-        model_credentials: {},
-        connector_credentials: {},
-        settings,
-      };
-
-      return (reference: string, configKey: string) => readSetting(file, reference, configKey);
-    },
-  };
+  return { startNixie: startInProcessNixie };
 }
 
 test('it keeps a section of plain values as it is', () => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({});
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: {},
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: '+61411111111',
@@ -39,15 +32,27 @@ test('it keeps a section of plain values as it is', () => {
 });
 
 test('it returns no section for a config with none', () => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({});
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: {},
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   expect(readPhoneSection(undefined, read)).toBeUndefined();
 });
 
 test('it reads the number from the settings entry that its reference names', () => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({ phone_number: '+61422222222' });
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: { phone_number: '+61422222222' },
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: 'deployment:phone_number',
@@ -62,8 +67,14 @@ test('it reads the number from the settings entry that its reference names', () 
 });
 
 test('it reads the account SID from the settings entry that its reference names', () => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({ account_sid: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' });
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: { account_sid: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: '+61411111111',
@@ -80,8 +91,14 @@ test('it reads the account SID from the settings entry that its reference names'
 });
 
 test('it reads the API key SID from the settings entry that its reference names', () => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({ key_sid: 'SKbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' });
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: { key_sid: 'SKbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' },
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: '+61411111111',
@@ -117,8 +134,14 @@ test.each([
     apiKey: 'deployment:missing',
   },
 ])('it names $key when its reference has no settings entry', (row) => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({ other: '+61433333333' });
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: { other: '+61433333333' },
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: row.number,
@@ -132,8 +155,14 @@ test.each([
 });
 
 test('it refuses a settings entry that is no number, without quoting the entry', () => {
-  const ctx = setupTest();
-  const read = ctx.readFrom({ phone_number: 'not-a-number-0411' });
+  const file: SecretsFile = {
+    deployment_key: 'not-a-real-key',
+    model_credentials: {},
+    connector_credentials: {},
+    settings: { phone_number: 'not-a-number-0411' },
+  };
+
+  const read = (reference: string, configKey: string) => readSetting(file, reference, configKey);
 
   const section = phoneSectionSchema.parse({
     number: 'deployment:phone_number',
@@ -151,9 +180,7 @@ test('it refuses a settings entry that is no number, without quoting the entry',
 });
 
 test('it refuses a number that is neither a number nor a reference', () => {
-  const ctx = setupTest();
-
-  const result = ctx.parseSection({
+  const result = phoneSectionSchema.safeParse({
     number: 'phone_number',
     twilio: {
       account_sid: 'AC00000000000000000000000000000000',

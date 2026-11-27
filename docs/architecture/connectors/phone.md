@@ -157,9 +157,9 @@ phone:
     api_url: https://api.twilio.com
 ```
 
-The number, `account_sid` and `api_key_sid` each take the value or a `deployment:<name>` reference
-to an entry in the `settings` group of the secrets file, so a config file in a public repo need not
-hold them:
+Write the number, `account_sid` and `api_key_sid` each as the value or as a `deployment:<name>`
+reference to an entry in the `settings` group of the secrets file. A config file in a public repo
+then holds none of them:
 
 ```yaml
 phone:
@@ -174,8 +174,8 @@ The server reads each reference once the secrets load, in `readPhoneSection`, an
 against the pattern of a plain value. A reference with no entry stops the start with the error of a
 missing credential, which names the key, such as `phone.number`. An entry that fails its pattern
 stops the start with an error that names the key and the reference. Neither error quotes a value.
-The phone module and the adapter log and record none of the 3 values. The number does reach the
-model, in the result of `phone.list`, because the model gives it to a sign-up.
+This change adds no new place that records the 3 values. The `phone.list` result already records the
+assistant's number, because the model gives it to a sign-up.
 
 The number takes texts only. The provider's settings refuse calls, and nixie places none.
 
