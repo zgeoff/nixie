@@ -114,7 +114,7 @@ test('it refuses a memory tool call before the store is set', async () => {
 
 test('it runs a memory tool call on the store set', async () => {
   const ctx = await setupTest();
-  const store = await startTestMemoryStore(ctx.server.context, () => Promise.resolve());
+  const store = await startTestMemoryStore(ctx.server.context);
 
   const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page', isGated: false });
 

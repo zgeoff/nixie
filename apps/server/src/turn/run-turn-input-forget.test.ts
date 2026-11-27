@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { createMemoryItem } from '@heynixie/memory/test-utils';
 import { startTestNotebook } from '@heynixie/notebook/test-utils';
-import { conversationTaskID } from '@heynixie/tasks';
 import {
   buildTestDefinitionReaders,
   buildTestRunSettings,
@@ -43,50 +41,6 @@ test('it removes every request taken in at or after a forgotten record, on every
   await ctx.forget({ recordSequence: 42 });
 
   expect(ctx.removeForgotten).toHaveBeenCalledWith({ threads: [], fromSequence: 42 });
-});
-
-test('it covers the conversation thread for a forgotten memory item', async () => {
-  const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Is allergic to peanuts' });
-
-  await ctx.forget({ itemID: item.itemID });
-
-  expect(ctx.removeForgotten).toHaveBeenCalledWith({
-    threads: [conversationTaskID],
-    fromSequence: expect.any(Number),
-  });
-});
-
-test('it ends every open capture, on every thread, for a forgotten memory item', async () => {
-  const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Is allergic to peanuts' });
-
-  await ctx.forget({ itemID: item.itemID });
-
-  expect(ctx.closeCaptures).toHaveBeenCalledExactlyOnceWith({ cause: 'forget' });
-});
-
-test('it removes the requests from the first record of a forgotten memory item on', async () => {
-  const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Is allergic to peanuts' });
-
-  await ctx.forget({ itemID: item.itemID });
-
-  expect(ctx.removeForgotten).toHaveBeenCalledWith({
-    threads: [conversationTaskID],
-    fromSequence: expect.any(Number),
-  });
-});
-
-test('it removes every request when no record names the forgotten item', async () => {
-  const ctx = await setupTest();
-
-  await ctx.forget({ itemID: crypto.randomUUID() });
-
-  expect(ctx.removeForgotten).toHaveBeenCalledWith({
-    threads: [conversationTaskID],
-    fromSequence: null,
-  });
 });
 
 test('it ends every open capture of a record forget before it removes any request', async () => {

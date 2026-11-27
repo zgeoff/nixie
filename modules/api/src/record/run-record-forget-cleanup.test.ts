@@ -668,7 +668,7 @@ test.each(['record.forget.started', 'record.forget.purged'] as const)(
   },
 );
 
-test('it deletes every key of a quoting item whose own forget stopped before its key delete, before record.forgotten', async () => {
+test('it leaves a quoting item whose own forget stopped before its key delete to the catch-up, which deletes every key and marks the purge', async () => {
   const api = await startTestAPI();
   const forgets = await startTestMemoryForgets(api.context);
   const seeded = await seedQuotedMemoryItems(api.context, forgets.memory);
@@ -692,6 +692,8 @@ test('it deletes every key of a quoting item whose own forget stopped before its
 
   await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence);
 
+  await forgets.runner.finishOpen();
+
   const keyRows = await readTestRecordKeyRows(api.writer);
   const entries = await readRecords(api.context.log, { afterSequence: 0 });
 
@@ -704,14 +706,11 @@ test('it deletes every key of a quoting item whose own forget stopped before its
     ),
   ).toStrictEqual([]);
 
-  expect(kinds.slice(-3)).toStrictEqual([
-    'memory.forgotten',
-    'memory.evidence_purged',
-    'record.forgotten',
-  ]);
+  expect(kinds).toIncludeAllMembers(['record.forgotten', 'erasure.finished']);
+  expect(kinds.filter((kind) => kind === 'memory.evidence_purged')).toHaveLength(1);
 });
 
-test('it deletes every key of a quoting item whose own forget began before the record forget and stopped before its key delete, before record.forgotten', async () => {
+test('it leaves a quoting item whose own forget began before the record forget to the catch-up, which deletes every key and marks the purge', async () => {
   const api = await startTestAPI();
   const forgets = await startTestMemoryForgets(api.context);
   const seeded = await seedQuotedMemoryItems(api.context, forgets.memory);
@@ -735,6 +734,8 @@ test('it deletes every key of a quoting item whose own forget began before the r
 
   await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence);
 
+  await forgets.runner.finishOpen();
+
   const keyRows = await readTestRecordKeyRows(api.writer);
   const entries = await readRecords(api.context.log, { afterSequence: 0 });
 
@@ -747,9 +748,6 @@ test('it deletes every key of a quoting item whose own forget began before the r
     ),
   ).toStrictEqual([]);
 
-  expect(kinds.slice(-3)).toStrictEqual([
-    'memory.forgotten',
-    'memory.evidence_purged',
-    'record.forgotten',
-  ]);
+  expect(kinds).toIncludeAllMembers(['record.forgotten', 'erasure.finished']);
+  expect(kinds.filter((kind) => kind === 'memory.evidence_purged')).toHaveLength(1);
 });

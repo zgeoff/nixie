@@ -1133,8 +1133,8 @@ test('it forgets every memory item through a reset of the memories, and keeps th
   expect(reset.exitCode).toBe(0);
   expect(reset.stdout).toStartWith('nixie forgot 1 memory items.\n');
 
-  expect(run.records.filter((record) => record.kind === 'memory.forgotten')).toMatchObject([
-    { payload: { itemID: added.payload['itemID'] } },
+  expect(run.records.filter((record) => record.kind === 'erasure.finished')).toMatchObject([
+    { payload: { kind: 'memory_item', targetID: added.payload['itemID'], by: 'user' } },
   ]);
 
   expect(
@@ -1219,5 +1219,9 @@ test('it shreds the conversation through a reset of the conversations, and keeps
     { status: 'readable', fields: { text: 'Hello again.' } },
   ]);
 
-  expect(run.records.filter((record) => record.kind === 'memory.forget_started')).toStrictEqual([]);
+  expect(
+    run.records.filter(
+      (record) => record.kind === 'erasure.started' && record.payload['kind'] === 'memory_item',
+    ),
+  ).toStrictEqual([]);
 });

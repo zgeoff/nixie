@@ -1,10 +1,15 @@
-import { mock, onTestFinished } from 'bun:test';
-import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
+import { onTestFinished } from 'bun:test';
+import type { ErasureRunnerControl } from '@heynixie/log';
+import type { StartedMemoryStore } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import type { APIContext, CleanupRecordSessions } from '../types';
+import { buildTestErasureRunner } from './build-test-erasure-runner';
 
 export interface TestMemoryForgets {
   readonly memory: StartedMemoryStore;
+
+  // the runner the items register on, whose catch-up finishes a forget that an earlier release left
+  readonly runner: ErasureRunnerControl;
 
   // the API's context with the session cleanup of a running nixie: it finishes the evidence
   // purges of the forgotten record
@@ -16,10 +21,12 @@ export interface TestMemoryForgets {
 export async function startTestMemoryForgets(
   context: APIContext & { readonly clock: Parameters<typeof startMemoryStore>[0]['gate']['clock'] },
 ): Promise<TestMemoryForgets> {
+  const runner = buildTestErasureRunner(context.log);
+
   const memory = await startMemoryStore({
     log: context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions: mock<CleanupSessions>(() => Promise.resolve()),
+    erasure: runner,
     gate: {
       check: () =>
         Promise.resolve({
@@ -42,5 +49,9 @@ export async function startTestMemoryForgets(
   const cleanupSessions: CleanupRecordSessions = (cause) =>
     memory.finishEvidencePurges({ recordSequence: cause.recordSequence });
 
-  return { memory, forgetContext: { ...context, readSessionCleanup: () => cleanupSessions } };
+  return {
+    memory,
+    runner,
+    forgetContext: { ...context, readSessionCleanup: () => cleanupSessions },
+  };
 }

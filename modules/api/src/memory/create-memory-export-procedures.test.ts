@@ -8,6 +8,7 @@ import {
 import { seedSharedKeyVersion } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
@@ -18,7 +19,7 @@ async function setupTest() {
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions: () => Promise.resolve(),
+    erasure: buildTestErasureRunner(api.context.log),
     gate: {
       check: () =>
         Promise.resolve({

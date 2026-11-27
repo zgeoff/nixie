@@ -1,9 +1,10 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import type { ErasureSessionCause } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
+import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
@@ -11,12 +12,14 @@ import type { APITables } from '../types';
 async function setupTest() {
   const api = await startTestAPI();
 
-  const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
+  const cleanupSessions = mock<(cause: ErasureSessionCause) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
 
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions,
+    erasure: buildTestErasureRunner(api.context.log, cleanupSessions),
     gate: {
       check: () =>
         Promise.resolve({
@@ -174,12 +177,11 @@ test('#memory.forget cleans up the sessions, then records the forget as complete
 
   expect(
     records.map((entry) => entry.record.kind).filter((kind) => kind.startsWith('memory.')),
-  ).toStrictEqual([
-    'memory.version_added',
-    'memory.version_keyed',
-    'memory.forget_started',
-    'memory.forgotten',
-  ]);
+  ).toStrictEqual(['memory.version_added', 'memory.version_keyed']);
+
+  expect(
+    records.map((entry) => entry.record.kind).filter((kind) => kind.startsWith('erasure.')),
+  ).toStrictEqual(['erasure.started', 'erasure.finished']);
 });
 
 test('#memory.forget completes a forget on the retry after its session cleanup failed', async () => {
@@ -474,9 +476,9 @@ test('#memory.forgetRetired deletes the confirmed set, with a forgotten record f
 
   expect(
     records
-      .filter((entry) => entry.record.kind === 'memory.forgotten')
-      .map((entry) => entry.record.payload),
-  ).toIncludeSameMembers(items.map((item) => ({ itemID: item.itemID })));
+      .filter((entry) => entry.record.kind === 'erasure.finished')
+      .map((entry) => entry.record.payload['targetID']),
+  ).toIncludeSameMembers(items.map((item) => item.itemID));
 });
 
 test('#memory.forgetRetired refuses a confirmation made stale by a restore after the preview, and deletes nothing', async () => {

@@ -54,7 +54,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
   const store = await startMemoryStore({
     log: context.log,
     definitions: context.definitions,
-    cleanupSessions: () => Promise.resolve(),
     gate: {
       check,
       clock,

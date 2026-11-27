@@ -1,6 +1,5 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
-import type { CleanupSessions } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -14,7 +13,6 @@ async function setupTest() {
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    cleanupSessions: mock<CleanupSessions>(() => Promise.resolve()),
     gate: {
       check: () =>
         Promise.resolve({

@@ -30,16 +30,11 @@ async function setupTest() {
 
   const erasure = buildTestErasureRunner(server.context.log, () => Promise.resolve());
 
-  const memory = await startTestMemoryStore(
-    server.context,
-    mock(() => Promise.resolve()),
-    undefined,
-    {
-      erasure,
-      turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1 } },
-      linkCounts: buildItemLinkCounts(server.context.log),
-    },
-  );
+  const memory = await startTestMemoryStore(server.context, undefined, {
+    erasure,
+    turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1 } },
+    linkCounts: buildItemLinkCounts(server.context.log),
+  });
 
   const notebook = await startNotebook({
     log: server.context.log,

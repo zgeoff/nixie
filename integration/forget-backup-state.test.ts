@@ -16,7 +16,8 @@ import type { BackupPass } from '@heynixie/backup';
 import { getBackupStagingDir, startBackupSchedule } from '@heynixie/backup';
 import { writeTestBackupReceipt } from '@heynixie/backup/test-utils';
 import type { HostContractClient } from '@heynixie/contract';
-import { localDataStorage, logProjections, startWriter } from '@heynixie/log';
+import { localDataStorage, logProjections, makeErasureRunner, startWriter } from '@heynixie/log';
+import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
@@ -84,7 +85,11 @@ async function setupTest() {
   const memory = await startMemoryStore({
     log: context.log,
     definitions: context.definitions,
-    cleanupSessions: () => Promise.resolve(),
+    erasure: makeErasureRunner({
+      log: context.log,
+      definitions: context.definitions,
+      effects: buildTestErasureEffects().effects,
+    }),
     gate: {
       check: () =>
         Promise.resolve({
@@ -211,7 +216,7 @@ async function setupTest() {
   };
 }
 
-test('it keeps a forget pending while only a set staged before its delete has published', async () => {
+test('it keeps a forget pending while no set staged after it has published', async () => {
   const ctx = await setupTest();
   const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
@@ -236,16 +241,6 @@ test('it keeps a forget pending while only a set staged before its delete has pu
   const earlier = ctx.onPass.mock.calls[0]?.[0].staged;
 
   invariant(earlier, 'the first pass staged a set before the forget');
-
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: earlier.sequence, status: 'published' });
-
-  await waitForCondition(() => {
-    ctx.clock.advance(60_000);
-
-    return ctx.onPass.mock.calls.some((call) =>
-      call[0].received.some((receipt) => receipt.sequence === earlier.sequence),
-    );
-  });
 
   const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
@@ -381,8 +376,6 @@ test('it completes a forget after a failed prune once the next scheduled set pub
 
   invariant(earlier, 'the first pass staged a set before the forget');
   invariant(forgetSet, 'a pass staged the forget set');
-
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: earlier.sequence, status: 'published' });
 
   await writeTestBackupReceipt(ctx.dataDir, {
     sequence: forgetSet.sequence,

@@ -1,7 +1,9 @@
 import { expect, test } from 'bun:test';
 import {
+  readPurgeState,
   readSurvivingKeyIDs,
   readTestRecords,
+  seedBegunItemForget,
   seedBegunNoteForget,
   startE2ENixie,
 } from '@heynixie/server/test-utils';
@@ -52,5 +54,43 @@ test.each([
     expect(capturedKeyIDs.length).toBeGreaterThan(0);
     expect(surviving).toStrictEqual([]);
     expect(finished.payload['removedKeys']).toBe(capturedKeyIDs.length);
+  },
+);
+
+test.each([
+  'erasure.begun',
+  'erasure.sandboxes_destroyed',
+  'erasure.keys_removed',
+  'erasure.cleaned',
+  'erasure.turn_inputs_removed',
+] as const)(
+  'it finishes the memory item forget that nixie was killed during at %s, with every key of the item gone and counted',
+  async (point) => {
+    const nixie = await startE2ENixie();
+    const seed = await seedBegunItemForget(nixie);
+
+    const killed = nixie.harness.start([{ point, kind: 'erasure' }]);
+
+    await killed.waitForArrival(point);
+    await killed.kill();
+
+    const restarted = nixie.harness.start();
+
+    await restarted.ready;
+
+    const finished = await nixie.waitForRecord(
+      (record) => record.kind === 'erasure.finished' && record.payload['targetID'] === seed.itemID,
+    );
+
+    await restarted.kill();
+
+    const state = await readPurgeState(nixie);
+
+    const surviving = state.keyIDs.filter(
+      (keyID) => keyID === seed.itemID || keyID.startsWith(`${seed.itemID}/`),
+    );
+
+    expect(surviving).toStrictEqual([]);
+    expect(finished.payload['removedKeys']).toBe(2);
   },
 );

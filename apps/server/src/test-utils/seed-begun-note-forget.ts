@@ -33,7 +33,6 @@ export async function seedBegunNoteForget(
       log: testLog.context.log,
       definitions: testLog.context.definitions,
       erasure: runner,
-      cleanupSessions: () => Promise.resolve(),
       gate: {
         check: () =>
           Promise.resolve({

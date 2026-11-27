@@ -47,15 +47,10 @@ async function setupTest(options: TestOptions = {}) {
     (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
   );
 
-  const memory = await startTestMemoryStore(
-    context,
-    (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
-    options.encoderTopics,
-    {
-      erasure,
-      turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } },
-    },
-  );
+  const memory = await startTestMemoryStore(context, options.encoderTopics, {
+    erasure,
+    turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } },
+  });
 
   return {
     ...server,

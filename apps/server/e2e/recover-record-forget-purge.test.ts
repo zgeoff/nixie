@@ -67,9 +67,9 @@ test.skipIf(!isPreviousReleaseReadable)(
     const seed = await seedBegunPurge(nixie, { isOwned: true, isItemForgetting: true });
     const previous = await readPreviousReleaseBuild();
 
-    const killed = nixie.harness.start([{ point: 'memory.forget.key_removed', kind: 'memory' }]);
+    const killed = nixie.harness.start([{ point: 'erasure.keys_removed', kind: 'erasure' }]);
 
-    await killed.waitForArrival('memory.forget.key_removed');
+    await killed.waitForArrival('erasure.keys_removed');
     await killed.kill();
 
     const rolledBack = nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
