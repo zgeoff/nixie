@@ -1,6 +1,7 @@
 import { eventIterator } from '@orpc/contract';
 import { z } from 'zod';
 import { deviceEventSchema, notADeviceError, pixelsSchema } from './devices-contract';
+import { featureOffErrors } from './feature-off-errors';
 import { liveTopicSchema } from './live-topic-schema';
 import { recordSchema } from './record-schema';
 import { sequenceSchema } from './sequence-schema';
@@ -27,6 +28,7 @@ const liveEventSchema = z.discriminatedUnion('kind', [
 ]);
 
 const liveErrors = {
+  ...featureOffErrors,
   FORBIDDEN: { message: 'A device session follows only its own screen', status: 403 },
   NOT_A_DEVICE: notADeviceError,
 };

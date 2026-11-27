@@ -4,7 +4,7 @@ import { collectStaleImportExceptions } from './collect-stale-import-exceptions'
 test('it finds an import exception that matches nothing', () => {
   const stale = collectStaleImportExceptions(
     [],
-    [{ where: 'modules/api', imports: ['@heynixie/calls'], removedBy: 'GEO-2880' }],
+    [{ where: 'modules/api', imports: ['@heynixie/calls'], removedBy: 'GEO-2881' }],
   );
 
   expect(stale).toStrictEqual([

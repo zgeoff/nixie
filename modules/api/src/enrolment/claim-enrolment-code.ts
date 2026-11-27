@@ -1,4 +1,3 @@
-import { writeDevice } from '@heynixie/devices';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -6,6 +5,7 @@ import type { APIContext, APITables, SessionScope } from '../types';
 import { buildInputHash } from '../utils/build-input-hash';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
 import { readClientAction } from '../utils/read-client-action';
+import { sessionHooks } from '../utils/session-hooks';
 import { writeClientAction } from '../utils/write-client-action';
 import { createSecret } from './create-secret';
 import { normalizeEnrolmentCode } from './normalize-enrolment-code';
@@ -75,7 +75,8 @@ async function writeEnrolment(
     .where('expires_at', '>', context.clock.now())
     .executeTakeFirst();
 
-  if (code === undefined) {
+  // a code for a device scope outlives a switch of the devices feature off, and then claims nothing
+  if (code === undefined || (code.scope === 'device' && !context.features.includes('devices'))) {
     return { status: 'invalid' };
   }
 
@@ -85,12 +86,13 @@ async function writeEnrolment(
     scope: code.scope,
   });
 
-  await writeDevice(tx, {
-    identityID: session.sessionID,
-    name: pending.input.deviceName,
-    nowMs: context.clock.now(),
-    deviceKind: code.scope === 'device' ? 'screen' : 'client',
-  });
+  for (const hook of sessionHooks.list()) {
+    await hook.onEnrolled?.(
+      tx,
+      { identityID: session.sessionID, name: pending.input.deviceName, scope: code.scope },
+      context.clock.now(),
+    );
+  }
 
   await tx
     .$extendTables<APITables>()

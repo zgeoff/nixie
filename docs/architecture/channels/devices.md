@@ -9,10 +9,10 @@ assistant lists devices and shows markdown or an image on a screen that is on. O
 a long answer on the call's device. The camera, the speaker and the microphone are not built: a
 device record holds their capabilities, and every one of them stays off.
 
-The `devices` module owns the record, the screen state, the open streams and the tools. The
-[API](api.md) owns registration, enrolment and the session scope, and the [web client](client.md)
-owns device mode and the device view. Read this doc before you change the `devices` module, a device
-tool or device mode.
+Read this doc before you change the `devices` module, a device tool or device mode. The `devices`
+module holds the record, the screen state, the open streams and the tools. For registration,
+enrolment and the session scope, read the [API](api.md) doc. For device mode and the device view,
+read the [web client](client.md) doc.
 
 ## Enrolment and the session scope
 
@@ -21,22 +21,24 @@ scope of the session it makes, on `enrolment_codes`. `sessions.enrol` takes no s
 takes the scope of its code: a device code makes only a device session, and a full code only a full
 session.
 
-A device row belongs to one session, and a session holds exactly one, from its enrolment until a
-revoke or a sign-out removes the row. The row's `device_kind` is `client` for a full session and
-`screen` for a device session. A client device starts with its screen on, so the assistant may draw
-on it, and the user sees what it drew only when they open the
-[device view](client.md#the-device-view). A screen device starts with every capability off, and its
-screen stays off until the device switches it on. The migration that adds `device_kind` gives each
-existing full session with no row a client row, named with its label and with the screen on, and
-makes the row that `devices.register` wrote a client row that keeps its name and screen.
+A device row belongs to one session, and a session holds at most one, from its enrolment until a
+revoke or a sign-out removes the row. Enrolment always writes the row, and the migration below gives
+each earlier client session one, so a client session holds a row from the day it is made. The row's
+`device_kind` is `client` for a full session and `screen` for a device session. A client device
+starts with its screen on, so the assistant may draw on it, and the user sees what it drew only when
+they open the [device view](client.md#the-device-view). A screen device starts with every capability
+off, and its screen stays off until the device switches it on. The migration that adds `device_kind`
+gives each existing client session that is not revoked and has no row a client row, named with its
+label and with the screen on, and makes the row that `devices.register` wrote a client row that
+keeps its name and screen.
 
 1. A signed-in client calls `sessions.issueCode({ scope: 'device' })`, and the page `/add-device`
    shows the code. `nixie enrol-code device` issues the same code from the host.
 2. A browser with no session opens `/device`, and enrols with the code and a name. Enrolment writes
    the `devices` row in the same transaction as the session, for a full code and a device code, and
    for a cookie and a bearer session alike, so the phone app is a device too.
-3. A browser with a full session may call `devices.register({ clientActionID, name })`. The call is
-   for a `full` session only. It renames the session's row in one write transaction, leaves its
+3. A browser with a full session may call `devices.register({ clientActionID, name })`. A device
+   session may not call it. The call renames the session's row in one write transaction, leaves its
    screen as it is, and returns the device's short ID. It writes a client row when the session holds
    none. It issues no code, makes no session and never touches the cookie. A retry with the same
    client action ID and name returns the same ID, and the same ID with another name gets
@@ -46,9 +48,9 @@ makes the row that `devices.register` wrote a client row that keeps its name and
    screen as the row holds it.
 
 `live.follow` in its device form, `devices.setCapability`, `devices.readImage` and `devices.resize`
-act on the caller's own row. A full session whose row is missing gets `NOT_A_DEVICE` and may
-register to get one. A device session whose row a revoke removed gets the refusal of a missing
-session.
+act on the caller's own row. A full session whose row is missing, a case the server does not expect
+but still answers, gets `NOT_A_DEVICE` and may register to get one. A device session whose row a
+revoke removed gets the refusal of a missing session.
 
 A device session may call only `live.follow` in its device form, `devices.resize`,
 `devices.pageError`, `devices.pageEvent`, `devices.pageData`, `devices.setCapability`,
@@ -421,7 +423,8 @@ among them.
 - `devices.list` marks `onCall: true` on the one device whose session is the call's carrying session
   while the call is `live`, and `false` on every other device, before the call is live and after it
   ends too. The server wires the carrying session from the calls module as a `ReadCallSession`
-  dependency of the device tools, so neither module imports the other.
+  dependency of the device tools, so neither module imports the other. When calls is off, no call is
+  live, so `onCall` is `false` on every device.
 - No tool takes "the call's device" as a target. The assistant passes the device's short ID from
   `devices.list`, as for any other device.
 - The call turn's prompt tells the assistant to keep a spoken reply to about 3 sentences, and to put
@@ -583,20 +586,21 @@ Device mode is the route `/device` of the web client, a separate page from the
 - A browser with a device session comes back with the screen as the row holds it, which starts off.
   A button switches the screen.
 
-While the screen is off, the page keeps the tab's device stream open, so the device stays online.
-Sign out ends a live call before it signs the session out, so the call's microphone and peer
+While the screen is off, the page keeps the device form of `live.follow` open, so the device stays
+online. Sign out ends a live call before it signs the session out, so the call's microphone and peer
 connection close with it.
 
-With the screen on, the page opens the device form of `live.follow`. A layout draws as a CSS grid,
-and each region keeps its place as another updates. A region with a `background` draws it, with
-black or white text, whichever has the higher WCAG contrast ratio on it. Markdown and a live value
-grow to the largest size that fits their region, and fit again when the region's size or the text
-changes. A clock or a countdown ticks each second from the browser's own time, with no event from
-the server. The page renders markdown like a reply and an image on black: `whole` scales it to fit
-and centres it, `fill` covers the screen and crops evenly. The page sends `devices.resize` after the
-window resizes, at most once per debounce window and only when the size differs from the one the
-server has, so the assistant reads the new size within a second. The server has the size from the
-latest stream connect or answered resize.
+With the screen on, the page keeps that same stream open. A layout draws as a CSS grid, and each
+region keeps its place as another updates. A region with a `background` draws it, with black or
+white text, whichever has the higher WCAG contrast ratio on it. Markdown and a live value grow to
+the largest size that fits their region, and fit again when the region's size or the text changes. A
+clock or a countdown ticks each second from the browser's own time, with no event from the server.
+The page renders markdown like a reply and an image on black: `whole` scales it to fit and centres
+it, `fill` covers the screen and crops evenly. After the window resizes, the page sends
+`devices.resize` at most once per debounce window, and only when the size differs from the one the
+server has. The assistant reads the new size within a second. The server takes the size from the
+stream's connect until a resize is answered. After that, the resize's size stands against a later
+connect, until every stream of the device has closed.
 
 While the screen is on, the page hides its close, full-screen, screen-off and sign-out buttons until
 a touch or a pointer move, and shows them for `revealMs` after the latest one. Close leaves full
@@ -605,3 +609,18 @@ element with the Fullscreen API. Its label reads Full screen or Leave full scree
 `fullscreenchange`, so Escape updates it. The page keeps the screen awake with the Wake Lock API
 while a stream is open, and asks for the lock again when the page shows again. The web server sends
 the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.
+
+## The devices section
+
+Devices are on only while the config has a `devices` section, and the section takes no field yet. A
+config without it starts no device part, offers the model no device tool, leaves `devices` out of
+`nixie.read`, answers each `devices` procedure and the device form of `live.follow` with
+`FEATURE_OFF`, refuses to issue a code for a device session, and serves no device page. When
+upgrading from a release before the section existed, add `devices: {}` to the config to keep the
+devices.
+
+When the section is there, the server gives the API the device procedures, the device page routes
+and the device stream through its feature procedures, adds the device row's session hook, and adds
+the device inbox kinds and the package-install card reader to the core lists. For the feature
+procedures and the core lists, read the [feature switches](../deployment/server.md#feature-switches)
+section of the server doc.

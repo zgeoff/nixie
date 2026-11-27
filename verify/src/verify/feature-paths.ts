@@ -23,9 +23,15 @@ const coding: FeatureReach = {
 };
 
 const calls: FeatureReach = {
-  packages: ['adapters/speech-gpt-live'],
+  packages: [],
+
+  // Listed as paths, because the walk would follow these packages' dependency on `modules/api`
+  // into `modules/coding`, and flag the coding features on a calls change.
   paths: [
+    'modules/calls/**',
+    'adapters/speech-gpt-live/**',
     'apps/server/src/call/**',
+    'apps/server/src/part/{calls-part-declarations,start-calls-part}.ts',
     'apps/server/src/part/harness-speech.ts',
     'apps/web/src/routes/call.tsx',
 
@@ -37,7 +43,9 @@ const calls: FeatureReach = {
 const devices: FeatureReach = {
   packages: ['guests/render'],
   paths: [
-    'apps/server/src/part/start-render-part.ts',
+    // a path, for the reason that `calls` lists its modules as paths
+    'modules/devices/**',
+    'apps/server/src/part/{build-device-fetch,devices-part-declarations,start-render-part}.ts',
     'apps/web/src/routes/{add-device,device,device-view}.tsx',
   ],
 };
@@ -112,6 +120,8 @@ export const featurePaths = {
   }),
   'google-connections': buildFeatureGlobs(workspace, google),
   'google-off': buildFeatureGlobs(workspace, google),
+  'calls-off': buildFeatureGlobs(workspace, calls),
+  'devices-off': buildFeatureGlobs(workspace, devices),
   'gmail-tools': buildFeatureGlobs(workspace, google),
   'gmail-wake': buildFeatureGlobs(workspace, google),
   'calendar-tools': buildFeatureGlobs(workspace, google),

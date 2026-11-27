@@ -15,7 +15,7 @@ import {
   runSeed,
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
-import { readDeviceByIdentity } from '@heynixie/devices';
+import { createDeviceStreams, readDeviceByIdentity } from '@heynixie/devices';
 import { makeDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
@@ -377,13 +377,15 @@ test('it keeps an enrolled device through a reset and clears what it showed', as
 
   const device = await seedScreenOnDevice({ log: ctx.context.log, clock: ctx.context.clock });
 
-  ctx.context.clients.devices.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+  const streams = createDeviceStreams({ clock: ctx.context.clock });
+
+  streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
   const call = makeDeviceToolCaller({
     log: ctx.context.log,
     definitions: ctx.context.definitions,
     clock: ctx.context.clock,
-    streams: ctx.context.clients.devices,
+    streams,
     readCallSession: () => Promise.resolve(null),
   });
 

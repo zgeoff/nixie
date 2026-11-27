@@ -1,10 +1,8 @@
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
-import { createCallsProcedures } from '../calls/create-calls-procedures';
 import { createComputerProcedures } from '../computer/create-computer-procedures';
 import { createConnectionProcedures } from '../connection/create-connection-procedures';
 import { createDefinitionProcedures } from '../definition/create-definition-procedures';
-import { createDeviceProcedures } from '../device/create-device-procedures';
 import { createSignOutProcedure } from '../device/create-sign-out-procedure';
 import { createErasureProcedures } from '../erasure/create-erasure-procedures';
 import { createFilesProcedures } from '../file/create-files-procedures';
@@ -23,6 +21,8 @@ import { createRecordProcedures } from '../record/create-record-procedures';
 import { createReminderProcedures } from '../reminder/create-reminder-procedures';
 import { createMandateProcedures } from '../rule/create-mandate-procedures';
 import { createRuleProcedures } from '../rule/create-rule-procedures';
+import { createCallsOffProcedures } from '../session/create-calls-off-procedures';
+import { createDevicesOffProcedures } from '../session/create-devices-off-procedures';
 import { createSessionProcedures } from '../session/create-session-procedures';
 import { createSpendProcedures } from '../spend/create-spend-procedures';
 import type { APIContext } from '../types';
@@ -43,13 +43,13 @@ export function createAPIRouter(
   return apiImplementer.router({
     approvals: createApprovalProcedures(context, parts),
     backups: createBackupProcedures(context),
-    calls: createCallsProcedures(context),
+    calls: (context.readFeatureProcedures?.().calls ?? createCallsOffProcedures)(context),
     computer: createComputerProcedures(context),
     connections: createConnectionProcedures(context),
     mcp: createMcpProcedures(context),
     conversation: createConversationProcedures(context),
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
-    devices: createDeviceProcedures(context),
+    devices: (context.readFeatureProcedures?.().devices ?? createDevicesOffProcedures)(context),
     erasure: createErasureProcedures(context),
     files: createFilesProcedures(context),
     images: createImagesProcedures(context),

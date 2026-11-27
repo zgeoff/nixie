@@ -43,8 +43,16 @@ test('it declares a missing device session and a missing device row for each own
     contract.devices.resize['~orpc'].errorMap,
     contract.devices.setCapability['~orpc'].errorMap,
   ]).toStrictEqual([
-    { UNAUTHORIZED: expect.anything(), NOT_A_DEVICE: expect.anything() },
-    { UNAUTHORIZED: expect.anything(), NOT_A_DEVICE: expect.anything() },
+    {
+      UNAUTHORIZED: expect.anything(),
+      FEATURE_OFF: expect.anything(),
+      NOT_A_DEVICE: expect.anything(),
+    },
+    {
+      UNAUTHORIZED: expect.anything(),
+      FEATURE_OFF: expect.anything(),
+      NOT_A_DEVICE: expect.anything(),
+    },
   ]);
 });
 
@@ -52,5 +60,6 @@ test('it declares a missing device session and a reused action ID for a device r
   expect(contract.devices.register['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
     'CLIENT_ACTION_ID_REUSED',
+    'FEATURE_OFF',
   ]);
 });

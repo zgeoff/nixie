@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession } from '../conversation/read-route-session';
 import { AddDevicePage } from '../device/add-device-page';
+import { FeatureGate } from '../features/feature-gate';
 
 export const Route = createFileRoute('/add-device')({
   component: AddDevice,
@@ -22,7 +23,9 @@ function AddDevice(): ReactNode {
       }}
       session={data.session}
     >
-      <AddDevicePage />
+      <FeatureGate feature="devices">
+        <AddDevicePage />
+      </FeatureGate>
     </SignedInPage>
   );
 }

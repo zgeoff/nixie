@@ -64,6 +64,30 @@ test('it flags only the Google features for a change under adapters/connector-go
   ]);
 });
 
+test('it flags the calls features, and no coding feature, for a change under modules/calls', async () => {
+  const ctx = await setupTest();
+
+  expect(ctx.collectFlagged('modules/calls/src/index.ts')).toStrictEqual([
+    'call-hand-off',
+    'call-screen',
+    'call-device-show',
+    'calls-off',
+  ]);
+});
+
+test('it flags the device features for a change under modules/devices', async () => {
+  const ctx = await setupTest();
+
+  expect(ctx.collectFlagged('modules/devices/src/index.ts')).toStrictEqual([
+    'call-device-show',
+    'devices-off',
+    'device-in-browser',
+    'device-view',
+    'device-screen',
+    'device-layout',
+  ]);
+});
+
 test.each([
   'apps/server/src/main.ts',
   'apps/server/src/part/start-part-graph.ts',

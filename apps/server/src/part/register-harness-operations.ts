@@ -27,6 +27,7 @@ export interface HarnessParts {
   readonly phone: FakePhoneProvider | null;
   readonly notebook: NotebookStore;
   readonly runInForceSeed: () => Promise<unknown>;
+  readonly readToolNames: () => readonly string[];
 }
 
 export function registerHarnessOperations(
@@ -167,6 +168,10 @@ export function registerHarnessOperations(
 
     return answers.approved;
   });
+
+  link.registerOperation('readRegisteredTools', schemas.readRegisteredTools, () => [
+    ...parts.readToolNames(),
+  ]);
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {
     removeLockDescriptor(context.log.writer.dataDir);

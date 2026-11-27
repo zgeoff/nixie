@@ -1,8 +1,7 @@
-import type { TurnAnswer } from '@heynixie/calls';
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
 import type { SpendContext } from '@heynixie/spend';
-import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
+import type { StepInput, StepResult, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import type {
   ConversationMemory,
@@ -44,18 +43,24 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
 }
 
 export interface CallStepHooks {
-  // the voice-call prompt, which follows the conversation's prompt in a call's session
-  readonly voicePrompt: string;
+  // the call's prompt, which follows the conversation's prompt in a call's session
+  readonly prompt: string;
 
   // the conversation's tool names, from which a call's tool list is built
   readonly conversationToolNames: readonly string[];
 
-  // sends a turn's answer to the speech layer when the turn ends
-  readonly answer: (answer: TurnAnswer) => Promise<void>;
+  // the tools that only a call's session holds
+  readonly addedToolNames: readonly string[];
 
-  // closes the hand-offs of a turn the user cut, with no answer and no holding line
-  readonly closeCutHandOffs: (callID: string, handOffIDs: readonly string[]) => void;
+  // Runs one step of a call's thread around the model turn, answers the speech layer when the turn
+  // ends and ends the call when the turn asked to hang up.
+  readonly runStep: (step: CallStep) => Promise<StepResult>;
+}
 
-  // ends the call once the turn's answers are sent, when the turn asked to hang up
-  readonly endTurn: (callID: string) => Promise<void>;
+export interface CallStep {
+  readonly context: Pick<TasksContext, 'log'>;
+  readonly input: StepInput;
+
+  // runs the model turn of the call's step
+  readonly runTurn: () => Promise<StepResult>;
 }

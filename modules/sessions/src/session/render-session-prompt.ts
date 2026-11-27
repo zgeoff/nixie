@@ -37,7 +37,7 @@ export function renderSessionPrompt(frame: SessionFrame, values: SessionPromptVa
           { persona: values.persona, skillCatalog: values.skillCatalog, owner },
           values.prompts,
         ),
-        call.voicePrompt,
+        call.prompt,
       ].join('\n\n'),
     )
     .with({ kind: 'task' }, () => {

@@ -1,10 +1,11 @@
-import type { VoiceDefinitions } from '@heynixie/calls';
 import type { JSONObject } from '@heynixie/log';
 import type { McpOverrides } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
+import { definitionSections } from '../section/definition-sections';
 import type {
   DefinitionBudget,
   DefinitionsSnapshot,
+  SectionValues,
   SkillRef,
   SnapshotPolicy,
   SnapshotTask,
@@ -33,8 +34,8 @@ export interface DefinitionsSnapshotInput {
   // the override files of the MCP proxy, by server ID, which a call of a proxied tool runs under
   readonly mcp?: McpOverrides;
 
-  // the voice settings, which enter the snapshot only when the definitions hold some
-  readonly voice?: VoiceDefinitions | null;
+  // the value of each section that a feature adds, which enters the snapshot only when held
+  readonly sections?: SectionValues;
 }
 
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
@@ -70,7 +71,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     (budget) => budget.id,
   );
 
-  const voice = input.voice ?? null;
+  const sections = input.sections ?? {};
 
   const form = toCanonicalJSON({
     conversation,
@@ -83,7 +84,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     ...(Object.keys(input.mcp ?? {}).length === 0
       ? {}
       : { mcp: toMcpOverridesForm(input.mcp ?? {}) }),
-    ...(voice === null ? {} : { voice: buildVoiceForm(voice) }),
+    ...buildSectionForms(sections),
   });
 
   return {
@@ -93,7 +94,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     persona,
     prompts: input.prompts,
     tasks,
-    voice,
+    sections,
     form,
   };
 }
@@ -146,16 +147,14 @@ function buildTaskForm(task: SnapshotTask): SnapshotTask {
     : { id: task.id, hash: task.hash, origin: 'definitions' };
 }
 
-function buildVoiceForm(voice: VoiceDefinitions): JSONObject {
-  return {
-    voice: voice.voice,
-    holdAfterMs: voice.holdAfterMs,
-    pricePerMinuteMicros: voice.pricePerMinuteMicros,
-    lines: {
-      holding: voice.lines.holding,
-      reconnect: voice.lines.reconnect,
-      couldntFinish: voice.lines.couldntFinish,
-      budget: voice.lines.budget,
-    },
-  };
+function buildSectionForms(sections: SectionValues): JSONObject {
+  return Object.fromEntries(
+    definitionSections
+      .list()
+      .flatMap((section) =>
+        sections[section.key] === undefined
+          ? []
+          : [[section.key, section.toForm(sections[section.key])]],
+      ),
+  );
 }

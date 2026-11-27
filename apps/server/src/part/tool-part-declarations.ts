@@ -1,3 +1,4 @@
+import { buildHangUpTool } from '@heynixie/calls';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { addCodingConnectors } from '../coding/add-coding-connectors';
@@ -22,6 +23,7 @@ import { buildActions } from '../test/build-actions';
 import { buildStubImageProviders } from '../test/build-stub-image-providers';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
+import { buildDeviceFetch } from './build-device-fetch';
 import { buildImageProviders } from './build-image-providers';
 import { collectHostHeldNames } from './collect-host-held-names';
 import { makeLazyToolSource } from './make-lazy-tool-source';
@@ -110,7 +112,9 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       ),
   },
   {
+    // The sandbox that draws the preview of a device page.
     name: 'render',
+    feature: 'devices',
     needs: ['inputs', 'sandbox_adapter'],
     optionalImages: () => ['render'],
     start: (parts) =>
@@ -176,8 +180,11 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'tool_endpoint',
-    needs: ['inputs', 'context', 'web_fetch', 'render', 'worker', 'actions', 'decisions'],
+    needs: ['inputs', 'context', 'web_fetch', 'worker', 'actions', 'decisions'],
     uses: [
+      'render',
+      'calls',
+      'device_streams',
       'computer',
       'google_tools',
       'phone',
@@ -202,6 +209,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       );
 
       const definitionsExport = options.definitionsExport;
+      const calls = parts.find('calls');
 
       return startConversationEndpoint(
         {
@@ -213,7 +221,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         {
           webFetch: parts.get('web_fetch').tool,
           computer: parts.find('computer')?.tools ?? [],
-          render: parts.get('render'),
+          render: parts.find('render') ?? null,
           coding: buildServerCodingTools(parts.get('context')),
           mail: buildServerMailTools(mailContext, parts.get('web_fetch')),
           phone: parts.find('phone')?.tools ?? [],
@@ -227,15 +235,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             nowMs: () => parts.get('context').apiContext.clock.now(),
             stuckAfterMs: options.config.erasure.stuckAfterMs,
           }),
-          deviceStreams: parts.get('context').apiContext.clients.devices,
-          deviceFetch: {
-            fetch: parts.get('web_fetch').deviceFetch,
-            registry: parts.get('web_fetch').packageRegistry,
-            backoff: parts.get('web_fetch').backoff,
-            checkAddress: parts.get('web_fetch').checkAddress,
-            findSecret: parts.get('web_fetch').findSecret,
-            logger: parts.get('web_fetch').logger,
-          },
+          deviceStreams: parts.find('device_streams'),
+          deviceFetch: buildDeviceFetch(parts.get('web_fetch')),
           worker: parts.get('worker'),
           search:
             options.search === null
@@ -288,7 +289,10 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                   readReviewer: () => parts.find('checker')?.check ?? null,
                 },
           isPromptExported: definitionsExport !== null,
-          calls: parts.get('context').apiContext.calls,
+          callTools:
+            calls === null
+              ? []
+              : [buildHangUpTool(() => calls.context, parts.get('context').apiContext)],
         },
       );
     },

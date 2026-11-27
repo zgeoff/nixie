@@ -1,10 +1,8 @@
-import { requireDevice } from '../device/require-device';
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readHeadSequence } from '../utils/read-head-sequence';
-import { streamLiveDevice } from './stream-live-device';
 import { streamLivePage } from './stream-live-page';
 
 export function createLiveProcedures(context: APIContext) {
@@ -15,17 +13,20 @@ export function createLiveProcedures(context: APIContext) {
       const input = options.input;
 
       if ('device' in input) {
-        const caller = await requireDevice(context, options.context.sessionToken, {
-          buildUnauthorized: options.errors.UNAUTHORIZED,
-          buildNotADevice: options.errors.NOT_A_DEVICE,
-        });
+        const openDeviceStream = context.readFeatureProcedures?.().deviceStream;
 
-        return streamLiveDevice(context, {
-          device: caller.device,
-          token: options.context.sessionToken,
-          isKeptActive: caller.caller.scope === 'device',
+        if (openDeviceStream === undefined) {
+          await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+          throw options.errors.FEATURE_OFF({ data: { feature: 'devices' } });
+        }
+
+        return openDeviceStream(context, {
+          sessionToken: options.context.sessionToken,
           pixels: input.device.pixels,
           signal: options.signal,
+          buildUnauthorized: options.errors.UNAUTHORIZED,
+          buildNotADevice: options.errors.NOT_A_DEVICE,
         });
       }
 

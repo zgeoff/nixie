@@ -79,3 +79,34 @@ test('it runs a held started task at server start, and leaves a held task that t
   expect(revived['tasks']).toBe(1);
   expect(paused).toStrictEqual([]);
 });
+
+test('it claims no call task at server start while the config has no voice section', async () => {
+  const seeded = Promise.withResolvers<{ readonly held: HeldTasks; readonly callTaskID: string }>();
+
+  const nixie = await startInProcessNixie({
+    roleModelURLs: { task: 'http://127.0.0.1:4040' },
+    beforeStart: async (_files, seed) => {
+      const callTaskID = await seed.callTask();
+      const held = await seed.heldTasks();
+
+      seeded.resolve({ held, callTaskID });
+    },
+  });
+
+  const tasks = await seeded.promise;
+
+  // the held task is claimed by a pool that runs beside the one that would claim the call task
+  await waitForCondition(() =>
+    nixie.guest.received.some((received) => received.owner === tasks.held.heldID),
+  );
+
+  nixie.signalStop();
+
+  const exited = await nixie.waitForExit();
+
+  expect(
+    exited.records.filter(
+      (record) => record.thread === tasks.callTaskID && record.kind !== 'task.created',
+    ),
+  ).toStrictEqual([]);
+});

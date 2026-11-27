@@ -1,8 +1,9 @@
-import { callTurnPrompt, closeCutHandOffs, endAskedCall, sendTurnAnswer } from '@heynixie/calls';
+import { buildCallStepHooks } from '@heynixie/calls';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
 import { makeInStepActions } from '../action/make-in-step-actions';
+import type { CallsPart } from '../part/start-calls-part';
 import { toImageNames } from '../sandbox/to-image-names';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
@@ -11,6 +12,7 @@ import { toSessionDefinitions } from '../utils/to-session-definitions';
 export async function startSandboxTaskRunner(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
+  calls: CallsPart | null,
 ): Promise<SandboxRunner> {
   const runner = await startSandboxRunner({
     context: parts.context,
@@ -36,31 +38,14 @@ export async function startSandboxTaskRunner(
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     inStepActions: makeInStepActions(parts),
     log: parts.log,
-    calls: {
-      voicePrompt: callTurnPrompt,
-      conversationToolNames: parts.tools.definitions.map((definition) => definition.name),
-      answer: async (answer) => {
-        const calls = parts.apiContext.calls;
-
-        if (calls !== undefined) {
-          await sendTurnAnswer(calls, answer);
-        }
-      },
-      closeCutHandOffs: (callID, handOffIDs) => {
-        const calls = parts.apiContext.calls;
-
-        if (calls !== undefined) {
-          closeCutHandOffs(calls, callID, handOffIDs);
-        }
-      },
-      endTurn: async (callID) => {
-        const calls = parts.apiContext.calls;
-
-        if (calls !== undefined) {
-          await endAskedCall(calls, callID);
-        }
-      },
-    },
+    ...(calls === null
+      ? {}
+      : {
+          calls: buildCallStepHooks(
+            calls.context,
+            parts.tools.definitions.map((definition) => definition.name),
+          ),
+        }),
   });
 
   await parts.cleanup.defer(() => runner.stop());

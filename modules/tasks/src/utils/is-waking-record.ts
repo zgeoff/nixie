@@ -29,14 +29,6 @@ export function isWakingRecord(
     return added.wakes(record.payload);
   }
 
-  const kind: string = record.kind;
-
-  // The call's own thread: what the user said and the speech layer said is read with the next
-  // hand-off, which alone starts a turn.
-  if (kind === 'call.spoke' || kind === 'call.heard_cut') {
-    return false;
-  }
-
   if (record.kind === 'owner_message' && record.payload['isDictated'] === true) {
     return false;
   }

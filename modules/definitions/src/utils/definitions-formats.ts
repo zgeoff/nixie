@@ -20,5 +20,4 @@ export const definitionsFormats = {
   budgets: 5,
 
   mcp: 6,
-  voice: 5,
 };

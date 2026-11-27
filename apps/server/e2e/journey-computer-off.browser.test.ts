@@ -4,7 +4,7 @@ import { setupSignedInBrowser, waitForPage } from '@heynixie/web/test-utils';
 import { startWebJourney } from '../src/test-utils/start-web-journey';
 
 async function setupTest() {
-  const journey = await startWebJourney({ isComputerOff: true });
+  const journey = await startWebJourney({ isComputerOff: true, isVoiceOff: true });
   const api = await createTestClient(journey.server);
 
   await setupSignedInBrowser(journey.view, { appURL: journey.appURL, token: api.token });

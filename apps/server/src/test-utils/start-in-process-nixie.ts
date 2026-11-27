@@ -56,6 +56,7 @@ export interface InProcessNixieOptions {
   readonly isComputerOff?: boolean;
   readonly isCodeOff?: boolean;
   readonly isGoogleOff?: boolean;
+  readonly isDevicesOff?: boolean;
 
   // Pages that web_fetch serves, because the fetch guest refuses every address a test can serve.
   // With none, a fetch sandbox goes to the stub guest like any other.
@@ -193,6 +194,7 @@ async function startFirstRun(
     ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
     ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
     ...(options.isGoogleOff === true ? { isGoogleOff: true } : {}),
+    ...(options.isDevicesOff === true ? { isDevicesOff: true } : {}),
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
     ...(options.roleModelURLs === undefined ? {} : { roleModelURLs: options.roleModelURLs }),
     ...(options.selectableModelURLs === undefined

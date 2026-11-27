@@ -9,3 +9,5 @@ export { readTestRuntimeTasks } from './read-test-runtime-tasks';
 export type { TaskVersionSeed } from './seed-task-versions';
 export { seedTaskVersions } from './seed-task-versions';
 export { seedLegacyRuleProposal } from './seed-legacy-rule-proposal';
+export { buildStubSection } from './build-stub-section';
+export { useStubSection } from './use-stub-section';

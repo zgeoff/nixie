@@ -8,9 +8,9 @@ async function setupTest(secrets: Record<string, string>) {
 
   const logged: { event: string; fields: unknown }[] = [];
 
-  const build = (reference: string | null) =>
+  const build = (reference: string) =>
     buildServerSpeech({
-      voice: reference === null ? null : { provider: 'gpt-live', credential: reference },
+      voice: { provider: 'gpt-live', credential: reference },
       credentials,
       clock: createFakeClock(),
       logEvent: (event, fields) => {
@@ -20,12 +20,6 @@ async function setupTest(secrets: Record<string, string>) {
 
   return { build, logged };
 }
-
-test('it builds no speech layer without a voice section', async () => {
-  const ctx = await setupTest({ speech: 'fake-key' });
-
-  expect(ctx.build(null)).toBeNull();
-});
 
 test('it builds the GPT-Live layer when the voice credential is in the secrets file', async () => {
   const ctx = await setupTest({ speech: 'fake-key' });

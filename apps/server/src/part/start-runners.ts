@@ -12,11 +12,16 @@ import type { ServerParts } from '../types';
 import { makeLazyToolSource } from './make-lazy-tool-source';
 import { makeStepErrorLogger } from './make-step-error-logger';
 
+export interface RunnerOptions {
+  readonly readMcp: () => Mcp | null;
+  readonly stopCleanups: () => void;
+  readonly hasCalls: boolean;
+}
+
 export async function startRunners(
   parts: ServerParts,
   runStep: RunStep,
-  readMcp: () => Mcp | null,
-  stopCleanups: () => void,
+  options: RunnerOptions,
 ): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
@@ -32,10 +37,16 @@ export async function startRunners(
       runStep: parts.tools.actions.trackSteps(runStep),
       size: parts.config.tasks.startedClaimLoops,
     },
-    call: {
-      runStep: parts.tools.actions.trackSteps(runStep),
-      size: parts.config.tasks.callClaimLoops,
-    },
+
+    // Without the calls feature, no runner handles a call task, so no pool claims one.
+    ...(options.hasCalls
+      ? {
+          call: {
+            runStep: parts.tools.actions.trackSteps(runStep),
+            size: parts.config.tasks.callClaimLoops,
+          },
+        }
+      : {}),
     onStepErrored: (errored) => {
       logStepError(errored);
       markConversationFailure(errored);
@@ -47,11 +58,11 @@ export async function startRunners(
 
   const registry = buildToolRegistry(
     [...parts.tools.definitions, parts.tools.actions.logConnector.tool],
-    [makeLazyToolSource(() => readMcp()?.tools ?? null)],
+    [makeLazyToolSource(() => options.readMcp()?.tools ?? null)],
   );
 
   const readConnector = (tool: string) =>
-    parts.tools.actions.connectors.get(tool) ?? readMcp()?.findConnector(tool);
+    parts.tools.actions.connectors.get(tool) ?? options.readMcp()?.findConnector(tool);
 
   const actions = startActionRunners(parts.context, {
     connectors: { get: readConnector },
@@ -75,7 +86,7 @@ export async function startRunners(
   await parts.cleanup.defer(async () => {
     // The runners stop before the notebook and the memory store, which wait for each session
     // cleanup in flight, so a cleanup that waits on a stalled turn ends here and not at the limit.
-    stopCleanups();
+    options.stopCleanups();
 
     await Promise.all([tasks.stop(), actions.stop()]);
   });

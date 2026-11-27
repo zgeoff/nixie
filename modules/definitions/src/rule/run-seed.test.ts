@@ -23,6 +23,7 @@ import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildTestToolDeclaration } from '../test-utils/build-test-tool-declaration';
 import { createStubGitSyncWorktree } from '../test-utils/create-stub-git-sync-worktree';
 import { seedLegacyRuleProposal } from '../test-utils/seed-legacy-rule-proposal';
+import { useStubSection } from '../test-utils/use-stub-section';
 import { buildContentHash } from '../utils/build-content-hash';
 import { buildSHA256 } from '../utils/build-sha256';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
@@ -320,7 +321,7 @@ test('it returns the definitions it put in force', async () => {
     skills: [],
     conversationSkills: [],
     tasks: [],
-    voice: null,
+    sections: {},
   });
 });
 
@@ -3112,13 +3113,15 @@ test('it applies a budget that raises a built-in limit, as one that lowers it', 
   expect(rows.rows).toStrictEqual([{ budget_id: 'search-day' }, { budget_id: 'search-month' }]);
 });
 
-test('it puts the voice settings in force and in the snapshot hash', async () => {
+test('it puts the extras settings in force and in the snapshot hash', async () => {
+  useStubSection();
+
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'voice'));
-  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), 'price_per_minute: 0.05\n');
+  await mkdir(join(ctx.root, 'extras'));
+  await writeFile(join(ctx.root, 'extras', 'extras.yaml'), 'count: 5\n');
 
   const result = await runSeed({
     tasks: buildTestTaskSeed(),
@@ -3131,48 +3134,52 @@ test('it puts the voice settings in force and in the snapshot hash', async () =>
 
   invariant(result.status === 'seeded', 'the seed applies');
 
-  expect([
-    result.inForce.voice?.pricePerMinuteMicros,
-    stored?.voice?.pricePerMinuteMicros,
-  ]).toStrictEqual([50_000, 50_000]);
+  expect([result.inForce.sections['extras'], stored?.sections['extras']]).toStrictEqual([
+    { count: 5 },
+    { count: 5 },
+  ]);
 });
 
-test('it seeds a repo whose voice file is bad, reports the file and holds no voice settings', async () => {
+test('it seeds a repo whose extras file is bad, reports the file and holds no extras settings', async () => {
+  useStubSection();
+
   const ctx = await setupTest();
 
   const reported: string[] = [];
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'voice'));
-  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), 'price_per_minute: -3\n');
+  await mkdir(join(ctx.root, 'extras'));
+  await writeFile(join(ctx.root, 'extras', 'extras.yaml'), 'count: -3\n');
 
   const result = await runSeed({
     tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
-    onVoiceProblem: (problem) => {
+    onSectionProblem: (problem) => {
       reported.push(problem.path);
     },
   });
 
   const stored = await readDefinitionsInForce(ctx.writer.db);
 
-  expect([result.status, reported, stored?.voice]).toStrictEqual([
+  expect([result.status, reported, stored?.sections['extras']]).toStrictEqual([
     'seeded',
-    ['voice/voice.yaml'],
-    null,
+    ['extras/extras.yaml'],
+    undefined,
   ]);
 });
 
-test('it keeps the voice settings through a seed of the definitions in force', async () => {
+test('it keeps the extras settings through a seed of the definitions in force', async () => {
+  useStubSection();
+
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'voice'));
-  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), 'price_per_minute: 0.05\n');
+  await mkdir(join(ctx.root, 'extras'));
+  await writeFile(join(ctx.root, 'extras', 'extras.yaml'), 'count: 5\n');
 
   const first = await runSeed({
     tasks: buildTestTaskSeed(),
@@ -3191,80 +3198,86 @@ test('it keeps the voice settings through a seed of the definitions in force', a
   expect([first.status, again.status]).toStrictEqual(['seeded', 'unchanged']);
 });
 
-test('it seeds a repo whose voice file is not UTF-8 text, and reports the file', async () => {
+test('it seeds a repo whose extras file is not UTF-8 text, and reports the file', async () => {
+  useStubSection();
+
   const ctx = await setupTest();
 
   const reported: { path: string; reason: string }[] = [];
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'voice'));
-  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), new Uint8Array([0xff, 0xfe, 0x3a]));
+  await mkdir(join(ctx.root, 'extras'));
+  await writeFile(join(ctx.root, 'extras', 'extras.yaml'), new Uint8Array([0xff, 0xfe, 0x3a]));
 
   const result = await runSeed({
     tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
-    onVoiceProblem: (problem) => {
-      reported.push(problem);
+    onSectionProblem: (problem) => {
+      reported.push({ path: problem.path, reason: problem.reason });
     },
   });
 
   const stored = await readDefinitionsInForce(ctx.writer.db);
 
-  expect([result.status, reported, stored?.voice]).toStrictEqual([
+  expect([result.status, reported, stored?.sections['extras']]).toStrictEqual([
     'seeded',
-    [{ path: 'voice/voice.yaml', reason: 'the file is not UTF-8 text' }],
-    null,
+    [{ path: 'extras/extras.yaml', reason: 'the file is not UTF-8 text' }],
+    undefined,
   ]);
 });
 
 test.each(['1e20', '1e308'])(
-  'it seeds a repo whose voice file prices a minute at %s dollars, and reports the file',
+  'it seeds a repo whose extras file counts %s, and reports the file',
   async (price) => {
+    useStubSection();
+
     const ctx = await setupTest();
 
     const reported: string[] = [];
 
     await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
     await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-    await mkdir(join(ctx.root, 'voice'));
-    await writeFile(join(ctx.root, 'voice', 'voice.yaml'), `price_per_minute: ${price}\n`);
+    await mkdir(join(ctx.root, 'extras'));
+    await writeFile(join(ctx.root, 'extras', 'extras.yaml'), `count: ${price}\n`);
 
     const result = await runSeed({
       tasks: buildTestTaskSeed(),
       log: ctx.log,
       source: ctx.source,
       buildPolicy: () => ({ rules: [], tools: [] }),
-      onVoiceProblem: (problem) => {
+      onSectionProblem: (problem) => {
         reported.push(problem.path);
       },
     });
 
-    expect([result.status, reported]).toStrictEqual(['seeded', ['voice/voice.yaml']]);
+    expect([result.status, reported]).toStrictEqual(['seeded', ['extras/extras.yaml']]);
   },
 );
 
-test('it seeds a repo whose voice file is not text, below the format that reads voice files, and reports the file', async () => {
+test('it seeds a repo whose extras file is not text, below the format that reads extras files, and reports the file', async () => {
+  useStubSection();
+
   const ctx = await setupTest();
 
   const reported: string[] = [];
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'voice'));
-  await writeFile(join(ctx.root, 'voice', 'voice.yaml'), new Uint8Array([0xff, 0xfe, 0x3a]));
+  await mkdir(join(ctx.root, 'extras'));
+  await writeFile(join(ctx.root, 'extras', 'extras.yaml'), new Uint8Array([0xff, 0xfe, 0x3a]));
 
   const result = await runSeed({
     tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
-    onVoiceProblem: (problem) => {
+    onSectionProblem: (problem) => {
       reported.push(problem.path);
     },
   });
 
-  expect([result.status, reported]).toStrictEqual(['seeded', ['voice/voice.yaml']]);
+  expect([result.status, reported]).toStrictEqual(['seeded', ['extras/extras.yaml']]);
 });

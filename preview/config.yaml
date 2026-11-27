@@ -56,6 +56,8 @@ computer: {}
 code: {}
 # Google's Gmail, Calendar and Drive tools, which need a Google account
 google: {}
+# the device screens and their pages
+devices: {}
 definitions:
   source:
     kind: path

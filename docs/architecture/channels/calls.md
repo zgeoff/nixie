@@ -7,8 +7,11 @@ adapter that implements it. For the whole feature, see the
 [voice design](../../design/platform/channels/voice.md). The server wires the
 [GPT-Live adapter](#the-gpt-live-adapter) when the config's `voice` section sets the `gpt-live`
 provider and the secrets file holds its credential. When the config has no `voice` section, calls
-are off, and `calls.start` answers `VOICE_OFF`. When the secrets file lacks the `voice` section's
-credential, the server wires no adapter, and `calls.start` answers `SPEECH_UNAVAILABLE`. A test
+are off. The server starts no calls part, offers the model no call tool, leaves `voice` out of
+`nixie.read`, and answers each `calls` procedure with `FEATURE_OFF` to a signed-in session. When the
+secrets file lacks the `voice` section's credential, the server wires no adapter, and `calls.start`
+answers `SPEECH_UNAVAILABLE`. Only the `voice` section switches calls on. The `devices` section
+switches [devices](devices.md) on its own, and a call needs no `devices` section to run. A test
 build wires the fake that the next section describes in place of the adapter.
 
 ## The speech layer
@@ -67,11 +70,11 @@ after the cut.
 
 Other rules of the adapter:
 
-- `answer` sends the whole answer as one commentary on the delegation. The provider takes at most
-  500 tokens in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than
-  its tokens. A text past 400 bytes goes as several commentaries of at most 400 bytes each, split at
-  the end of a sentence. Every word of the text goes out in order. `final` marks the end inside
-  nixie, because the provider has no close for a delegation.
+- `answer` sends the answer as commentaries on the delegation. The provider takes at most 500 tokens
+  in a commentary. The adapter counts a text's UTF-8 bytes, which are never fewer than its tokens. A
+  text of 400 bytes or fewer goes as one commentary. A longer text goes as several of at most 400
+  bytes each, split at the end of a sentence. Every word of the text goes out in order. `final`
+  marks the end inside nixie, because the provider has no close for a delegation.
 - `say` sends a commentary with no delegation, which the speech layer words as its own. It splits a
   long line the same way.
 - `close` waits for the line that the speech layer is speaking, for a bounded time, and then closes
@@ -104,11 +107,14 @@ A call is `ringing`, `connecting`, `live` or `ended`. An ended call carries who 
 | `calls.hangUp`  | Ends the call with `endedBy: 'you'`, and answers with the call's `endedBy`. A call that the server ended first, as `budget` for one, answers with that reason, so the device never shows its own hang up for it. A second hang up of an ended call returns the same result.                                          |
 | `call.hang_up`  | The call's turn asks to end the call. Once the turn's answers have gone to the speech layer, the call ends with `endedBy: 'nixie'`.                                                                                                                                                                                  |
 
-`calls.start` refuses with one of these errors, checked in this order:
+`calls.start` refuses with one of these errors, checked in this order. A server with no `voice`
+section never reaches the first one, because the API answers `FEATURE_OFF` before the call gets to
+the module. `VOICE_OFF` is the module's own check, for a module that runs without voice configured,
+as in a test.
 
 | Error                 | When                                                                               |
 | --------------------- | ---------------------------------------------------------------------------------- |
-| `VOICE_OFF`           | The config holds no `voice` section.                                               |
+| `VOICE_OFF`           | The module's config holds no `voice` section.                                      |
 | `SPEECH_UNAVAILABLE`  | The config holds `voice`, and the server wired no speech adapter.                  |
 | `VOICE_PRICE_MISSING` | `price_per_minute` is missing from `voice/voice.yaml`. The message names the file. |
 | `CALL_RUNNING`        | Another call has not ended.                                                        |
@@ -226,12 +232,12 @@ with these differences:
 - The task holds one sandbox, as any task that keeps sandboxes does.
 - The turn runs on the profile that `models.roles.call` names. When the role is unset, it runs on
   the conversation's profile. The turn-input log can capture the `call` role.
-- The session's prompt is the conversation's prompt followed by the voice-call prompt, which adds a
-  rule for the call's turn: keep a spoken reply to about 3 sentences, put a longer answer on a
-  device with the device tools, and say where it is. The speech layer's own prompt holds no such
-  rule. A real GPT-Live session summarised or cut short a 2,400-character answer in 3 of 3 tries,
-  and short answers worked every time. [Devices](devices.md#the-calls-device) describes how the turn
-  finds the call's device.
+- The session's prompt is the conversation's prompt followed by the voice prompt and a rule for the
+  call's turn: keep a spoken reply to about 3 sentences, put a longer answer on a device with the
+  device tools, and say where it is. The rule goes to the call's turn only. The speech layer's
+  instructions hold the voice prompt without that rule. A real GPT-Live session summarised or cut
+  short a 2,400-character answer in 3 of 3 tries, and short answers worked every time.
+  [Devices](devices.md#the-calls-device) describes how the turn finds the call's device.
 - A new session opens with two threads: the conversation's summary and recent turns through
   `seedThrough`, then the call's own thread. The call's thread shows the user's speech, the speech
   layer's small talk and the replies.
@@ -317,8 +323,8 @@ charged before.
 
 ## Limits of the speech layer
 
-- The speech layer's instructions hold the voice-call prompt, never a memory block. Its small talk
-  saves nothing to memory, and `dictated` text never counts as memory evidence.
+- The speech layer's instructions hold the voice prompt and no memory block. Its small talk saves
+  nothing to memory, and `dictated` text never counts as memory evidence.
 - The speech layer answers small talk only, and hands every request to nixie's turn, so Claude
   writes each answer.
 - One call runs at a time, because nixie works for one person.
@@ -339,11 +345,27 @@ Both places that hold settings are optional.
   [voice setup guide](../../guides/voice-calls.md) gives the steps.
 - The `voice/` folder of the [definitions](../core/definitions.md) holds `voice.yaml`, with `voice`,
   `hold_after_ms` and `price_per_minute`, and `lines.yaml`, with the fixed lines `holding`,
-  `reconnect`, `couldnt_finish` and `budget`. Every key is optional. A missing key takes the default
-  in the module, except `price_per_minute`, which has none.
+  `reconnect`, `couldnt_finish` and `budget`. Every key is optional. A missing key takes its default
+  from `defaultVoiceDefinitions` in
+  [`voice-definitions-schema.ts`](../../../modules/calls/src/voice/voice-definitions-schema.ts),
+  except `price_per_minute`, which has none. The sweep's interval and its limits for a `connecting`
+  call and a reconnect wait are constants in
+  [`modules/calls/src/meter/`](../../../modules/calls/src/meter/); no config sets them.
 
 A voice file that fails to parse never stops the server or the seed. The seed leaves the file
 unapplied and logs `definitions.voice_file_skipped` with the file and its fault. Calls then use the
 defaults, which hold no price, until the file is fixed. A file that is not UTF-8 text is reported
 the same way, whatever the format, and a `price_per_minute` above 1000 dollars counts as a fault,
 because its micros no longer add up exactly.
+
+## What the server adds when voice is on
+
+`modules/api` and the core modules name no call. The server fills these from the calls module only
+when the config has a `voice` section:
+
+- the calls procedures, through the API's feature procedures; while voice is off, the API answers
+  each one with `FEATURE_OFF`;
+- the `voice` folder of the definitions, through the definitions module's section list;
+- the call kinds of the tasks inbox, through the tasks module's inbox kinds;
+- the hang-up of a running call when its session signs out, through the API's session hooks;
+- the call's step hooks and the call rule of the sandbox task runner.

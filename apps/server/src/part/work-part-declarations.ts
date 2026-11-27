@@ -3,7 +3,6 @@ import {
   createFirstEnrolmentCode,
   runProposalStartChecks,
 } from '@heynixie/api';
-import { startCallSweep } from '@heynixie/calls';
 import { buildCodingSource, startCodingSweep } from '@heynixie/coding';
 import {
   endTakeoverCutByRestart,
@@ -11,7 +10,6 @@ import {
   resumeOpenHandover,
 } from '@heynixie/connectors';
 import { checkPromptProposal, startMandateTimer } from '@heynixie/definitions';
-import { startDeviceWakes, startWaitingShows } from '@heynixie/devices';
 import { buildGmailArrivalSource, collectGmailConnections, gmailSourceID } from '@heynixie/google';
 import { toErrorFields } from '@heynixie/logger';
 import { buildMailSource } from '@heynixie/mail';
@@ -20,11 +18,9 @@ import type { RunStep } from '@heynixie/tasks';
 import {
   callRunner,
   conversationRunner,
-  conversationTaskID,
   createConversationTask,
   reviveHeldTasks,
   sandboxRunner,
-  writeThreadRecordInTransaction,
 } from '@heynixie/tasks';
 import { buildScheduleSource, startTriggerSources, startWakeFlush } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
@@ -225,9 +221,9 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'sandbox_runner',
     needs: ['server_parts', 'add_images'],
-    uses: ['memory'],
+    uses: ['memory', 'calls'],
     start: makeRetriedStart('sandbox_runner', (parts, reader) =>
-      startSandboxTaskRunner(parts, () => reader.get('memory')),
+      startSandboxTaskRunner(parts, () => reader.get('memory'), reader.find('calls')),
     ),
   },
   {
@@ -242,7 +238,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'erasure_catch_up',
       'turn_input_work',
     ],
-    uses: ['mcp'],
+    uses: ['mcp', 'calls'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const harness = reader.get('inputs').options.harness;
@@ -262,7 +258,9 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         [
           { definition: conversationRunner, runStep: reader.get('conversation_imp').runStep },
           { definition: sandboxRunner, runStep: reader.get('sandbox_runner').runStep },
-          { definition: callRunner, runStep: reader.get('sandbox_runner').runCallStep },
+          ...(reader.find('calls') === null
+            ? []
+            : [{ definition: callRunner, runStep: reader.get('sandbox_runner').runCallStep }]),
           { definition: queueCheckRunner, runStep: checkStep },
           ...(coding === null
             ? []
@@ -271,15 +269,14 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         otherStep,
       );
 
-      await startRunners(
-        parts,
-        runStep,
-        () => reader.find('mcp'),
-        () => {
+      await startRunners(parts, runStep, {
+        readMcp: () => reader.find('mcp'),
+        stopCleanups: () => {
           reader.get('conversation_imp').stopCleanups();
           reader.get('sandbox_runner').stopCleanups();
         },
-      );
+        hasCalls: reader.find('calls') !== null,
+      });
 
       parts.state.update({ areRunnersStarted: true });
     },
@@ -302,74 +299,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     },
   },
   {
-    // Charges each started minute of a live call, and ends a call that never connects or lost its
-    // speech session. Without the voice section, no call runs.
-    name: 'calls_sweep',
-    needs: ['server_parts', 'runners'],
-    start: async (reader) => {
-      const parts = reader.get('server_parts');
-      const calls = parts.apiContext.calls;
-
-      if (calls === undefined || calls.voice === null) {
-        return;
-      }
-
-      const sweep = startCallSweep(calls);
-
-      await parts.cleanup.defer(() => sweep.stop());
-    },
-  },
-  {
     name: 'seed_poll',
     needs: ['server_parts', 'definitions_seed', 'runners'],
     start: (reader) =>
       startSeedPoll(reader.get('server_parts'), {
         isRefusedAtStart: reader.get('definitions_seed').status === 'refused',
       }),
-  },
-  {
-    // A device that goes online or offline wakes the model when the list that devices.watch set
-    // names the change.
-    name: 'device_wakes',
-    needs: ['server_parts', 'conversation_task'],
-    start: async (reader) => {
-      const parts = reader.get('server_parts');
-      const context = parts.apiContext;
-
-      const stop = startDeviceWakes({
-        log: context.log,
-        definitions: context.definitions,
-        streams: context.clients.devices,
-        thread: conversationTaskID,
-        writeWake: (tx, input) => writeThreadRecordInTransaction(tx, context, input),
-        onFailure: (error) => {
-          parts.log('devices.wake_failed', toErrorFields(error), 'error');
-        },
-      });
-
-      await parts.cleanup.defer(stop);
-    },
-  },
-  {
-    // A show that waited for its device counts its minutes from the time the device comes online.
-    name: 'device_show_clocks',
-    needs: ['server_parts'],
-    start: async (reader) => {
-      const parts = reader.get('server_parts');
-      const context = parts.apiContext;
-
-      const stop = startWaitingShows({
-        log: context.log,
-        definitions: context.definitions,
-        clock: context.clock,
-        streams: context.clients.devices,
-        onFailure: (error) => {
-          parts.log('devices.show_clock_failed', toErrorFields(error), 'error');
-        },
-      });
-
-      await parts.cleanup.defer(stop);
-    },
   },
   {
     name: 'spend_watcher',
@@ -451,8 +386,16 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['inputs', 'context', 'server_parts', 'seed_poll', 'notebook', 'erasure'],
-    uses: ['takeover_restart', 'connections', 'gmail_source', 'phone'],
+    needs: [
+      'inputs',
+      'context',
+      'server_parts',
+      'seed_poll',
+      'notebook',
+      'erasure',
+      'tool_endpoint',
+    ],
+    uses: ['takeover_restart', 'connections', 'gmail_source', 'calls', 'phone'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 
@@ -471,11 +414,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       if (NIXIE_TEST_BUILD && harness !== undefined) {
         registerHarnessOperations(harness.link, parts.context, {
-          calls: parts.apiContext.calls,
+          calls: reader.find('calls')?.context,
           mail: reader.get('context').mail?.memory ?? null,
           phone: reader.find('phone')?.fake ?? null,
           notebook: reader.get('notebook'),
           runInForceSeed: () => runInForceSeedAndWake(parts, null),
+          readToolNames: reader.get('tool_endpoint').readToolNames,
         });
 
         registerCredentialOperations(harness.link, parts.context, reader.get('erasure'));

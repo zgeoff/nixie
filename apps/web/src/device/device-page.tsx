@@ -3,8 +3,9 @@ import { ORPCError } from '@orpc/client';
 import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { useCall } from '../call/call-context';
+import { useCallWhenOn } from '../call/call-context';
 import { EnrolForm } from '../components/enrol-form';
+import { FeatureOffPage } from '../features/feature-off-page';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { DeviceConnection } from './device-connection';
@@ -16,6 +17,7 @@ type Phase =
   | { readonly kind: 'checking' }
   | { readonly kind: 'enrol' }
   | { readonly kind: 'register' }
+  | { readonly kind: 'off' }
   | { readonly kind: 'failed' }
   | { readonly kind: 'signOutFailed' }
   | { readonly kind: 'ready'; readonly isScreenOn: boolean };
@@ -36,7 +38,7 @@ const page = css({
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
   const navigate = useNavigate();
-  const call = useCall();
+  const call = useCallWhenOn();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
   const [attempt, setAttempt] = useState(0);
 
@@ -55,8 +57,12 @@ export function DevicePage(): ReactNode {
   };
 
   const signOut = (): void => {
-    void signOutDevice(nixie.client, call.session.hangUp, setPhase);
+    void signOutDevice(nixie.client, call?.session.hangUp ?? hangUpNoCall, setPhase);
   };
+
+  if (phase.kind === 'off') {
+    return <FeatureOffPage feature="devices" />;
+  }
 
   if (phase.kind === 'checking') {
     return <main className={page}>Starting device mode</main>;
@@ -180,6 +186,10 @@ function pickRefusedPhase(error: unknown): Phase {
     return { kind: 'failed' };
   }
 
+  if (error.code === 'FEATURE_OFF') {
+    return { kind: 'off' };
+  }
+
   if (error.code === 'UNAUTHORIZED') {
     return { kind: 'enrol' };
   }
@@ -224,6 +234,11 @@ async function signOutDevice(
   }
 
   setPhase({ kind: 'enrol' });
+}
+
+// A nixie with voice off holds no call, so the sign-out has none to hang up.
+function hangUpNoCall(): Promise<void> {
+  return Promise.resolve();
 }
 
 // Full screen belongs to the document, which outlives the device page, so Close leaves it first.

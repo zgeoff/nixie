@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import { featureOffErrors } from './feature-off-errors';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-const checkedAction = signedIn.errors(reusedIDErrors);
+const callsProcedure = signedIn.errors(featureOffErrors);
+const checkedAction = callsProcedure.errors(reusedIDErrors);
 const callIDSchema = z.string().min(1).max(64);
 const callStateSchema = z.enum(['ringing', 'connecting', 'live', 'ended']);
 const endedBySchema = z.enum(['you', 'nixie', 'budget', 'missed', 'declined', 'dropped']);
@@ -42,7 +44,7 @@ export const callsContract = {
 
   // Reads one call as the carrying device needs it: its state, who ended it, and whether it waits
   // for a fresh `connect` because its speech session ended or went with a restart.
-  get: signedIn
+  get: callsProcedure
     .errors({ CALL_NOT_FOUND: { message: 'No call has this ID', status: 404 } })
     .input(z.object({ callID: callIDSchema }))
     .output(
@@ -59,7 +61,7 @@ export const callsContract = {
   // Opens the call's speech session from the device's WebRTC offer, from the carrying session
   // alone. The first minute of the call charges here. On a live call that waits for a new offer,
   // it moves the call to the new session and charges nothing.
-  connect: signedIn
+  connect: callsProcedure
     .errors({
       ...speechUnavailable,
       ...budgetReached,

@@ -1,8 +1,8 @@
 import type { Call, CallsContext, SpeechLayer, VoiceConfig } from '@heynixie/calls';
 import {
   buildCallRuntime,
-  defaultVoiceDefinitions,
   defaultVoicePrompt,
+  readVoiceDefinitions,
   renderNoSummaryReport,
 } from '@heynixie/calls';
 import type { Clock } from '@heynixie/clock';
@@ -24,8 +24,7 @@ export interface ServerCallsOptions {
   readonly budgets: CallsContext['budgets'];
   readonly inForce: InForce;
 
-  // the voice section of the config, or null without it, which turns calls off
-  readonly voice: VoiceConfig | null;
+  readonly voice: VoiceConfig;
   readonly logEvent: Logger;
 
   // null where the server wires no adapter, as when the voice credential is missing
@@ -52,7 +51,7 @@ export function buildServerCalls(options: ServerCallsOptions): CallsContext {
     budgets: options.budgets,
     voice: options.voice,
     speech: options.speech,
-    readVoiceDefinitions: () => options.inForce.read()?.voice ?? defaultVoiceDefinitions,
+    readVoiceDefinitions: () => readVoiceDefinitions(options.inForce.read()?.sections ?? {}),
     createTask: (tx, input) => writeCallTask(tx, options.tasks, input),
     readInstructions: () => Promise.resolve(defaultVoicePrompt),
     interruptTurn: async (taskID) => {

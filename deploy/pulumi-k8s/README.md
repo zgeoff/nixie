@@ -16,19 +16,15 @@ A Pulumi component that runs nixie on Kubernetes.
 
 The component registers nixie's StatefulSet, the web client and the backup job in one namespace, in
 the shape each nixie release ships. Each release of nixie publishes the component at its own
-version, so a deployment takes a change to that shape with a version bump. To start, install the
-package beside your Pulumi SDKs, call `createNixie` with your namespace and images, and point your
-ingress at the two Services it returns.
+version, so bump the version to take a change to that shape. To start, install the package, call
+`createNixie` with your namespace and images, and point your ingress at its 2 Services: one for
+nixie's API, on `nixieAPIPort`, and one for the web client, on `nixieWebPort`.
 
 ## Install
 
 The package ships an ES module with its type declarations, so a Pulumi program on Node or on Bun
 loads it. It takes `@pulumi/pulumi` 3 and `@pulumi/kubernetes` 4 as peer dependencies, which your
-program installs.
-
-```bash
-bun add @heynixie/pulumi-k8s
-```
+program installs. Add it with `bun add @heynixie/pulumi-k8s`.
 
 ## Features
 
@@ -37,14 +33,22 @@ bun add @heynixie/pulumi-k8s
 - **The web client.** A Deployment that rolls out after nixie and calls its API by the Service.
 - **The backup.** A CronJob that runs the release's backup image on nixie's staging folder, and
   ships each snapshot set to your 2 restic repositories.
-- **Moving onto it.** Each resource keeps its own Pulumi name and an alias to the stack, so a stack
-  that declared the same resources itself moves onto the component with no replacement.
+- **Moving onto it.** Each resource has an alias to your stack, so a stack that declared them itself
+  moves on with no replacement.
 
 ## Configuration
 
 Pass the per-deployment values to `createNixie(name, args, opts)` in `args`, and your Kubernetes
-provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value. Add
-`computer: {}`, `code: {}` and `google: {}` to `config` to turn on those features.
+provider in `opts`. See [`src/types.ts`](src/types.ts) for the type of each value.
+
+`args.config` is the text of nixie's `config.yaml`, which the component passes through unread.
+[Deployment configuration](../../docs/architecture/deployment/configuration.md) describes the file,
+and the [Kubernetes guide](../../docs/guides/kubernetes.md) walks through the secrets and keys. A
+feature is on only when its section is in that text. To turn on the assistant's computer, its code
+tool, Google and devices, add the sections `computer`, `code`, `google` and `devices`, each empty as
+`{}`. Keep your `voice` section as it is, because calls stay on through it and it needs a `provider`
+and a `credential`. Bump to a release that reads a section before you rely on it, because a release
+that does not know a section ignores it and leaves that feature off.
 
 ```ts
 import { createNixie, nixieAPIPort, nixieWebPort } from '@heynixie/pulumi-k8s';
@@ -64,7 +68,3 @@ const nixie = createNixie(
   { provider: cluster },
 );
 ```
-
-## Documentation
-
-The [Kubernetes architecture](../../docs/architecture/deployment/kubernetes.md) covers the shape.

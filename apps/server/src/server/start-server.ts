@@ -9,12 +9,14 @@ import type { Logger } from '@heynixie/logger';
 import type { ModelCredentials } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { writeMissedTurns } from '@heynixie/spend';
+import { fillCallsLists } from '../call/fill-calls-lists';
 import { fillComputerLists } from '../computer/fill-computer-lists';
 import type { HeldSlot } from '../credential/create-held-slot';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
+import { fillBodyFieldReaders } from '../feature/fill-body-field-readers';
+import { fillInboxKinds } from '../feature/fill-inbox-kinds';
 import { listFeaturesOn } from '../feature/list-features-on';
-import { fillGoogleLists } from '../google/fill-google-lists';
 import { registerServerRecordTopics } from '../part/register-server-record-topics';
 import type { PhoneInputs } from '../phone/create-phone-inputs';
 import { fillPhoneLists } from '../phone/fill-phone-lists';
@@ -97,7 +99,9 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   const inputs = await loadServerInputs(options);
 
   fillComputerLists(inputs.config);
-  fillGoogleLists(inputs.config);
+  fillBodyFieldReaders(inputs.config);
+  fillCallsLists(inputs.config);
+  fillInboxKinds(inputs.config);
   fillPhoneLists(inputs.config);
 
   const cleanup = buildCleanup();

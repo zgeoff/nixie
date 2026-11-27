@@ -6,7 +6,7 @@ import type { Logger } from '@heynixie/logger';
 import { buildGPTLiveSpeech, defaultGPTLiveModel } from '@heynixie/speech-gpt-live';
 
 export interface ServerSpeechOptions {
-  readonly voice: VoiceConfig | null;
+  readonly voice: VoiceConfig;
   readonly credentials: CredentialAccess;
   readonly clock: Clock;
   readonly logEvent: Logger;
@@ -19,10 +19,6 @@ const gptLiveAPIURL = 'https://api.openai.com';
 // the secrets file. Without either, the server holds no speech layer, and `calls.start` answers
 // SPEECH_UNAVAILABLE.
 export function buildServerSpeech(options: ServerSpeechOptions): SpeechLayer | null {
-  if (options.voice === null) {
-    return null;
-  }
-
   const reference = findCredential(options, options.voice);
 
   if (reference === null) {

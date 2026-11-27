@@ -3,9 +3,6 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
 import { budgetProjections } from '@heynixie/budgets';
-import { callsProjection } from '@heynixie/calls';
-import type { TestCallsContext, TestCallsOptions } from '@heynixie/calls/test-utils';
-import { buildTestCallsContext } from '@heynixie/calls/test-utils';
 import type { Clock } from '@heynixie/clock';
 import { codingProjections } from '@heynixie/coding';
 import type { WiredTestCoding } from '@heynixie/coding/test-utils';
@@ -110,9 +107,6 @@ interface TestAPI {
   // the stub gateway, which the context holds only when the test turns the spending stop on
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway>;
 
-  // the calls context on a fake speech layer, which the context holds only when the test turns calls on
-  readonly calls: TestCallsContext | null;
-
   // the coding runner on a fake adapter, which the context holds only when the test turns coding on
   readonly coding: WiredTestCoding | null;
 
@@ -129,8 +123,14 @@ interface TestAPIOptions {
   // the clock that the log's writer and the spending stop read, the system's when unset
   readonly writerClock?: Clock;
 
-  // gives the context a calls module on a fake speech layer, set up as the options say
-  readonly calls?: TestCallsOptions;
+  // the record projections of a feature that the test turns on, which the log folds beside the core's
+  readonly projections?: APIContext['log']['projections'];
+
+  // Adds what a feature that the test turns on gives the context, from the log and the clock the
+  // context holds.
+  readonly extend?: (
+    base: Pick<APIContext, 'log' | 'clock'> & { readonly contextClock: FakeClock },
+  ) => Pick<APIContext, 'readFeatureProcedures'>;
 
   // the features that nixie.read reports as on, none when unset
   readonly features?: APIContext['features'];
@@ -198,7 +198,8 @@ export async function startTestAPI(
     },
     spendGateway: options.isSpendOn === true ? spendGateway : null,
     isGatewayMetered: options.isGatewayMetered === true,
-    calls: options.calls ?? null,
+    projections: options.projections ?? [],
+    extend: options.extend ?? null,
     features: options.features ?? [],
     isCodingOn: options.isCodingOn === true,
   });
@@ -214,7 +215,6 @@ export async function startTestAPI(
     clock: context.clock,
     context,
     spendGateway,
-    calls: created.calls,
     coding: created.coding,
     definitionStore,
     url: served.url,
@@ -261,7 +261,8 @@ interface TestContextDeps {
   readonly logger: ComputerWatchPort['logger'];
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
   readonly isGatewayMetered: boolean;
-  readonly calls: TestCallsOptions | null;
+  readonly projections: APIContext['log']['projections'];
+  readonly extend: NonNullable<TestAPIOptions['extend']> | null;
   readonly features: APIContext['features'];
   readonly isCodingOn: boolean;
 }
@@ -273,7 +274,6 @@ async function createTestContext(
   deps: TestContextDeps,
 ): Promise<{
   readonly context: APIContext & { readonly clock: FakeClock };
-  readonly calls: TestCallsContext | null;
   readonly coding: WiredTestCoding | null;
 }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -301,13 +301,10 @@ async function createTestContext(
       proposalsProjection,
       ...spendProjections,
       ...budgetProjections,
-      callsProjection,
+      ...deps.projections,
       ...(deps.isCodingOn ? [...codingProjections] : []),
     ],
   };
-
-  const calls =
-    deps.calls === null ? null : buildTestCallsContext({ log, clock: writer.clock }, deps.calls);
 
   const clock = createFakeClock({ startMs: 1_000_000 });
 
@@ -354,7 +351,7 @@ async function createTestContext(
     readSessionCleanup: deps.readSessionCleanup,
     readNotebook: deps.readNotebook,
     readErasure: deps.readErasure,
-    ...(calls === null ? {} : { calls: calls.context }),
+    ...(deps.extend === null ? {} : deps.extend({ log, clock: writer.clock, contextClock: clock })),
     readConnections: deps.readConnections,
     ...(deps.readPickedFiles === undefined ? {} : { readPickedFiles: deps.readPickedFiles }),
     readMcp: deps.readMcp,
@@ -373,7 +370,7 @@ async function createTestContext(
           }),
   };
 
-  return { context, calls, coding };
+  return { context, coding };
 }
 
 function readTestDefinitions() {
