@@ -39,7 +39,7 @@ export async function startWebFetchPart(inputs: WebFetchPartInputs): Promise<Web
     ),
     isOwnerTyped: makeOwnerTypedCheck(inputs.log),
     logger: options.log,
-    findBlockedPlace: makeBlockedPlaceFinder(inputs.log),
+    makeBlockedPlaceFinder: makeBlockedPlaceFinder(inputs.log),
     ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
   });
 

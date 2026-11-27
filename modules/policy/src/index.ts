@@ -30,12 +30,13 @@ export type {
 
 export { writeContactMarked } from './contact/write-contact-marked';
 export { writeContactUnmarked } from './contact/write-contact-unmarked';
-export { chatChannels } from './place/chat-channels';
+export { writeChatChannels } from './place/write-chat-channels';
 export { checkPlaceKey } from './place/check-place-key';
 export type { PlaceKeyFault } from './place/check-place-key';
 export { findPlace } from './place/find-place';
 export { formatPlaceKey } from './place/format-place-key';
 export type { OwnPlace, OwnPlaceSource } from './place/own-place-source';
+export { writeContactKinds } from './place/write-contact-kinds';
 export { writeOwnPlaces } from './place/write-own-places';
 export type { PlacesSeedAdd, PlacesSeedPlan, SeedPlaceRow } from './place/build-places-seed-plan';
 
@@ -61,6 +62,8 @@ export { placesChangedCodec } from './place/places-changed-codec';
 export { placesProjection } from './place/places-projection';
 export { placesRemovedCodec } from './place/places-removed-codec';
 export type { PlaceRef } from './place/read-place-refs';
+export type { ActedPlaceQuery } from './place/read-acted-place-ids';
+export { readActedPlaceIDs } from './place/read-acted-place-ids';
 export { readPlaceRefs } from './place/read-place-refs';
 export type { ReadPlacesOptions, StoredPlace } from './place/read-places';
 export { readPlaces } from './place/read-places';

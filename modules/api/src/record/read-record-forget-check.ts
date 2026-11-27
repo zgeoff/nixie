@@ -2,6 +2,7 @@ import { forgettableKinds } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { APITables } from '../types';
+import { placeErasableKinds } from '../utils/place-erasable-kinds';
 import { probeUnfinishedQueuedAction } from './probe-unfinished-queued-action';
 
 interface RecordTarget {
@@ -34,7 +35,12 @@ export async function readRecordForgetCheck(
     .selectFrom('records')
     .select('kind')
     .where('sequence', '=', target.sequence)
-    .where('thread', '=', target.thread)
+    .where((eb) =>
+      eb.or([
+        eb('thread', '=', target.thread),
+        eb.and([eb('thread', 'is', null), eb('kind', 'in', placeErasableKinds)]),
+      ]),
+    )
     .executeTakeFirst();
 
   if (row === undefined) {

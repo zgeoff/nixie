@@ -125,7 +125,6 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
   const entries = pickEntriesOfCall([...getFixedRules(), ...input.inputs.rules], call);
   const ruleCall = buildRuleCall(input);
   const found = collectDestinations(call, input.inputs);
-  const placeEffects = call.placeEffects ?? declaration.effects;
   const run: StageRun = { ...input, entries, ruleCall, found };
   const pickEntry = makeEntryPicker(entries, ruleCall);
   const answers = makeConsentReader(run);
@@ -174,7 +173,7 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
   );
 
   const permissions = pickDestinationPermissions(found, {
-    isReadingCall: isReadingCall(placeEffects),
+    isReadingCall: isReadingCall(declaration.effects),
     taskDestinations:
       call.definitionID === null ? [] : run.options.findTaskDestinations(call.definitionID),
     allowRules: allowing,
@@ -219,7 +218,7 @@ async function runRuleStages(input: StageInput): Promise<PolicyDecision> {
   progress.stage = 7;
 
   const isDestinationless = declaration.requiresDestination === true && found.length === 0;
-  const allowingPlaces = isDestinationless ? null : pickAllowingPlaces(found, placeEffects);
+  const allowingPlaces = isDestinationless ? null : pickAllowingPlaces(found, declaration.effects);
 
   if (allowingPlaces !== null) {
     return buildDecision(

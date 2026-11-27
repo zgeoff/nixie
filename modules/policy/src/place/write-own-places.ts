@@ -6,11 +6,14 @@ import { readPlaces } from './read-places';
 import { writePlaceAdded } from './write-place-added';
 
 // Adds an entry at act, marked as nixie's own, for each place that a source names, unless nixie
-// added that value before: a value you removed stays removed. Returns the count it added.
+// added that value before: a value you removed stays removed. Returns the count it added. It runs
+// in the seed, which publishes the snapshot itself once the entries are in.
 export async function writeOwnPlaces(
-  context: PlaceContext,
+  seeding: Omit<PlaceContext, 'publishSnapshot'>,
   sources: readonly OwnPlaceSource[],
 ): Promise<number> {
+  const context: PlaceContext = { ...seeding, publishSnapshot: () => Promise.resolve() };
+
   const lists = await Promise.all(sources.map((source) => source.read()));
 
   const named = lists.flat();

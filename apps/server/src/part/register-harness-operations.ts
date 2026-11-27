@@ -8,7 +8,7 @@ import type { CallsContext } from '@heynixie/calls';
 import { connectCall, startCall } from '@heynixie/calls';
 import { readDevicePackages } from '@heynixie/devices';
 import type { MemoryMailHost } from '@heynixie/mail/memory-host';
-import { readPendingActionProposals } from '@heynixie/policy';
+import { readPendingActionProposals, writePlaceAdded } from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
@@ -134,6 +134,30 @@ export function registerHarnessOperations(
     }
 
     return answers.approved;
+  });
+
+  // The owner's trust in one site, which no page adds yet: the entry goes in the directory, and the
+  // next call decides under a snapshot that holds it. It returns the short ID of the entry.
+  link.registerOperation('trustPlace', schemas.trustPlace, async (request) => {
+    const added = await writePlaceAdded(
+      {
+        log: context.log,
+        definitions: context.definitions,
+        publishSnapshot: async () => {
+          await parts.runInForceSeed();
+        },
+      },
+      {
+        key: { kind: 'site', domain: request.domain, subdomains: false },
+        trust: request.trust,
+        name: null,
+        addedBy: 'you',
+      },
+    );
+
+    invariant(added.status === 'added', `the place was refused: ${JSON.stringify(added)}`);
+
+    return added.shortID;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

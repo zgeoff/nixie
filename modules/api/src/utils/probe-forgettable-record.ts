@@ -2,6 +2,7 @@ import { forgettableKinds } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { APITables } from '../types';
+import { placeErasableKinds } from './place-erasable-kinds';
 
 // The contract lib cannot see the log's kinds, so this check keeps the list inside them.
 const kinds = forgettableKinds satisfies readonly RecordKind[];
@@ -20,7 +21,12 @@ export async function probeForgettableRecord(
     .selectFrom('records')
     .select('sequence')
     .where('sequence', '=', target.sequence)
-    .where('thread', '=', target.thread)
+    .where((eb) =>
+      eb.or([
+        eb('thread', '=', target.thread),
+        eb.and([eb('thread', 'is', null), eb('kind', 'in', placeErasableKinds)]),
+      ]),
+    )
     .where('kind', 'in', kinds)
     .executeTakeFirst();
 

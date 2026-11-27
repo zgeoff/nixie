@@ -5,9 +5,9 @@ import { placesRemovedCodec } from './places-removed-codec';
 import { readPlaces } from './read-places';
 
 // false when no entry of the directory has the ID. The entry keeps its row, so a replay of an older
-// call finds its key.
-export function writePlaceRemoved(context: PlaceContext, placeID: string): Promise<boolean> {
-  return withWriteTransaction(context.log.writer, async (tx) => {
+// call finds its key. Once the entry is removed, the next call decides under a snapshot without it.
+export async function writePlaceRemoved(context: PlaceContext, placeID: string): Promise<boolean> {
+  const isRemoved = await withWriteTransaction(context.log.writer, async (tx) => {
     const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 
     const [place] = await readPlaces(inTransaction, { placeIDs: [placeID] });
@@ -26,4 +26,10 @@ export function writePlaceRemoved(context: PlaceContext, placeID: string): Promi
 
     return true;
   });
+
+  if (isRemoved) {
+    await context.publishSnapshot();
+  }
+
+  return isRemoved;
 }

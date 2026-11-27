@@ -1,15 +1,14 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { Kysely } from 'kysely';
-import { z } from 'zod';
+import { formatPlaceKey } from '../place/format-place-key';
+import { readPlaces } from '../place/read-places';
 import type { PolicyTables } from '../policy/policy-tables';
 import type { KnownContact } from '../types';
 
 export interface KnownContactEntry extends KnownContact {
   readonly markedAt: number;
 }
-
-const detailsSchema = z.object({ name: z.string().nullable(), destination: z.string() });
 
 export async function readKnownContactIDs(db: Kysely<unknown>): Promise<readonly string[]> {
   const rows = await db
@@ -23,38 +22,34 @@ export async function readKnownContactIDs(db: Kysely<unknown>): Promise<readonly
   return rows.map((row) => row.contact_id);
 }
 
-// Without contact IDs, the contacts marked now. With the IDs of a snapshot, those contacts whether
-// or not they were unmarked since, because a call decides under its own snapshot. A contact whose
-// marking record a forget erased keeps its row and has no details.
+// Every entry of the directory at known, whether a contact marked it or the places did, with its
+// key in the canonical form. An entry whose erasable record a forget removed covers nothing and is
+// not listed.
 export async function readKnownContacts(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
-  contactIDs?: readonly string[],
 ): Promise<readonly KnownContactEntry[]> {
-  const rows = await log.writer.db
-    .$extendTables<PolicyTables>()
-    .selectFrom('known_contacts')
-    .select(['contact_id', 'marked_sequence'])
-    .$if(contactIDs === undefined, (query) => query.where('unmarked_sequence', 'is', null))
-    .$if(contactIDs !== undefined, (query) => query.where('contact_id', 'in', contactIDs ?? []))
-    .orderBy('marked_sequence')
-    .execute();
+  const places = await readPlaces(log);
 
-  return Promise.all(
-    rows.map(async (row) => {
-      const [entry] = await readRecords(log, {
-        afterSequence: row.marked_sequence - 1,
-        limit: 1,
-      });
+  const known = places.filter((place) => place.trust === 'known');
 
-      const erasable = entry?.record.erasable;
-      const details = erasable?.status === 'readable' ? detailsSchema.parse(erasable.fields) : null;
+  if (known.length === 0) {
+    return [];
+  }
 
-      return {
-        contactID: row.contact_id,
-        name: details?.name ?? null,
-        destination: details?.destination ?? null,
-        markedAt: entry?.record.recordedAt.getTime() ?? 0,
-      };
-    }),
+  const entries = await readRecords(log, {
+    afterSequence: 0,
+    sequences: known.map((place) => place.addedSequence),
+    limit: known.length,
+  });
+
+  const recordedAt = new Map(
+    entries.map((entry) => [entry.record.sequence, entry.record.recordedAt.getTime()]),
   );
+
+  return known.map((place) => ({
+    contactID: place.placeID,
+    name: place.name,
+    destination: formatPlaceKey(place.key),
+    markedAt: recordedAt.get(place.addedSequence) ?? 0,
+  }));
 }

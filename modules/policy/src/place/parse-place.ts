@@ -1,10 +1,10 @@
-import { chatChannels } from './chat-channels';
 import { isPublicSuffix } from './is-public-suffix';
 import type { Destination } from './types';
+import { isChatChannel } from './write-chat-channels';
 
-const addressPattern = /^[^@\s/:]+@[^@\s/]+$/u;
+const addressPattern = /^[^@\s/:]+@[^@\s/?#\\]+$/u;
 const handlePattern = /^(?<channel>[a-z][a-z0-9_]*):(?<id>\S+)$/u;
-const hostPattern = /^[^\s/@?#]+$/u;
+const hostPattern = /^[^\s/@?#\\]+$/u;
 
 // Reads what a call reaches as one concrete place, or null when the text is no place. It tries a URL,
 // an address, a phone number, a handle, then a host with an optional port.
@@ -27,7 +27,7 @@ export function parsePlace(text: string): Destination | null {
 
   const handle = handlePattern.exec(trimmed)?.groups;
 
-  if (handle?.['channel'] !== undefined && chatChannels.includes(handle['channel'])) {
+  if (handle?.['channel'] !== undefined && isChatChannel(handle['channel'])) {
     return { kind: 'handle', channel: handle['channel'], id: handle['id'] ?? '' };
   }
 
@@ -39,7 +39,10 @@ function parseURLSite(text: string): Destination | null {
 }
 
 function toSite(hostname: string): Destination | null {
-  const host = hostname.replaceAll(/^\[|\]$/gu, '').replace(/\.$/u, '');
+  const host = hostname
+    .toLowerCase()
+    .replaceAll(/^\[|\]$/gu, '')
+    .replace(/\.$/u, '');
 
   return host === '' ? null : { kind: 'site', domain: dropWWW(host) };
 }

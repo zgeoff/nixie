@@ -23,6 +23,7 @@ import { logProjections, registerRecordTopics, startWriter } from '@heynixie/log
 import type { McpPort } from '@heynixie/mcp';
 import { memoryProjections } from '@heynixie/memory';
 import { notebookProjections } from '@heynixie/notebook';
+import { placesProjection } from '@heynixie/policy';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import type { ReadDefinitionVersion } from '@heynixie/tasks';
@@ -302,6 +303,7 @@ async function createTestContext(
       ...spendProjections,
       ...budgetProjections,
       callsProjection,
+      placesProjection,
       ...(deps.isCodingOn ? [...codingProjections] : []),
     ],
   };

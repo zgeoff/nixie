@@ -39,6 +39,20 @@ test.each<[string, string, PlaceKey | null]>([
     { kind: 'site', domain: 'example.org', subdomains: false },
   ],
   ['www twice', 'www.www.example.org', null],
+  ['a mail domain with a query', '@example.org?query', null],
+  ['a mail domain with a fragment', '@example.org#top', null],
+  ['a mail domain with a backslash', String.raw`@example.org\path`, null],
+  ['a one-label host', 'www.localhost', { kind: 'site', domain: 'localhost', subdomains: false }],
+  [
+    'a one-label host and its subdomains',
+    '*.localhost',
+    { kind: 'site', domain: 'localhost', subdomains: true },
+  ],
+  [
+    'a custom scheme in mixed case',
+    'custom://MiXeD.Example',
+    { kind: 'site', domain: 'mixed.example', subdomains: false },
+  ],
   ['an address', 'sam@example.org', { kind: 'address', address: 'sam@example.org' }],
   ['text that is no place', 'not a place', null],
 ])('#parsePlacePattern reads %s', (_name, text, expected) => {

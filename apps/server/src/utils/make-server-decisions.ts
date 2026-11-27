@@ -9,7 +9,8 @@ import type {
   PolicyPlace,
   RunConsentCheck,
 } from '@heynixie/policy';
-import { checkConsent, makeDecisionPoint, parsePlace, readPlaces } from '@heynixie/policy';
+import { checkConsent, makeDecisionPoint, parsePlace } from '@heynixie/policy';
+import { readSnapshotPlaces } from './read-snapshot-places';
 
 // A decision point that rereads a stored call passes the consent answer the call recorded, because
 // the consent checker is a model.
@@ -42,26 +43,10 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
       findDeclaration,
       readInputs: async (snapshot) => {
         const read = await readSnapshotPolicy(options.log.writer.db, snapshot);
+        const stored = await readSnapshotPlaces(options.log, snapshot);
+        const addresses = await options.readOwnerDestinations();
 
-        const stored = await readPlaces(options.log, {
-          placeIDs: read.places.map((place) => place.placeID),
-        });
-
-        // a call decides under the level its snapshot holds
-        const levels = new Map(read.places.map((place) => [place.placeID, place.trust]));
-
-        const owners = await options.readOwnerDestinations();
-
-        const places: readonly PolicyPlace[] = [
-          ...stored.map((place) => ({
-            placeID: place.placeID,
-            shortID: place.shortID,
-            key: place.key,
-            trust: levels.get(place.placeID) ?? place.trust,
-            name: place.name,
-          })),
-          ...buildOwnPlaces(owners),
-        ];
+        const places: readonly PolicyPlace[] = [...stored, ...buildOwnPlaces(addresses)];
 
         return { rules: read.rules, places, tools: read.tools };
       },
@@ -84,13 +69,16 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
 }
 
 // The addresses that are you come from the connected accounts, so forgetting a connection takes its
-// address away. Each is a place at self that holds no record.
+// address away. Each is a place at self that holds no record. Every one takes the same ID, because a
+// decision stores the ID of each place it used and an address must stay out of the log.
+const ownPlaceID = 'self';
+
 function buildOwnPlaces(addresses: readonly string[]): readonly PolicyPlace[] {
   return addresses.map((address) => {
     const parsed = parsePlace(address);
 
     return {
-      placeID: `self:${address}`,
+      placeID: ownPlaceID,
       shortID: 'self',
       key: parsed?.kind === 'address' ? parsed : ({ kind: 'raw', value: address } as const),
       trust: 'self',

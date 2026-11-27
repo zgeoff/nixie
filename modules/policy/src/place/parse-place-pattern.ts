@@ -30,7 +30,7 @@ function parseMailDomain(text: string): PlaceKey | null {
   const subdomains = text.startsWith('*.');
   const domain = (subdomains ? text.slice(2) : text).toLowerCase().replace(/\.$/u, '');
 
-  if (!/^[^\s/@:*]+$/u.test(domain) || (subdomains && isPublicSuffix(domain))) {
+  if (!/^[^\s/@:*?#\\]+$/u.test(domain) || (subdomains && isPublicSuffix(domain))) {
     return null;
   }
 

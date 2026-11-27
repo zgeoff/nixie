@@ -10,7 +10,14 @@ async function setupTest() {
 
   const log = { ...started.log, projections: [...started.log.projections, placesProjection] };
 
-  return { log, context: { log, definitions: () => ({ snapshotHash: 'snapshot-1' }) } };
+  return {
+    log,
+    context: {
+      log,
+      definitions: () => ({ snapshotHash: 'snapshot-1' }),
+      publishSnapshot: () => Promise.resolve(),
+    },
+  };
 }
 
 test('it adds each place that a source names at act as nixie own', async () => {

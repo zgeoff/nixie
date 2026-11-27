@@ -2,6 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { readRecordForgetPreview } from '@heynixie/memory';
 import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
+import { readPlaces, writePlaceAdded, writePlaceChanged } from '@heynixie/policy';
 import {
   reminderCancelledCodec,
   reminderSetCodec,
@@ -299,3 +300,49 @@ test.each([
     expect(result).toStrictEqual({ status: 'wrong_kind', kind });
   },
 );
+
+test('it forgets a personal place by its add record and erases its later name changes too', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    publishSnapshot: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'address', address: 'sam@example.org' },
+    trust: 'known',
+    name: 'Sam',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const changed = await writePlaceChanged(places, { placeID: added.placeID, name: 'Sam at work' });
+
+  invariant(changed.status === 'changed');
+
+  const [addRecord] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.added'],
+  });
+
+  invariant(addRecord);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: addRecord.record.sequence,
+  });
+
+  const changes = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.changed'],
+  });
+
+  expect({
+    forgotten: forgotten.status,
+    listed: await readPlaces(ctx.context.log),
+    changeFields: changes.map((entry) => entry.record.erasable.status),
+  }).toStrictEqual({ forgotten: 'forgotten', listed: [], changeFields: ['shredded'] });
+});

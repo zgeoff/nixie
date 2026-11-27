@@ -1,6 +1,8 @@
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
+import { toCanonicalDestination } from '../place/to-canonical-destination';
+import { writeContactKinds } from '../place/write-contact-kinds';
 import { contactMarkedKnownCodec } from './contact-marked-known-codec';
 import type { KnownContactEntry } from './read-known-contacts';
 import { readKnownContacts } from './read-known-contacts';
@@ -30,7 +32,12 @@ export async function writeContactMarked(
 
   const held = await readKnownContacts(context.log);
 
-  const existing = held.find((contact) => contact.destination === destination);
+  const canonical = toCanonicalDestination(destination);
+
+  const existing = held.find(
+    (contact) =>
+      contact.destination !== null && toCanonicalDestination(contact.destination) === canonical,
+  );
 
   if (existing !== undefined) {
     return { contact: existing, isNew: false };
@@ -47,7 +54,11 @@ export async function writeContactMarked(
     },
   ]);
 
-  const [contact] = await readKnownContacts(context.log, [contactID]);
+  await writeContactKinds(context.log);
+
+  const known = await readKnownContacts(context.log);
+
+  const contact = known.find((entry) => entry.contactID === contactID);
 
   return {
     contact: contact ?? { contactID, name: mark.name, destination, markedAt: context.clock.now() },

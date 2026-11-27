@@ -20,10 +20,20 @@ export type PlaceChangeResult =
 
 // Changes the level or the name of an entry that is still in the directory. A personal place
 // repeats its whole name in the erasable fields, so the latest record holds it.
-export function writePlaceChanged(
+export async function writePlaceChanged(
   context: PlaceContext,
   change: PlaceChange,
 ): Promise<PlaceChangeResult> {
+  const result = await writeChanged(context, change);
+
+  if (result.status === 'changed') {
+    await context.publishSnapshot();
+  }
+
+  return result;
+}
+
+function writeChanged(context: PlaceContext, change: PlaceChange): Promise<PlaceChangeResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 

@@ -7,13 +7,15 @@ import type { PolicyTables } from '../policy/policy-tables';
 import { placesAddedCodec } from './places-added-codec';
 import { placesChangedCodec } from './places-changed-codec';
 import { placesRemovedCodec } from './places-removed-codec';
+import { writeContactKinds } from './write-contact-kinds';
 
 // The directory of places. It folds the records of its own and, as places at known, the records of
 // the known contacts. A known contact's kind reads from its erasable destination, so its row holds
-// the kind `contact` until the reader resolves it.
+// the kind `contact` until writeContactKinds sets it.
 export const placesProjection: Projection = {
   table: 'places',
   keyColumn: 'place_id',
+  afterRebuild: writeContactKinds,
   fold: async (tx, record) => {
     const db = tx.$extendTables<PolicyTables>();
 

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { DestinationPermission } from '@heynixie/log';
 import type { PlaceEntry } from '../place/types';
+import { useChatChannels } from '../test-utils/use-chat-channels';
 import type { FoundDestination } from './pick-destination-permissions';
 import { pickDestinationPermissions } from './pick-destination-permissions';
 
@@ -83,6 +84,8 @@ test('it picks the rule permission for a wildcard pattern over a destination tha
 });
 
 test('it matches a rule pattern in any case, and a handle exactly', () => {
+  useChatChannels(['telegram']);
+
   const rules = [
     {
       id: 'allow-mail',

@@ -112,9 +112,6 @@ export interface PolicyCall {
   // names. A call without it takes the effects in force alone.
   readonly effects?: readonly Effect[];
 
-  // every effect the call has once its tool's prepare step has run, which the places judge by
-  readonly placeEffects?: readonly Effect[];
-
   // the sequence of the owner_message that started this turn; null in a task run
   readonly turnMessageSequence: number | null;
 

@@ -1516,6 +1516,39 @@ test.each<[Trust, readonly Effect[], 'allow' | 'ask']>([
   },
 );
 
+test('it judges a read place by the effects that the call adds to the declared ones', async () => {
+  const ctx = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'p1',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'read',
+      },
+    ],
+    declaration: buildTestDeclaration({ effects: ['fetch'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      effects: ['send'],
+      destinations: [{ value: 'https://library.example.org/x', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision.outcome).toBe('ask');
+});
+
+test('it does not let a rule for reading effects allow a call that adds a sending effect', async () => {
+  const ctx = buildTestDecisionPoint({
+    rules: [buildRuleEntry('allow-reads', { outcome: 'allow', effects: ['read', 'fetch'] })],
+    declaration: buildTestDeclaration({ effects: ['fetch'], destinations: [], content: [] }),
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ effects: ['send'] }));
+
+  expect(decided.decision.outcome).toBe('ask');
+});
+
 test('it records stage 7 with the places set and no rule when a place allows the call', async () => {
   const ctx = buildTestDecisionPoint({
     places: [
@@ -1627,6 +1660,20 @@ test('it does not let an allow rule cover a call that requires a destination and
   });
 
   const decided = await ctx.decide(buildPolicyCall({ destinations: [] }));
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9 });
+});
+
+test('it asks at stage 9 for a call that requires a destination and has none, even when the owner asked for it in typed words', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: {
+      ...buildTestDeclaration({ effects: ['send'], destinations: [], content: [] }),
+      requiresDestination: true,
+    },
+    messages: [buildTypedMessage(7, 'Click the middle of the screen', 1_794_550_000_000)],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ destinations: [], turnMessageSequence: 7 }));
 
   expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 9 });
 });

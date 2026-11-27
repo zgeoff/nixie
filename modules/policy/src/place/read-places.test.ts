@@ -21,9 +21,21 @@ async function setupTest() {
     projections: [...started.log.projections, knownContactsProjection, placesProjection],
   };
 
+  const published = { count: 0 };
+
   return {
     log,
-    context: { log, clock: started.clock, definitions: () => ({ snapshotHash: 'snapshot-1' }) },
+    published,
+    context: {
+      log,
+      clock: started.clock,
+      definitions: () => ({ snapshotHash: 'snapshot-1' }),
+      publishSnapshot: () => {
+        published.count += 1;
+
+        return Promise.resolve();
+      },
+    },
   };
 }
 
@@ -277,7 +289,7 @@ test('it keeps a removed place for a replay, and leaves it out of the current li
   }).toStrictEqual({ isRemoved: true, current: [], replayed: [true], refs: [] });
 });
 
-test('it covers nothing once a forget removes the key of an address place', async () => {
+test('it covers nothing once the key of an address place is gone', async () => {
   const ctx = await setupTest();
 
   await writePlaceAdded(ctx.context, {
@@ -394,4 +406,38 @@ test('it lists each place of a snapshot with its level, sorted by ID', async () 
   const refs = await readPlaceRefs(ctx.log.writer.db);
 
   expect(refs.map((ref) => ref.placeID)).toStrictEqual([first.placeID, second.placeID].toSorted());
+});
+
+test('it publishes one snapshot for each add, change and removal that took effect', async () => {
+  const ctx = await setupTest();
+
+  const added = await writePlaceAdded(ctx.context, {
+    key: { kind: 'site', domain: 'a.example.org', subdomains: false },
+    trust: 'read',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  await writePlaceChanged(ctx.context, { placeID: added.placeID, trust: 'blocked' });
+  await writePlaceRemoved(ctx.context, added.placeID);
+
+  expect(ctx.published.count).toBe(3);
+});
+
+test('it publishes no snapshot for an add, a change and a removal that took no effect', async () => {
+  const ctx = await setupTest();
+
+  await writePlaceAdded(ctx.context, {
+    key: { kind: 'site', domain: 'github.io', subdomains: true },
+    trust: 'read',
+    name: null,
+    addedBy: 'you',
+  });
+
+  await writePlaceChanged(ctx.context, { placeID: 'no-such-place', trust: 'read' });
+  await writePlaceRemoved(ctx.context, 'no-such-place');
+
+  expect(ctx.published.count).toBe(0);
 });

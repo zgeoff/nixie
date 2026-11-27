@@ -1,24 +1,45 @@
 import type { Log } from '@heynixie/log';
-import { findPlace, parsePlace, readPlaces } from '@heynixie/policy';
+import { readRecords } from '@heynixie/log';
+import type { PolicyPlace } from '@heynixie/policy';
+import { findPlace, parsePlace } from '@heynixie/policy';
+import invariant from 'tiny-invariant';
+import { readSnapshotPlaces } from '../utils/read-snapshot-places';
 
-// Finds the short ID of the place you blocked that covers a URL's host, for a fetch that no
-// decision point sees, such as each redirect hop of a page.
+// Finds the short ID of the place that the call's snapshot blocks and that covers a URL's host, for
+// a fetch no decision point sees, such as a redirect hop. It reads the snapshot once per call.
 export function makeBlockedPlaceFinder(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
-): (url: string) => Promise<string | null> {
-  return async (url) => {
-    const parsed = URL.parse(url);
+): (callSequence: number) => (url: string) => Promise<string | null> {
+  return (callSequence) => {
+    let held: Promise<readonly PolicyPlace[]> | null = null;
 
-    if (parsed === null) {
-      return null;
-    }
+    return async (url) => {
+      const parsed = URL.parse(url);
 
-    const host = parsed.hostname;
+      if (parsed === null) {
+        return null;
+      }
 
-    const places = await readPlaces(log);
+      held ??= readCallPlaces(log, callSequence);
 
-    const found = findPlace(places, { parsed: parsePlace(host), raw: host });
+      const host = parsed.hostname;
 
-    return found?.trust === 'blocked' ? found.shortID : null;
+      const callPlaces = await held;
+
+      const found = findPlace(callPlaces, { parsed: parsePlace(host), raw: host });
+
+      return found?.trust === 'blocked' ? found.shortID : null;
+    };
   };
+}
+
+async function readCallPlaces(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  callSequence: number,
+): Promise<readonly PolicyPlace[]> {
+  const [entry] = await readRecords(log, { afterSequence: callSequence - 1, limit: 1 });
+
+  invariant(entry?.record.sequence === callSequence, 'the call has its record before it runs');
+
+  return readSnapshotPlaces(log, entry.record.definitions.snapshotHash);
 }

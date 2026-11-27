@@ -13,7 +13,10 @@ export interface PlaceActed {
 }
 
 // One record for a call that an act place allowed. It makes no new definitions snapshot.
-export async function writePlaceActed(context: PlaceContext, acted: PlaceActed): Promise<void> {
+export async function writePlaceActed(
+  context: Pick<PlaceContext, 'log' | 'definitions'>,
+  acted: PlaceActed,
+): Promise<void> {
   await writeRecords(context.log, [
     {
       kind: placesActedCodec.kind,

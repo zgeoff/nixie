@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { useChatChannels } from '../test-utils/use-chat-channels';
 import { findPlace } from './find-place';
 import { isPlaceCovered } from './is-place-covered';
 import { parsePlace } from './parse-place';
@@ -64,6 +65,8 @@ test('#isPlaceCovered matches a raw key on the exact string, and a null destinat
 });
 
 test('#isPlaceCovered matches a phone number and a handle exactly', () => {
+  useChatChannels(['telegram']);
+
   expect([
     isPlaceCovered(
       { kind: 'phone', e164: '+61420000000' },

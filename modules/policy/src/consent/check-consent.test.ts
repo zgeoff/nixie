@@ -169,6 +169,32 @@ test('it passes the code check for a typed name that matches exactly one known c
   expect(decided.decision).toMatchObject({ outcome: 'allow', stage: 8 });
 });
 
+test('it passes the code check for a typed name when the destination spells the address in another case', async () => {
+  const ctx = setupTest({
+    messages: [buildTypedMessage(3, 'Mail Sam the report', 1_794_550_000_000)],
+    inputs: {
+      places: [
+        {
+          placeID: 'c1',
+          shortID: 'c1',
+          key: { kind: 'address', address: 'sam@example.org' },
+          trust: 'known',
+          name: 'Sam',
+        },
+      ],
+    },
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      turnMessageSequence: 3,
+      destinations: [{ value: 'Sam@Example.org', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'allow', stage: 8 });
+});
+
 test('it fails the code check for a typed name that two known contacts share', async () => {
   const ctx = setupTest({
     messages: [buildTypedMessage(3, 'Mail Sam the report', 1_794_550_000_000)],
