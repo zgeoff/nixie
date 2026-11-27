@@ -13,7 +13,7 @@ test.each([
   ['action_changed', 'The action changed after nixie asked, so nothing ran and nothing changed.'],
   [
     'held_action_gone',
-    'The action this question held is gone, so nothing ran and nothing changed.',
+    'The action this question held was stopped or is gone, so nothing ran and nothing changed.',
   ],
   ['expired', 'This mandate has ended, so nothing changed.'],
   ['withdraw_only', 'This proposal can only be withdrawn, so nothing changed.'],

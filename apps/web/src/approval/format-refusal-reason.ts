@@ -8,7 +8,8 @@ const reasons: Readonly<Record<string, string>> = {
   rule_gone: 'The rule this answer needs is gone, so nothing changed.',
   arguments_gone: 'The details of this action were erased, so nothing ran and nothing changed.',
   action_changed: 'The action changed after nixie asked, so nothing ran and nothing changed.',
-  held_action_gone: 'The action this question held is gone, so nothing ran and nothing changed.',
+  held_action_gone:
+    'The action this question held was stopped or is gone, so nothing ran and nothing changed.',
   expired: 'This mandate has ended, so nothing changed.',
   withdraw_only: 'This proposal can only be withdrawn, so nothing changed.',
   proposal_detached: 'The MCP server this proposal names is gone, so nothing changed.',

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
+import { writeTaskControl } from '@heynixie/tasks';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -24,6 +25,7 @@ async function setupTest() {
   return {
     ...actions,
     queued,
+    taskID: step.lease.workID,
     holdAction: async () => {
       const lease = await claimTestAction(actions.context, { holder: 'runner-a', leaseMs: 60_000 });
 
@@ -85,6 +87,18 @@ test('it reads no action for a proposal that holds none', async () => {
 
 test('it reads no action that is not held', async () => {
   const ctx = await setupTest();
+  const held = await ctx.readHeld(ctx.queued.actionID, 'proposal-1');
+
+  expect(held).toBeNull();
+});
+
+test('it reads no action that a stop of its task cancelled', async () => {
+  const ctx = await setupTest();
+
+  await ctx.holdAction();
+
+  await writeTaskControl(ctx.context, { taskID: ctx.taskID, control: 'stop' });
+
   const held = await ctx.readHeld(ctx.queued.actionID, 'proposal-1');
 
   expect(held).toBeNull();
