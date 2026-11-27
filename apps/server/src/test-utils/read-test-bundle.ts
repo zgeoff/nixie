@@ -9,14 +9,35 @@ export interface TestBundle extends ReleaseBundle {
   readonly mainText: string;
 }
 
+const bundles = new Map<boolean, Promise<TestBundle>>();
+
+// The test script writes both bundles before the unit run, because a build runs past the unit limit.
+// Finding one hashes every source file, 1.7 s on a loaded host, so a process finds each bundle once.
+export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> {
+  const known = bundles.get(isTestBuild);
+
+  if (known !== undefined) {
+    return known;
+  }
+
+  const reading = readBundleFiles(isTestBuild);
+
+  bundles.set(isTestBuild, reading);
+
+  try {
+    return await reading;
+  } catch (error) {
+    bundles.delete(isTestBuild);
+    throw error;
+  }
+}
+
 const bundleSchema = z.object({
   files: z.array(z.string()),
   testBuildIDs: z.array(z.string()),
 });
 
-// A bundle of the whole server takes seconds, and a test that built one ran past the unit limit
-// beside the other workers, so the test script writes both bundles before the unit run starts.
-export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> {
+async function readBundleFiles(isTestBuild: boolean): Promise<TestBundle> {
   const directory = await writeBundleTemplate(isTestBuild);
 
   const entry = join(directory, 'out', 'main.js');
