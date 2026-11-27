@@ -16,7 +16,8 @@ for the session's events:
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
-command's JSON output.
+command's JSON output. When a command fails, or a result differs from its Expect line, follow
+[Exit codes](exit-codes.md), and skip `done` for the feature.
 
 Run this journey on `local` only, on an `up` of its own:
 
@@ -126,12 +127,14 @@ you approve its card, nixie releases the held action and it runs:
   record when you approve the card.
 - The `coding_sessions` table gets its row only after that approval.
 
-Run this part on `local` only, after the journey above has passed, on an `up` of its own:
+Run this part on `local` only, because the coding gateway double exists only there. Run it after the
+journey above has passed, on an `up` of its own:
 
 - Run `NIXIE_VERIFY_CODING=1 NIXIE_VERIFY_HOLD_SPAWNS=1 bun verify up --restart` and
   `bun verify doctor`, then [sign-in-enrol](feature-sign-in-enrol.md). The extra variable adds the
   rule that asks before `coding.spawn`.
-- Run this part once per `up`.
+- Run this part once per `up`, because step 5 expects no session yet and step 7 expects exactly one
+  `action.released` record, and an earlier run on the same `up` leaves both false.
 - Skip `done` for this part: the verdict of the feature comes from the journey above. When this part
   fails, skip `done` for the feature, and report the step that failed.
 
