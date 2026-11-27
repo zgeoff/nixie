@@ -32,9 +32,11 @@ source never moves its cursor past a text it did not read.
 
 A call that fails to reach the provider throws, and a send that throws has an unknown outcome.
 Twilio stamps a text to the second, and nixie takes the time Twilio created the text as its receive
-time, so a rule that the model set after the text arrived cannot take it. Twilio lists a queued text
-with no sent time, so a read for a send looks at the creation time and pages through the list
-without a filter on the sent time.
+time, so a rule that the model set after the text arrived cannot take it. Twilio sorts its list by
+the sent time, which a late text puts long before its creation time. So a read of the texts takes
+every page from a day before its start time, and a text that Twilio created more than a day after it
+was sent is out of reach. Twilio lists a queued text with no sent time, so a read for a send looks
+at the creation time and pages through the list without a filter on the sent time.
 
 The adapter calls the provider's Messages API through the credential store's fetcher, bound to the
 provider's API origin. The fetcher adds the API key as HTTP Basic, with the key's SID as the user,

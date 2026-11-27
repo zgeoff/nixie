@@ -341,3 +341,36 @@ test('it reads on past a page that holds a text whose webhook came late', async 
 
   expect(texts.map((text) => text.messageID)).toContain('SMnext');
 });
+
+test('it reads a late text on the last of 52 pages, behind 50 pages of older texts', async () => {
+  const ctx = await setupTest();
+
+  const sinceMs = Date.UTC(2027, 2, 9, 12, 0, 0);
+
+  for (let index = 0; index < 100; index += 1) {
+    await twilioStore.messages.create({
+      sid: `SMnew${String(index).padStart(3, '0')}`,
+      sentAt: sinceMs + 60_000 + index * 1000,
+    });
+  }
+
+  for (let index = 0; index < 5000; index += 1) {
+    await twilioStore.messages.create({
+      sid: `SMold${String(index).padStart(4, '0')}`,
+      sentAt: sinceMs - 3_600_000 - index * 1000,
+    });
+  }
+
+  await twilioStore.messages.create({
+    sid: 'SMlate',
+    sentAt: sinceMs - 12 * 3_600_000,
+    createdAt: sinceMs + 30_000,
+  });
+
+  const texts = await ctx.provider.readInbound(sinceMs);
+
+  expect(texts.map((text) => text.messageID)).toStrictEqual([
+    'SMlate',
+    ...Array.from({ length: 100 }, (_, index) => `SMnew${String(index).padStart(3, '0')}`),
+  ]);
+});

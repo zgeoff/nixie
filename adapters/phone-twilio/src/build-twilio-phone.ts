@@ -25,11 +25,14 @@ const pageSize = 100;
 // Twilio stamps each message to the second.
 const precisionMs = 1000;
 
-// The list runs newest first by the time a message was sent, which can sit far from its creation
-// time, such as when a webhook was late. So a read goes on until a whole page holds messages this
-// much older than the ones it wants, and one old message among newer ones never ends it.
+// Twilio sorts its list newest first by the time a message was sent, and nixie keys a text by the
+// time Twilio created it, which a late text puts long after its sent time. So a read of the texts
+// pages on the sent time alone, and reaches a text sent up to this long before Twilio created it.
+const lateTextMs = 24 * 60 * 60_000;
+
+// A read for a send pages on the creation time, because a queued message has no sent time. It goes
+// on until a whole page is this much older than the window, so one old message never ends it.
 const orderSlackMs = 60_000;
-const dayMs = 24 * 60 * 60_000;
 
 // The phone provider over Twilio's Messages API, which nixie polls. A call that fails to reach
 // Twilio throws, and so does a send that Twilio answers with a server error, because that send may
@@ -83,18 +86,11 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
       });
 
       const messages = await readMessages(query, (page, read) => {
-        const pageTimes = page
-          .flatMap((message) => toInboundText(message))
-          .map((text) => text.receivedAt);
-
         const newest = Math.max(
           ...read.flatMap((message) => toInboundText(message)).map((text) => text.receivedAt),
         );
 
-        return (
-          pageTimes.length === page.length &&
-          pageTimes.every((time) => time < newest - orderSlackMs)
-        );
+        return page.length > 0 && page.every((message) => toSentAt(message) < newest - lateTextMs);
       });
 
       const texts = messages.flatMap((message) => toInboundText(message));
@@ -106,19 +102,11 @@ export function buildTwilioPhone(options: TwilioPhoneOptions): PhoneProvider {
       const query = new URLSearchParams({
         To: options.number,
         PageSize: String(pageSize),
-        'DateSent>=': new Date(sinceMs - dayMs).toISOString().slice(0, 10),
+        'DateSent>=': new Date(sinceMs - lateTextMs).toISOString().slice(0, 10),
       });
 
-      const messages = await readMessages(query, (page) => {
-        const pageTimes = page
-          .flatMap((message) => toInboundText(message))
-          .map((text) => text.receivedAt);
-
-        return (
-          pageTimes.length === page.length &&
-          pageTimes.every((time) => time < sinceMs - orderSlackMs)
-        );
-      });
+      // The day filter bounds the list on its own sort key, so the read takes every page it leaves.
+      const messages = await readMessages(query, () => false);
 
       return messages
         .flatMap((message) => toInboundText(message))
@@ -209,6 +197,13 @@ function toInboundText(message: TwilioMessage): ProviderText[] {
         },
       ]
     : [];
+}
+
+// A message with no sent time reads as the newest, so a read never stops at it.
+function toSentAt(message: TwilioMessage): number {
+  const sentAt = Date.parse(message.date_sent ?? '');
+
+  return Number.isFinite(sentAt) ? sentAt : Number.POSITIVE_INFINITY;
 }
 
 // The creation time comes first, because it is the one that a queued message has. A message with no

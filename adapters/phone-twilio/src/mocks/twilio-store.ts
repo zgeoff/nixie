@@ -23,6 +23,10 @@ const messages = new Collection({
     // epoch ms
     sentAt: z.number().default(() => Date.now()),
 
+    // epoch ms when Twilio created the message, which a late text puts after its sent time; null
+    // takes the sent time
+    createdAt: z.number().nullable().default(null),
+
     // a queued message has a creation time and no sent time
     isQueued: z.boolean().default(false),
   }),

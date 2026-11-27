@@ -27,6 +27,22 @@ test.each<[string, Partial<SendEvidence>, ReturnType<typeof pickSendSettlement>]
     { kind: 'inconclusive' },
   ],
   [
+    'asks about a text stamped in the second the attempt began, before the attempt',
+    {
+      attemptStartedAt: 1500,
+      candidates: [{ messageID: 'SM1', createdAt: 1000, precisionMs: 1000 }],
+    },
+    { kind: 'inconclusive' },
+  ],
+  [
+    'claims a text stamped at the very tick the attempt began',
+    {
+      attemptStartedAt: 2000,
+      candidates: [{ messageID: 'SM1', createdAt: 2000, precisionMs: 1000 }],
+    },
+    { kind: 'claim', messageID: 'SM1' },
+  ],
+  [
     'claims a text whose rounded timestamp is after the attempt began',
     { candidates: [{ messageID: 'SM1', createdAt: 11_000, precisionMs: 1000 }] },
     { kind: 'claim', messageID: 'SM1' },

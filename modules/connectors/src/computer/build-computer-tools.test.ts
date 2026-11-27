@@ -1263,15 +1263,15 @@ test('it tells the model to hand over a sign-up that wants a phone number it can
   const ctx = await setupTest({});
 
   expect(ctx.describeTool('computer.handover')).toContain(
-    'a sign-up that asks for a phone number or a code by text when you have no tool that reads texts',
+    'Hand over a sign-up that asks for a phone number or a code by text in 2 cases: when you have no phone tools',
   );
 });
 
-test('it tells the model to hand over a sign-up whose site refuses the phone number it gave', async () => {
+test('it tells the model to hand over a sign-up whose site refuses the number while its phone is on', async () => {
   const ctx = await setupTest({});
 
   expect(ctx.describeTool('computer.handover')).toContain(
-    'a site that refuses the phone number you gave it',
+    'when your phone is on but the site refuses its number',
   );
 });
 

@@ -57,7 +57,7 @@ export const twilioHandlers = [
         body: message.body,
         direction: message.direction,
         date_sent: message.isQueued ? null : new Date(message.sentAt).toUTCString(),
-        date_created: new Date(message.sentAt).toUTCString(),
+        date_created: new Date(message.createdAt ?? message.sentAt).toUTCString(),
       })),
       next_page_uri: hasNext ? `${url.pathname}?${next.toString()}` : null,
     } satisfies TwilioMessageList);
