@@ -70,11 +70,10 @@ as [Exit codes](exit-codes.md) says.
    Expect: the confirmation holds the line "This also stops its coding session.".
 
 5. Confirm the stop, then check the task, its session and the stop's outcome. The stop's outcome
-   arrives after the task stops, so the last record of the stopped task is `action.outcome`, and on
-   exit 1 from `task`, or on a query that returns no row, run the `task` and `db query` commands
-   again, and the snapshot once after they pass, up to 5 runs in all, and do not click again. When
-   the fifth run still fails, stop the journey and report the last output of each command, and the
-   last snapshot.
+   arrives after the task stops, as the stopped task's last record, `action.outcome`. On exit 1 from
+   `task`, or on a query that returns no row, run the `task` and `db query` commands again, and the
+   snapshot once after they pass, up to 5 runs in all, and do not click again. When the fifth run
+   still fails, stop the journey and report the last output of each command, and the last snapshot.
 
    ```bash
    bun verify browser click --role button --name 'Stop the task'
