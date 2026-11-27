@@ -86,18 +86,20 @@ Before you start:
 6. Check the wake, the read's result, the outside content and the held text:
 
    ```bash
-   bun verify model input --contains '"body":"Your code is 481516."'
+   bun verify model received --text '{\"from\":\"+61422222222\",\"body\":\"Your code is 481516.\"'
    bun verify db query "select count(*) as wakes from records where kind = 'trigger.mail_woke'"
    bun verify db query "select json_extract(called.payload, '$.tool') as tool, json_extract(result.payload, '$.outcome') as outcome, result.content_source from records as called join records as result on result.kind = 'tool_result' and json_extract(result.payload, '$.callID') = json_extract(called.payload, '$.callID') where called.kind = 'tool_called' order by called.sequence"
    bun verify db query "select json_extract(payload, '$.tool') as tool from records where kind = 'policy.action_proposed' order by sequence"
    ```
 
-   Expect: the first command exits 0, because the model's input holds the read's result with the
-   text's body in a `body` field, which the wake never writes. `wakes` is 1. The second query lists
-   `phone.list`, `phone.read` and `phone.send` in that order. The `outcome` of `phone.list` and
-   `phone.read` is `result`, which an unknown text ID would fail, and their `content_source` is
-   `untrusted`. The third query lists `phone.send`: the text waits for your approval and never
-   reaches a provider.
+   Expect: the first command exits 0 with `data.requests` 1 or more. Each model request holds a tool
+   result as JSON text, with its quotes escaped. Each text in a `phone.list` result starts with its
+   ID, and the wake writes no JSON, so only the read's result can match the first command. The
+   command fails when the read returns another body. `wakes` is 1. Among the rows of the second
+   query, `phone.list`, `phone.read` and `phone.send` come in that order. The `outcome` of
+   `phone.list` and `phone.read` is `result`, and their `content_source` is `untrusted`. A read of
+   an unknown text ID would fail this check. The third query lists `phone.send`, because the reply
+   text waits for the user's approval and never reaches a provider.
 
 ## End state
 
@@ -105,4 +107,4 @@ Before you start:
 - Step 4: the text that no rule matches is stored and wakes nothing.
 - Step 6: the matching text woke the conversation once, the model listed and read it with results
   that succeeded and are marked untrusted, the read returned the text's body, and its reply text
-  waits for your approval.
+  waits for the user's approval.
