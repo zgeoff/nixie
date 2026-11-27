@@ -393,7 +393,9 @@ test('it routes a recovery.notice record to the restore system message', () => {
 });
 
 test('it renders a record of a kind that a feature added with the feature renderer, in the time and owner name of the inbox', () => {
-  onTestFinished(() => inboxKinds.set([]));
+  onTestFinished(() => {
+    inboxKinds.set([]);
+  });
 
   inboxKinds.set([
     {

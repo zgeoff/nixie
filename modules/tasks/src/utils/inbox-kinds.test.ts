@@ -5,7 +5,9 @@ import { isInboxRecord } from './is-inbox-record';
 import { isWakingRecord } from './is-waking-record';
 
 function setupTest() {
-  onTestFinished(() => inboxKinds.set([]));
+  onTestFinished(() => {
+    inboxKinds.set([]);
+  });
 
   return {
     kinds: [

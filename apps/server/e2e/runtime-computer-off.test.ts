@@ -51,7 +51,7 @@ test('it answers a procedure of the computer with FEATURE_OFF', async () => {
 
   const handover = ctx.api.client.computer.readHandover();
 
-  await expect(handover).rejects.toMatchObject({
+  expect(handover).rejects.toMatchObject({
     code: 'FEATURE_OFF',
     data: { feature: 'computer' },
   });

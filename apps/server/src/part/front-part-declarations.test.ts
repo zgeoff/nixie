@@ -76,7 +76,7 @@ test('it keeps the key and the record when the code sandbox will not go, so the 
 
   await forgotten.catch(() => {});
 
-  await expect(forgotten).rejects.toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+  expect(forgotten).rejects.toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
 
   ctx.nixie.signalStop();
 
