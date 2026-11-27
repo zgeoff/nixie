@@ -68,6 +68,9 @@ test.each([
   'device.status_changed',
   'device.page_event',
 ])('it reads a %s record as outside the inbox while no feature added its kind', (kind) => {
+  // A server that an earlier test started in this process may have filled the list.
+  inboxKinds.set([]);
+
   expect(
     isInboxRecord({
       // @ts-expect-error -- tasks depends on no feature, so it does not see the kind that a feature adds
