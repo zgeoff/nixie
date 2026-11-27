@@ -16,6 +16,9 @@ export type AttemptVerdict =
       readonly kind: 'go';
       readonly destinations: readonly string[];
       readonly replyTargets?: readonly string[];
+
+      // runs once the attempt is admitted, so a call that never started leaves no record of an act
+      readonly writeActs?: () => Promise<void>;
     }
   | {
       readonly kind: 'deny';

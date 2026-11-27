@@ -60,6 +60,9 @@ export interface SeedPlan {
   // the settles and moves of runtime task changes, written after the seed record
   readonly taskRecords: readonly RecordInput[];
 
+  // the adds and removes of the directory's sites, written after the seed record
+  readonly placeRecords: readonly RecordInput[];
+
   readonly previous: DefinitionsInForce | null;
 }
 
@@ -270,6 +273,7 @@ async function writeSeedRecord(
       },
     },
     ...plan.taskRecords,
+    ...plan.placeRecords,
   ]);
 
   invariant(record);

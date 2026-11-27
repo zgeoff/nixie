@@ -57,6 +57,19 @@ const screenshotSchema = z.strictObject({
 // to is 'up', 'down' or a control ID such as E12
 const scrollSchema = z.strictObject({ op: z.literal('scroll'), tab: z.string(), to: z.string() });
 
+// Reads the address a tab holds, with no page text, for the decision about a call that names it
+const tabURLSchema = z.strictObject({ op: z.literal('tabURL'), tab: z.string() });
+
+// Reads what a click on a numbered control of a tab would reach
+const elementSchema = z.strictObject({
+  op: z.literal('element'),
+  tab: z.string(),
+  element: z.string(),
+});
+
+// Reads the window that has focus, with no picture, for the decision about a desktop call
+const screenFocusSchema = z.strictObject({ op: z.literal('screenFocus') });
+
 const actRequestSchema = z.strictObject({
   op: z.literal('act'),
   tab: z.string(),
@@ -142,6 +155,9 @@ export const computerRequestSchema = z.discriminatedUnion('op', [
   readSchema,
   screenshotSchema,
   scrollSchema,
+  tabURLSchema,
+  elementSchema,
+  screenFocusSchema,
   desktopShotSchema,
   screenScrollSchema,
   screenBindSchema,

@@ -1,7 +1,20 @@
 import { z } from 'zod';
 import type { Decision } from '../types';
 
-const permissionSchema = z.enum(['owner', 'reply_target', 'known_contact', 'task', 'rule']);
+const legacyPermissionSchema = z.enum(['owner', 'reply_target', 'known_contact', 'task', 'rule']);
+
+const permissionSchema = z.union([
+  legacyPermissionSchema,
+  z.object({
+    by: z.literal('place'),
+    placeID: z.string(),
+    trust: z.enum(['known', 'read', 'act', 'self']),
+  }),
+  z.object({ by: z.literal('reading') }),
+  z.object({ by: z.literal('reply_target') }),
+  z.object({ by: z.literal('task') }),
+  z.object({ by: z.literal('rule'), ruleID: z.string() }),
+]);
 
 const destinationSchema = z.object({
   destination: z.string(),
@@ -38,6 +51,7 @@ export const decisionSchema = z.object({
     .exactOptional(),
   defect: z.enum(['direct_request', 'repeat']).exactOptional(),
   permissions: permissionSchema.nullable().array().exactOptional(),
+  places: z.object({ placeID: z.string(), shortID: z.string() }).array().exactOptional(),
   consentCheck: z
     .object({
       messageSequences: z.number().array(),

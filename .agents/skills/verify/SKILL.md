@@ -64,6 +64,7 @@ feature with no verdict in its description.
 | computer-screen    | Click a point of the assistant's desktop                          | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
 | computer-watch     | Watch the assistant's desktop                                     | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
 | computer-off       | See that a nixie with no computer offers none                     | [references/feature-computer-off.md](references/feature-computer-off.md)             |
+| trusted-places     | Trust a site once                                                 | [references/feature-trusted-places.md](references/feature-trusted-places.md)         |
 | calls-off          | Turn calls off                                                    | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
 | devices-off        | Turn devices off                                                  | [references/feature-devices-off.md](references/feature-devices-off.md)               |
 | spend-routes       | Read each route's counts                                          | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
@@ -161,8 +162,7 @@ target refuses each `[write]` command except `publish`, which writes no app data
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
-  snapshot.
+- `browser type` and `browser click` take `--role` with `--name`, or `--ref`.
 
 <!-- /repo -->
 
@@ -171,10 +171,9 @@ target refuses each `[write]` command except `publish`, which writes no app data
 <!-- repo: registry -->
 
 Declare the registry in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). List a new
-feature's packages, server files and web routes in
-[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts), and those that every journey runs
-in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). List each
+feature's packages and files in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts),
+and what every journey runs in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
 
 <!-- /repo -->
 

@@ -107,6 +107,7 @@ export type { CaptureAnswer } from './capture/capture-answer-schema';
 export { captureAnswerSchema } from './capture/capture-answer-schema';
 
 export type {
+  ClickedElement,
   ComputerFailureReason,
   ComputerFocus,
   ComputerReply,

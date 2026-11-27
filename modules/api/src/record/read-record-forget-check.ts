@@ -1,7 +1,9 @@
 import { forgettableKinds } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
+import { probeOpenPlaceRecord } from '@heynixie/policy';
 import type { Kysely } from 'kysely';
 import type { APITables } from '../types';
+import { unthreadedPlaceKinds } from '../utils/unthreaded-place-kinds';
 import { probeUnfinishedQueuedAction } from './probe-unfinished-queued-action';
 
 interface RecordTarget {
@@ -34,14 +36,19 @@ export async function readRecordForgetCheck(
     .selectFrom('records')
     .select('kind')
     .where('sequence', '=', target.sequence)
-    .where('thread', '=', target.thread)
+    .where((eb) =>
+      eb.or([
+        eb('thread', '=', target.thread),
+        eb.and([eb('thread', 'is', null), eb('kind', 'in', unthreadedPlaceKinds)]),
+      ]),
+    )
     .executeTakeFirst();
 
   if (row === undefined) {
     return { status: 'not_found' };
   }
 
-  return kinds.has(row.kind)
+  return kinds.has(row.kind) && !(await probeOpenPlaceRecord(db, target.sequence))
     ? { status: 'ok', kind: row.kind }
     : { status: 'wrong_kind', kind: row.kind };
 }

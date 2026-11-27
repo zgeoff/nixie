@@ -4,15 +4,23 @@ import type { Definitions, Log } from '@heynixie/log';
 import type {
   AskCause,
   CallDestination,
+  Effect,
   EffectDeclaration,
   PolicyCall,
   PolicyDecision,
 } from '@heynixie/policy';
-import { makeFaultSafeDecisionPoint } from '@heynixie/policy';
+import {
+  collectActedPlaces,
+  effectNames,
+  makeFaultSafeDecisionPoint,
+  readActedPlaceIDs,
+  writePlaceActed,
+} from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
 import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
+import type { StoredCall } from './read-stored-call';
 import { readStoredCall } from './read-stored-call';
 
 export interface AttemptCheckOptions {
@@ -63,6 +71,9 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       turnMessageSequence: stored.inputs.turnMessageSequence,
       onBehalfOf: stored.inputs.onBehalfOf,
       snapshot: options.definitions().snapshotHash,
+      ...(stored.inputs.effects === undefined
+        ? {}
+        : { effects: stored.inputs.effects.filter((name) => isEffect(name)) }),
     });
 
     return buildVerdict(options, {
@@ -72,6 +83,7 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       input,
       destinations: stored.destinations,
       frame: stored.inputs,
+      writeActs: () => writeActedPlaces(options, { policy, stored, declaration }),
     });
   };
 }
@@ -146,6 +158,7 @@ interface VerdictFacts {
   readonly input: AttemptCheckInput;
   readonly destinations: readonly CallDestination[];
   readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
+  readonly writeActs?: () => Promise<void>;
 }
 
 function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): AttemptVerdict {
@@ -169,7 +182,12 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     .map((destination) => destination.value);
 
   if (decision.outcome !== 'ask' || facts.declaration === null) {
-    return { kind: 'go', destinations, replyTargets };
+    return {
+      kind: 'go',
+      destinations,
+      replyTargets,
+      ...(facts.writeActs === undefined ? {} : { writeActs: facts.writeActs }),
+    };
   }
 
   const cause: AskCause = decision.cause ?? 'no_rule';
@@ -210,4 +228,61 @@ function invariantSequence(sequence: number | null): number {
   );
 
   return sequence;
+}
+
+function isEffect(name: string): name is Effect {
+  return effectNames.some((effect) => effect === name);
+}
+
+interface ActedFacts {
+  readonly policy: PolicyDecision;
+  readonly stored: StoredCall;
+  readonly declaration: EffectDeclaration | null;
+}
+
+// A queued call that an act place allowed owes the place one record once its attempt is admitted. A
+// retry of the same call writes no second one.
+async function writeActedPlaces(options: AttemptCheckOptions, facts: ActedFacts): Promise<void> {
+  const decision = facts.policy.decision;
+
+  const owed = collectActedPlaces(
+    {
+      outcome: decision.outcome,
+      permissions: decision.destinations.map((destination) => destination.permission),
+      places: decision.places,
+    },
+    pickStoredEffects(facts.stored, facts.declaration),
+  );
+
+  if (owed.length === 0 || facts.stored.thread === null) {
+    return;
+  }
+
+  const written = await readActedPlaceIDs(options.log, {
+    thread: facts.stored.thread,
+    callID: facts.stored.callID,
+    afterSequence: facts.stored.sequence,
+  });
+
+  for (const place of owed.filter((candidate) => !written.has(candidate.placeID))) {
+    await writePlaceActed(
+      { log: options.log, definitions: options.definitions },
+      {
+        placeID: place.placeID,
+        shortID: place.shortID,
+        callID: facts.stored.callID,
+        tool: facts.stored.tool,
+        thread: facts.stored.thread,
+      },
+    );
+  }
+}
+
+function pickStoredEffects(
+  stored: StoredCall,
+  declaration: EffectDeclaration | null,
+): readonly Effect[] {
+  const added = stored.inputs.effects?.filter((name) => isEffect(name)) ?? [];
+
+  return [...new Set([...(declaration?.effects ?? []), ...added])];
 }

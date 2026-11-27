@@ -1,9 +1,13 @@
 import { expect, test } from 'bun:test';
 import type { LogFields } from '@heynixie/logger';
 import { makeHopScan } from './make-hop-scan';
+import type { PageFetch } from './page-fetch';
 import type { SecretScan } from './secret-scan';
 
-function setupTest(overrides: Partial<SecretScan> = {}) {
+function setupTest(
+  overrides: Partial<SecretScan> = {},
+  fetching: Pick<PageFetch, 'findBlockedPlace'> = {},
+) {
   const logged: { event: string; fields: LogFields | undefined }[] = [];
   const asked: number[] = [];
 
@@ -20,7 +24,7 @@ function setupTest(overrides: Partial<SecretScan> = {}) {
     ...overrides,
   };
 
-  return { scanHop: makeHopScan(scan), logged, asked };
+  return { scanHop: makeHopScan(scan, fetching), logged, asked };
 }
 
 test('it refuses a hop whose URL holds a secret, naming the host that sent the redirect', async () => {
@@ -93,4 +97,44 @@ test('it asks the exemption about the hop number', async () => {
   await ctx.scanHop({ number: 4, url: 'https://x.test/?k=marked', sentBy: 'site.test' });
 
   expect(ctx.asked).toStrictEqual([4]);
+});
+
+test('it refuses a hop to a site that a blocked place covers, and names the place', async () => {
+  const ctx = setupTest({}, { findBlockedPlace: () => Promise.resolve('pl7') });
+
+  const verdict = await ctx.scanHop({
+    number: 1,
+    url: 'https://www.blocked.test/page',
+    sentBy: 'site.test',
+  });
+
+  expect(verdict).toStrictEqual({
+    kind: 'refuse',
+    reason:
+      'site.test redirected to a site: the site is a place you blocked (pl7), so it was not fetched',
+  });
+});
+
+test('it passes a hop that no blocked place covers', async () => {
+  const ctx = setupTest({}, { findBlockedPlace: () => Promise.resolve(null) });
+
+  const verdict = await ctx.scanHop({ number: 1, url: 'https://ok.test/', sentBy: 'site.test' });
+
+  expect(verdict).toStrictEqual({ kind: 'pass' });
+});
+
+test('it leaves out a sender that holds a secret from the refusal of a blocked hop', async () => {
+  const ctx = setupTest({}, { findBlockedPlace: () => Promise.resolve('pl7') });
+
+  const verdict = await ctx.scanHop({
+    number: 1,
+    url: 'https://www.blocked.test/page',
+    sentBy: 'marked.example',
+  });
+
+  expect(verdict).toStrictEqual({
+    kind: 'refuse',
+    reason:
+      'a site redirected to a site: the site is a place you blocked (pl7), so it was not fetched',
+  });
 });

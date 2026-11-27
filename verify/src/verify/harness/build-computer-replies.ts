@@ -6,6 +6,7 @@ export interface ComputerSessionInput {
     | 'browser'
     | 'browser-navigate'
     | 'browser-two-tabs'
+    | 'fetch-and-open'
     | 'shell'
     | 'shell-processes'
     | 'screen';
@@ -25,6 +26,11 @@ export function buildComputerReplies(
     .with('browser-two-tabs', (): ScriptedReply[] => [
       { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
       { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: `${siteURL}next` } } },
+      { text: input.text },
+    ])
+    .with('fetch-and-open', (): ScriptedReply[] => [
+      { toolUse: { name: 'mcp__nixie__web_fetch', input: { url: siteURL } } },
+      { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
       { text: input.text },
     ])
     .with('browser-navigate', (): ScriptedReply[] => [

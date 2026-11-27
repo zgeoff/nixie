@@ -1,4 +1,5 @@
 import { checkConsent } from '../consent/check-consent';
+import type { PlaceKey, Trust } from '../place/types';
 import type { DecisionPointOptions } from '../rule/make-decision-point';
 import { makeDecisionPoint } from '../rule/make-decision-point';
 import type { ReplayOptions } from '../rule/replay-decision';
@@ -11,7 +12,16 @@ import type {
   RuleEntry,
 } from '../types';
 
+// An entry of the directory, with a short ID derived from its ID.
+interface TestPlace {
+  readonly id: string;
+  readonly key: PlaceKey;
+  readonly trust: Trust;
+  readonly name?: string;
+}
+
 export interface TestDecisionPointOptions {
+  readonly places?: readonly TestPlace[];
   readonly declaration?: EffectDeclaration | null;
   readonly rules?: readonly RuleEntry[];
   readonly inputs?: Partial<PolicyInputs>;
@@ -52,9 +62,14 @@ export function buildTestDecisionPoint(options: TestDecisionPointOptions = {}): 
     readInputs: () =>
       Promise.resolve({
         rules: options.rules ?? [],
-        contacts: [],
+        places: (options.places ?? []).map((place) => ({
+          placeID: place.id,
+          shortID: `short-${place.id}`,
+          key: place.key,
+          trust: place.trust,
+          name: place.name ?? null,
+        })),
         tools: new Map(),
-        ownerDestinations: [],
         ...options.inputs,
       }),
     findTaskDestinations: () => options.taskDestinations ?? [],

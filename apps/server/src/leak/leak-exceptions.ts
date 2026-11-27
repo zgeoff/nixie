@@ -221,6 +221,13 @@ export const leakExceptions: LeakExceptions = {
       removedBy: 'GEO-2881',
     },
     {
+      where: 'modules/policy/src/place',
+      names: ['phone'],
+      removedBy: 'never',
+      reason:
+        'the phone kind of a place key, a phone number of any channel and not the phone feature',
+    },
+    {
       where: 'modules/proposals',
       names: ['mcp'],
       removedBy: 'GEO-2881',

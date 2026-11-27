@@ -4,11 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { readPlaces } from '@heynixie/policy';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import type { SeedParts } from '../seed/run-queued-seed';
 import { createServerContext } from '../server/create-server-context';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildStartState } from '../utils/build-start-state';
+import { readSnapshotPlaces } from '../utils/read-snapshot-places';
 import { runDefinitionsSeed } from './run-definitions-seed';
 
 async function setupTest() {
@@ -46,6 +48,7 @@ test('it turns the definitions part unready while a refused snapshot is pending,
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -78,6 +81,7 @@ test('it turns the definitions part ready once a seed succeeds', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -90,6 +94,39 @@ test('it turns the definitions part ready once a seed succeeds', async () => {
   await runDefinitionsSeed(parts);
 
   expect(parts.state.read().definitions).toStrictEqual({ isReady: true, reason: null });
+});
+
+test("it adds the phone section's number to the directory as nixie's own place", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const parts: SeedParts = {
+    config: { phone: { number: '+61455501234' } },
+    context: ctx.context.apiContext,
+    source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
+    buildPolicy: () => ({ rules: [], tools: [] }),
+    inForce: ctx.context.inForce,
+    state: buildStartState({ isReady: true, reason: null }),
+    log: () => {},
+  };
+
+  const seeded = await runDefinitionsSeed(parts);
+  const places = await readPlaces(ctx.context.apiContext.log);
+
+  expect(places.map((place) => [place.key, place.trust, place.addedBy])).toStrictEqual([
+    [{ kind: 'phone', e164: '+61455501234' }, 'act', 'nixie_own'],
+  ]);
+
+  const snapshotHash = seeded.inForce?.snapshotHash ?? '';
+
+  const inSnapshot = await readSnapshotPlaces(ctx.context.apiContext.log, snapshotHash);
+
+  expect(inSnapshot.map((place) => [place.key, place.trust])).toStrictEqual([
+    [{ kind: 'phone', e164: '+61455501234' }, 'act'],
+  ]);
 });
 
 test('it logs a warning for each skipped definition and each dropped tool', async () => {
@@ -113,6 +150,7 @@ test('it logs a warning for each skipped definition and each dropped tool', asyn
   const logged: [string, unknown, string | undefined][] = [];
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),
@@ -149,6 +187,7 @@ test('it turns the definitions part unready when a task definition has a fault',
   await writeFile(join(ctx.root, 'tasks', 'Bad_Id', 'task.yaml'), 'name: Bad\nbrief: Bad.\n');
 
   const parts: SeedParts = {
+    config: {},
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
     tasks: buildTestTaskSeed(),

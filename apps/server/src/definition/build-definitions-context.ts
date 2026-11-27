@@ -1,3 +1,4 @@
+import { readLiveAddressRefs } from '@heynixie/connections';
 import type { DefinitionsContext, DefinitionsExportSweep } from '@heynixie/definitions';
 import { readArmedReminders } from '@heynixie/reminders';
 import { recordSeedResult } from '../seed/record-seed-result';
@@ -20,6 +21,7 @@ export function buildDefinitionsContext(
       log: parts.context.log,
       buildPolicy: parts.buildPolicy,
       readExtraArmed: readArmedReminders,
+      readSelfPlaces: readLiveAddressRefs,
     },
     onSeeded: (result) => {
       recordSeedResult(parts, result);

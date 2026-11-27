@@ -19,6 +19,7 @@
     "@marcbachmann/cel-js": "catalog:",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "tldts": "catalog:",
     "ts-pattern": "catalog:",
     "unbash": "catalog:",
     "zod": "catalog:"

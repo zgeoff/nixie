@@ -96,6 +96,19 @@ test('it accepts an input that meets the input schema', () => {
   expect(registered?.parseInput({ query: 'milk' })).toStrictEqual({ isValid: true });
 });
 
+test('it takes a queued tool with reading effects when its prepare step can add a sending one', () => {
+  expect(() =>
+    buildToolRegistry([
+      buildMockToolDefinition({
+        name: 'pages_click',
+        execution: 'queued',
+        declaration: { effects: ['fetch'] },
+        prepare: () => Promise.resolve({ destinations: [], effects: ['send'] }),
+      }),
+    ]),
+  ).not.toThrow();
+});
+
 test('it refuses a variant whose effects make the tool run another way', () => {
   expect(() =>
     buildToolRegistry([

@@ -3,9 +3,11 @@ import { startMemory } from '../cli/start-memory';
 import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { startErasureRunner } from '../erasure/start-erasure-runner';
 import { startErasureWatch } from '../erasure/start-erasure-watch';
+import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { runTurnInputForget } from '../turn/run-turn-input-forget';
 import { startTurnInputWork } from '../turn/start-turn-input-work';
 import type { AnyPartDeclaration } from '../types';
+import { buildSeedingConnections } from './build-seeding-connections';
 import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
@@ -48,14 +50,19 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     name: 'connections',
     feature: 'google',
     needs: ['inputs', 'server_parts', 'erasure', 'google_tools', 'held_credentials'],
-    start: makeRetriedStart('connections', (parts, reader) =>
-      startConnectionsPart(
+    uses: ['definitions_exports'],
+    start: makeRetriedStart('connections', async (parts, reader) => {
+      const connections = await startConnectionsPart(
         parts,
         reader.get('erasure'),
         reader.get('google_tools'),
         reader.get('held_credentials'),
-      ),
-    ),
+      );
+
+      return buildSeedingConnections(connections, () =>
+        runInForceSeedAndWake(parts, reader.find('definitions_exports')),
+      );
+    }),
   },
   {
     // The MCP proxy: the servers of the config, their sign-ins and the tools their pins allow.

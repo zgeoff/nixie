@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { budgetProjections } from '@heynixie/budgets';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
+import { placesProjection } from '@heynixie/policy';
 
 interface TestLog {
   readonly dataDir: string;
@@ -31,6 +32,10 @@ export async function setupTestLog(): Promise<TestLog> {
 
   return {
     dataDir,
-    log: { writer, deploymentKey, projections: [...logProjections, ...budgetProjections] },
+    log: {
+      writer,
+      deploymentKey,
+      projections: [...logProjections, ...budgetProjections, placesProjection],
+    },
   };
 }

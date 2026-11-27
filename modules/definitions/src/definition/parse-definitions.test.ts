@@ -21,6 +21,7 @@ test('it reads the format version and the persona, and lists every other file un
   ).toStrictEqual({
     effects: new Map(),
     mcp: {},
+    places: [],
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
@@ -67,7 +68,7 @@ test('it refuses definitions without a manifest', () => {
 });
 
 test.each([
-  ['format 7, which a newer release writes', 'format: 7\n'],
+  ['format 8, which a newer release writes', 'format: 8\n'],
   ['format 1, which two releases back wrote', 'format: 1\n'],
   ['format 0', 'format: 0\n'],
 ])('it refuses a manifest with %s', (_label, manifest) => {
@@ -83,7 +84,7 @@ test.each([
     ),
   ).toThrowWithMessage(
     Error,
-    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4 or 5 or 6$/u,
+    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4 or 5 or 6 or 7$/u,
   );
 });
 
@@ -194,6 +195,7 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
   ).toStrictEqual({
     effects: new Map(),
     mcp: {},
+    places: [],
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
@@ -249,6 +251,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
   ).toStrictEqual({
     effects: new Map(),
     mcp: {},
+    places: [],
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [
@@ -419,6 +422,7 @@ test('it reads a part override from its file and a template inline under format 
   ).toStrictEqual({
     effects: new Map(),
     mcp: {},
+    places: [],
     formatVersion: 3,
     persona: '# Persona\n',
     skills: [],
@@ -793,4 +797,66 @@ test('it leaves the files of a section unapplied below the format that reads it'
   );
 
   expect([parsed.sections, parsed.unapplied]).toStrictEqual([{}, ['extras/extras.yaml']]);
+});
+
+test('it reads places.yaml of format 7 and leaves it out of the unapplied files', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 7\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'places.yaml',
+      new TextEncoder().encode(
+        '- place: "*.library.example.org"\n  trust: read\n  name: Library\n',
+      ),
+    ],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect({ places: parsed.places, unapplied: parsed.unapplied }).toStrictEqual({
+    places: [
+      {
+        key: { kind: 'site', domain: 'library.example.org', subdomains: true },
+        trust: 'read',
+        name: 'Library',
+      },
+    ],
+    unapplied: [],
+  });
+});
+
+test('it lists places.yaml unapplied in a format before 7, and reads no place', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 6\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['places.yaml', new TextEncoder().encode('- place: example.org\n  trust: read\n')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect({ places: parsed.places, unapplied: parsed.unapplied }).toStrictEqual({
+    places: [],
+    unapplied: ['places.yaml'],
+  });
+});
+
+test('it refuses the definitions when places.yaml holds one bad line', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 7\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['places.yaml', new TextEncoder().encode('- place: example.org\n  trust: loud\n')],
+  ]);
+
+  expect(() =>
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
+  ).toThrow(/places\.yaml/u);
 });

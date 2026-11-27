@@ -15,7 +15,7 @@ import type { Chord, DesktopDriver, ScreenSelection, ScreenTabs } from './types'
 
 export type ScreenRequest = Extract<
   ComputerRequest,
-  { op: 'desktopShot' | 'screenScroll' | 'screenBind' | 'screenAct' }
+  { op: 'desktopShot' | 'screenFocus' | 'screenScroll' | 'screenBind' | 'screenAct' }
 >;
 
 export interface ScreenContext {
@@ -36,6 +36,11 @@ export async function handleScreenRequest(
   try {
     return await match(request)
       .with({ op: 'desktopShot' }, () => shootDesktop(context))
+      .with({ op: 'screenFocus' }, async () => ({
+        kind: 'screen-focus' as const,
+        ok: true as const,
+        focus: await readScreenFocus(context),
+      }))
       .with({ op: 'screenScroll' }, (scroll) => scrollScreen(context, scroll))
       .with({ op: 'screenBind' }, (bind) => bindScreenAct(context, bind.act))
       .with({ op: 'screenAct' }, (act) => runScreenAct(context, act.act, act.binding))

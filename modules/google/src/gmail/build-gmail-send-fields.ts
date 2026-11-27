@@ -1,4 +1,4 @@
-import type { DestinationPermission } from '@heynixie/log';
+import type { StoredDestinationPermission } from '@heynixie/log';
 import type { BodyFields } from '@heynixie/policy';
 import { annotateRecipients } from './annotate-recipients';
 import type { GmailCard } from './gmail-card';
@@ -10,7 +10,7 @@ import { gmailToolNames } from './gmail-tool-names';
 export function buildGmailSendFields(
   tool: string,
   card: GmailCard,
-  permissions: ReadonlyMap<string, DestinationPermission | null>,
+  permissions: ReadonlyMap<string, StoredDestinationPermission | null>,
 ): BodyFields {
   const everyone = [card['to'], card['cc'], card['bcc']].filter(
     (list): list is string => list !== undefined && list !== '',

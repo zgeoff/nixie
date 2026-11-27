@@ -1111,6 +1111,132 @@ test('it starts no attempt and calls nothing when a hold begins between the last
   ]);
 });
 
+test('it writes the acts of an admitted attempt before it calls the provider', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const order: string[] = [];
+
+  const stub = buildStubConnector(() => {
+    order.push('provider');
+
+    return { kind: 'success', result: {} };
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () =>
+      Promise.resolve({
+        kind: 'go',
+        destinations: [],
+        writeActs: () => {
+          order.push('acts');
+
+          return Promise.resolve();
+        },
+      }),
+  });
+
+  expect(order).toStrictEqual(['acts', 'provider']);
+});
+
+test('it closes the attempt and calls no provider when the acts of an admitted attempt fail to write', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () =>
+      Promise.resolve({
+        kind: 'go',
+        destinations: [],
+        writeActs: () => Promise.reject(new Error('disk full')),
+      }),
+  });
+
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
+
+  expect([stub.calls, action.status, action.attempt_count, action.attempt_open]).toStrictEqual([
+    [],
+    'pending',
+    1,
+    0,
+  ]);
+});
+
+test('it writes no acts for an attempt that a hold barred between the last check and the commit', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const written: string[] = [];
+
+  setFaultPointHandler((id) => {
+    if (id === 'attempt.admit.before') {
+      written.push('held');
+    }
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => (written.includes('held') ? ['test.'] : []),
+    admitTool: () =>
+      written.includes('held') ? null : { run: (work) => work(), release: () => {} },
+    checkAttempt: () =>
+      Promise.resolve({
+        kind: 'go',
+        destinations: [],
+        writeActs: () => {
+          written.push('acts');
+
+          return Promise.resolve();
+        },
+      }),
+  });
+
+  expect(written).toStrictEqual(['held']);
+});
+
 test('it starts no attempt for an action whose task the spending stop holds after the claim, and frees the lease', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);

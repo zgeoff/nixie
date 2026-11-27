@@ -19,12 +19,14 @@ flowchart LR
 
 ## The tool
 
-The tool declares only the fetch effect and no destination, so the decision point allows it under an
-allow rule on that effect, such as the starter rule `allow-reads`, and it runs direct, inside the
-turn. Its result holds the final URL after redirects, the status code, the content type, the page
-ID, the part number and the count of parts, the text of one part, the truncated mark and the blocked
-reason, and `isCached`, which is true when the result is a stored copy. A fetched image reaches the
-model as image content beside the result, as [web fetch images](./web-fetch-images.md) describes.
+The tool declares the fetch effect alone, with the host of the page as its destination, as
+[The fetch sandbox](#the-fetch-sandbox) says. The decision point allows it under an allow rule on
+that effect, such as the starter rule `allow-reads`, or under a place at `read`, and it runs direct,
+inside the turn. Its result holds the final URL after redirects, the status code, the content type,
+the page ID, the part number and the count of parts, the text of one part, the truncated mark and
+the blocked reason, and `isCached`, which is true when the result is a stored copy. A fetched image
+reaches the model as image content beside the result, as [web fetch images](./web-fetch-images.md)
+describes.
 
 Every field of the result and every image is outside content, except the endorsed types below,
 because the page and every redirect along the way came from someone other than the user. The result
@@ -181,6 +183,8 @@ These rules hold for the step:
 
 - Step 3 runs before step 4, so the scan refuses a URL that holds a secret even when a page for it
   is stored.
+- A stored page whose fetch ended at another URL answers only when the call's snapshot blocks no
+  site that covers that URL. Otherwise the call ends with the blocked site's refusal.
 - Step 4 runs before step 5, so a stored page of a paused host still answers.
 - The second pass never reads the cache.
 - Two calls for one URL that run together both fetch, and each stores its page.
@@ -304,6 +308,15 @@ with the URL and waits for a `hop-pass` frame. The server scans each hop with `s
 no refusal frame. A fetch with no `scanHop` sends `hops: 'none'` and the same bytes as before, and a
 `hop` frame on it fails the fetch. Every reply carries `isGated`, which is true when the fetcher
 asked before each hop, and the fetch tool never passes it on to the model.
+
+The tool declares the host of the page a call names as the call's destination, taken from the `url`
+argument or from the target of the `link`, before any known-site rewrite. A call that names a stored
+page by `page` declares none. nixie also checks the first URL and each redirect hop against the
+directory. It fetches no URL whose host a blocked place covers, and the refusal names the place by
+its short ID. The hop gate reads the directory of the snapshot that the call's own record holds,
+once per call, because no decision point sees a hop. A block added after the call started stops no
+hop of it, and a block removed after it still stops each hop. A refusal leaves out a sender that
+holds a secret, as the refusal for a secret does.
 
 The server takes only the URL from a `hop` frame. It counts the hops itself, and takes the host that
 sent each redirect from the URL before it. It reads one frame at a time, and the fetcher waits while

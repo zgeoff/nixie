@@ -3,6 +3,14 @@ import { readRecords, writeRecords } from '@heynixie/log';
 import { readRecordForgetPreview } from '@heynixie/memory';
 import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
 import {
+  readPlaces,
+  writeContactMarked,
+  writePlaceActed,
+  writePlaceAdded,
+  writePlaceChanged,
+  writePlaceRemoved,
+} from '@heynixie/policy';
+import {
   reminderCancelledCodec,
   reminderSetCodec,
   reminderUpdatedCodec,
@@ -299,3 +307,208 @@ test.each([
     expect(result).toStrictEqual({ status: 'wrong_kind', kind });
   },
 );
+
+test('it forgets a personal place by its add record and erases its later name changes too', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'address', address: 'sam@example.org' },
+    trust: 'known',
+    name: 'Sam',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const changed = await writePlaceChanged(places, { placeID: added.placeID, name: 'Sam at work' });
+
+  invariant(changed.status === 'changed');
+
+  const [addRecord] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.added'],
+  });
+
+  invariant(addRecord);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: addRecord.record.sequence,
+  });
+
+  const changes = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.changed'],
+  });
+
+  expect({
+    forgotten: forgotten.status,
+    listed: await readPlaces(ctx.context.log),
+    changeFields: changes.map((entry) => entry.record.erasable.status),
+  }).toStrictEqual({ forgotten: 'forgotten', listed: [], changeFields: ['shredded'] });
+});
+
+test('it forgets a contact you marked by a later change of its entry and shreds its marking record', async () => {
+  const ctx = await setupTest();
+
+  const marked = await writeContactMarked(ctx.context, {
+    destination: 'sam@example.org',
+    name: 'Sam',
+  });
+
+  const changed = await writePlaceChanged(
+    {
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      runInForce: () => Promise.resolve(),
+    },
+    { placeID: marked.contact.contactID, name: 'Sam at work' },
+  );
+
+  invariant(changed.status === 'changed');
+
+  const [changeRecord] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.changed'],
+  });
+
+  invariant(changeRecord);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: changeRecord.record.sequence,
+  });
+
+  const markings = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['policy.contact_marked_known'],
+  });
+
+  expect({
+    forgotten: forgotten.status,
+    listed: await readPlaces(ctx.context.log),
+    markingFields: markings.map((entry) => entry.record.erasable.status),
+  }).toStrictEqual({ forgotten: 'forgotten', listed: [], markingFields: ['shredded'] });
+});
+
+test('it forgets a contact you marked by its marking record', async () => {
+  const ctx = await setupTest();
+
+  await writeContactMarked(ctx.context, { destination: 'sam@example.org', name: 'Sam' });
+
+  const [marking] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['policy.contact_marked_known'],
+  });
+
+  invariant(marking);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: marking.record.sequence,
+  });
+
+  expect({
+    forgotten: forgotten.status,
+    listed: await readPlaces(ctx.context.log),
+  }).toStrictEqual({ forgotten: 'forgotten', listed: [] });
+});
+
+test.each(['places.removed', 'places.acted'] as const)(
+  'it forgets an address place from its %s record and leaves no removal or act that names it',
+  async (kind) => {
+    const ctx = await setupTest();
+
+    const places = {
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+      runInForce: () => Promise.resolve(),
+    };
+
+    const added = await writePlaceAdded(places, {
+      key: { kind: 'address', address: 'tickets@example.com' },
+      trust: 'act',
+      name: 'Tickets',
+      addedBy: 'you',
+    });
+
+    invariant(added.status === 'added');
+
+    await writePlaceActed(places, {
+      placeID: added.placeID,
+      shortID: added.shortID,
+      callID: 'call-1',
+      tool: 'mail.send',
+      thread: 'conversation',
+    });
+
+    await writePlaceRemoved(places, added.placeID);
+
+    const [target] = await readRecords(ctx.context.log, { afterSequence: 0, kinds: [kind] });
+
+    invariant(target);
+
+    const forgotten = await runRecordForget(ctx.context, {
+      thread: 'conversation',
+      sequence: target.record.sequence,
+    });
+
+    const links = await readRecords(ctx.context.log, {
+      afterSequence: 0,
+      kinds: ['places.added', 'places.acted', 'places.removed'],
+    });
+
+    expect({
+      forgotten: forgotten.status,
+      links: links.map((entry) => [entry.record.kind, entry.record.payload, entry.record.erasable]),
+    }).toStrictEqual({
+      forgotten: 'forgotten',
+      links: [
+        ['places.added', expect.any(Object), { status: 'shredded' }],
+        ['places.acted', { callID: 'call-1', tool: 'mail.send' }, { status: 'shredded' }],
+        ['places.removed', {}, { status: 'shredded' }],
+      ],
+    });
+  },
+);
+
+test('it refuses to forget the removal of a site place, which holds nothing a key could erase', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'site', domain: 'tickets.example.com', subdomains: false },
+    trust: 'act',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  await writePlaceRemoved(places, added.placeID);
+
+  const [removal] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.removed'],
+  });
+
+  invariant(removal);
+
+  const forgotten = await runRecordForget(ctx.context, {
+    thread: 'conversation',
+    sequence: removal.record.sequence,
+  });
+
+  expect(forgotten).toStrictEqual({ status: 'wrong_kind', kind: 'places.removed' });
+});

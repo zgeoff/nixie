@@ -5,6 +5,7 @@ import type {
   BudgetPeriod,
   EffectOverride,
   McpOverrides,
+  PlaceFileEntry,
   RuleFileEntry,
   RuleFileWarning,
   RuleForm,
@@ -48,8 +49,13 @@ export interface SnapshotPolicy {
   readonly rules: readonly PolicyRule[];
   readonly tools: readonly ToolDeclaration[];
 
-  // the IDs of the known contacts, never their details
-  readonly contacts?: readonly string[];
+  // Each place of the directory by ID and level, never its key, and the record its name came from
+  // when a change set the name, so a later rename leaves the snapshot's name as it was.
+  readonly places?: readonly {
+    readonly placeID: string;
+    readonly trust: string;
+    readonly nameSequence?: number;
+  }[];
 
   // the consent checker's definition: its prompt hash and the model profile of its role
   readonly consent?: JSONObject;
@@ -107,6 +113,9 @@ export interface ParsedDefinitions {
   readonly budgets: readonly DefinitionBudget[];
   readonly ruleWarnings: readonly RuleFileWarning[];
   readonly effects: ReadonlyMap<string, EffectOverride>;
+
+  // the sites and mail domains that places.yaml sets, with their levels
+  readonly places: readonly PlaceFileEntry[];
 
   // the override files of the MCP proxy, by server ID
   readonly mcp: McpOverrides;

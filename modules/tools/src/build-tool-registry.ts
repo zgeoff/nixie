@@ -74,7 +74,11 @@ function assertExecution(
 ): void {
   const execution = hasQueuedEffect(declaration.effects) ? 'queued' : 'direct';
 
-  if (definition.execution !== execution) {
+  // a queued tool whose prepare step adds the queued effect, such as a click that sends only unless
+  // it follows a plain link, declares the reading effects alone
+  const isPreparedQueue = definition.execution === 'queued' && definition.prepare !== undefined;
+
+  if (definition.execution !== execution && !isPreparedQueue) {
     throw new Error(
       `the tool ${name} runs ${definition.execution}, but its effects make it ${execution}`,
     );

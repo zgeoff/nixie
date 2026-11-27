@@ -16,7 +16,7 @@ import { mailMessagesProjection } from '@heynixie/mail';
 import { memoryProjections } from '@heynixie/memory';
 import { notebookProjections } from '@heynixie/notebook';
 import { phoneSendClaimsProjection, phoneTextsProjection } from '@heynixie/phone';
-import { knownContactsProjection } from '@heynixie/policy';
+import { knownContactsProjection, placesProjection } from '@heynixie/policy';
 import { remindersProjections } from '@heynixie/reminders';
 import { sandboxesProjection } from '@heynixie/sandbox';
 import { spendProjections } from '@heynixie/spend';
@@ -48,6 +48,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       runtimeTaskDefinitionsProjection,
       taskDefinitionExportsProjection,
       knownContactsProjection,
+      placesProjection,
       proposalsProjection,
       ...spendProjections,
       ...budgetProjections,

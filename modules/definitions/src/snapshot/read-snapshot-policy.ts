@@ -1,5 +1,5 @@
-import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
-import { effectNames } from '@heynixie/policy';
+import type { EffectDeclaration, PlaceRef, RuleEntry } from '@heynixie/policy';
+import { effectNames, trustLevels } from '@heynixie/policy';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { readSnapshotRules } from '../rule/read-rules-in-force';
@@ -8,7 +8,9 @@ import type { DefinitionsTables } from '../types';
 export interface SnapshotPolicyRead {
   readonly rules: readonly RuleEntry[];
   readonly tools: ReadonlyMap<string, EffectDeclaration>;
-  readonly contactIDs: readonly string[];
+
+  // each place of the snapshot's directory; an older snapshot's contacts read as places at known
+  readonly places: readonly PlaceRef[];
 }
 
 const declarationSchema = z.object({
@@ -18,12 +20,20 @@ const declarationSchema = z.object({
   amount: z.string().nullable(),
   content: z.string().array(),
   results: z.record(z.string(), z.enum(['owner', 'owner_data', 'untrusted'])),
+  requiresDestination: z.literal(true).exactOptional(),
+});
+
+const placeRefSchema = z.object({
+  placeID: z.string(),
+  trust: z.enum(trustLevels),
+  nameSequence: z.int().exactOptional(),
 });
 
 const formSchema = z.object({
   policy: z.object({
     tools: declarationSchema.array(),
     contacts: z.string().array().default([]),
+    places: placeRefSchema.array().default([]),
   }),
 });
 
@@ -40,7 +50,7 @@ export async function readSnapshotPolicy(
     .executeTakeFirst();
 
   if (row === undefined) {
-    return { rules: [], tools: new Map(), contactIDs: [] };
+    return { rules: [], tools: new Map(), places: [] };
   }
 
   const form = formSchema.parse(JSON.parse(row.form));
@@ -53,18 +63,23 @@ export async function readSnapshotPolicy(
       revision: entry.revision,
       rule: entry.rule.rule,
     })),
-    tools: new Map(
-      form.policy.tools.map((tool) => [
-        tool.name,
-        {
-          effects: tool.effects,
-          destinations: tool.destinations,
-          amount: tool.amount,
-          content: tool.content,
-          results: tool.results,
-        },
-      ]),
-    ),
-    contactIDs: form.policy.contacts,
+    tools: new Map(form.policy.tools.map((tool) => [tool.name, toDeclaration(tool)])),
+    places: [...form.policy.places, ...form.policy.contacts.map(toKnownPlace)],
   };
+}
+
+function toDeclaration(tool: z.output<typeof declarationSchema>): EffectDeclaration {
+  return {
+    effects: tool.effects,
+    destinations: tool.destinations,
+    amount: tool.amount,
+    content: tool.content,
+    results: tool.results,
+    ...(tool.requiresDestination === true ? { requiresDestination: true as const } : {}),
+  };
+}
+
+// an older snapshot's contact IDs are places at known
+function toKnownPlace(contactID: string): PlaceRef {
+  return { placeID: contactID, trust: 'known' };
 }

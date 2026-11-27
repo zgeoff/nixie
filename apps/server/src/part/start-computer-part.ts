@@ -14,6 +14,7 @@ import type { SandboxAdapter } from '@heynixie/sandbox';
 import { isTestSandbox } from '@heynixie/sandbox';
 import { makeSecretFinder } from '@heynixie/secret-scan';
 import invariant from 'tiny-invariant';
+import { makeBlockedPlaceFinder } from '../place/make-blocked-place-finder';
 import { getSandboxImage } from '../sandbox/get-sandbox-image';
 import type { ServerPartsOptions } from '../server/start-server';
 
@@ -93,5 +94,6 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     logger: options.log,
     deniedRanges,
     fetch: webFetch,
+    makeBlockedPlaceFinder: makeBlockedPlaceFinder(inputs.log),
   });
 }

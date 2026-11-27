@@ -42,12 +42,11 @@ async function setupTest(config: SetupConfig = {}) {
     readInputs: () =>
       Promise.resolve({
         rules: rules.map((rule) => ({ id: rule.id, revision: 1, rule })),
-        contacts: [],
+        places: [],
         tools:
           snapshotEffects === undefined
             ? new Map()
             : new Map([['task.define', { ...tool.declaration, effects: snapshotEffects }]]),
-        ownerDestinations: [],
       }),
     findTaskDestinations: () => [],
     readConsent: () => Promise.resolve(null),

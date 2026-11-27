@@ -42,6 +42,7 @@ import { runDeviceShow } from './run-device-show';
 import { sendSpendProbe } from './send-spend-probe';
 import { serveControl } from './serve-control';
 import { startFakeRateSite } from './start-fake-rate-site';
+import { trustSite } from './trust-site';
 
 interface RunningState {
   isRunning: boolean;
@@ -305,6 +306,7 @@ export async function runVerifyHarness(): Promise<void> {
 
       return runDeviceLayout(api.client, nixie.model, { ...layout, step: layout.step });
     },
+    trustSite: (domain) => trustSite((operation, args) => server.request(operation, args), domain),
     approveHeldMandate: () =>
       approveHeldMandate((operation, args) => server.request(operation, args)),
     approveHeldMcp: (label) =>

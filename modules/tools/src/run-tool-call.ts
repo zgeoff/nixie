@@ -15,7 +15,8 @@ import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
 import { renderChangedSentence } from './call-record/render-changed-sentence';
 import type { ToolCallOptions } from './call-record/tool-call-options';
-import { callCapRefusal } from './cap/call-cap-refusal';
+import { writeDirectActs } from './call-record/write-direct-acts';
+import { renderCallCapRefusal } from './cap/render-call-cap-refusal';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
 import type { PaidState } from './paid/try-prepare-paid-call';
 import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
@@ -243,6 +244,15 @@ export async function runToolCall(
 
   if (written.isCapped) {
     plan?.release();
+  } else if (registered?.definition.execution === 'direct') {
+    await writeDirectActs({
+      options,
+      definitions,
+      policy,
+      effects: pickCallDeclaration(registered, effects)?.effects ?? [],
+      call,
+      thread: run.thread,
+    });
   }
 
   const settled = written.isCapped
@@ -365,12 +375,6 @@ function pickCallDeclaration(
 
 function joinEffects(declared: readonly Effect[], added: readonly Effect[]): readonly Effect[] {
   return [...new Set([...declared, ...added])];
-}
-
-function renderCallCapRefusal(run: ToolRun, tool: string): string {
-  const cap = run.taskRun?.calls[tool] ?? 0;
-
-  return callCapRefusal.replace('{n}', String(cap)).replace('{tool}', tool);
 }
 
 interface DecidedCall {

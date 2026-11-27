@@ -4,6 +4,7 @@ import { browserPageFields } from './browser-page-fields';
 import { buildIdleNote } from './build-idle-note';
 import type { ComputerToolOptions } from './computer-tool-options';
 import { hostOf } from './host-of';
+import { prepareTabRead } from './prepare-tab-read';
 import { readWebAddress } from './read-web-address';
 import { refuseTabGone } from './refuse-tab-gone';
 import { refuseWrongReply } from './refuse-wrong-reply';
@@ -120,13 +121,14 @@ function buildReloadTool(options: ComputerToolOptions): ToolDefinition {
     },
     output: browserPageFields.pageOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['fetch'],
       destinations: [],
       amount: null,
       content: [],
       results: browserPageFields.pageResults,
     },
     execution: 'direct',
+    prepare: (input, context) => prepareTabRead(options, context, reloadArguments.parse(input).tab),
     run: async (call, context) => {
       const input = reloadArguments.parse(call.input);
       const guestTab = options.computer.tabs.find(input.tab);

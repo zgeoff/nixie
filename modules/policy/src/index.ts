@@ -18,6 +18,7 @@ export type { PendingActionProposal } from './action/read-pending-action-proposa
 export { readPendingActionProposals } from './action/read-pending-action-proposals';
 export type { ActionProposalState } from './action/read-action-proposals';
 export { readActionProposals } from './action/read-action-proposals';
+export { contactMarkedKnownCodec } from './contact/contact-marked-known-codec';
 export { knownContactsProjection } from './contact/known-contacts-projection';
 export type { KnownContactEntry } from './contact/read-known-contacts';
 export { readKnownContactIDs, readKnownContacts } from './contact/read-known-contacts';
@@ -30,6 +31,61 @@ export type {
 
 export { writeContactMarked } from './contact/write-contact-marked';
 export { writeContactUnmarked } from './contact/write-contact-unmarked';
+export { writeChatChannels } from './place/write-chat-channels';
+export { checkPlaceKey } from './place/check-place-key';
+export type { PlaceKeyFault } from './place/check-place-key';
+export { findPlace } from './place/find-place';
+export { formatPlaceKey } from './place/format-place-key';
+export type { OwnPlace, OwnPlaceSource } from './place/own-place-source';
+export { writePersonalRemovals } from './place/write-personal-removals';
+export type { PlaceLink } from './place/find-place-link';
+export { findPlaceLink } from './place/find-place-link';
+export { probeOpenPlaceRecord } from './place/probe-open-place-record';
+export { writeOwnPlaces } from './place/write-own-places';
+export type { PlacesSeedAdd, PlacesSeedPlan, SeedPlaceRow } from './place/types';
+export { applyPlacesSeedPlan } from './place/apply-places-seed-plan';
+export { buildPlacesSeedPlan } from './place/build-places-seed-plan';
+export { buildPlacesSeedRecords } from './place/build-places-seed-records';
+export type { ParsedPlaceFile, PlaceFileEntry } from './place/parse-place-file';
+export { parsePlaceFile } from './place/parse-place-file';
+export { readSeedPlaceRows } from './place/read-seed-place-rows';
+export { isPlaceCovered } from './place/is-place-covered';
+export { isPlaceAllowing } from './place/is-place-allowing';
+export { isPublicSuffix } from './place/is-public-suffix';
+export { isReadingCall } from './place/is-reading-call';
+export { parsePlace } from './place/parse-place';
+export { parsePlacePattern } from './place/parse-place-pattern';
+export type { PlaceContext } from './place/place-context';
+export { placesActedCodec } from './place/places-acted-codec';
+export { placesAddedCodec } from './place/places-added-codec';
+export { placesChangedCodec } from './place/places-changed-codec';
+export { placesProjection } from './place/places-projection';
+export { placesRemovedCodec } from './place/places-removed-codec';
+export type { PlaceRef } from './place/read-place-refs';
+export type { ActedPlaceQuery } from './place/read-acted-place-ids';
+export { readActedPlaceIDs } from './place/read-acted-place-ids';
+export { readPlaceRefs } from './place/read-place-refs';
+export type { ReadPlacesOptions, StoredPlace } from './place/read-places';
+export { readPlaces } from './place/read-places';
+export { placeAddedByValues, trustLevels } from './place/types';
+
+export type {
+  Destination,
+  DestinationText,
+  Place,
+  PlaceAddedBy,
+  PlaceEntry,
+  PlaceKey,
+  Trust,
+} from './place/types';
+
+export type { PlaceAdd, PlaceAddResult } from './place/write-place-added';
+export { writePlaceAdded } from './place/write-place-added';
+export { writePlaceActed } from './place/write-place-acted';
+export type { PlaceActed } from './place/write-place-acted';
+export type { PlaceChange, PlaceChangeResult } from './place/write-place-changed';
+export { writePlaceChanged } from './place/write-place-changed';
+export { writePlaceRemoved } from './place/write-place-removed';
 export { effectNames } from './utils/effect-names';
 export type { ToolShape } from './utils/tool-shapes';
 export { toolShapes } from './utils/tool-shapes';
@@ -108,6 +164,7 @@ export type {
   McpReconcile,
   McpToolOverride,
   KnownContact,
+  PolicyPlace,
   MemoryWriteFacts,
   NamingRule,
   PolicyCall,
@@ -172,3 +229,5 @@ export type {
 
 export { matchRule } from './rule/is-rule-match';
 export type { RuleMatch } from './rule/is-rule-match';
+export type { ActedDecision } from './place/collect-acted-places';
+export { collectActedPlaces } from './place/collect-acted-places';

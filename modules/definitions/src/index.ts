@@ -216,6 +216,7 @@ export { writeReminderMoveSettle } from './runtime-task/write-reminder-move-sett
 export { readTaskDefinitionsOverlay } from './runtime-task/read-task-definitions-overlay';
 export type { OverlaidTaskDefinition } from './utils/build-task-seed-plan';
 export type { InForceSeedOptions } from './seed/run-in-force-seed';
+export type { SelfPlacesReader } from './seed/read-seed-policy';
 export { seedInForceInTransaction } from './seed/run-in-force-seed';
 export type { RepoTask } from './types';
 export type { ChatToolOptions } from './runtime-task/chat-tool/chat-tool-options';

@@ -14,17 +14,17 @@ still to build, read the [decision point design](../../design/platform/policy/de
 ## The stages
 
 The stages run in order, and the first that decides returns. Each call reads the rules in force, the
-known contact IDs and the tool declarations from the one snapshot it runs under.
+places of the directory and the tool declarations from the one snapshot it runs under.
 
 | Stage          | Decides when                                                  | Outcome |
 | -------------- | ------------------------------------------------------------- | ------- |
 | 1. Registry    | The registry holds no declaration for the tool, or no effect  | Deny    |
 | 2. Scope       | The tool is missing from the caller's tool list               | Deny    |
-| 3. Deny rules  | A deny rule matches                                           | Deny    |
+| 3. Deny rules  | A deny rule matches, or a blocked place covers a destination  | Deny    |
 | 4. Always ask  | The tool spends, widens the policy or raises a budget         | Ask     |
 | 5. Destination | A destination has no permission and no consent covers it      | Ask     |
 | 6. Ask rules   | An ask rule matches                                           | Ask     |
-| 7. Allow rules | An allow rule matches                                         | Allow   |
+| 7. Allow rules | Every destination's place allows the call, or a rule matches  | Allow   |
 | 8. Consent     | You asked for the call in typed words, and the checker agrees | Allow   |
 |                | The call is a memory write that no earlier stage decided      | Gate    |
 | 9. No rule     | Nothing else decided                                          | Ask     |
@@ -75,24 +75,42 @@ proposal.
 
 ## Destinations
 
-Stage 5 gives each destination of a call the first permission that holds:
+The [directory](places.md) covers each destination with one entry, or with none. The directory holds
+one entry for each site, mail domain, address, phone number or handle, with a level: `blocked`,
+`known`, `read`, `act` or `self`. A blocked entry beats every other. Otherwise the most specific
+entry wins, so an exact key beats a wildcard one. Contacts you marked are entries at `known`, and
+each address that is you (a connected Google account's own) is an entry at `self`.
 
-1. `owner`: the destination is you.
-2. `reply_target`: the destination is the sender of the message the run answers.
-3. `known_contact`: a contact you marked holds the destination.
-   `nixie contacts mark-known <destination>` marks one, and `nixie contacts unmark <contactID>`
-   removes it. A record forget of the marking record removes the contact's details, so the contact
-   then grants nothing.
-4. `task`: the task definition whose task run makes the call names the destination. No definition
-   names one yet.
+A blocked place denies the call at stage 3, whatever a rule, a lift or your consent says. At stage 5
+each destination gets the first permission that holds, and the decision records it:
+
+1. `place`: an entry covers the destination at `known`, `read`, `act` or `self`. An entry at `known`
+   gives the destination its permission and nothing more. An entry at `read` also allows a call that
+   only reads or fetches, at stage 7.
+2. `reading`: the call only reads or fetches, and no entry covers the destination.
+3. `reply_target`: the destination is the sender of the message the run answers.
+4. `task`: the task definition whose task run makes the call names the destination.
 5. `rule`: an allow rule that matches the call names the destination.
 
 A pattern with a `*` never gives the `task` or `rule` permission to an email address, so a whole
-domain such as `*@example.org` covers no recipient. Only an exact address holds that trust, and you
-name each one.
+domain such as `*@example.org` covers no recipient. Only an exact address holds that trust.
 
-A destination with none of them asks at stage 5 unless consent covers it. A call reads the contacts
-of its own snapshot, so a contact unmarked since still covers a replay of an earlier call.
+At stage 7 a call is allowed when every destination has an entry that allows the call's effects: a
+place at `act` or `self` allows any effect except `spend`, and a place at `read` allows a call that
+only reads or fetches. A call with no destination never passes this way. A tool can declare
+`requiresDestination`, as a click or typing on the desktop does. When the window such a call lands
+on names no destination, neither a place nor a rule allows it. The decision records the places that
+allowed it, and a call that an `act` place allowed with an acting effect writes one `places.acted`
+record for each such place.
+
+A destination with no permission asks at stage 5 unless consent covers it. A call reads the places
+of its own snapshot with the level that snapshot holds, so a place removed since still covers a
+replay of an earlier call. A forget of an address, phone number or handle takes its key away, and
+the entry then covers nothing, in a replay too.
+
+The decision keeps the call's effects as they stood after its tool's prepare step ran. Rules and
+places judge the call by those effects, so neither treats a call whose prepare step adds `send` as a
+read.
 
 ## Consent
 
@@ -176,6 +194,6 @@ connector's tool at stage 7, so the [queue check](../core/actions.md#the-queue-c
 action queue on every start. A test build adds a rule that allows the crash tests' send tool. The
 bundler drops it from the release bundle.
 
-With no rule of yours in force, stages 3, 6 and 7 never match. A call that stages 1 and 2 do not
-deny and consent does not allow then asks at stage 9, except a memory write, which gets `gate`. The
-start logs a warning.
+With no rule of the user's in force and an empty directory, stages 3, 6 and 7 match only the code
+rules. A call that no earlier stage decides and consent does not allow then asks at stage 9, except
+a memory write other than `memory.retopic`, which gets `gate`. The start logs a warning.

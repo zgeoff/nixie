@@ -173,16 +173,22 @@ async function runAttempt(
   const startedAt = context.clock.now();
 
   const response = await start.admission
-    .run(() =>
-      runConnector(context, attempt, {
+    .run(async () => {
+      const actsFailure = await writeActs(step.writeActs);
+
+      if (actsFailure !== null) {
+        return actsFailure;
+      }
+
+      return runConnector(context, attempt, {
         connector,
         queued,
         destinations: step.destinations,
         replyTargets: step.replyTargets,
         startedAt,
         options,
-      }),
-    )
+      });
+    })
     .finally(start.admission.release);
 
   await writeAttemptResult(context, attempt, {
@@ -222,6 +228,23 @@ function writeFailure(
     outcome: { status: 'failed', reason },
     details: { message },
   });
+}
+
+// The provider has not run when the acts fail to write, so the attempt ends as a refusal that a
+// later attempt can clear.
+async function writeActs(
+  write: (() => Promise<void>) | undefined,
+): Promise<ProviderResponse | null> {
+  try {
+    await write?.();
+
+    return null;
+  } catch (error) {
+    return {
+      kind: 'refused_retryable',
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 interface ConnectorCall {

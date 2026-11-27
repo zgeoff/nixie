@@ -57,8 +57,9 @@ actions hash their input, and `registerClient` leaves the secret out of that has
 A checked action stores a marker before it runs, and stores its outcome under a `result` key, so an
 outcome with no data still counts as finished. `registerClient`, `setPicker`, `removeClient` and
 `startConsent` commit their outcome in the same transaction as their last write, so a crash never
-leaves a change with no stored outcome. When a `removeClient` removal committed and its record did
-not, a retry finishes the record and answers `ok`.
+leaves a change with no stored outcome. nixie writes the log record of a `removeClient` removal
+after that transaction. When the removal committed and its log record did not, a retry writes the
+log record and answers `ok`.
 
 ## The consent
 
@@ -88,7 +89,9 @@ browser, not Google, follows the redirect.
 A renewal advances the connection's removal counter, so a refresh that began before it saves nothing
 and revokes nothing, and a check that began before it keeps the scopes the consent found. The
 renewal also moves the tokens in the live own-value set from the consent's credential to the
-connection, so a Forget clears them.
+connection, so a Forget clears them. A renewal that reaches a new address keeps it under a new
+reference beside the older one, so a decision under an older snapshot still sees only the older
+address, as [places](../policy/places.md) explains. A Forget erases every address.
 
 After `ACCOUNT_MISMATCH`, `FORGET_IN_PROGRESS` or a connection forgotten during the consent, the
 module keeps no token and makes one revocation attempt, unless a live connection reaches the same
