@@ -28,6 +28,9 @@ const calls: FeatureReach = {
     'apps/server/src/call/**',
     'apps/server/src/part/harness-speech.ts',
     'apps/web/src/routes/call.tsx',
+
+    // the call screen's journey checks that the call bar stays on the tasks page
+    taskPages,
   ],
 };
 
