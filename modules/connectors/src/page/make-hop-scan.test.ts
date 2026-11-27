@@ -122,3 +122,19 @@ test('it passes a hop that no blocked place covers', async () => {
 
   expect(verdict).toStrictEqual({ kind: 'pass' });
 });
+
+test('it leaves out a sender that holds a secret from the refusal of a blocked hop', async () => {
+  const ctx = setupTest({}, { findBlockedPlace: () => Promise.resolve('pl7') });
+
+  const verdict = await ctx.scanHop({
+    number: 1,
+    url: 'https://www.blocked.test/page',
+    sentBy: 'marked.example',
+  });
+
+  expect(verdict).toStrictEqual({
+    kind: 'refuse',
+    reason:
+      'a site redirected to a site: the site is a place you blocked (pl7), so it was not fetched',
+  });
+});

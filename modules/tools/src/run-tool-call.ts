@@ -174,10 +174,6 @@ export async function runToolCall(
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
   const decide = makeFaultSafeDecisionPoint(options.decide, decisionTimeout);
-
-  const placeEffects =
-    registered === null ? undefined : pickCallDeclaration(registered, effects)?.effects;
-
   const policyArgs = withPreparedAmount(facts?.args ?? call.input, registered, prepared);
 
   const policyCall = buildToolPolicyCall(run, {
@@ -186,7 +182,7 @@ export async function runToolCall(
     destinations,
     definitions,
     at: options.log.writer.clock.now(),
-    ...(placeEffects === undefined ? {} : { placeEffects }),
+    ...(effects === undefined ? {} : { effects }),
     ...(facts === null ? {} : { sources: facts.sources }),
   });
 
@@ -253,7 +249,7 @@ export async function runToolCall(
       options,
       definitions,
       policy,
-      effects: placeEffects ?? [],
+      effects: pickCallDeclaration(registered, effects)?.effects ?? [],
       call,
       thread: run.thread,
     });
@@ -350,6 +346,19 @@ async function writeDirectResult(
   return toCallToolResult(recorded.settled);
 }
 
+// A prepared amount stands in for the argument the declaration names as the call's amount.
+function withPreparedAmount(
+  args: JSONObject,
+  registered: RegisteredTool | null,
+  prepared: Prepared | null,
+): JSONObject {
+  const name = registered?.definition.declaration.amount ?? null;
+
+  return prepared?.amount === undefined || name === null
+    ? args
+    : { ...args, [name]: prepared.amount };
+}
+
 // What the call charges: a plan for a paid tool that runs, a result that its check ended with, or
 // the failure of that check, which the call settles as the tool's failure.
 // A prepared call's effects join the declared ones in the proposal the call may write.
@@ -366,19 +375,6 @@ function pickCallDeclaration(
 
 function joinEffects(declared: readonly Effect[], added: readonly Effect[]): readonly Effect[] {
   return [...new Set([...declared, ...added])];
-}
-
-// A prepared amount stands in for the argument the declaration names as the call's amount.
-function withPreparedAmount(
-  args: JSONObject,
-  registered: RegisteredTool | null,
-  prepared: Prepared | null,
-): JSONObject {
-  const name = registered?.definition.declaration.amount ?? null;
-
-  return prepared?.amount === undefined || name === null
-    ? args
-    : { ...args, [name]: prepared.amount };
 }
 
 interface DecidedCall {

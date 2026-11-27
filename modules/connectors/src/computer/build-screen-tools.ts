@@ -7,7 +7,9 @@ import { z } from 'zod';
 import type { ComputerState, ScreenPrepared } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { isSameList } from './is-same-list';
 import { pickScreenDestinations } from './pick-screen-destinations';
+import { prepareScreenRead } from './prepare-screen-read';
 import {
   makeActionScans,
   refuseComputer,
@@ -86,13 +88,14 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
     input: { type: 'object', properties: {}, additionalProperties: false },
     output: { ...pictureOutput },
     declaration: {
-      effects: ['note'],
+      effects: ['fetch'],
       destinations: [],
       amount: null,
       content: [],
       results: pictureResults,
     },
     execution: 'direct',
+    prepare: (_input, context) => prepareScreenRead(options, context),
     run: async (_call, context) => {
       const outcome = await runComputerCall(options, {
         run: context.run,
@@ -158,13 +161,14 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
     },
     output: { ...pictureOutput },
     declaration: {
-      effects: ['note'],
+      effects: ['fetch'],
       destinations: [],
       amount: null,
       content: [],
       results: pictureResults,
     },
     execution: 'direct',
+    prepare: (_input, context) => prepareScreenRead(options, context),
     run: async (call, context) => {
       const input = scrollArguments.parse(call.input);
       const refusal = refuseOutsideDisplay(input.x, input.y) ?? refuseWheelSteps(input.by);
@@ -556,12 +560,6 @@ async function runPreparedAct(
     },
     ...(picture === null ? {} : { images: [picture] }),
   };
-}
-
-// Two calls with the same input share a key, so the binding found must be for the host that the
-// policy allowed.
-function isSameList(first: readonly string[], second: readonly string[]): boolean {
-  return first.length === second.length && first.every((item, index) => item === second[index]);
 }
 
 function readClickAct(input: z.infer<typeof clickArguments>): ScreenAct {

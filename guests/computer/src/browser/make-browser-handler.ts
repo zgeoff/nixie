@@ -16,6 +16,7 @@ import { openTab } from './open-tab';
 import { pickIPv4OnlyReply } from './pick-ipv4-only-reply';
 import { readIPv4OnlyRefusal } from './read-ipv4-only-refusal';
 import { readScanRefusal } from './read-scan-refusal';
+import { readTabElement } from './read-tab-element';
 import { readTabPage } from './read-tab-page';
 import { reloadTab } from './reload-tab';
 import { scrollTab } from './scroll-tab';
@@ -309,12 +310,13 @@ async function readNow(
 
 type ScreenOp = Extract<
   Parameters<ComputerHandler>[0],
-  { op: 'desktopShot' | 'screenScroll' | 'screenBind' | 'screenAct' }
+  { op: 'desktopShot' | 'screenFocus' | 'screenScroll' | 'screenBind' | 'screenAct' }
 >;
 
 function isScreenRequest(request: Parameters<ComputerHandler>[0]): request is ScreenOp {
   return (
     request.op === 'desktopShot' ||
+    request.op === 'screenFocus' ||
     request.op === 'screenScroll' ||
     request.op === 'screenBind' ||
     request.op === 'screenAct'
@@ -367,6 +369,20 @@ function handleRequest(
         isDiskNew: false,
         landing: null,
       });
+    })
+    .with({ op: 'tabURL' }, (read) => {
+      const tab = state.tabs.get(read.tab);
+
+      if (tab === undefined) {
+        return Promise.resolve(tabGone);
+      }
+
+      return Promise.resolve({ kind: 'tab-url', ok: true, url: tab.page.url() } as const);
+    })
+    .with({ op: 'element' }, (read) => {
+      const tab = state.tabs.get(read.tab);
+
+      return tab === undefined ? Promise.resolve(tabGone) : readTabElement(tab, read.element);
     })
     .with({ op: 'navigate' }, (navigate) => {
       const tab = state.tabs.get(navigate.tab);
@@ -434,6 +450,7 @@ function handleRequest(
       { op: 'readFile' },
       { op: 'writeFile' },
       { op: 'desktopShot' },
+      { op: 'screenFocus' },
       { op: 'screenScroll' },
       { op: 'screenBind' },
       { op: 'screenAct' },

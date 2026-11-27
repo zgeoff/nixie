@@ -21,8 +21,8 @@ export interface ToolPolicyFacts {
   // set by the tool, in place of the step's sources
   readonly sources?: readonly RuleSource[];
 
-  // every effect the call has once the tool's prepare step has run
-  readonly placeEffects?: readonly Effect[];
+  // the effects the tool's prepare step added to the declared ones
+  readonly effects?: readonly Effect[];
 }
 
 export function buildToolPolicyCall(run: ToolRun, facts: ToolPolicyFacts): PolicyCall {
@@ -40,6 +40,6 @@ export function buildToolPolicyCall(run: ToolRun, facts: ToolPolicyFacts): Polic
     turnMessageSequence: frame.turnMessageSequence,
     onBehalfOf: frame.onBehalfOf,
     snapshot: facts.definitions.snapshotHash,
-    ...(facts.placeEffects === undefined ? {} : { placeEffects: facts.placeEffects }),
+    ...(facts.effects === undefined ? {} : { effects: facts.effects }),
   };
 }

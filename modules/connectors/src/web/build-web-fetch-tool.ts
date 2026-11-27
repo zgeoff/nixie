@@ -136,8 +136,11 @@ export interface WebFetchToolOptions {
   // whether the exemption of a typed URL covers its redirects
   readonly secretTypedURLCovers: 'named_url' | 'redirects';
 
-  // the short ID of the place you blocked that covers a URL, which ends a fetch of it or of a hop
-  readonly findBlockedPlace?: (url: string) => Promise<string | null>;
+  // starts the finder of one call, by its sequence: it finds the short ID of the place that the call's
+  // snapshot blocks and that covers a URL, which ends a fetch of it or of a hop
+  readonly makeBlockedPlaceFinder?: (
+    callSequence: number,
+  ) => (url: string) => Promise<string | null>;
 }
 
 export function buildWebFetchTool(
@@ -206,9 +209,9 @@ export function buildWebFetchTool(
         {
           log,
           readPage,
-          ...(options.findBlockedPlace === undefined
+          ...(options.makeBlockedPlaceFinder === undefined
             ? {}
-            : { findBlockedPlace: options.findBlockedPlace }),
+            : { findBlockedPlace: options.makeBlockedPlaceFinder(context.callSequence) }),
           secretScan: {
             findSecret: options.findSecret,
             isOwnerTyped: options.isOwnerTyped,

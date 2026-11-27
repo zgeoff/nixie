@@ -398,6 +398,30 @@ test.skipIf(!hasChromium)('it answers tab_gone for a tab that was closed', async
   expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_gone' });
 });
 
+test.skipIf(!hasChromium)('it answers the address of an open tab with no page text', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const reply = await ctx.send({ op: 'tabURL', tab: 't1' });
+
+  expect(reply).toStrictEqual({ kind: 'tab-url', ok: true, url: ctx.url });
+});
+
+test.skipIf(!hasChromium)(
+  'it answers tab_gone for the address of a tab that was closed',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+    await ctx.send({ op: 'close', tab: 't1' });
+
+    const reply = await ctx.send({ op: 'tabURL', tab: 't1' });
+
+    expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_gone' });
+  },
+);
+
 test.skipIf(!hasChromium)('it refuses a sixth tab', async () => {
   const ctx = await setupTest();
 

@@ -26,6 +26,9 @@ interface Replies {
   readonly desktop: Extract<ComputerReply, { kind: 'desktop' }>;
   readonly screen: Extract<ComputerReply, { kind: 'screen' }>;
   readonly target: Extract<ComputerReply, { kind: 'screen-target' }>;
+  readonly tabURL: Extract<ComputerReply, { kind: 'tab-url' }>;
+  readonly focus: Extract<ComputerReply, { kind: 'screen-focus' }>;
+  readonly button: Extract<ComputerReply, { kind: 'element' }>;
 }
 
 interface SetupOptions {
@@ -107,6 +110,17 @@ async function setupTest(options: SetupOptions) {
       base64:
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
     },
+    tabURL: { kind: 'tab-url' as const, ok: true as const, url: 'https://site.test/form' },
+    focus: {
+      kind: 'screen-focus' as const,
+      ok: true as const,
+      focus: { kind: 'browser' as const, tab: 'g1', url: 'https://site.test/form' },
+    },
+    button: {
+      kind: 'element' as const,
+      ok: true as const,
+      element: { role: 'button', href: null, isInForm: false, hasClickHandler: false },
+    },
     stale: { kind: 'failed' as const, ok: false as const, reason: 'stale_element' as const },
     run: {
       kind: 'run' as const,
@@ -127,10 +141,25 @@ async function setupTest(options: SetupOptions) {
         .with('desktopShot', () => replies.desktop)
         .with('screenScroll', 'screenAct', () => replies.screen)
         .with('screenBind', () => replies.target)
+        .with('tabURL', () => replies.tabURL)
+        .with('screenFocus', () => replies.focus)
+        .with('element', () => replies.button)
         .otherwise(() => replies.page),
     );
 
   const answer = (options.answer ?? answerByOperation)(replies);
+
+  // the replies to the guest's reads of a tab's address, of the window in front and of a control,
+  // which a test sets before the call
+  const lookups: Partial<Record<'tabURL' | 'screenFocus' | 'element', ComputerReply>> = {};
+
+  const answerLookup = (request: ComputerRequest): ComputerReply | null =>
+    match(request.op)
+      .with('tabURL', () => lookups.tabURL ?? replies.tabURL)
+      .with('screenFocus', () => lookups.screenFocus ?? replies.focus)
+      .with('element', () => lookups.element ?? replies.button)
+      .otherwise(() => null);
+
   const copy = { isBlocked: false };
 
   const adapter = buildStubSandboxAdapter(
@@ -140,7 +169,9 @@ async function setupTest(options: SetupOptions) {
         (request, askScan, askScanText) => {
           requests.push(request);
 
-          return answer(request, askScan, askScanText);
+          const lookup = answerLookup(request);
+
+          return lookup === null ? answer(request, askScan, askScanText) : Promise.resolve(lookup);
         },
         10_000_000,
       );
@@ -213,6 +244,8 @@ async function setupTest(options: SetupOptions) {
   return {
     copy,
     computer,
+    lookups,
+    replies,
     advanceClock: (durationMs: number) => {
       clock.advance(durationMs);
     },
@@ -373,8 +406,99 @@ test('it prepares a click with the host of the tab as its destination and the UR
 
   expect(prepared).toStrictEqual({
     destinations: ['site.test'],
+    effects: ['send'],
     expectURL: 'https://site.test/form',
   });
+});
+
+test('it prepares a plain link click as a fetch of the tab host and the link host', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  ctx.lookups.element = {
+    kind: 'element',
+    ok: true,
+    element: {
+      role: 'link',
+      href: 'https://other.test/next',
+      isInForm: false,
+      hasClickHandler: false,
+    },
+  };
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const prepared = await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
+
+  expect(prepared).toStrictEqual({
+    destinations: ['site.test', 'other.test'],
+    expectURL: 'https://site.test/form',
+  });
+});
+
+test('it refuses a queued click when its control became a button since the preparation', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  ctx.lookups.element = {
+    kind: 'element',
+    ok: true,
+    element: {
+      role: 'link',
+      href: 'https://other.test/next',
+      isInForm: false,
+      hasClickHandler: false,
+    },
+  };
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+  await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
+
+  ctx.lookups.element = ctx.replies.button;
+
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' }, [
+    'site.test',
+    'other.test',
+  ]);
+
+  expect([response.kind, ctx.requests.some((request) => request.op === 'act')]).toStrictEqual([
+    'refused',
+    false,
+  ]);
+});
+
+test('it refuses a queued click when its link points to another host since the preparation', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  ctx.lookups.element = {
+    kind: 'element',
+    ok: true,
+    element: {
+      role: 'link',
+      href: 'https://other.test/next',
+      isInForm: false,
+      hasClickHandler: false,
+    },
+  };
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+  await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
+
+  ctx.lookups.element = {
+    kind: 'element',
+    ok: true,
+    element: {
+      role: 'link',
+      href: 'https://blocked.test/next',
+      isInForm: false,
+      hasClickHandler: false,
+    },
+  };
+
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' }, [
+    'site.test',
+    'other.test',
+  ]);
+
+  expect(response.kind).toBe('refused');
 });
 
 test('it runs a queued click against the URL its preparation saw', async () => {
@@ -383,7 +507,9 @@ test('it runs a queued click against the URL its preparation saw', async () => {
   await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
   await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
 
-  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' });
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' }, [
+    'site.test',
+  ]);
 
   expect(response.kind).toBe('success');
 
@@ -414,7 +540,9 @@ test('it refuses a queued click when the guest says the page changed', async () 
   await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
   await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
 
-  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' });
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' }, [
+    'site.test',
+  ]);
 
   expect(response.kind).toBe('refused');
 });
@@ -1516,16 +1644,69 @@ test('it reloads an open tab and stores the page it shows', async () => {
   ]);
 });
 
-test('it prepares no destination for a reload, so it never asks', async () => {
+test.each([
+  ['computer.browser_read', { tab: 't1', mode: 'text' }],
+  ['computer.browser_screenshot', { tab: 't1' }],
+  ['computer.browser_scroll', { tab: 't1', to: 'down' }],
+  ['computer.browser_reload', { tab: 't1' }],
+])('it prepares the host of the tab that %s shows as its destination', async (name, input) => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
 
-  const tool = ctx.tool('computer.browser_reload');
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
 
-  expect([tool.prepare, tool.declaration.effects, tool.declaration.destinations]).toStrictEqual([
-    undefined,
-    ['note'],
-    [],
+  ctx.lookups.tabURL = { kind: 'tab-url', ok: true, url: 'https://moved.test/page' };
+
+  const prepared = await ctx.prepare(name, input);
+
+  expect([ctx.tool(name).declaration.effects, prepared]).toStrictEqual([
+    ['fetch'],
+    { destinations: ['moved.test'] },
   ]);
+});
+
+test('it prepares no destination for a tab that shows no web page', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  ctx.lookups.tabURL = { kind: 'tab-url', ok: true, url: 'about:blank' };
+
+  const prepared = await ctx.prepare('computer.browser_read', { tab: 't1', mode: 'text' });
+
+  expect(prepared).toStrictEqual({ destinations: [] });
+});
+
+test.each<[string, Record<string, number>]>([
+  ['computer.screenshot', {}],
+  ['computer.screen_scroll', { x: 1, y: 2, by: 3 }],
+])(
+  'it prepares the host of the browser page in front as the destination of %s',
+  async (name, input) => {
+    const ctx = await setupTest({});
+
+    ctx.lookups.screenFocus = {
+      kind: 'screen-focus',
+      ok: true,
+      focus: { kind: 'browser', tab: 'g1', url: 'https://blocked.test/page' },
+    };
+
+    const prepared = await ctx.prepare(name, input);
+
+    expect([ctx.tool(name).declaration.effects, prepared]).toStrictEqual([
+      ['fetch'],
+      { destinations: ['blocked.test'] },
+    ]);
+  },
+);
+
+test('it prepares no destination for a screenshot with the terminal in front', async () => {
+  const ctx = await setupTest({});
+
+  ctx.lookups.screenFocus = { kind: 'screen-focus', ok: true, focus: { kind: 'terminal' } };
+
+  const prepared = await ctx.prepare('computer.screenshot', {});
+
+  expect(prepared).toStrictEqual({ destinations: [] });
 });
 
 test('it refuses a reload of a tab the browser does not hold', async () => {

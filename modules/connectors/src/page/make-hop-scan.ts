@@ -13,7 +13,10 @@ export function makeHopScan(
     const blocked = await refuseBlockedPlace(fetching, hop.url);
 
     if (blocked !== null) {
-      return { kind: 'refuse', reason: `${hop.sentBy} redirected to a site: ${blocked}` };
+      return {
+        kind: 'refuse',
+        reason: `${nameSender(scan, hop.sentBy)} redirected to a site: ${blocked}`,
+      };
     }
 
     const found = scan.findSecret(hop.url);
@@ -30,12 +33,14 @@ export function makeHopScan(
 
     scan.logger(secretRefusalEvent, { rule: found.rule, hop: hop.number });
 
-    // a host that holds a secret itself would put it in the sentence, so the sentence leaves it out
-    const sender = scan.findSecret(hop.sentBy) === null ? hop.sentBy : 'a site';
-
     return {
       kind: 'refuse',
-      reason: `${sender} redirected to a URL that holds a secret (rule ${found.rule}), so it was not fetched`,
+      reason: `${nameSender(scan, hop.sentBy)} redirected to a URL that holds a secret (rule ${found.rule}), so it was not fetched`,
     };
   };
+}
+
+// a host that holds a secret itself would put it in the sentence, so the sentence leaves it out
+function nameSender(scan: SecretScan, sentBy: string): string {
+  return scan.findSecret(sentBy) === null ? sentBy : 'a site';
 }

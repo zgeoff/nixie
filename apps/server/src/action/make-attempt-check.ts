@@ -1,7 +1,6 @@
 import type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from '@heynixie/actions';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
 import type {
   AskCause,
   CallDestination,
@@ -14,7 +13,7 @@ import {
   collectActedPlaces,
   effectNames,
   makeFaultSafeDecisionPoint,
-  placesActedCodec,
+  readActedPlaceIDs,
   writePlaceActed,
 } from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
@@ -72,12 +71,10 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       turnMessageSequence: stored.inputs.turnMessageSequence,
       onBehalfOf: stored.inputs.onBehalfOf,
       snapshot: options.definitions().snapshotHash,
-      ...(stored.inputs.placeEffects === undefined
+      ...(stored.inputs.effects === undefined
         ? {}
-        : { placeEffects: stored.inputs.placeEffects.filter((name) => isEffect(name)) }),
+        : { effects: stored.inputs.effects.filter((name) => isEffect(name)) }),
     });
-
-    await writeActedPlaces(options, { policy, stored, declaration });
 
     return buildVerdict(options, {
       policy,
@@ -86,6 +83,7 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       input,
       destinations: stored.destinations,
       frame: stored.inputs,
+      writeActs: () => writeActedPlaces(options, { policy, stored, declaration }),
     });
   };
 }
@@ -160,6 +158,7 @@ interface VerdictFacts {
   readonly input: AttemptCheckInput;
   readonly destinations: readonly CallDestination[];
   readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
+  readonly writeActs?: () => Promise<void>;
 }
 
 function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): AttemptVerdict {
@@ -183,7 +182,12 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     .map((destination) => destination.value);
 
   if (decision.outcome !== 'ask' || facts.declaration === null) {
-    return { kind: 'go', destinations, replyTargets };
+    return {
+      kind: 'go',
+      destinations,
+      replyTargets,
+      ...(facts.writeActs === undefined ? {} : { writeActs: facts.writeActs }),
+    };
   }
 
   const cause: AskCause = decision.cause ?? 'no_rule';
@@ -236,8 +240,8 @@ interface ActedFacts {
   readonly declaration: EffectDeclaration | null;
 }
 
-// A queued call that an act place allowed owes the place one record when its attempt runs. A retry
-// of the same call writes no second one.
+// A queued call that an act place allowed owes the place one record once its attempt is admitted. A
+// retry of the same call writes no second one.
 async function writeActedPlaces(options: AttemptCheckOptions, facts: ActedFacts): Promise<void> {
   const decision = facts.policy.decision;
 
@@ -254,21 +258,11 @@ async function writeActedPlaces(options: AttemptCheckOptions, facts: ActedFacts)
     return;
   }
 
-  const earlier = await readRecords(options.log, {
-    afterSequence: 0,
-    kinds: ['places.acted'],
+  const written = await readActedPlaceIDs(options.log, {
     thread: facts.stored.thread,
-    order: 'newest',
-    limit: 200,
+    callID: facts.stored.callID,
+    afterSequence: facts.stored.sequence,
   });
-
-  const written = new Set(
-    earlier.flatMap((entry) => {
-      const acted = placesActedCodec.tryDecodePartial(entry.record.payload);
-
-      return acted?.callID === facts.stored.callID ? [acted.placeID ?? ''] : [];
-    }),
-  );
 
   for (const place of owed.filter((candidate) => !written.has(candidate.placeID))) {
     await writePlaceActed(
@@ -288,7 +282,7 @@ function pickStoredEffects(
   stored: StoredCall,
   declaration: EffectDeclaration | null,
 ): readonly Effect[] {
-  const placed = stored.inputs.placeEffects?.filter((name) => isEffect(name));
+  const added = stored.inputs.effects?.filter((name) => isEffect(name)) ?? [];
 
-  return placed ?? declaration?.effects ?? [];
+  return [...new Set([...(declaration?.effects ?? []), ...added])];
 }

@@ -16,6 +16,9 @@ export interface ComputerState {
   // the URL a tab held when a click or a fill was prepared, by action key
   readonly expectations: Map<string, string>;
 
+  // whether the clicked control was a plain link when a click was prepared, by action key
+  readonly clicks: Map<string, boolean>;
+
   // The windows a screen act was prepared for, by action key. Two calls with the same input can be
   // prepared against different windows, and each keeps its own entry until its action runs.
   readonly screens: Map<string, ScreenPrepared[]>;
@@ -33,6 +36,7 @@ export interface ComputerState {
 export function buildComputerState(): ComputerState {
   return {
     expectations: new Map(),
+    clicks: new Map(),
     screens: new Map(),
     epochs: new Map(),
     holds: new Map(),

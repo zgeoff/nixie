@@ -4056,6 +4056,52 @@ test('it asks a call whose prepare step adds the send effect, and records the pr
   });
 });
 
+test('it asks a call at a read place when its prepare step adds the send effect', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'image_draw',
+        declaration: { effects: ['fetch'] },
+        prepare: () =>
+          Promise.resolve({ destinations: ['library.example.org'], effects: ['fetch', 'send'] }),
+      }),
+    ],
+  });
+
+  const point = buildTestDecisionPoint({
+    places: [
+      {
+        id: 'place-library',
+        key: { kind: 'site', domain: 'library.example.org', subdomains: false },
+        trust: 'read',
+      },
+    ],
+    declaration: {
+      effects: ['fetch'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    },
+  });
+
+  await runToolCall(
+    { tool: 'image_draw', input: { query: 'a cove' }, toolUseID: 'toolu_p9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['image_draw'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide: point.decide },
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(called?.record.decision).toMatchObject({ outcome: 'ask' });
+});
+
 test('it runs a call direct when a rule allows the send its prepare step names', async () => {
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'drawn' } }));
 
@@ -4687,7 +4733,11 @@ test.each([
     });
 
     const added = await writePlaceAdded(
-      { log: ctx.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+      {
+        log: ctx.log,
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+        publishSnapshot: () => Promise.resolve(),
+      },
       {
         key: { kind: 'address', address: 'sam@example.org' },
         trust,

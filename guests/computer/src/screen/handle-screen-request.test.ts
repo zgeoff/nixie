@@ -103,6 +103,21 @@ test('it takes the picture of the desktop with the focus and no watcher field', 
   });
 });
 
+test('it answers the focus with no picture', async () => {
+  const ctx = setupTest();
+
+  ctx.desktop.windows = [ctx.windows.browser, ctx.windows.terminal];
+  ctx.desktop.activeID = '0x1';
+
+  const reply = await ctx.send({ op: 'screenFocus' });
+
+  expect(reply).toStrictEqual({
+    kind: 'screen-focus',
+    ok: true,
+    focus: { kind: 'browser', tab: 't1', url: 'https://pages.test/' },
+  });
+});
+
 test('it reports the terminal as the focus when the terminal has it', async () => {
   const ctx = setupTest();
 

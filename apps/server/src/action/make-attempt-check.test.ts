@@ -9,8 +9,14 @@ import {
 } from '@heynixie/actions/test-utils';
 import { codingActionDeclarations, codingDeclarations } from '@heynixie/coding';
 import { parseJSONObject, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
-import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
-import { actionProposedCodec, buildActionProposalInput, makeDecisionPoint } from '@heynixie/policy';
+import type { EffectDeclaration, PolicyPlace, RuleEntry } from '@heynixie/policy';
+import {
+  actionProposedCodec,
+  buildActionProposalInput,
+  makeDecisionPoint,
+  placesActedCodec,
+  writePlaceActed,
+} from '@heynixie/policy';
 import { readStarterRules } from '@heynixie/policy/test-utils';
 import type { ApprovedCallRequest, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, toolCalledCodec } from '@heynixie/tools';
@@ -60,7 +66,24 @@ async function setupTest() {
     run: () => Promise.reject(new Error('the test runs notes.read through its runCall')),
   };
 
+  const mailer: ToolDefinition = {
+    name: 'mail.send',
+    description: 'Sends a note by mail.',
+    input: { type: 'object', properties: { to: { type: 'string' } }, required: ['to'] },
+    output: { type: 'object' },
+    execution: 'queued',
+    declaration: {
+      effects: ['send'],
+      destinations: ['to'],
+      amount: null,
+      content: [],
+      results: {},
+    },
+    run: () => Promise.reject(new Error('mail.send runs as an action, never inside the turn')),
+  };
+
   const rules: RuleEntry[] = [];
+  const places: PolicyPlace[] = [];
 
   const snapshotTools = new Map<string, EffectDeclaration>();
 
@@ -72,6 +95,7 @@ async function setupTest() {
     registry: buildToolRegistry([
       tool,
       reader,
+      mailer,
       buildMockVariantToolDefinition({
         execution: 'queued',
         declaration: { effects: ['send'] },
@@ -92,7 +116,7 @@ async function setupTest() {
     decisions: (findDeclaration, overrides) =>
       makeDecisionPoint({
         findDeclaration,
-        readInputs: () => Promise.resolve({ rules, places: [], tools: snapshotTools }),
+        readInputs: () => Promise.resolve({ rules, places, tools: snapshotTools }),
         findTaskDestinations: () => [],
         readConsent: overrides?.readConsent ?? (() => Promise.resolve(null)),
       }),
@@ -102,7 +126,87 @@ async function setupTest() {
     ...actions,
     check,
     rules,
+    places,
     snapshotTools,
+    queueMailToActPlace: async () => {
+      const step = await createTestStep(actions.context);
+
+      places.push({
+        placeID: 'place-sam',
+        shortID: 'sam1',
+        key: { kind: 'address', address: 'sam@example.org' },
+        trust: 'act',
+        name: null,
+      });
+
+      const [called] = await writeRecords(actions.context.log, [
+        {
+          kind: toolCalledCodec.kind,
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: step.lease.workID,
+          payload: toolCalledCodec.encode({
+            callID: 'call-mail',
+            runID: 'run-1',
+            toolUseID: 'toolu_1',
+            tool: 'mail.send',
+            model: 'claude-test-1',
+            profile: 'chat-direct',
+          }),
+          decision: {
+            outcome: 'allow',
+            stage: 7,
+            rule: null,
+            inputs: {
+              toolList: ['mail.send'],
+              context: 'task',
+              definitionID: 'board-notes',
+              sources: ['task'],
+              turnMessageSequence: null,
+              onBehalfOf: [],
+            },
+          },
+          erasable: {
+            input: { to: 'sam@example.org' },
+            destinations: [{ value: 'sam@example.org', replyTarget: false }],
+          },
+        },
+      ]);
+
+      invariant(called, 'the call is recorded');
+
+      const queued = await queueTestAction(actions.context, {
+        step,
+        tool: 'mail.send',
+        actionHash: 'sha256:mail-1',
+        arguments: { to: 'sam@example.org' },
+        decision: { outcome: 'allow', stage: 7, rule: null },
+        callSequence: called.sequence,
+      });
+
+      const action = await readTestAction(actions.writer, queued.actionID);
+
+      const verdict = await check({
+        action,
+        arguments: { to: 'sam@example.org' },
+        proposalID: action.action_id,
+      });
+
+      invariant(verdict.kind === 'go', 'the act place allows the mail');
+
+      return { step, verdict };
+    },
+    countActedRecords: async (thread: string) => {
+      const entries = await readRecords(actions.context.log, {
+        afterSequence: 0,
+        kinds: [placesActedCodec.kind],
+        thread,
+        limit: 1000,
+      });
+
+      return entries.filter(
+        (entry) => placesActedCodec.tryDecodePartial(entry.record.payload)?.callID === 'call-mail',
+      ).length;
+    },
     queueRunnerAction: async (taskID: string, action: RunnerActionInput) => {
       const queue = actions.context.queueRunnerActions;
 
@@ -524,4 +628,41 @@ test('it holds a steer that a step queued at the destination limits, when an all
     actionProposedCodec.decode(buildActionProposalInput(verdict.proposal).record.payload ?? {})
       .cause,
   ).toBe('outside_steering');
+});
+
+test('it writes no act record until the verdict runs its act writer', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.queueMailToActPlace();
+  const before = await ctx.countActedRecords(queued.step.lease.workID);
+
+  await queued.verdict.writeActs?.();
+
+  const after = await ctx.countActedRecords(queued.step.lease.workID);
+
+  expect({ before, after }).toStrictEqual({ before: 0, after: 1 });
+});
+
+test('it writes one act record for a retried call when more than 200 act records of other calls follow it', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.queueMailToActPlace();
+
+  const definitions = { log: ctx.context.log, definitions: ctx.context.definitions };
+
+  await queued.verdict.writeActs?.();
+
+  for (let index = 0; index < 205; index += 1) {
+    await writePlaceActed(definitions, {
+      placeID: 'place-other',
+      shortID: 'oth1',
+      callID: `call-other-${String(index)}`,
+      tool: 'mail.send',
+      thread: queued.step.lease.workID,
+    });
+  }
+
+  await queued.verdict.writeActs?.();
+
+  const acted = await ctx.countActedRecords(queued.step.lease.workID);
+
+  expect(acted).toBe(1);
 });

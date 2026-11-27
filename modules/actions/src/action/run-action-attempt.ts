@@ -173,16 +173,18 @@ async function runAttempt(
   const startedAt = context.clock.now();
 
   const response = await start.admission
-    .run(() =>
-      runConnector(context, attempt, {
+    .run(async () => {
+      await step.writeActs?.();
+
+      return runConnector(context, attempt, {
         connector,
         queued,
         destinations: step.destinations,
         replyTargets: step.replyTargets,
         startedAt,
         options,
-      }),
-    )
+      });
+    })
     .finally(start.admission.release);
 
   await writeAttemptResult(context, attempt, {
