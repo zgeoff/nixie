@@ -1,5 +1,6 @@
 export { buildTestArmedDefinition } from './build-test-armed-definition';
 export { buildTestMailEvent } from './build-test-mail-event';
+export { buildTestTextEvent } from './build-test-text-event';
 export { buildTestTriggerCore } from './build-test-trigger-core';
 export { buildTestTriggerEvent } from './build-test-trigger-event';
 export { readTestTriggerRows } from './read-test-trigger-rows';
@@ -8,3 +9,4 @@ export { seedWakeRule } from './seed-wake-rule';
 export { seedDefinitionsInForce } from './seed-definitions-in-force';
 export type { TestTriggers } from './start-test-triggers';
 export { startTestTriggers } from './start-test-triggers';
+export { buildTestTextSource } from './build-test-text-source';

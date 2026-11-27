@@ -5,6 +5,7 @@ import type { FeatureID } from '@heynixie/contract';
 import { credentialRecordTopics } from '@heynixie/credentials';
 import type { Writer } from '@heynixie/log';
 import { registerRecordTopics } from '@heynixie/log';
+import { phoneRecordTopics } from '@heynixie/phone';
 import { sandboxRecordTopics } from '@heynixie/sandbox';
 import { serverRecordTopics } from './server-record-topics';
 
@@ -17,6 +18,7 @@ export function registerServerRecordTopics(
   for (const topics of [
     ...collectModuleRecordTopicMaps(),
     ...(features.includes('computer') ? [computerTakeoverRecordTopics] : []),
+    ...(features.includes('phone') ? [phoneRecordTopics] : []),
     connectionRecordTopics,
     credentialRecordTopics,
     sandboxRecordTopics,

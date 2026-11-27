@@ -59,6 +59,10 @@ text it deletes. Only `erasure.started` carries the selection of keys to delete,
 target's key family and the keys of any child the forget reaches. `erasure.finished` carries the
 count of keys removed.
 
+A text that [the phone](../connectors/phone.md) stored forgets as the `text` kind. Its descriptor
+lists `phone.text_received` as erasable and leaves no kind to a record forget, because the text's
+own forget also captures the arrival and the wakes that showed it.
+
 ## The key store
 
 The key store is `keys.db`, beside `nixie.db` in the data directory. A database backup then holds

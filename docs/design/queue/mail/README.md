@@ -17,8 +17,8 @@ every waiting match arrives in one later wake, so a burst of mail costs one turn
 A builder reads this page, then the part their work item builds.
 
 This design replaces the Gmail half of [mail and calendar polls](../mail-and-calendar-polls.md).
-[The phone](../phone.md), the calendar poll and the [Gmail tools](../gmail-calendar-drive-tools.md)
-stand.
+[The phone](../../../architecture/connectors/phone.md), the calendar poll and the
+[Gmail tools](../gmail-calendar-drive-tools.md) stand.
 
 ## Shape
 

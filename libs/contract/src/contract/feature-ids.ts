@@ -11,6 +11,7 @@ export const featureIDs = [
   'images',
   'mail',
   'spend',
+  'phone',
 ] as const;
 
 export type FeatureID = (typeof featureIDs)[number];

@@ -76,6 +76,26 @@ export function buildScriptedReplies(
 
   const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
 
+  const phoneWatch =
+    reply.phoneWatch === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__phone_wake_set',
+              input: { from: [reply.phoneWatch.from], window: '1m' },
+            },
+          },
+        ];
+
+  const phoneRead =
+    reply.phoneRead === undefined ? [] : buildPhoneReadReplies(reply.phoneRead.from);
+
+  const phoneSend =
+    reply.phoneSend === undefined
+      ? []
+      : [{ toolUse: { name: 'mcp__nixie__phone_send', input: reply.phoneSend } }];
+
   const gmailWatch =
     reply.gmailWatch === undefined
       ? []
@@ -144,6 +164,9 @@ export function buildScriptedReplies(
       ...notebook,
       ...mailWatch,
       ...mailRead,
+      ...phoneWatch,
+      ...phoneRead,
+      ...phoneSend,
       ...gmailWatch,
       ...gmailReply,
       ...calendarInvite,
@@ -166,6 +189,9 @@ export function buildScriptedReplies(
     ...notebook,
     ...mailWatch,
     ...mailRead,
+    ...phoneWatch,
+    ...phoneRead,
+    ...phoneSend,
     ...gmailWatch,
     ...gmailReply,
     ...calendarInvite,
@@ -394,6 +420,38 @@ function readListedMailID(body: ScriptedBody): string {
   invariant(mailID !== undefined, 'the result of the list names no mail');
 
   return mailID;
+}
+
+// A list of the texts from one sender, and the open of the newest text it lists. The open names the
+// text by the ID that the list's result gave, so a list with no text fails the request instead.
+function buildPhoneReadReplies(from: string) {
+  return [
+    { toolUse: { name: 'mcp__nixie__phone_list', input: { from } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__phone_read',
+        input: (body: ScriptedBody) => ({ text: readListedTextID(body) }),
+      },
+    },
+  ];
+}
+
+function readListedTextID(body: ScriptedBody): string {
+  const blocks = (body.messages ?? []).flatMap(
+    (message) => z.array(z.unknown()).safeParse(message.content).data ?? [],
+  );
+
+  const results = blocks
+    .map((block) => toolResultBlockSchema.safeParse(block))
+    .filter((parsed) => parsed.success)
+    .map((parsed) => parsed.data);
+
+  const listed = JSON.stringify(results.at(-1)?.content);
+  const textID = /texts\\*":\[\{\\*"text\\*":\\*"(?<id>[a-z0-9]+)/u.exec(listed)?.groups?.['id'];
+
+  invariant(textID !== undefined, 'the result of the list names no text');
+
+  return textID;
 }
 
 // A search of the connected Google account's mail, the open of the first mail it lists, and a reply

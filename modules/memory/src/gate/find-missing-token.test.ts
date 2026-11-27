@@ -69,7 +69,7 @@ test('it compares the query of a URL with no path exactly', () => {
 
 test('it never joins 2 numbers on separate lines into one phone number', () => {
   expect(findMissingToken('Number is 12345678', 'Codes are 1234\n5678')).toMatchObject({
-    kind: 'phone',
+    kind: 'telephone',
     key: '12345678',
   });
 });
@@ -79,7 +79,7 @@ test.each([
   ['narrow no-break spaces', 'Call +33 6 12 34 56 78'],
 ])('it finds a phone number written with %s', (_label, text) => {
   expect(findMissingToken(text, 'Call my usual number')).toMatchObject({
-    kind: 'phone',
+    kind: 'telephone',
     key: '+33612345678',
   });
 });

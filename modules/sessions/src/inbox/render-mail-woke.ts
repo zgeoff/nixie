@@ -15,26 +15,31 @@ export function renderMailWoke(
   const woke = triggerMailWokeCodec.decode(record.payload);
   const texts = collectMailTexts(record);
   const count = woke.mails.length;
+  const isText = woke.mails.every((mail) => mail.mailbox.startsWith('source:'));
+  const noun = isText ? 'text' : 'mail';
   const lines: string[] = [];
 
   for (const rule of woke.rules) {
-    lines.push(`Wake rule ${rule.shortID} (${describeRule(rule, times)}).`);
+    lines.push(`Wake rule ${rule.shortID} (${describeRule(rule, noun, times)}).`);
   }
 
-  lines.push(`${String(count)} new ${count === 1 ? 'mail' : 'mails'}:`);
+  lines.push(`${String(count)} new ${count === 1 ? noun : `${noun}s`}:`);
 
   for (const mail of woke.mails) {
     const text = texts.get(mail.arrived);
 
     if (text === undefined) {
-      lines.push(`(forgotten) (message ${mail.messageID})`);
+      lines.push(`(forgotten) (${isText ? 'text' : 'message'} ${mail.messageID})`);
     } else {
-      lines.push(...renderUntrustedText(text, mint), `(message ${mail.messageID})`);
+      lines.push(
+        ...renderUntrustedText(text, mint),
+        `(${isText ? 'text' : 'message'} ${mail.messageID})`,
+      );
     }
   }
 
   return renderSystemMessage({
-    type: 'mail',
+    type: noun,
     at: formatMessageTime(record.recordedAt, null, times),
     body: lines.join('\n'),
   });
@@ -51,7 +56,7 @@ function collectMailTexts(record: LogRecord): ReadonlyMap<number, string> {
   const fields = mailWokeFieldsSchema.safeParse(record.erasable.fields);
 
   for (const mail of fields.success ? fields.data.mails : []) {
-    texts.set(mail.arrived, `from ${mail.from}: ${mail.subject}`);
+    texts.set(mail.arrived, `from ${mail.from}: ${mail.body ?? mail.subject}`);
   }
 
   return texts;
@@ -59,22 +64,26 @@ function collectMailTexts(record: LogRecord): ReadonlyMap<number, string> {
 
 type WokeRule = ReturnType<typeof triggerMailWokeCodec.decode>['rules'][number];
 
-function describeRule(rule: WokeRule, times: MessageTimeOptions): string {
+function describeRule(rule: WokeRule, noun: string, times: MessageTimeOptions): string {
   const parts: string[] = [];
 
   if (rule.match.from !== undefined) {
-    parts.push(`mail from ${rule.match.from.join(', ')}`);
+    parts.push(`${noun} from ${rule.match.from.join(', ')}`);
   }
 
   if (rule.match.subject !== undefined) {
     parts.push(`subject ${JSON.stringify(rule.match.subject)}`);
   }
 
+  if (rule.match.body !== undefined) {
+    parts.push(`body ${JSON.stringify(rule.match.body)}`);
+  }
+
   if (rule.match.thread !== undefined) {
     parts.push(`thread ${rule.match.thread}`);
   }
 
-  const match = parts.length === 0 ? 'every mail' : parts.join(', ');
+  const match = parts.length === 0 ? `every ${noun}` : parts.join(', ');
 
   return rule.expiresAt === null
     ? match

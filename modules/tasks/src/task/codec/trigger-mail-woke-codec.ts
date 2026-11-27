@@ -5,6 +5,7 @@ const matchSchema = z.strictObject({
   from: z.array(z.string()).exactOptional(),
   subject: z.string().exactOptional(),
   thread: z.string().exactOptional(),
+  body: z.string().exactOptional(),
 });
 
 const ruleSchema = z.object({
@@ -36,7 +37,15 @@ const mailWokeSchema = z.object({
 // what its render needs, so the render reads no other record. The sender and the subject of each
 // mail sit in the record's erasable fields, so a forget destroys them.
 export const triggerMailWokeCodec = defineRecordCodec('trigger.mail_woke', mailWokeSchema);
-const erasableMailSchema = z.object({ arrived: z.int(), from: z.string(), subject: z.string() });
+
+const erasableMailSchema = z.object({
+  arrived: z.int(),
+  from: z.string(),
+  subject: z.string(),
+
+  // a text's body, which a mail's fields lack
+  body: z.string().exactOptional(),
+});
 
 // The erasable part of a wake: one entry per mail, in the order of the payload's mails.
 export const mailWokeFieldsSchema = z.object({ mails: z.array(erasableMailSchema) });

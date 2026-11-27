@@ -113,7 +113,7 @@ async function writeFoundSend(
 ): Promise<MailCheckResponse> {
   const messageIDHeader = buildSendMessageID(context.settings, attempt.actionID);
 
-  const found = await host.findSent(messageIDHeader);
+  const found = await host.readSentTexts(messageIDHeader);
 
   if (found === null) {
     return { kind: 'not_found' };

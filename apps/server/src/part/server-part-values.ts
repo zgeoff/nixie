@@ -11,6 +11,7 @@ import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ServerCoding } from '../coding/build-server-coding';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
 import type { ServerMail } from '../mail/create-server-mail';
+import type { PhonePart } from '../phone/start-phone-part';
 import type { ServerResetControl } from '../server/build-server-reset';
 import type { ServerParts } from '../types';
 import type { APIGate } from '../utils/build-api-gate';
@@ -31,6 +32,7 @@ export interface ServerPartValues {
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
   readonly computer: ComputerTools;
+  readonly phone: PhonePart;
   readonly render: RenderSandbox | null;
   readonly code_run: CodeRunPart;
   readonly worker: WorkerTool | null;
