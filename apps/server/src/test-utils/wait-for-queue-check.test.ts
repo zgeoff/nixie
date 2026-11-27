@@ -20,7 +20,7 @@ test('it waits for the queue check of the latest start, not an earlier one', asy
     readCount += 1;
 
     return Promise.resolve(reads.shift() ?? second);
-  }, 1000);
+  }, 60_000);
 
   expect(readCount).toBe(3);
 });

@@ -20,7 +20,7 @@ export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> 
     return known;
   }
 
-  const reading = loadTestBundle(isTestBuild);
+  const reading = readBundleFiles(isTestBuild);
 
   bundles.set(isTestBuild, reading);
 
@@ -37,7 +37,7 @@ const bundleSchema = z.object({
   testBuildIDs: z.array(z.string()),
 });
 
-async function loadTestBundle(isTestBuild: boolean): Promise<TestBundle> {
+async function readBundleFiles(isTestBuild: boolean): Promise<TestBundle> {
   const directory = await writeBundleTemplate(isTestBuild);
 
   const entry = join(directory, 'out', 'main.js');
