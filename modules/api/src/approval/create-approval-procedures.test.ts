@@ -1418,7 +1418,7 @@ test('#approvals.listItems names the coding session that a task in the chain bin
   const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
   const sessionShortID = sessionNames.get(codingTaskID);
 
-  invariant(item && sessionShortID);
+  invariant(item !== undefined && sessionShortID !== undefined);
 
   expect(item.chain).toStrictEqual([
     { kind: 'message', id: 'conversation', name: 'Your message: Join my session.' },
