@@ -32,4 +32,9 @@ export const computerFeatures = [
     summary: 'Trust a site once',
     paths: featurePaths['trusted-places'],
   },
+  {
+    name: 'place-trust-card',
+    summary: 'Trust a place from a card',
+    paths: featurePaths['place-trust-card'],
+  },
 ] as const;

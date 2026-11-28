@@ -1,6 +1,7 @@
 # Trusted places
 
-- **Status:** partly built; the directory and the decision point's reads are built
+- **Status:** partly built; the directory, the decision point's reads, the card's answers, the
+  places tools and the notice of an act are built
 - **Work items:** [the vault](https://linear.app/zgeoff/issue/GEO-2731),
   [locked entries](https://linear.app/zgeoff/issue/GEO-2814),
   [the wallet](https://linear.app/zgeoff/issue/GEO-2757),
@@ -17,9 +18,8 @@ Build each work item above from this design and the [places](../../architecture/
 and [decision point](../../architecture/policy/decision-point.md) docs, which describe what is
 built. The directory's own work items still to build are:
 
-1. the card's answers, `places.propose`, `places.narrow`, `places.list` and the notice of an act;
-2. the places page and `nixie places`, which retire the contacts code;
-3. the one evidence window, and the skill guard's move to first use.
+1. the places page and `nixie places`, which retire the contacts code;
+2. the one evidence window, and the skill guard's move to first use.
 
 ## Shape
 
@@ -63,85 +63,6 @@ place. The rest is still to build:
   tells the model that a blocked site is on screen. Today the refusal names the blocked place, and
   does not say the page is on screen.
 
-### The notice of an act
-
-Each turn that ends with calls allowed through an `act` place shows at most one line per place,
-styled like a tool call. The line names the place and the tools that ran there, from the turn's
-`places.acted` records, with a count for each tool:
-
-```text
-tickets.example.com: computer.browser_click ×2, mail.send
-```
-
-### The card and the proposal
-
-```ts
-// An approval card's answer, beside Allow once and Always allow.
-type TrustAnswer = { trust: 'read' | 'act'; key: PlaceKey }; // the call's place, subdomains: false
-```
-
-```ts
-const proposal = await tools.call('places.propose', {
-  places: [
-    { place: 'tickets.example.com', trust: 'act', why: 'You asked me to book here every week.' },
-    { place: '*.library.example.org', trust: 'read', why: 'Your library splits its catalog.' },
-  ],
-});
-// → { proposal: 'r8t2w5n1ze' }, one card for you that lists every place
-```
-
-- When every destination of a held call is one place, the card offers "Trust this place to read" and
-  "Trust this place to act". Either answer adds the entry or raises its level, and writes no rule.
-  The card carries a place hash beside the action hash, over the key and the level it shows, and the
-  answer echoes both. The host checks the echo again, and refuses an answer that holds the action
-  hash alone, as it does for an Always allow rule's hash.
-- `places.propose` reads each `place` through `parsePlacePattern`. The card shows each in words,
-  such as "library.example.org and every subdomain", with its level and its reason. The card has no
-  subdomain checkbox.
-- `places.propose` declares `policy_widen`, so it always asks. It refuses a list with a key on a
-  whole public suffix, such as `*.github.io`.
-- You approve the whole card, or untick some places first. Approval adds or raises each ticked place
-  at its level, and leaves the unticked ones as they are.
-- nixie narrows a place with `places.narrow`. It declares `policy_narrow` and applies at once with a
-  notice.
-
-```ts
-await tools.call('places.narrow', { place: 'k3p9m2x7qa', trust: 'known' }); // or { place: 'k3p9m2x7qa', remove: true }
-// → { place: 'k3p9m2x7qa', trust: 'known' }; refuses a level that isn't lower than the current one, and
-// refuses remove on a blocked entry, which would make the place free to read
-```
-
-`places.narrow` also refuses a change that leaves a destination the entry covers at a higher level
-than before. Another entry can cause that: removing `forms.example.org` at `known` beside
-`*.example.org` at `act` leaves `forms.example.org` at `act`. Levels rise in the order `blocked`,
-`known`, `read`, `act`, and no entry counts as `known`.
-
-### The list
-
-```ts
-await tools.call('places.list', { trust: 'read', kind: 'site', query: 'library', limit: 20 });
-// → { total: 3, places: [{ place: 'k3p9m2x7qa', key: '*.library.example.org', trust: 'read', name: 'The library' }, …] }
-
-await tools.call('places.list', { place: 'catalog.library.example.org' });
-// → { total: 1, places: [{ place: 'k3p9m2x7qa', … }] }, the entry the decision point picks; total 0 for none
-```
-
-```ts
-// places module. Every filter is optional.
-interface PlacesListInput {
-  trust?: Trust;
-  kind?: PlaceKey['kind'];
-  query?: string; // matches the key or the name, in any case
-  place?: string; // a host, address, number or handle; returns only the entry that covers it
-  detail?: boolean; // adds addedBy and lastUsedAt to each row
-  limit?: number; // 50 when unset
-  after?: string; // a short ID, for the next page
-}
-```
-
-- `places.list` declares `read` with no destination, as `tasks.list` does. `total` counts every
-  match, whatever the limit. `place` goes through `parsePlace` and `places.find`.
-
 ### Evidence from what you typed
 
 Today the consent check, the memory gate and the skill guard each check whether you named a place,
@@ -162,15 +83,17 @@ call to that place meets the decision point like any other call, and an acting c
 
 ### The places page
 
-The web client gets a page at `/places`: each entry with its kind, key, level, name, who added it
-and when a call last used it. You add, change and remove entries there. The host CLI
+The web client gets a page at `/places` that lists each entry with its kind, key, level, name, who
+added it and when a call last used it. Add, change and remove entries there. The host CLI
 `nixie contacts` becomes `nixie places`, with the same verbs.
 
 ## Constraints
 
-- The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
-  origin of its entry, even on a site at `act`, and the `www.` rule never widens it. The vault entry
-  links its site's place ID.
+- The vault keeps each entry's exact origins as a fill constraint. It fills a password only on an
+  exact origin of its entry, even on a site at `act`. A site's key drops a leading `www.`, so
+  `www.example.org` and `example.org` are one place, but an origin keeps it: an entry for
+  `https://example.org` never fills on `https://www.example.org`. The vault entry links its site's
+  place ID.
 - A wallet lift names places, never origins. Its merchants are site places.
 - A mail trigger's or wake rule's `from` names `address` or `mail_domain` keys, matched by
   `isPlaceCovered`. A place's level never wakes a task by itself.
@@ -184,16 +107,15 @@ and when a call last used it. You add, change and remove entries there. The host
   known-contact schema keep working over the `places` projection until the page's work item moves
   them. Until then they write contact records and read only places at `known`. The `known_contacts`
   table goes when they move.
-- A raise to `act`, from the page or from a card, takes the passkey check, as a wider rule does. So
-  do an unblock and a `subdomains: true` key. A one-off approval, a lower level and a block never
-  take it. The page refuses a change that comes from a browser act tool.
+- A raise to `act` from the page takes the passkey check, as a wider rule does. So do an unblock and
+  a `subdomains: true` key. A one-off approval, a lower level and a block never take it. The page
+  refuses a change that comes from a browser act tool.
 
 ## Builder decides
 
-- The page's layout and its sort order.
-- Whether `places.narrow` is one tool or two.
-- What happens to the Always allow rules that pin only a host: they keep working, and the builder
-  may offer a one-time conversion to places on the page.
+- Choose the page's layout and its sort order.
+- Decide what happens to the Always allow rules that pin only a host. They keep working, and you may
+  offer a one-time conversion to places on the page.
 
 ## Out of scope
 

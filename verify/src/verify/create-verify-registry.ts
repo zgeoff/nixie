@@ -223,7 +223,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'trust-site',
       summary:
-        'Trust a site at read, as the places page will, and return the short ID of its entry',
+        'Trust the site --domain at the level --trust, read unless it says act, as the places page will: it adds the entry or raises the one the site has. Returns the short ID of the entry',
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.trustSite.input,

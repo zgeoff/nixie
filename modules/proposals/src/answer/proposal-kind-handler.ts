@@ -45,6 +45,15 @@ export interface ProposalAnswerInput {
   readonly choice: ProposalChoice;
   readonly ruleHash?: string | undefined;
 
+  // Trusts the place of a held call at this level beside the approval. It takes the place hash the
+  // card showed for that level.
+  readonly trust?: 'read' | 'act' | undefined;
+  readonly placeHash?: string | undefined;
+
+  // The places of a places.propose card that stay ticked, by their place in the list. Absent, every
+  // place is ticked.
+  readonly tickedPlaces?: readonly number[] | undefined;
+
   // epoch ms
   readonly deferUntil?: number | undefined;
   readonly note?: string | undefined;
@@ -178,11 +187,29 @@ export interface ProposalBody {
 
   // the rule form that a proposed rule's card opens in its Edit
   readonly rule?: Readonly<Record<string, unknown>>;
+
+  // The place a held call reaches, in words, when the card offers to trust it, with the hash that
+  // each level's answer echoes.
+  readonly place?: {
+    readonly words: string;
+    readonly readHash: string;
+    readonly actHash: string;
+  };
+
+  // The places that a places.propose card lists, which the user ticks or unticks
+  readonly places?: {
+    readonly words: string;
+    readonly trust: 'read' | 'act';
+    readonly why: string;
+  }[];
 }
 
 export interface ProposalHashes {
   readonly action: string;
   readonly rule: string | null;
+
+  // The hash of each "Trust this place" answer the card offers; null for a card with none.
+  readonly place?: { readonly read: string; readonly act: string } | null;
 }
 
 // actions, memory, skills and the rule changes of definitions each register one

@@ -439,6 +439,39 @@
                               "shortID"
                             ]
                           },
+                          "placeActed": {
+                            "type": "object",
+                            "properties": {
+                              "place": {
+                                "type": "string"
+                              },
+                              "tool": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "place",
+                              "tool"
+                            ]
+                          },
+                          "placeNarrowed": {
+                            "type": "object",
+                            "properties": {
+                              "place": {
+                                "type": "string"
+                              },
+                              "trust": {
+                                "type": "string"
+                              },
+                              "isRemoved": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "place",
+                              "isRemoved"
+                            ]
+                          },
                           "proposal": {
                             "type": "object",
                             "properties": {
@@ -1293,6 +1326,39 @@
                               "required": [
                                 "momentID",
                                 "shortID"
+                              ]
+                            },
+                            "placeActed": {
+                              "type": "object",
+                              "properties": {
+                                "place": {
+                                  "type": "string"
+                                },
+                                "tool": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "place",
+                                "tool"
+                              ]
+                            },
+                            "placeNarrowed": {
+                              "type": "object",
+                              "properties": {
+                                "place": {
+                                  "type": "string"
+                                },
+                                "trust": {
+                                  "type": "string"
+                                },
+                                "isRemoved": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "place",
+                                "isRemoved"
                               ]
                             },
                             "proposal": {
@@ -36830,6 +36896,51 @@
                               "approveLabel": {
                                 "type": "string"
                               },
+                              "place": {
+                                "type": "object",
+                                "properties": {
+                                  "words": {
+                                    "type": "string"
+                                  },
+                                  "readHash": {
+                                    "type": "string"
+                                  },
+                                  "actHash": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "words",
+                                  "readHash",
+                                  "actHash"
+                                ]
+                              },
+                              "places": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "words": {
+                                      "type": "string"
+                                    },
+                                    "trust": {
+                                      "enum": [
+                                        "read",
+                                        "act"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "why": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "words",
+                                    "trust",
+                                    "why"
+                                  ]
+                                }
+                              },
                               "rule": {
                                 "type": "object",
                                 "propertyNames": {
@@ -37803,6 +37914,51 @@
                                   "approveLabel": {
                                     "type": "string"
                                   },
+                                  "place": {
+                                    "type": "object",
+                                    "properties": {
+                                      "words": {
+                                        "type": "string"
+                                      },
+                                      "readHash": {
+                                        "type": "string"
+                                      },
+                                      "actHash": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "words",
+                                      "readHash",
+                                      "actHash"
+                                    ]
+                                  },
+                                  "places": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "words": {
+                                          "type": "string"
+                                        },
+                                        "trust": {
+                                          "enum": [
+                                            "read",
+                                            "act"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "why": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "words",
+                                        "trust",
+                                        "why"
+                                      ]
+                                    }
+                                  },
                                   "rule": {
                                     "type": "object",
                                     "propertyNames": {
@@ -38553,6 +38709,25 @@
                   },
                   "ruleHash": {
                     "type": "string"
+                  },
+                  "trust": {
+                    "enum": [
+                      "read",
+                      "act"
+                    ],
+                    "type": "string"
+                  },
+                  "placeHash": {
+                    "type": "string"
+                  },
+                  "tickedPlaces": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
                   },
                   "deferUntil": {
                     "type": "string",
@@ -39620,6 +39795,25 @@
                         "ruleHash": {
                           "type": "string"
                         },
+                        "trust": {
+                          "enum": [
+                            "read",
+                            "act"
+                          ],
+                          "type": "string"
+                        },
+                        "placeHash": {
+                          "type": "string"
+                        },
+                        "tickedPlaces": {
+                          "type": "array",
+                          "maxItems": 100,
+                          "items": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
                         "deferUntil": {
                           "type": "string",
                           "format": "date-time",
@@ -40015,6 +40209,25 @@
                           },
                           "ruleHash": {
                             "type": "string"
+                          },
+                          "trust": {
+                            "enum": [
+                              "read",
+                              "act"
+                            ],
+                            "type": "string"
+                          },
+                          "placeHash": {
+                            "type": "string"
+                          },
+                          "tickedPlaces": {
+                            "type": "array",
+                            "maxItems": 100,
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
                           }
                         },
                         "required": [
@@ -40322,6 +40535,25 @@
                           },
                           "ruleHash": {
                             "type": "string"
+                          },
+                          "trust": {
+                            "enum": [
+                              "read",
+                              "act"
+                            ],
+                            "type": "string"
+                          },
+                          "placeHash": {
+                            "type": "string"
+                          },
+                          "tickedPlaces": {
+                            "type": "array",
+                            "maxItems": 100,
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
                           }
                         },
                         "required": [
@@ -42458,6 +42690,39 @@
                                       "required": [
                                         "momentID",
                                         "shortID"
+                                      ]
+                                    },
+                                    "placeActed": {
+                                      "type": "object",
+                                      "properties": {
+                                        "place": {
+                                          "type": "string"
+                                        },
+                                        "tool": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "place",
+                                        "tool"
+                                      ]
+                                    },
+                                    "placeNarrowed": {
+                                      "type": "object",
+                                      "properties": {
+                                        "place": {
+                                          "type": "string"
+                                        },
+                                        "trust": {
+                                          "type": "string"
+                                        },
+                                        "isRemoved": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "place",
+                                        "isRemoved"
                                       ]
                                     },
                                     "proposal": {

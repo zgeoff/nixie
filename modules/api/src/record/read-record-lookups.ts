@@ -7,6 +7,12 @@ import type { DefinitionNotice } from '@heynixie/contract';
 import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
 import { modelReplyCodec, readVoidedReplies } from '@heynixie/models';
+import {
+  formatPlaceKey,
+  placesActedCodec,
+  placesNarrowedCodec,
+  readPlaces,
+} from '@heynixie/policy';
 import { readProposalsBySequence } from '@heynixie/proposals';
 import { readReminderVersion } from '@heynixie/reminders';
 import {
@@ -73,6 +79,8 @@ export async function readRecordLookups(
     actions: await readActionCalls(context, outcomeActionIDs),
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
     definitionNotices: await readNoticesBySequence(context, records),
+    placeActs: await readPlaceActs(context, records),
+    placeNarrowings: await readPlaceNarrowings(context, records),
     proposals: await readProposalsBySequence(
       context.log.writer.db,
       records.map((record) => record.sequence),
@@ -148,4 +156,73 @@ async function readNoticesBySequence(
       return notice === undefined ? [] : [[entry.sequence, notice] as const];
     }),
   );
+}
+
+// The key of the place that each places.acted record names. A place's IDs sit in the payload for a
+// site and in the erasable fields for an address, phone number or handle, so a forgotten place
+// leaves no line.
+async function readPlaceActs(
+  context: Pick<APIContext, 'log'>,
+  records: readonly LogRecord[],
+): Promise<RecordLookups['placeActs']> {
+  const named = records.flatMap((record) => {
+    if (record.kind !== placesActedCodec.kind) {
+      return [];
+    }
+
+    const payload = placesActedCodec.tryDecodePartial(record.payload);
+
+    const erasableID =
+      record.erasable.status === 'readable' ? record.erasable.fields['placeID'] : undefined;
+
+    const placeID = payload?.placeID ?? (typeof erasableID === 'string' ? erasableID : undefined);
+
+    return placeID === undefined ? [] : [{ sequence: record.sequence, placeID }];
+  });
+
+  if (named.length === 0) {
+    return new Map();
+  }
+
+  const places = await readPlaces(context.log, {
+    placeIDs: named.map((entry) => entry.placeID),
+  });
+
+  const keys = new Map(places.map((place) => [place.placeID, formatPlaceKey(place.key)]));
+
+  return new Map(
+    named.flatMap((entry) => {
+      const key = keys.get(entry.placeID);
+
+      return key === undefined ? [] : [[entry.sequence, key] as const];
+    }),
+  );
+}
+
+// The key of the place that each places.narrowed record names. The record holds the short ID alone,
+// so a place whose key a forget took shows by its ID.
+async function readPlaceNarrowings(
+  context: Pick<APIContext, 'log'>,
+  records: readonly LogRecord[],
+): Promise<RecordLookups['placeNarrowings']> {
+  const named = records.flatMap((record) => {
+    const narrowed =
+      record.kind === placesNarrowedCodec.kind
+        ? placesNarrowedCodec.tryDecodePartial(record.payload)
+        : undefined;
+
+    return narrowed?.shortID === undefined
+      ? []
+      : [{ sequence: record.sequence, shortID: narrowed.shortID }];
+  });
+
+  if (named.length === 0) {
+    return new Map();
+  }
+
+  const places = await readPlaces(context.log, { isRemovedIncluded: true });
+
+  const keys = new Map(places.map((place) => [place.shortID, formatPlaceKey(place.key)]));
+
+  return new Map(named.map((entry) => [entry.sequence, keys.get(entry.shortID) ?? entry.shortID]));
 }

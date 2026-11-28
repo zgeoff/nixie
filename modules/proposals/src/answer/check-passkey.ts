@@ -9,13 +9,17 @@ interface PasskeyQuery {
 }
 
 // The passkey step, between the check of the offered choices and the kind's handler. A choice that
-// takes no passkey passes untouched.
+// takes no passkey passes untouched. A trust of the place to act takes one on any row, because it
+// raises what nixie may do there with no further ask.
 export function checkPasskey(
   tx: Transaction<unknown>,
   gate: PasskeyGate | undefined,
   query: PasskeyQuery,
 ): Promise<PasskeyRefusal | null> {
-  if (!pickPasskeyChoices(query.row).includes(query.answer.choice)) {
+  const isGated =
+    pickPasskeyChoices(query.row).includes(query.answer.choice) || query.answer.trust === 'act';
+
+  if (!isGated) {
     return Promise.resolve(null);
   }
 

@@ -11,7 +11,13 @@ import type { MemoryMailHost } from '@heynixie/mail/memory-host';
 import type { NotebookStore } from '@heynixie/notebook';
 import type { FakePhoneProvider } from '@heynixie/phone/fake';
 import type { PlaceContext } from '@heynixie/policy';
-import { readPendingActionProposals, writePlaceAdded } from '@heynixie/policy';
+import {
+  formatPlaceKey,
+  readPendingActionProposals,
+  readPlaces,
+  writePlaceAdded,
+  writePlaceChanged,
+} from '@heynixie/policy';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
@@ -171,26 +177,47 @@ export function registerHarnessOperations(
     return answers.approved;
   });
 
-  // The owner's trust in one site, which no page adds yet: the entry goes in the directory, and the
-  // next call decides under a snapshot that holds it. It returns the short ID of the entry.
+  // The owner's trust in one site, which no page adds yet: the entry goes in the directory, or its
+  // level rises when the site has one, as the passkey-gated card answer raises it. The next call
+  // decides under a snapshot that holds it. It returns the short ID of the entry.
   link.registerOperation('trustPlace', schemas.trustPlace, async (request) => {
-    const added = await writePlaceAdded(
-      {
-        log: context.log,
-        definitions: context.definitions,
-        runInForce: parts.runInForce,
-      },
-      {
-        key: { kind: 'site', domain: request.domain, subdomains: false },
-        trust: request.trust,
-        name: null,
-        addedBy: 'you',
-      },
-    );
+    const placeContext = {
+      log: context.log,
+      definitions: context.definitions,
+      runInForce: parts.runInForce,
+    };
 
-    invariant(added.status === 'added', `the place was refused: ${JSON.stringify(added)}`);
+    const key = { kind: 'site', domain: request.domain, subdomains: false } as const;
 
-    return added.shortID;
+    const added = await writePlaceAdded(placeContext, {
+      key,
+      trust: request.trust,
+      name: null,
+      addedBy: 'you',
+    });
+
+    if (added.status === 'added') {
+      return added.shortID;
+    }
+
+    invariant(added.fault === 'key_held', `the place was refused: ${JSON.stringify(added)}`);
+
+    const keyText = formatPlaceKey(key);
+
+    const stored = await readPlaces(context.log);
+
+    const held = stored.find((place) => formatPlaceKey(place.key) === keyText);
+
+    invariant(held !== undefined, `the site has no entry to raise: ${request.domain}`);
+
+    const changed = await writePlaceChanged(placeContext, {
+      placeID: held.placeID,
+      trust: request.trust,
+    });
+
+    invariant(changed.status === 'changed', `the place was refused: ${JSON.stringify(changed)}`);
+
+    return held.shortID;
   });
 
   link.registerOperation('readRegisteredTools', schemas.readRegisteredTools, () => [

@@ -14,6 +14,15 @@ export type PlaceKey =
   | { readonly kind: 'handle'; readonly channel: string; readonly id: string }
   | { readonly kind: 'raw'; readonly value: string };
 
+export const placeKeyKinds = [
+  'site',
+  'address',
+  'mail_domain',
+  'phone',
+  'handle',
+  'raw',
+] as const satisfies readonly PlaceKey['kind'][];
+
 export const trustLevels = ['blocked', 'known', 'read', 'act', 'self'] as const;
 
 // self is one of your own addresses, numbers or handles: as act, with no notice

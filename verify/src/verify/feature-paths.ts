@@ -154,6 +154,10 @@ export const featurePaths = {
   'computer-watch': buildFeatureGlobs(workspace, joinReaches(computer, images)),
   'computer-off': buildFeatureGlobs(workspace, computer),
   'trusted-places': buildFeatureGlobs(workspace, computer),
+  'place-trust-card': buildFeatureGlobs(workspace, {
+    packages: computer.packages,
+    paths: [...computer.paths, 'apps/web/src/approval/**', 'apps/web/src/conversation/**'],
+  }),
 } as const satisfies Record<string, readonly string[]>;
 
 interface Workspace {

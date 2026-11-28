@@ -6,14 +6,14 @@ import type {
   LogTables,
   RecordInput,
 } from '@heynixie/log';
-import { JSON_OBJECT_SCHEMA, parseJSONObject, readRecords } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
   ProposalAnswerInput,
   ProposalBody,
+  ProposalHashes,
   ProposalKindHandler,
-  ProposalRefusal,
   SharedProposal,
 } from '@heynixie/proposals';
 import { buildDiscardedOutcome } from '@heynixie/proposals';
@@ -21,14 +21,17 @@ import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { buildCardPlaceOffer } from '../place/build-card-place-offer';
+import { parseProposedPlaces } from '../place/parse-proposed-places';
+import type { PlaceContext } from '../place/place-context';
 import { ruleBodySchema } from '../rule/rule-body-schema';
 import type { Rule } from '../types';
-import { hasQueuedEffect } from '../utils/has-queued-effect';
-import { toCanonicalText } from '../utils/to-canonical-text';
 import { actionAnsweredCodec } from './action-answered-codec';
 import { actionProposedCodec } from './action-proposed-codec';
-import { buildActionHash } from './build-action-hash';
 import { buildActionProposalSentence } from './build-action-proposal-sentence';
+import { findErasable, toJSONObject } from './find-erasable';
+import { checkApproval, queueAction } from './queue-action';
+import { writeApprovalTrusts } from './write-approval-trusts';
 
 interface AlwaysAllowChange {
   readonly ruleID: string;
@@ -115,6 +118,10 @@ export interface ActionHandlerDeps {
   // Writes a record on the proposal's thread. A task that is still open takes it as an inbox record.
   readonly writeThreadRecord: (tx: Transaction<unknown>, input: RecordInput) => Promise<void>;
 
+  // The directory an approval writes to, for a trust answer and for an approved places.propose.
+  // Absent, such an answer is refused.
+  readonly readPlaces?: () => PlaceContext | null;
+
   // Adds the rule as a runtime change in the caller's transaction.
   readonly writeRule: (tx: Transaction<unknown>, change: AlwaysAllowChange) => Promise<void>;
 
@@ -172,7 +179,7 @@ export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKind
 
     // reads only the proposal's own record: a tool's extra card fields read on another connection
     readSentence: (tx, row) => readSentence(deps, tx, row),
-    readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: row.ruleHash }),
+    readHashes: (db, row) => readHashes(deps, db, row),
     approve: (run, row, answer) => writeAnswer(deps, run, row, answer),
     discard: async (run, row, outcome, answer) => {
       if (outcome === 'declined' && answer !== null) {
@@ -265,26 +272,6 @@ async function readBody(
   return extra.status === 'unreadable' ? null : toBody(payload, erasable, extra);
 }
 
-const erasableSchema = z.object({
-  input: z.record(z.string(), z.unknown()).default({}),
-  destinations: z.object({ value: z.string() }).array().default([]),
-  rule: z.record(z.string(), z.unknown()).optional(),
-  ruleID: z.string().optional(),
-  ruleSentence: z.string().optional(),
-});
-
-function findErasable(record: LogRecord): z.output<typeof erasableSchema> | null {
-  if (record.erasable.status !== 'readable') {
-    return null;
-  }
-
-  return erasableSchema.parse(record.erasable.fields);
-}
-
-function toJSONObject(value: Record<string, unknown>): JSONObject {
-  return JSON_OBJECT_SCHEMA.parse(value);
-}
-
 function toBody(
   payload: ReturnType<typeof actionProposedCodec.decode>,
   erasable: NonNullable<ReturnType<typeof findErasable>>,
@@ -293,8 +280,22 @@ function toBody(
   const destinations = erasable.destinations.map((destination) => destination.value);
   const own = extra.status === 'fields' ? extra.sentence : undefined;
   const sentence = own ?? buildActionProposalSentence(payload.tool, payload.effects, destinations);
+  const offer = buildCardPlaceOffer(destinations);
+  const proposed = payload.tool === 'places.propose' ? parseProposedPlaces(erasable.input) : null;
 
   return {
+    ...(offer === null
+      ? {}
+      : { place: { words: offer.words, readHash: offer.readHash, actHash: offer.actHash } }),
+    ...(proposed?.status === 'ok'
+      ? {
+          places: proposed.places.map((place) => ({
+            words: place.words,
+            trust: place.trust,
+            why: place.why,
+          })),
+        }
+      : {}),
     sentence:
       payload.budgetReached === undefined
         ? sentence
@@ -350,6 +351,28 @@ async function readSentence(
   return buildActionProposalSentence(payload.tool, payload.effects, destinations);
 }
 
+async function readHashes(
+  deps: ActionHandlerDeps,
+  db: Parameters<ProposalKindHandler['readBodies']>[0],
+  row: SharedProposal,
+): Promise<ProposalHashes> {
+  const records = await readProposedRecords(deps, db, [row]);
+
+  const record = records.get(row.createdSequence);
+  const erasable = record === undefined ? null : findErasable(record);
+
+  const offer =
+    record === undefined || erasable === null
+      ? null
+      : buildCardPlaceOffer(erasable.destinations.map((destination) => destination.value));
+
+  return {
+    action: row.actionHash,
+    rule: row.ruleHash,
+    place: offer === null ? null : { read: offer.readHash, act: offer.actHash },
+  };
+}
+
 async function writeAnswer(
   deps: ActionHandlerDeps,
   run: ApplyRun,
@@ -377,11 +400,34 @@ async function writeAnswer(
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'rule_gone' } };
   }
 
-  const queued = isDeclined ? null : await queueAction(deps, tx, { row, proposed, payload });
+  const request = { row, proposed, payload };
+  const approvalRefusal = isDeclined ? null : await checkApproval(deps, tx, request);
 
-  if (queued !== null && queued.status === 'refused') {
-    return { status: 'refused', refusal: queued.refusal };
+  if (approvalRefusal !== null) {
+    return { status: 'refused', refusal: approvalRefusal };
   }
+
+  const trusted = findErasable(proposed);
+
+  const placeRefusal =
+    isDeclined || trusted === null
+      ? null
+      : await writeApprovalTrusts(
+          deps.readPlaces,
+          tx,
+          {
+            tool: payload.tool,
+            input: toJSONObject(trusted.input),
+            destinations: trusted.destinations.map((destination) => destination.value),
+          },
+          answer,
+        );
+
+  if (placeRefusal !== null) {
+    return { status: 'refused', refusal: placeRefusal };
+  }
+
+  const queued = isDeclined ? null : await queueAction(deps, tx, request);
 
   if (isDeclined) {
     await deps.failHeld(tx, row, 'declined');
@@ -398,6 +444,7 @@ async function writeAnswer(
       answer: isDeclined ? 'declined' : 'approved',
       identityID: answer.identityID,
       choice: answer.choice,
+      ...(answer.trust === undefined ? {} : { trust: answer.trust }),
       ...(groupHash === undefined ? {} : { groupHash }),
       ...(queued === null ? {} : { actionID: queued.actionID }),
     }),
@@ -429,7 +476,7 @@ async function writeAnswer(
     return {
       status: 'done',
       result: { proposalID: row.id, state: 'approved' },
-      usedBy: queued?.status === 'queued' ? queued.actionID : null,
+      usedBy: queued?.actionID ?? null,
       detail: null,
       otherStakes: [],
       afterCommit: afterSuggestedRule,
@@ -445,7 +492,7 @@ async function writeAnswer(
   return {
     status: 'done',
     result: { proposalID: row.id, state: 'approved', rule: { id: rule.ruleID, revision: 1 } },
-    usedBy: queued?.status === 'queued' ? queued.actionID : null,
+    usedBy: queued?.actionID ?? null,
     detail: null,
     otherStakes: [],
     afterCommit: async () => {
@@ -466,119 +513,4 @@ function findRule(
   const { id: _id, ...body } = fields.rule;
 
   return { ruleID: fields.ruleID, rule: ruleBodySchema.parse(body) };
-}
-
-interface QueueRequest {
-  readonly row: SharedProposal;
-  readonly proposed: LogRecord;
-  readonly payload: ReturnType<typeof actionProposedCodec.decode>;
-}
-
-type Queued =
-  | { readonly status: 'queued'; readonly actionID: string }
-  | { readonly status: 'refused'; readonly refusal: ProposalRefusal };
-
-// An approval queues the action it answered, once: the answer's transaction is the guard, because a
-// second answer finds the row closed.
-async function queueAction(
-  deps: ActionHandlerDeps,
-  tx: Transaction<unknown>,
-  request: QueueRequest,
-): Promise<Queued> {
-  const row = request.row;
-  const payload = request.payload;
-  const erasable = findErasable(request.proposed);
-
-  // A forget shreds the arguments, and an action without them would run another.
-  if (erasable === null || row.thread === null) {
-    return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'arguments_gone' } };
-  }
-
-  const refusal =
-    payload.actionID === undefined
-      ? checkRebuiltHash(row, payload, erasable)
-      : await checkHeldAction(deps, tx, { row, actionID: payload.actionID, erasable });
-
-  if (refusal !== null) {
-    return { status: 'refused', refusal };
-  }
-
-  const actionID = await deps.queueApproved(tx, {
-    proposalID: row.id,
-    taskID: row.thread,
-    stepKey: payload.stepKey ?? null,
-    tool: toCalledTool(payload.tool),
-    effects: payload.effects,
-    actionHash: row.actionHash,
-    arguments: toJSONObject(erasable.input),
-    callSequence: payload.callSequence,
-    riskClass: row.riskClass,
-    deadlineAt: payload.deadlineAt ?? null,
-    runsInStep: !hasQueuedEffect(payload.effects),
-  });
-
-  return { status: 'queued', actionID };
-}
-
-type ProposedFields = NonNullable<ReturnType<typeof findErasable>>;
-
-// An ask that a call made holds no action yet, so its approval rebuilds the hash that the call
-// was hashed under.
-function checkRebuiltHash(
-  row: SharedProposal,
-  payload: QueueRequest['payload'],
-  erasable: ProposedFields,
-): ProposalRefusal | null {
-  const hash = buildActionHash({
-    tool: toCalledTool(payload.tool),
-    input: toJSONObject(erasable.input),
-    destinations: erasable.destinations.map((destination) => destination.value),
-    deadlineAt: payload.deadlineAt ?? null,
-    expectURL: payload.expectURL,
-    expectWindow:
-      payload.expectWindow === undefined ? undefined : parseJSONObject(payload.expectWindow),
-  });
-
-  return hash === row.actionHash ? null : { error: 'NOT_ALLOWED', reason: 'action_changed' };
-}
-
-// A proposal names the variant that the call's input picked, as `<tool>/<variant>`. The call, its
-// hash and its action carry the tool's own name.
-function toCalledTool(proposed: string): string {
-  const slash = proposed.indexOf('/');
-
-  return slash === -1 ? proposed : proposed.slice(0, slash);
-}
-
-interface HeldCheck {
-  readonly row: SharedProposal;
-  readonly actionID: string;
-  readonly erasable: ProposedFields;
-}
-
-// An ask that reopens an action answers that action, whose queue hashed it its own way. The
-// approval stands only while the action still holds the hash and the arguments that the card showed.
-async function checkHeldAction(
-  deps: ActionHandlerDeps,
-  tx: Transaction<unknown>,
-  check: HeldCheck,
-): Promise<ProposalRefusal | null> {
-  const held = await deps.readHeldAction(tx, {
-    actionID: check.actionID,
-    proposalID: check.row.id,
-  });
-
-  if (held === null) {
-    return { error: 'NOT_ALLOWED', reason: 'held_action_gone' };
-  }
-
-  if (held.arguments === null) {
-    return { error: 'NOT_ALLOWED', reason: 'arguments_gone' };
-  }
-
-  const isSame =
-    held.actionHash === check.row.actionHash &&
-    toCanonicalText(held.arguments) === toCanonicalText(toJSONObject(check.erasable.input));
-
-  return isSame ? null : { error: 'NOT_ALLOWED', reason: 'action_changed' };
 }

@@ -12,6 +12,9 @@ export const actionAnsweredCodec = defineRecordCodec(
     // which button answered; a record without it came before Always allow told itself apart
     choice: z.enum(['approve', 'always_allow', 'decline']).exactOptional(),
 
+    // the level an approval trusted the call's place at, beside its action
+    trust: z.enum(['read', 'act']).exactOptional(),
+
     // the gap group of a no_rule Approve or Decline, never of Always allow
     groupHash: z.string().exactOptional(),
 

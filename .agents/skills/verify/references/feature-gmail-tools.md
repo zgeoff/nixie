@@ -97,7 +97,8 @@ Before you start:
    Expect: the card shows the fields `from` `verify@example.test`, `to`
    `reports@example.org (no permission)`, `subject` "Re: Q3 numbers" and `text`, the text of the
    reply. It also shows the fields `message`, `connection`, `inReplyTo` and `replyWake`. The approve
-   button reads "Send reply", beside "Always allow", "Defer" and "Decline". Both clicks exit 0.
+   button reads "Send reply", beside "Trust this place to read", "Trust this place to act", "Always
+   allow", "Defer" and "Decline", because the one recipient is one place. Both clicks exit 0.
 
 7. Check that the mail went out once:
 

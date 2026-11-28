@@ -718,3 +718,21 @@ test('it leaves the step header off a later segment of a split step', async () =
 
   expect(rendered.queryByText('Step')).toBeNull();
 });
+
+test('it shows a notice for each place that a turn narrowed', () => {
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        placeNarrowings: [
+          { place: 'tickets.example.com', trust: 'read', isRemoved: false },
+          { place: 'sam@example.org', isRemoved: true },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  expect(
+    rendered.getAllByRole('region', { name: 'place narrowed' }).map((notice) => notice.textContent),
+  ).toStrictEqual(['Lowered tickets.example.com to read', 'Removed sam@example.org']);
+});

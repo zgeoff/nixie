@@ -1358,3 +1358,70 @@ test('it voids a reply that precedes the end record of a step that started befor
     },
   ]);
 });
+
+test('it shows one line for a place that a turn acted at on both sides of a reply', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const calledA = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    toolCall: { callID: 'call-a', input: {}, tool: 'mail.send' },
+  });
+
+  const actedA = buildMockLogRecord({
+    kind: 'places.acted',
+    sequence: 3,
+    placeActed: { place: 'tickets.example.com', tool: 'mail.send' },
+  });
+
+  const reply = buildMockLogRecord({ kind: 'model.reply', message: { text: 'One.' }, sequence: 4 });
+
+  const calledB = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 5,
+    toolCall: { callID: 'call-b', input: {}, tool: 'mail.send' },
+  });
+
+  const actedB = buildMockLogRecord({
+    kind: 'places.acted',
+    sequence: 6,
+    placeActed: { place: 'tickets.example.com', tool: 'mail.send' },
+  });
+
+  const ended = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 7 });
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 8 });
+  const items = buildActivity([started, calledA, actedA, reply, calledB, actedB, ended, committed]);
+
+  expect(
+    items.flatMap((item) => (item.kind === 'step' ? [item.placeActs ?? []] : [])),
+  ).toStrictEqual([
+    [],
+    [{ place: 'tickets.example.com', tools: [{ tool: 'mail.send', count: 2 }] }],
+  ]);
+});
+
+test('it puts the notice of a narrowed place on the step that holds its record', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const narrowed = buildMockLogRecord({
+    kind: 'places.narrowed',
+    sequence: 2,
+    placeNarrowed: { place: 'tickets.example.com', trust: 'known', isRemoved: false },
+  });
+
+  const ended = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 3 });
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 4 });
+  const items = buildActivity([started, narrowed, ended, committed]);
+
+  expect(
+    items.flatMap((item) => (item.kind === 'step' ? [item.placeNarrowings] : [])),
+  ).toStrictEqual([[{ place: 'tickets.example.com', trust: 'known', isRemoved: false }]]);
+});

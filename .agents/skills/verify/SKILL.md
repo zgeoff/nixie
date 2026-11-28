@@ -65,6 +65,7 @@ feature with no verdict in its description.
 | computer-watch     | Watch the assistant's desktop                      | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
 | computer-off       | Turn the computer off                              | [references/feature-computer-off.md](references/feature-computer-off.md)             |
 | trusted-places     | Trust a site once                                  | [references/feature-trusted-places.md](references/feature-trusted-places.md)         |
+| place-trust-card   | Trust a place from a card                          | [references/feature-place-trust-card.md](references/feature-place-trust-card.md)     |
 | calls-off          | Turn calls off                                     | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
 | devices-off        | Turn devices off                                   | [references/feature-devices-off.md](references/feature-devices-off.md)               |
 | search-images-off  | Turn search and images off                         | [references/feature-search-images-off.md](references/feature-search-images-off.md)   |
@@ -172,15 +173,15 @@ target refuses each `[write]` command except `publish`, which writes no app data
 <!-- repo: registry -->
 
 Declare the registry in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). List each
-feature's packages and files in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts),
-and what every journey runs in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts),
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) and
+[`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
 
 <!-- /repo -->
 
 Map each file your change adds in the registry with a glob that matches it. Put the glob in a
 feature's `paths`, in `.shared()`, or in `.ignore()` when the running app never reads the file, such
-as a test. The gate fails on a changed file that no glob matches. Run `bun verify features` for the
+as a test. The gate fails on a changed file that no glob matches. `bun verify features` lists the
 globs. List a feature's files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read

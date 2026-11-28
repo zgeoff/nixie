@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { Log } from '@heynixie/log';
+import type { Log, WriteTransaction } from '@heynixie/log';
 import type { PlaceKeyFault } from './check-place-key';
 import { checkPlaceKey } from './check-place-key';
 import type { PlaceContext } from './place-context';
@@ -25,42 +25,51 @@ export function writePlaceChanged(
   context: PlaceContext,
   change: PlaceChange,
 ): Promise<PlaceChangeResult> {
-  return withWriteTransaction(context.log.writer, async (tx) => {
-    const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
+  return withWriteTransaction(context.log.writer, (tx) =>
+    writePlaceChangedInTransaction(tx, context, change),
+  );
+}
 
-    const [place] = await readPlaces(inTransaction, { placeIDs: [change.placeID] });
+// Changes an entry inside the caller's write transaction, which an approval's answer holds.
+export async function writePlaceChangedInTransaction(
+  tx: WriteTransaction,
+  context: PlaceContext,
+  change: PlaceChange,
+): Promise<PlaceChangeResult> {
+  const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 
-    if (place === undefined || place.isRemoved) {
-      return { status: 'not_found' } as const;
-    }
+  const [place] = await readPlaces(inTransaction, { placeIDs: [change.placeID] });
 
-    const trust = change.trust ?? place.trust;
-    const fault = checkPlaceKey(place.key, trust, place.addedBy);
+  if (place === undefined || place.isRemoved) {
+    return { status: 'not_found' };
+  }
 
-    if (fault !== null && fault !== 'raw_key') {
-      return { status: 'refused', fault } as const;
-    }
+  const trust = change.trust ?? place.trust;
+  const fault = checkPlaceKey(place.key, trust, place.addedBy);
 
-    const name = change.name === undefined ? place.name : (change.name?.normalize('NFC') ?? null);
+  if (fault !== null && fault !== 'raw_key') {
+    return { status: 'refused', fault };
+  }
 
-    // a raw key is a contact's own text, as personal as an address
-    const isPersonal = place.key.kind !== 'site' && place.key.kind !== 'mail_domain';
+  const name = change.name === undefined ? place.name : (change.name?.normalize('NFC') ?? null);
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: placesChangedCodec.kind,
-        definitions: context.definitions(),
-        payload: placesChangedCodec.encode({
-          placeID: place.placeID,
-          ...(change.trust === undefined ? {} : { trust: change.trust }),
-          ...(change.name === undefined || isPersonal ? {} : { name }),
-        }),
-        ...(isPersonal ? { erasable: { name } } : {}),
-      },
-    ]);
+  // a raw key is a contact's own text, as personal as an address
+  const isPersonal = place.key.kind !== 'site' && place.key.kind !== 'mail_domain';
 
-    await context.runInForce(tx);
+  await writeRecordsInTransaction(tx, context.log, [
+    {
+      kind: placesChangedCodec.kind,
+      definitions: context.definitions(),
+      payload: placesChangedCodec.encode({
+        placeID: place.placeID,
+        ...(change.trust === undefined ? {} : { trust: change.trust }),
+        ...(change.name === undefined || isPersonal ? {} : { name }),
+      }),
+      ...(isPersonal ? { erasable: { name } } : {}),
+    },
+  ]);
 
-    return { status: 'changed', trust } as const;
-  });
+  await context.runInForce(tx);
+
+  return { status: 'changed', trust };
 }

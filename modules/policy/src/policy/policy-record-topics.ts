@@ -11,5 +11,6 @@ export const policyRecordTopics = {
   'places.added': [],
   'places.changed': [],
   'places.removed': [],
+  'places.narrowed': [],
   'places.acted': [],
 } as const satisfies Record<PolicyRecordKind, readonly LiveTopic[]>;

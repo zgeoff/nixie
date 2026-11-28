@@ -34,16 +34,35 @@ const controls = css({
   marginTop: '1',
 });
 
+const placeList = css({
+  border: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '1',
+  margin: '0',
+  padding: '0',
+});
+
 const field = css({ display: 'flex', flexDirection: 'column', fontSize: 'sm', gap: '1' });
 
 export function ApprovalControls(props: ApprovalControlsProps): ReactNode {
   const [note, setNote] = useState<string | null>(null);
+  const [unticked, setUnticked] = useState<readonly number[]>([]);
   const item = props.item;
   const proposal = item.proposal;
   const choices = item.choices;
   const isBusy = props.answerer.isPending;
   const base = { proposalID: proposal.proposalID, actionHash: proposal.actionHash };
   const memory = props.editedText === null ? {} : { memory: { editedText: props.editedText } };
+  const places = item.body?.places;
+  const place = item.body?.place;
+
+  const tickedPlaces =
+    places === undefined || unticked.length === 0
+      ? {}
+      : {
+          tickedPlaces: places.flatMap((_line, index) => (unticked.includes(index) ? [] : [index])),
+        };
 
   if (note !== null) {
     const trimmed = note.trim();
@@ -87,17 +106,72 @@ export function ApprovalControls(props: ApprovalControlsProps): ReactNode {
 
   return (
     <div className={controls}>
+      {places === undefined ? null : (
+        <fieldset aria-label="Places to trust" className={placeList}>
+          {places.map((line, index) => (
+            <label key={line.words}>
+              <input
+                checked={!unticked.includes(index)}
+                onChange={(event) => {
+                  const next = event.target.checked
+                    ? unticked.filter((entry) => entry !== index)
+                    : [...unticked, index];
+
+                  setUnticked(next);
+                }}
+                type="checkbox"
+              />{' '}
+              {line.words}, to {line.trust}: {line.why}
+            </label>
+          ))}
+        </fieldset>
+      )}
       {choices.includes('approve') ? (
         <button
           disabled={isBusy || !props.isApprovable}
           name="approve"
           onClick={() => {
-            props.answerer.send({ ...base, choice: 'approve', ...memory });
+            props.answerer.send({ ...base, choice: 'approve', ...memory, ...tickedPlaces });
           }}
           type="button"
         >
           {item.body?.approveLabel ?? 'Approve'}
         </button>
+      ) : null}
+      {place !== undefined && choices.includes('approve') ? (
+        <>
+          <span>The place these answers trust: {place.words}</span>
+          <button
+            disabled={isBusy || !props.isApprovable}
+            name="trust-read"
+            onClick={() => {
+              props.answerer.send({
+                ...base,
+                choice: 'approve',
+                trust: 'read',
+                placeHash: place.readHash,
+              });
+            }}
+            type="button"
+          >
+            Trust this place to read
+          </button>
+          <button
+            disabled={isBusy || !props.isApprovable}
+            name="trust-act"
+            onClick={() => {
+              props.answerer.send({
+                ...base,
+                choice: 'approve',
+                trust: 'act',
+                placeHash: place.actHash,
+              });
+            }}
+            type="button"
+          >
+            Trust this place to act
+          </button>
+        </>
       ) : null}
       {choices.includes('always_allow') ? (
         <button

@@ -59,10 +59,10 @@ and an origin: `you`, `proposal`, `card`, `seed` or `nixie_own`. The levels are:
 | `act`     | a call with any effect but `spend` is allowed, and each such call is recorded   |
 | `self`    | one of your own addresses, numbers or handles; allows like `act` with no record |
 
-The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted`,
-which goes on the call's thread. Each add, change or removal that the user or a tool makes runs the
-in-force seed inside the write transaction of its record. The in-force seed puts in force a
-definitions snapshot that holds the directory. The definitions seed writes the entries of
+The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted` and
+`places.narrowed`, which go on the call's thread. Each add, change or removal that the user or a
+tool makes runs the in-force seed inside the write transaction of its record. The in-force seed puts
+in force a definitions snapshot that holds the directory. The definitions seed writes the entries of
 `places.yaml` inside its own snapshot, and the seed of nixie's own entries runs the in-force seed
 once after its entries, when it added any. When the in-force seed refuses, the whole transaction
 rolls back. A call decides under the snapshot it started with, so a block takes effect for each call
@@ -73,15 +73,17 @@ it was.
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. A call uses an
 entry when its `tool_called` decision carries the entry's permission, whatever the outcome. The
 projection keeps the key of a site or mail domain, and a removal or an act of one holds the entry's
-IDs in its payload. An address, phone number or handle keeps its key and name in the erasable fields
-of `places.added` and `places.changed`, as a contact keeps a new name. A `places.removed` or
-`places.acted` record of an address, phone number or handle holds the entry's IDs in its own
-erasable fields. A fold cannot read erasable fields, so no projection row holds a value that only an
-erasable field gives. A rebuild gives back the rows of the live log. The writer of an address, phone
-number or handle removal records it in `place_removals`, a table outside the projections, and a
-rebuild and each server start read the removals back. A removed entry keeps its row, so a replay of
-an older call finds the entry. The directory reads the key of an address, phone number or handle
-back from the entry's records.
+IDs in its payload.
+
+An address, phone number or handle keeps its key and name in the erasable fields of `places.added`
+and `places.changed`, as a contact keeps a new name. A `places.removed` or `places.acted` record of
+an address, phone number or handle holds the entry's IDs in its own erasable fields. A fold cannot
+read erasable fields, so no projection row holds a value that only an erasable field gives. A
+rebuild gives back the rows of the live log. The writer of an address, phone number or handle
+removal records it in `place_removals`, a table outside the projections, and a rebuild and each
+server start read the removals back. A removed entry keeps its row, so a replay of an older call
+finds the entry. The directory reads the key of an address, phone number or handle back from the
+entry's records.
 
 A call that an `act` place allowed writes its `places.acted` record on the call's thread once the
 action queue admits the attempt, and a retry of the call reads the act records back and writes none
@@ -128,3 +130,70 @@ key and IDs sit in the payload, where no key can erase them.
 - A key check of an entry that the user, a tool or a seed adds refuses a raw or public-suffix key, a
   level the kind cannot hold, and a key that another entry holds. A contact's `raw` key comes from
   its marking and meets no key check.
+
+## Trusting a place from a card
+
+When every destination of a held call is one place, the call's card offers "Trust this place to
+read" and "Trust this place to act" beside the approval, whatever caused the ask, a rule, a repeat
+or an always-ask call included. A `raw` key is never offered.
+
+- Either answer approves the call and adds the entry, or raises its level, in the answer's own write
+  transaction. It adds an entry with the origin `card` and writes no rule.
+- The card carries a place hash beside the action hash. The hash covers the key and the level the
+  card shows. An answer echoes both hashes, and the host refuses an answer that holds the action
+  hash alone, as it does for an Always allow rule's hash. The card derives the offer again from the
+  call's destinations, so nothing is stored.
+- The answer refuses a place that is `blocked`. A blocked place is lifted only by an approval of
+  `places.propose`, which takes the passkey check.
+- A raise to `act` takes the passkey check, or the browser's open
+  [passkey window](./passkeys.md#the-window). A trust to `read` does not.
+
+## The tools
+
+`places.propose` asks the user to trust places. It declares `policy_widen`, so stage 4 always asks.
+
+- The tool reads each `place` through `parsePlacePattern`, so a leading `*.` means the domain and
+  every subdomain, and a leading `@` names a mail domain. It refuses a list that holds a key on a
+  whole public suffix, such as `*.github.io`.
+- One card lists every place in words, such as "library.example.org and every subdomain", with its
+  level and reason. The card has no subdomain checkbox. The user approves the whole card or unticks
+  some places. The approval adds or raises each ticked place and leaves the others as they are.
+- The call returns after the approval, and says for each place whether it is now trusted at that
+  level.
+
+`places.narrow` lowers an entry's level or removes it. It declares `policy_narrow`, so it applies at
+once. It checks the plan and writes the change in one write transaction, so two calls on one entry
+cannot both pass the check. A `places.narrowed` record on the call's thread holds the entry's short
+ID and the new level, and the conversation shows it as "Lowered …" or "Removed …". It refuses:
+
+- a level that is not lower than the entry's;
+- a remove of a `blocked` entry, which would make the place free to read;
+- an entry of your own, at `self`;
+- a change that leaves a destination the entry covers at a higher level than before. Another entry
+  can cause that: removing `forms.example.org` at `known` beside `*.example.org` at `act` leaves
+  `forms.example.org` at `act`. Levels rise in the order `blocked`, `known`, `read`, `act`, and no
+  entry counts as `known`.
+
+`places.list` declares `read` with no destination. It filters by `trust`, `kind`, `query` (the key
+or the name, in any case), `place` (a host, address, number or handle, which goes through
+`parsePlace` and `findPlace` and returns only the entry the decision point picks), `detail` (adds
+`addedBy` and `lastUsedAt`), `limit` (50 when unset) and `after` (the short ID of the last entry on
+the page before, for the next page). `total` counts every match, whatever the limit and the page.
+
+A `place` argument of `places.propose` or `places.list` is text that names a key. Every other
+reference to an entry that already exists, such as the entry that `places.narrow` changes, the
+`after` of `places.list` and the entry in each result, is its short ID from `createShortID`, never
+its UUID.
+
+## The notice of an act
+
+Each turn that ends with calls allowed through an `act` place shows at most one line per place in
+the conversation, styled like a tool call. The web client builds each line from the turn's
+`places.acted` records: the place, then the tools that ran there with a count for each tool.
+
+```text
+tickets.example.com: computer.browser_click ×2, mail.send
+```
+
+The record of an address, phone number or handle holds its place in an erasable field, so a forget
+of that place leaves the record with no line.

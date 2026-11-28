@@ -20,7 +20,7 @@ export interface ControlHandlers {
   readonly approveHeldMandate: () => Promise<number>;
 
   // adds the site to the directory at read, and returns the short ID of its entry
-  readonly trustSite: (domain: string) => Promise<string>;
+  readonly trustSite: (domain: string, trust: 'read' | 'act') => Promise<string>;
 
   readonly runCallStep: (
     call: z.output<typeof controlRoutes.callStep.input>,
@@ -151,7 +151,7 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.trustSite.path]: {
         POST: makeRouteHandler(controlRoutes.trustSite, async (site) => ({
-          place: await handlers.trustSite(site.domain),
+          place: await handlers.trustSite(site.domain, site.trust),
         })),
       },
       [controlRoutes.useComputer.path]: {

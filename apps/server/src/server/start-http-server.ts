@@ -30,6 +30,8 @@ export interface HTTPServerOptions {
   // the prompts in force and their check, which a prompt override's approval needs
   readonly findPrompts: ProposalParts['findPrompts'];
 
+  readonly readPlaces: NonNullable<ProposalParts['readPlaces']>;
+
   readonly gate: APIGate;
 }
 
@@ -51,6 +53,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
         readMemory: options.readMemory,
         runInForceSeed: options.runInForceSeed,
         findPrompts: options.findPrompts,
+        readPlaces: options.readPlaces,
       },
       options.readDefinitions,
     ),

@@ -34,6 +34,7 @@ import {
 } from '@heynixie/memory';
 import type { NotebookToolStore } from '@heynixie/notebook';
 import { buildNotebookTools } from '@heynixie/notebook';
+import type { PlaceContext } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import {
   buildReminderCancelTool,
@@ -64,12 +65,16 @@ import type {
   ToolSource,
 } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { readActionCallSource } from '../action/read-action-call-source';
 import { makeReadCallSession } from '../call/make-read-call-session';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { buildForgetRetryTool } from '../forget/build-forget-retry-tool';
 import { buildForgetStuckTool } from '../forget/build-forget-stuck-tool';
+import { buildPlacesListTool } from '../place/build-places-list-tool';
+import { buildPlacesNarrowTool } from '../place/build-places-narrow-tool';
+import { buildPlacesProposeTool } from '../place/build-places-propose-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
 import { buildRulesListTool } from '../rule/build-rules-list-tool';
 import { makeReadZone } from '../server/make-read-zone';
@@ -150,6 +155,10 @@ export interface ConversationEndpointTools {
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
   readonly runInForceSeed: () => Promise<void>;
+
+  // the directory's write context, which the places tools read each call; null before the server
+  // parts start
+  readonly readPlaces: () => PlaceContext | null;
 
   // null before the server parts start
   readonly readDefinitions: () => DefinitionsContext | null;
@@ -380,6 +389,14 @@ export async function startConversationEndpoint(
 
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
 
+  const requirePlaces = (): PlaceContext => {
+    const places = tools.readPlaces();
+
+    invariant(places, 'a places tool runs once the server parts start');
+
+    return places;
+  };
+
   const definitions = [
     ...buildConversationTools(
       {
@@ -412,6 +429,9 @@ export async function startConversationEndpoint(
     remindersList,
     ...worker,
     buildContactTool(options.context, tools.refreshDefinitions),
+    buildPlacesProposeTool(requirePlaces),
+    buildPlacesNarrowTool(requirePlaces),
+    buildPlacesListTool(requirePlaces),
     buildMandateTool({
       context: options.context,
       proposalConfig: buildProposalConfig(options.config),
