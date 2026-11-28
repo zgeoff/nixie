@@ -91,6 +91,14 @@ function ServerCard(props: ServerCardProps): ReactNode {
           {server.tools.map((tool) => (
             <li key={tool.tool}>
               {tool.tool} <span className={meta}>{describeToolState(tool)}</span>
+              {tool.state === 'stopped_changed' && tool.proposalID !== null ? (
+                <>
+                  {' '}
+                  <Link className={link} to="/proposals">
+                    Accept the change
+                  </Link>
+                </>
+              ) : null}
             </li>
           ))}
         </ul>

@@ -30,7 +30,7 @@ export const pageFeatures = [
   },
   {
     name: 'mcp-servers',
-    summary: 'Connect an MCP server, and approve a tool',
+    summary: 'Connect an MCP server, and call its tool',
     paths: featurePaths['mcp-servers'],
   },
 ] as const;

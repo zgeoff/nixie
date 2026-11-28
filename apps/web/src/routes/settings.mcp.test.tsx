@@ -101,7 +101,12 @@ test('it lists the tools of a server with the state of each', async () => {
     server: 'tracker',
     tools: [
       { tool: 'tracker.item_get', state: 'exposed', hiddenReason: null, proposalID: null },
-      { tool: 'tracker.item_set', state: 'hidden_new', hiddenReason: null, proposalID: 'p1' },
+      {
+        tool: 'tracker.item_set',
+        state: 'stopped_changed',
+        hiddenReason: null,
+        proposalID: 'p1',
+      },
     ],
   });
 
@@ -110,8 +115,8 @@ test('it lists the tools of a server with the state of each', async () => {
   const tools = await rendered.findByRole('list', { name: 'Tools of tracker' });
 
   expect([...tools.querySelectorAll(':scope > li')].map((tool) => tool.textContent)).toStrictEqual([
-    'tracker.item_get Allowed',
-    'tracker.item_set Hidden: waits for your approval',
+    'tracker.item_get Available',
+    'tracker.item_set Stopped: takes new input, waits for you to accept the change Accept the change',
   ]);
 });
 

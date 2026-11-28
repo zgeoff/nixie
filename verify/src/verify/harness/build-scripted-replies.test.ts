@@ -819,3 +819,15 @@ test('it reads each named skill before the closing reply', () => {
     { text: 'I read them.' },
   ]);
 });
+
+test('it calls the named tool of an MCP server before the closing reply', () => {
+  const replies = buildScriptedReplies({
+    text: 'It is item 7.',
+    mcpCall: { tool: 'tracker.lookup', input: { number: 7 } },
+  });
+
+  expect(replies).toStrictEqual([
+    { toolUse: { name: 'mcp__nixie__tracker_lookup', input: { number: 7 } } },
+    { text: 'It is item 7.' },
+  ]);
+});

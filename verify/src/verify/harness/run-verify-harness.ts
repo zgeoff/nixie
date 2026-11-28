@@ -353,8 +353,7 @@ export async function runVerifyHarness(): Promise<void> {
       trustSite((operation, args) => server.request(operation, args), domain, trust),
     approveHeldMandate: () =>
       approveHeldMandate((operation, args) => server.request(operation, args)),
-    approveHeldMcp: (label) =>
-      approveHeldMcp((operation, args) => server.request(operation, args), label),
+    approveHeldMcp: () => approveHeldMcp((operation, args) => server.request(operation, args)),
     runCallStep: (call) =>
       runCallStep(
         {
