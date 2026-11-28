@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.129.0](https://github.com/zgeoff/nixie/compare/v0.128.0...v0.129.0) (2026-11-28)
+
+
+### Features
+
+* **log:** expire tool results and helper notes after 365 days ([#1580](https://github.com/zgeoff/nixie/issues/1580)) ([959c071](https://github.com/zgeoff/nixie/commit/959c0717894282ba602c560af9ff872f3462b1c1))
+* **log:** export the whole log as one readable sqlite file ([#1575](https://github.com/zgeoff/nixie/issues/1575)) ([e4a6edf](https://github.com/zgeoff/nixie/commit/e4a6edfff69f45dd5f4b23b4d6a64ba9839083a1))
+
+
+### Bug Fixes
+
+* **mcp:** show and log why a sign-in did not start ([#1579](https://github.com/zgeoff/nixie/issues/1579)) ([2f6953c](https://github.com/zgeoff/nixie/commit/2f6953cd31092ed1107fb76bef8032ab8ad2b305))
+
 ## [0.128.0](https://github.com/zgeoff/nixie/compare/v0.127.0...v0.128.0) (2026-11-28)
 
 
