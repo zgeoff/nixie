@@ -223,9 +223,9 @@ The model reads the failure as an error: one text block that holds a JSON object
 codes. The provider's text appears only in `detail`, as an escaped JSON string, so text that reads
 "nixie refused this request" never sets `origin`. `detail` is cut to 1,000 characters on a character
 boundary and marked `… [cut]`. A thrown error's text never reaches `detail`, because it can quote
-outside text. A `connection_unavailable` error carries no field beyond `origin` and `kind` yet, so
-it names neither the connection nor its status. The
-[design](../../design/platform/connectors/tools.md#a-failed-direct-call) adds the fields.
+outside text. A `connection_unavailable` error carries only `origin` and `kind`, so it names neither
+the connection nor its status. [GEO-2775](https://linear.app/zgeoff/issue/GEO-2775) tracks the
+fields that the [design](../../design/platform/connectors/tools.md#a-failed-direct-call) describes.
 
 A step that runs before the decision, such as the read that prepares a queued action, reports its
 failure in the same JSON, cut to the same `error_detail_chars`, but never retries. The fetcher's
