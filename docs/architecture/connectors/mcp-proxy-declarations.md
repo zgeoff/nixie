@@ -60,11 +60,11 @@ argument path of the input schema, a `check` tool must be in the server's listin
 idempotency key must be no destination, amount or content entry, because the proxy fills it only
 after the user approves. When a file has an entry for a tool that the server's listing lacks, that
 tool is `stopped_unfit`, whether or not it had a pin. A tool whose override does not fit is
-`stopped_unfit` with the fault as its reason, so no call runs under a declaration with an argument
-or a tool that the tool lacks. nixie judges the fit at each listing, at each accept of a changed
-form and at each seed that changes the overrides, and a tool whose override fits again is exposed
-again with no new approval, because its pin never moved. The accept proposal's body shows which
-declaration the tool would run under.
+`stopped_unfit` with the fault as its reason, and no call runs under a declaration that names an
+argument or a tool the server lacks. nixie judges the fit at each listing, at each accept of a
+changed form and at each seed that changes the overrides, and a tool whose override fits again is
+exposed again with no new approval, because its pin never moved. The accept proposal's body shows
+which declaration the tool would run under.
 
 ## Reconcile
 

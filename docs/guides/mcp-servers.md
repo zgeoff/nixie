@@ -83,16 +83,17 @@ a tool goes through the same rules as a call of nixie's own tool:
 
 To let the calls of a server run, add a rule whose `tools` holds `<server_id>.*`, such as
 `tracker.*`. The rule allows every tool of that server, including the tools the server lists later,
-so allow only the scopes you gave the server. The deny, always-ask, destination and scope checks
-still run for each call. To allow one tool, name it: `tracker.item_create`.
+so give the server only scopes you accept for all of them. The deny, always-ask, destination and
+scope checks still run for each call. To allow one tool, name it: `tracker.item_create`.
 
 Each tool declares its effects by its annotations, and an annotation is the server's own claim. The
 starter rule `allow-reads` runs any tool that declares only reads with no question, so a tool that
 claims `readOnlyHint` runs unasked. For a server you don't trust to describe its tools, write an
 override file for each of its tools in the definitions repo, and add no rule that allows the server.
 
-A task or job definition lists a server's tools in its `tools`: `<server_id>.*` for all of them, or
-`<server_id>.<tool>` for one. The run holds them, and a tool the server lists later too.
+In a task or job definition, list a server's tools in `tools`: `<server_id>.*` for all of them, or
+`<server_id>.<tool>` for one. The job run or task run holds them, and any tool the server lists
+later too.
 
 ## When a tool changes
 
@@ -105,7 +106,9 @@ A task or job definition lists a server's tools in its `tools`: `<server_id>.*` 
 Expect: after you accept, the tool shows as Available again in its new form.
 
 nixie refuses a listing of more than 200 tools, a tool schema over 64 KiB, or a name that appears
-twice. The server then shows as unreachable until its next listing passes.
+twice. nixie counts that as a failed listing, so the server shows as unreachable after the failures
+that [When a server is unreachable](#when-a-server-is-unreachable) describes, until a listing
+passes.
 
 ## When a server is unreachable
 
