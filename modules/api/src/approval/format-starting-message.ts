@@ -34,7 +34,7 @@ function formatOwnerMessage(text: string | null): string {
     return 'Your message';
   }
 
-  const characters = [...flat];
+  const characters = [...new Intl.Segmenter().segment(flat)].map((part) => part.segment);
 
   if (characters.length <= excerptLimit) {
     return `Your message: ${flat}`;

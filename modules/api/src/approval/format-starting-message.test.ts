@@ -81,3 +81,12 @@ test('#formatStartingMessage cuts a long message at a whole character', () => {
 
   expect(name).toStrictEqual(expect.stringMatching(/^Your message: a{59}😀… \([0-9a-f]{12}\)$/u));
 });
+
+test('#formatStartingMessage keeps a whole emoji with its skin tone at the cut', () => {
+  const name = formatStartingMessage({
+    cause: { kind: 'owner' },
+    ownerText: `${'a'.repeat(59)}👍🏽 and more`,
+  });
+
+  expect(name).toStrictEqual(expect.stringMatching(/^Your message: a{59}👍🏽… \([0-9a-f]{12}\)$/u));
+});
