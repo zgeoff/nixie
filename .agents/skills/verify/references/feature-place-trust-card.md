@@ -12,7 +12,13 @@ second click runs with no card, and the conversation shows the notice of the act
 names the site and the tool.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
-for the commands `up` and `done`, and for the `data` field of each command's JSON output.
+for the commands `up`, `doctor` and `done`, and for the `data` field of each command's JSON output.
+Run `bun verify doctor` after `up` and before step 1.
+
+When a command fails, do what its row in [Exit codes](exit-codes.md) says. When that does not clear
+the failure, or an expected result below does not show, stop the journey, run no `done`, and list
+the feature as not verified. Restart before you run the journey again, as the second bullet under
+"Before you start" says.
 
 Run this journey on `local` only. The `use-computer` action, the `trust-site` action and the page on
 `pages.test` exist only in `local`'s test build. On `preview`, skip the journey and run no `done`.

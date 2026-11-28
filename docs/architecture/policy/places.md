@@ -144,7 +144,7 @@ or an always-ask call included. A `raw` key is never offered.
   hash alone, as it does for an Always allow rule's hash. The card derives the offer again from the
   call's destinations, so nothing is stored.
 - The answer refuses a place that is `blocked`. A blocked place is lifted only by an approval of
-  `places.propose`.
+  `places.propose`, which takes the passkey check.
 - A raise to `act` takes the passkey check, or the browser's open
   [passkey window](./passkeys.md#the-window). A trust to `read` does not.
 
@@ -177,10 +177,13 @@ ID and the new level, and the conversation shows it as "Lowered …" or "Removed
 `places.list` declares `read` with no destination. It filters by `trust`, `kind`, `query` (the key
 or the name, in any case), `place` (a host, address, number or handle, which goes through
 `parsePlace` and `findPlace` and returns only the entry the decision point picks), `detail` (adds
-`addedBy` and `lastUsedAt`), `limit` (50 when unset) and `after` (a short ID, for the next page).
-`total` counts every match, whatever the limit and the page.
+`addedBy` and `lastUsedAt`), `limit` (50 when unset) and `after` (the short ID of the last entry on
+the page before, for the next page). `total` counts every match, whatever the limit and the page.
 
-Every tool names a place by its short ID, from `createShortID`, and never by its UUID.
+A `place` argument of `places.propose` or `places.list` is text that names a key. Every other
+reference to an entry that already exists, such as the entry that `places.narrow` changes, the
+`after` of `places.list` and the entry in each result, is its short ID from `createShortID`, never
+its UUID.
 
 ## The notice of an act
 

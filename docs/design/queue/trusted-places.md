@@ -90,8 +90,10 @@ and when a call last used it. You add, change and remove entries there. The host
 ## Constraints
 
 - The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
-  origin of its entry, even on a site at `act`, and the `www.` rule never widens it. The vault entry
-  links its site's place ID.
+  origin of its entry, even on a site at `act`. A site's key drops a leading `www.`, so
+  `www.example.org` and `example.org` are one place, but an origin keeps it: an entry for
+  `https://example.org` never fills on `https://www.example.org`. The vault entry links its site's
+  place ID.
 - A wallet lift names places, never origins. Its merchants are site places.
 - A mail trigger's or wake rule's `from` names `address` or `mail_domain` keys, matched by
   `isPlaceCovered`. A place's level never wakes a task by itself.
