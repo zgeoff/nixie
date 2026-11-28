@@ -82,10 +82,10 @@ to a definitions repo, as [the export](./definitions.md#the-export-to-the-defini
 describes. `skill_read`, `skill_reload` and `skill_reload_all` act only on a skill that the calling
 run's list and pin hold.
 
-A job run whose definition lists skills also holds `skill_read`, `skill_reload` and
-`skill_reload_all`, and a definition that lists none gives its runs none of them. A job run never
-holds `skill_write` or `skill_vendor`, which stay with the conversation. A worker holds `skill_read`
-alone, and only when its call names a skill.
+A job run whose definition lists skills also holds `skill_read`, `skill_reload`, `skill_reload_all`
+and the code tool, which mounts a listed skill under `/skills/<name>/`. A definition that lists none
+gives its runs none of them. A job run never holds `skill_write` or `skill_vendor`, which stay with
+the conversation. A worker holds `skill_read` alone, and only when its call names a skill.
 
 The Effect column gives the effect each tool declares, which rules match on, as
 [effects and declarations](../policy/decision-point.md#effects-and-declarations) describes.
@@ -115,6 +115,24 @@ list joins it.
 The next turn's catalog renders the new pin. The server names each skill the reload changed in that
 turn's [events block](./conversation-turns.md#the-events-block), and tells the model to read the
 skill again, because a body the model read before the reload stays in its context.
+
+## No skill from the SDK
+
+Every model loop sets `skills: []`, `verbatimPrompts: true` and the setting
+`disableBundledSkills: true`, beside `settingSources: []` and `tools: []`. The
+[skills spike](../../../research/sdk-skills/README.md) found that, even with `skills: []`, a prompt
+starting with `/` runs one of the CLI's bundled skills or built-in commands, such as `/clear`,
+before nixie's policy sees it. `verbatimPrompts` delivers every prompt as written, and
+`disableBundledSkills` removes the bundled skills from the session.
+
+## What a skill leaves out
+
+- Binary assets, such as templates and images, because the definitions hold only UTF-8 text under
+  `skills/`.
+- Skills in coding sessions, because a coding adapter owns its harness and atc manages its own
+  skills.
+- Taint from a skill's provenance in a job run, which waits for a later stage of
+  [the decision point](../policy/decision-point.md).
 
 ## Skills that nixie writes
 

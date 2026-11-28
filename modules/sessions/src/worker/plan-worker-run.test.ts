@@ -281,6 +281,23 @@ test('it gives a worker the subset of the caller skills that the call names, and
   });
 });
 
+test('it gives a worker its skills once when the call lists skill_read too, though the conversation tools hold it', () => {
+  const base = setupTest();
+
+  const planned = planWorkerRun({
+    ...base,
+    run: { ...base.run, tools: [...base.run.tools, 'skill_read'] },
+    bounds: { ...base.bounds, conversationTools: ['log.forget', 'skill_read'] },
+    callerSkills: ['tide-tables'],
+    call: { ...base.call, tools: ['notes_read', 'skill_read'], skills: ['tide-tables'] },
+  });
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { skills: ['tide-tables'], tools: ['notes_read', 'skill_read'] },
+  });
+});
+
 test('it gives a worker no skill when the call names none', () => {
   const base = setupTest();
 

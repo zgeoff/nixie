@@ -3034,6 +3034,7 @@ test('it gives a definition task that lists skills the skill tools that read, it
         'skill_read',
         'skill_reload',
         'skill_reload_all',
+        'code.run',
         'turn.end_silently',
         'task.report',
       ],

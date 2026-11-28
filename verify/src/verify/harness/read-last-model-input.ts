@@ -7,3 +7,9 @@ export function readLastModelInput(requests: readonly ScriptedModelRequest[]): s
 
   return JSON.stringify(messages.at(-1)?.content ?? null);
 }
+
+// The system prompt of the newest model request, as JSON text. It holds the skill catalog of a run
+// that has skills.
+export function readLastSystemPrompt(requests: readonly ScriptedModelRequest[]): string {
+  return JSON.stringify(requests.at(-1)?.body?.system ?? null);
+}

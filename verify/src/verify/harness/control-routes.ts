@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { callStepSchema } from './run-call-step';
 
+const skillNamesSchema = z.array(z.string().min(1)).min(1);
+
 const listedTaskSchema = z.strictObject({
   taskID: z.string(),
   name: z.string(),
@@ -112,6 +114,9 @@ export const controlRoutes = {
       // the model lists its unread mail from this address or `@domain` with the mail tool, then
       // opens the newest, before its reply
       mailRead: z.strictObject({ from: z.string().min(1) }).optional(),
+
+      // the model reads each of these skills with the skill read tool before its reply
+      skillRead: z.strictObject({ names: skillNamesSchema }).optional(),
 
       // a wake rule that the model sets on the assistant's phone with the phone tool before its
       // reply, for texts from this number or sender name
@@ -342,7 +347,9 @@ export const controlRoutes = {
     method: 'GET',
     path: '/control/model-input',
     input: z.strictObject({}),
-    output: z.strictObject({ text: z.string() }),
+
+    // the last message of the newest request, and the system prompt of that request
+    output: z.strictObject({ text: z.string(), system: z.string() }),
   },
   gmailSent: {
     method: 'GET',

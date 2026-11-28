@@ -14,7 +14,7 @@ Each turn's prompt runs from the most stable part to the least, so the prompt ca
 
 1. **The system prompt:** nixie's instructions, the persona fixed for the task's life, as
    [the definitions](../../../architecture/core/definitions.md) set, and the
-   [skill catalog](../skills.md#the-catalog).
+   [skill catalog](../../../architecture/core/skills.md#the-catalog).
 2. **The session:** its opening, which holds the pinned core, the status and the summary of the
    session before it, then every turn since.
    [Session opening](../../../architecture/core/session-opening.md) sets the opening's slots.

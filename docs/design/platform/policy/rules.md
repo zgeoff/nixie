@@ -122,7 +122,7 @@ canonical form of the whole definition set:
 - **Jobs** sort by ID, with their schedule, their instructions' hash, their tool list, their skill
   list and their allowed destinations.
 - **Skills** sort by name, each with the content hash of its folder and its provenance, under the
-  [skills design](../skills.md#versions).
+  [skills architecture](../../../architecture/core/skills.md#the-pin).
 - **Policy** holds the rules sorted by ID, the complete tool declarations sorted by tool name, the
   budget limits, the IDs of known contacts, and the versioned checker definitions. A checker
   definition holds its prompt hash and the model and adapter settings that affect its verdict, so a

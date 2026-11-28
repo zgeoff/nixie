@@ -31,6 +31,7 @@ export { makeFetchBackoff } from './fetch/make-fetch-backoff';
 export { codeConfigSchema } from './code/code-config-schema';
 export type { CodeRunToolOptions } from './code/build-code-run-tool';
 export { buildCodeRunTool } from './code/build-code-run-tool';
+export { codeRunToolName } from './code/code-run-tool-name';
 export type { FileSendToolOptions } from './code/build-file-send-tool';
 export { buildFileSendTool } from './code/build-file-send-tool';
 export type { StoredFile, StoredFileRequest } from './code/build-stored-file';

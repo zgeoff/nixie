@@ -7,6 +7,7 @@ import { waitForModelInput } from './wait-for-model-input';
 
 const argsSchema = z.strictObject({
   contains: z.string().min(1),
+  inSystem: z.boolean().optional(),
   waitMs: z.int().positive().optional(),
 });
 
@@ -19,16 +20,17 @@ interface ModelInputContext {
 export const modelInputCommand = {
   path: ['model', 'input'],
   summary:
-    "Check that the model's last input holds the text --contains, waiting up to --wait-ms (10000 by default), and return that input; the outcome of an approved call reaches the model in it",
+    "Check that the model's last input holds the text --contains, or its system prompt with --in-system, waiting up to --wait-ms (10000 by default), and return that input; the outcome of an approved call reaches the model in it",
   effect: 'read',
   args: argsSchema,
-  data: controlRoutes.modelInput.output,
+  data: z.strictObject({ text: z.string() }),
   run: (args: z.output<typeof argsSchema>, ctx: ModelInputContext) => {
     refuseHarnessless(ctx.target, 'model input');
 
-    return waitForModelInput(
-      () => postControl(ctx.drivers.http, controlRoutes.modelInput, {}),
-      args,
-    );
+    return waitForModelInput(async () => {
+      const input = await postControl(ctx.drivers.http, controlRoutes.modelInput, {});
+
+      return { text: args.inSystem === true ? input.system : input.text };
+    }, args);
   },
 } as const;

@@ -1,3 +1,4 @@
+import { codeRunToolName } from '@heynixie/connectors';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import { bindHarness } from '@heynixie/models';
 import type { GuestCommand } from '@heynixie/sandbox';
@@ -156,7 +157,8 @@ function pickRunTools(
   version: Pick<DefinitionVersion, 'memory' | 'tools' | 'skills'>,
   options: Pick<SandboxRunnerOptions, 'memoryReadTools'>,
 ): readonly string[] {
-  const skillTools = version.skills.length === 0 ? [] : jobSkillToolNames;
+  // The code tool mounts the listed skills under /skills/<name>/, so a run with skills holds it too.
+  const skillTools = version.skills.length === 0 ? [] : [...jobSkillToolNames, codeRunToolName];
 
   return match(version.memory)
     .with('none', () => [...new Set([...version.tools, ...skillTools])])

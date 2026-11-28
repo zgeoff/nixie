@@ -76,6 +76,13 @@ export function buildScriptedReplies(
 
   const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
 
+  const skillRead =
+    reply.skillRead === undefined
+      ? []
+      : reply.skillRead.names.map((name) => ({
+          toolUse: { name: 'mcp__nixie__skill_read', input: { name } },
+        }));
+
   const phoneWatch =
     reply.phoneWatch === undefined
       ? []
@@ -164,6 +171,7 @@ export function buildScriptedReplies(
       ...notebook,
       ...mailWatch,
       ...mailRead,
+      ...skillRead,
       ...phoneWatch,
       ...phoneRead,
       ...phoneSend,
@@ -189,6 +197,7 @@ export function buildScriptedReplies(
     ...notebook,
     ...mailWatch,
     ...mailRead,
+    ...skillRead,
     ...phoneWatch,
     ...phoneRead,
     ...phoneSend,

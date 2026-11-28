@@ -104,8 +104,11 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
     );
   }
 
+  // The call may list skill_read itself, which a worker with skills holds in any case.
   const never = tools.filter(
-    (tool) => neverHeldTools.has(tool) || facts.bounds.conversationTools.includes(tool),
+    (tool) =>
+      !(tool === workerSkillToolName && skills.length > 0) &&
+      (neverHeldTools.has(tool) || facts.bounds.conversationTools.includes(tool)),
   );
 
   if (never.length > 0) {

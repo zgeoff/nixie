@@ -34,7 +34,7 @@ import { collectActionProposals } from './collect-action-proposals';
 import { collectGuestAddresses } from './collect-guest-addresses';
 import { jobSkillDefinitions } from './job-skill-definitions';
 import { localMemoryConfig } from './local-memory-config';
-import { readLastModelInput } from './read-last-model-input';
+import { readLastModelInput, readLastSystemPrompt } from './read-last-model-input';
 import type { CallState } from './run-call-step';
 import { runCallStep } from './run-call-step';
 import { runComputerSession } from './run-computer-session';
@@ -399,7 +399,10 @@ export async function runVerifyHarness(): Promise<void> {
         })),
       };
     },
-    readModelInput: () => ({ text: readLastModelInput(nixie.model.requests) }),
+    readModelInput: () => ({
+      text: readLastModelInput(nixie.model.requests),
+      system: readLastSystemPrompt(nixie.model.requests),
+    }),
     readActionProposals: async () => {
       const listed = await api.client.approvals.listItems();
       const records = await nixie.readRecords();

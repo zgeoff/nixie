@@ -2,9 +2,9 @@
 
 Rules change in 2 places: in your definitions repo, which the seed reads, and in nixie at runtime,
 when you approve "always allow", accept a proposed rule, or edit or delete a rule in the client.
-nixie handles both as it handles [skills](../skills.md): a runtime change stays in force, a repo
-change to the same rule waits beside it as a conflict for you to resolve, and nixie exports every
-runtime change to the repo in one rolling pull request.
+nixie handles both as it handles [skills](../../../architecture/core/skills.md): a runtime change
+stays in force, a repo change to the same rule waits beside it as a conflict for you to resolve, and
+nixie exports every runtime change to the repo in one rolling pull request.
 
 ## Conflicts
 

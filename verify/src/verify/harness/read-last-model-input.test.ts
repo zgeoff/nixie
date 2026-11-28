@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readLastModelInput } from './read-last-model-input';
+import { readLastModelInput, readLastSystemPrompt } from './read-last-model-input';
 
 test('#readLastModelInput returns the last message of the newest request as JSON', () => {
   const requests = [
@@ -21,4 +21,21 @@ test('#readLastModelInput returns the last message of the newest request as JSON
 
 test('#readLastModelInput returns null when no request was made', () => {
   expect(readLastModelInput([])).toBe('null');
+});
+
+test('#readLastSystemPrompt returns the system prompt of the newest request as JSON', () => {
+  const requests = [
+    { path: '/v1/messages', headers: {}, body: { system: 'old', messages: [] } },
+    {
+      path: '/v1/messages',
+      headers: {},
+      body: { system: 'tide-tables: Reads a tide table.', messages: [] },
+    },
+  ];
+
+  expect(readLastSystemPrompt(requests)).toBe('"tide-tables: Reads a tide table."');
+});
+
+test('#readLastSystemPrompt returns null when no request was made', () => {
+  expect(readLastSystemPrompt([])).toBe('null');
 });

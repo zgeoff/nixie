@@ -11,7 +11,6 @@ The platform design is the locked baseline of nixie's first build, one folder pe
 - [Connectors](connectors/README.md) — connectors, tools and the MCP endpoint, the sandbox and
   credentials
 - [Deployment](deployment/README.md) — the host, backups, the release pipeline and upgrades
-- [Skills](skills.md) — skills in the definitions, the lock, versions and the skill tools
 
 ## nixie's own interfaces
 

@@ -806,3 +806,16 @@ test.each([
     typeof input === 'function' ? input({ messages: [{ role: 'user', content }] }) : null,
   ).toThrow('lists no file');
 });
+
+test('it reads each named skill before the closing reply', () => {
+  const replies = buildScriptedReplies({
+    text: 'I read them.',
+    skillRead: { names: ['tide-tables', 'bird-log'] },
+  });
+
+  expect(replies).toStrictEqual([
+    { toolUse: { name: 'mcp__nixie__skill_read', input: { name: 'tide-tables' } } },
+    { toolUse: { name: 'mcp__nixie__skill_read', input: { name: 'bird-log' } } },
+    { text: 'I read them.' },
+  ]);
+});

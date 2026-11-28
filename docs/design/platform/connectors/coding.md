@@ -23,8 +23,8 @@ MiB of files out and 1 vCPU. They bound each code run, and the output limits bou
 database and its backups grow. They are constants with no config key, so no rule or user raises
 them. Input files are files an earlier code run wrote and pages the web fetch stored. A `skills`
 list places each named skill's folder read-only in the sandbox, as the
-[skills design](../skills.md#scripts) sets out. To give a program outside data, fetch it with
-another tool first, because the code imp has no route out. See
+[skills architecture](../../../architecture/connectors/code-tool.md) sets out. To give a program
+outside data, fetch it with another tool first, because the code imp has no route out. See
 [the code tool](../../../architecture/connectors/code-tool.md) for the contracts, the limits and
 what the code image holds.
 
