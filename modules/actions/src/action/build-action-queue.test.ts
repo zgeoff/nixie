@@ -1,26 +1,105 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
-import { buildActionHash as buildPolicyActionHash } from '@heynixie/policy';
-import type { StepInput } from '@heynixie/tasks';
+import type { JSONObject } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
+import { buildActionHash as buildPolicyActionHash, readActionProposals } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
+import type { StartedClaim, StepInput } from '@heynixie/tasks';
 import { buildStepRunID, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
-import { seedOpenDefinitionRun } from '@heynixie/tasks/test-utils';
+import { seedDefinitionTask, seedOpenDefinitionRun } from '@heynixie/tasks/test-utils';
+import { buildToolRegistry, findToolDeclaration, runToolCall } from '@heynixie/tools';
+import { buildMockToolDefinition } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
+import { buildMockLiftedCall } from '../test-utils/build-mock-lifted-call';
 import { createTestStep } from '../test-utils/create-test-step';
-import { seedDeclinedBuy } from '../test-utils/seed-declined-buy';
+import { seedDeclinedProposal } from '../test-utils/seed-declined-proposal';
 import { startTestBudgetedActions } from '../test-utils/start-test-budgeted-actions';
 import type { ActionsTables } from '../types';
 import { buildActionQueue } from './build-action-queue';
 import { claimAction } from './claim-action';
+import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 
 async function setupTest() {
   const actions = await startTestBudgetedActions();
 
+  const bridge = buildActionQueue(actions.context);
+
+  const registry = buildToolRegistry([
+    buildMockToolDefinition({
+      name: 'notes_wipe',
+      execution: 'direct',
+      declaration: { effects: ['export'] },
+    }),
+    buildMockToolDefinition({
+      name: 'test.buy',
+      execution: 'queued',
+      input: { properties: { amount: { type: 'number' } }, required: ['amount'] },
+      declaration: { effects: ['spend'], amount: 'amount' },
+    }),
+  ]);
+
+  const options = {
+    registry,
+    decide: readStarterDecisionPoint((tool) => findToolDeclaration(registry, tool), {
+      extraRules: [
+        {
+          id: 'weekly-shop',
+          revision: 1,
+          rule: {
+            id: 'weekly-shop',
+            outcome: 'allow' as const,
+            tools: ['test.buy'],
+            lift: { perAction: 20, budget: 'groceries' },
+          },
+        },
+      ],
+    }),
+    log: actions.context.log,
+    definitions: actions.context.definitions,
+    queue: bridge.queue,
+    queuedWaitMs: 10_000,
+  };
+
   return {
     ...actions,
     db: actions.writer.db.$extendTables<ActionsTables>(),
+    bridge,
+
+    // a model's call of a tool in the task run that the claim holds, through the real queue
+    callTool: (claim: StartedClaim, tool: string, input: JSONObject) =>
+      runToolCall(
+        { tool, input, toolUseID: 'toolu_1' },
+        {
+          runID: 'run-1',
+          thread: claim.lease.workID,
+          logThread: claim.lease.workID,
+          tools: ['notes_wipe', 'test.buy'],
+          model: { model: 'model-a', profile: 'chat-direct' },
+          stepRunID: buildStepRunID(claim),
+        },
+        options,
+      ),
+
+    // the question that a purchase of 6 dollars asks the queue about a task's run
+    buildBuyQuery: (taskID: string) => ({
+      run: {
+        runID: taskID,
+        thread: taskID,
+        logThread: taskID,
+        tools: ['test.buy'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      tool: 'test.buy',
+      input: { amount: 6 },
+      actionHash: buildPolicyActionHash({
+        tool: 'test.buy',
+        input: { amount: 6 },
+        destinations: [],
+        deadlineAt: null,
+      }),
+    }),
   };
 }
 
@@ -573,67 +652,181 @@ test('it reports an approved action that no run has settled to the transaction t
 
 test('it reports the decline of the same action earlier in the task run to the transaction that would write a proposal', async () => {
   const ctx = await setupTest();
-  const declined = await seedDeclinedBuy(ctx);
+  const spender = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(spender, 6_000_000));
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const step = await seedOpenDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const asked = await createAllowedAction(ctx.context, buildMockLiftedCall(step, 6_000_000));
+
+  invariant('shortID' in asked);
+
+  await seedDeclinedProposal(ctx.context, asked.shortID);
 
   const queue = buildActionQueue(ctx.context);
 
   const open = await withWriteTransaction(ctx.context.log.writer, (tx) =>
-    queue.queue.readOpenAsk(tx, {
-      run: {
-        runID: declined.taskID,
-        thread: declined.taskID,
-        logThread: declined.taskID,
-        tools: ['test.buy'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-      tool: 'test.buy',
-      input: { amount: 6 },
-      actionHash: buildPolicyActionHash({
-        tool: 'test.buy',
-        input: { amount: 6 },
-        destinations: [],
-        deadlineAt: null,
-      }),
-    }),
+    queue.queue.readOpenAsk(tx, ctx.buildBuyQuery(taskID)),
   );
 
-  expect(open).toStrictEqual({ kind: 'declined', shortID: declined.shortID });
+  expect(open).toStrictEqual({ kind: 'declined', shortID: asked.shortID });
 });
 
 test('it reports no decline once a new run of the task has opened', async () => {
   const ctx = await setupTest();
-  const declined = await seedDeclinedBuy(ctx);
+  const spender = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(spender, 6_000_000));
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const seed = { taskID, definitionID: 'weekly-shop', definitionHash: 'hash-1' };
+
+  const first = await seedOpenDefinitionRun(ctx.context, seed);
+  const asked = await createAllowedAction(ctx.context, buildMockLiftedCall(first, 6_000_000));
+
+  invariant('shortID' in asked);
+
+  await seedDeclinedProposal(ctx.context, asked.shortID);
 
   const queue = buildActionQueue(ctx.context);
 
-  await writeStepCommit(ctx.context, declined.step, {
+  const before = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    queue.queue.readOpenAsk(tx, ctx.buildBuyQuery(taskID)),
+  );
+
+  await writeStepCommit(ctx.context, first, {
     next: 'wait',
     records: [],
     acknowledged: [],
     run: { activity: 'worked', report: { summary: 'Done.' } },
   });
 
-  await seedOpenDefinitionRun(ctx.context, declined.run);
+  await seedOpenDefinitionRun(ctx.context, seed);
 
-  const open = await withWriteTransaction(ctx.context.log.writer, (tx) =>
-    queue.queue.readOpenAsk(tx, {
-      run: {
-        runID: declined.taskID,
-        thread: declined.taskID,
-        logThread: declined.taskID,
-        tools: ['test.buy'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-      tool: 'test.buy',
-      input: { amount: 6 },
-      actionHash: buildPolicyActionHash({
-        tool: 'test.buy',
-        input: { amount: 6 },
-        destinations: [],
-        deadlineAt: null,
-      }),
-    }),
+  const after = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    queue.queue.readOpenAsk(tx, ctx.buildBuyQuery(taskID)),
   );
 
-  expect(open).toBeNull();
+  expect([before, after]).toStrictEqual([{ kind: 'declined', shortID: asked.shortID }, null]);
+});
+
+test('it answers a retried tool call that the owner declined in this run with the earlier short ID, and writes no second proposal', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const claim = await seedOpenDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const asked = await ctx.callTool(claim, 'notes_wipe', { query: 'old' });
+  const [proposal] = await readActionProposals(ctx.writer.db);
+
+  invariant(proposal, 'the call asked the owner');
+
+  await seedDeclinedProposal(ctx.context, proposal.shortID);
+
+  const retried = await ctx.callTool(claim, 'notes_wipe', { query: 'old' });
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(asked.content).toStrictEqual([
+    { type: 'text', text: expect.stringContaining(proposal.shortID) },
+  ]);
+
+  expect(retried).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: `denied: the user declined this same action earlier in this run (\`${proposal.shortID}\`), so it asks nothing more. Do not propose it again.`,
+      },
+    ],
+    isError: true,
+  });
+
+  expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
+
+test('it answers a retried purchase that the owner declined in this run with the earlier short ID, and writes no second proposal', async () => {
+  const ctx = await setupTest();
+  const spender = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(spender, 6_000_000));
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const claim = await seedOpenDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const stepInput: StepInput = {
+    run: null,
+    taskID,
+    stepKey: claim.stepKey,
+    lease: claim.lease,
+    inbox: [],
+    wake: claim.wake,
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const replies: unknown[] = [];
+
+  const step = ctx.bridge.trackSteps(async () => {
+    const first = await ctx.callTool(claim, 'test.buy', { amount: 6 });
+    const [proposal] = await readActionProposals(ctx.writer.db);
+
+    invariant(proposal, 'the purchase over the budget asked the owner');
+
+    await seedDeclinedProposal(ctx.context, proposal.shortID);
+
+    const retried = await ctx.callTool(claim, 'test.buy', { amount: 6 });
+
+    replies.push(first, retried);
+
+    return { next: 'wait', records: [], acknowledged: [] };
+  });
+
+  await step(stepInput);
+
+  const [proposal] = await readActionProposals(ctx.writer.db);
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  invariant(proposal, 'the proposal stays on the log');
+
+  expect(replies[1]).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: `denied: the user declined this same action earlier in this run (\`${proposal.shortID}\`), so it asks nothing more. Do not propose it again.`,
+      },
+    ],
+    isError: true,
+  });
+
+  expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
 });

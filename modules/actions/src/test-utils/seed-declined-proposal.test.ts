@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { readActionProposals } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
 import { createAllowedAction } from '../action/create-allowed-action';
@@ -26,7 +27,14 @@ test('it closes the proposal with the short ID as declined', async () => {
 
   const proposals = await readActionProposals(ctx.writer.db);
 
+  const settled = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['proposals.settled'],
+  });
+
   expect(proposals.map((row) => [row.shortID, row.outcome])).toStrictEqual([
     [asked.shortID, 'declined'],
   ]);
+
+  expect(settled.map((entry) => entry.record.payload['outcome'])).toStrictEqual(['declined']);
 });

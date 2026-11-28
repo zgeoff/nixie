@@ -55,7 +55,12 @@ export async function createAllowedAction(
       return { actionID: earlier.action_id, status: earlier.status, isRepeat: true };
     }
 
-    if (call.decision.lift !== undefined) {
+    const actionID = crypto.randomUUID();
+
+    const reached = await chargeLift(tx, context.budgets, call, actionID);
+
+    if (reached !== null) {
+      // a purchase the budget still refuses is not asked again once the owner declined it
       const declined = await readRunDecline(tx, {
         taskID,
         actionHash: buildLiftActionHash(call),
@@ -64,13 +69,7 @@ export async function createAllowedAction(
       if (declined !== null) {
         return { declinedBy: declined };
       }
-    }
 
-    const actionID = crypto.randomUUID();
-
-    const reached = await chargeLift(tx, context.budgets, call, actionID);
-
-    if (reached !== null) {
       return writeBudgetAsk(tx, { context, proposalConfig }, call, reached);
     }
 
@@ -136,16 +135,6 @@ function readRepeat(
   );
 }
 
-// The hash that a budget ask for the call carries.
-function buildLiftActionHash(call: AllowedCall): string {
-  return buildPolicyActionHash({
-    tool: call.tool,
-    input: call.arguments,
-    destinations: (call.destinations ?? []).map((destination) => destination.value),
-    deadlineAt: call.deadlineAt ?? null,
-  });
-}
-
 // The sentence that says the lift's budget could not take the purchase, or null once it did.
 async function chargeLift(
   tx: Transaction<unknown>,
@@ -174,6 +163,16 @@ async function chargeLift(
   return charged.error === 'budget_reached'
     ? formatBudgetReached(charged)
     : `the budget ${charged.budgetID} is not in force.`;
+}
+
+// The hash that a budget ask for the call carries.
+function buildLiftActionHash(call: AllowedCall): string {
+  return buildPolicyActionHash({
+    tool: call.tool,
+    input: call.arguments,
+    destinations: (call.destinations ?? []).map((destination) => destination.value),
+    deadlineAt: call.deadlineAt ?? null,
+  });
 }
 
 interface BudgetAskWriter {
