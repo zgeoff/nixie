@@ -73,10 +73,13 @@ Before you start:
    ```bash
    bun verify proposals --tool memory.export --waiting pending
    bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.actionID') as action from records where kind = 'tool_result' and thread = 'conversation' order by sequence"
+   bun verify db query "select task_id as task from proposals where family = 'action'"
    ```
 
-   Expect: `proposals` exits 0. The last row of `data.rows` is the export call's result, with
-   `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool calls.
+   Expect: `proposals` exits 0. The last row of `data.rows` of the first query is the export call's
+   result, with `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool
+   calls. The second query returns one row, with `task` `conversation`: the row records the task
+   that made the call, which is the start of the chain that its card lists.
 
 4. Script a text reply for the turn that the call's outcome starts, or that turn fails. The later
    steps never check its reply.
@@ -95,7 +98,7 @@ Before you start:
    ```
 
    Expect: the "Routine" list holds one collapsed item, which reads "Run memory.export (export).",
-   with no buttons.
+   with no buttons. The conversation made the call itself, so the card lists no chain of tasks.
 
 6. Expand the item, then approve the call. Take the `ref` from the snapshot of step 5, and take no
    other snapshot before the first click: each snapshot gives every element a new `ref`. In that
