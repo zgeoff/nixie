@@ -425,7 +425,8 @@ each poll event, in batch order. Step 4 runs once, after the last event.
 - A polled event's free text sits in the erasable fields of its `trigger.polled` record, under that
   record's erasure key.
 - A Forget of the connection keeps every `trigger.polled` record and its erasure key, as the Forget
-  of [google connections](google-connections.md) keeps every other record that names the account.
+  of [google connections](../../architecture/connectors/google-connections.md) keeps every other
+  record that names the account.
 - A `trigger.polled` record is on no thread, so you erase it through the record on a task's thread
   that names it: a `task.event_wait_met` or a poll `trigger.fired`. `conversation.forget` on that
   record, by its thread and sequence as

@@ -66,6 +66,7 @@ const search: FeatureReach = {
 const google: FeatureReach = {
   packages: ['modules/google', 'adapters/connector-google'],
   paths: [
+    'apps/server/src/connection/**',
     'apps/server/src/google/**',
     'apps/server/src/part/{collect-owner-addresses,read-mail-html,start-connections-part,start-google-tools-part}.ts',
     'apps/web/src/connection/**',

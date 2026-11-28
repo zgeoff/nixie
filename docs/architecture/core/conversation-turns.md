@@ -518,13 +518,14 @@ commit instead of writing it as a live reply.
 
 The conversation hears of what happened outside it through the events block, which goes before the
 user's message on the next turn. The block lists memory that changed outside the conversation, the
-user's answers to memory proposals, nixie's outages and restarts, the page events of a device that
-did not wake the conversation, the conversation's own turns that failed and were retried, and the
-warning that compaction is near, each after its time, oldest first, up to a cap and then a count of
-the rest. A kind whose notice no later note gives again, such as the compaction warning, lists every
-event outside the cap. A turn after which nothing happened gets no block. The block reads a range of
-the log, from the sequence the last turn's note covered to the log's head, so the next turn's note
-starts where this one ends and no event appears twice.
+user's answers to memory proposals, nixie's outages and restarts, the status changes of its
+connections, the page events of a device that did not wake the conversation, the conversation's own
+turns that failed and were retried, and the warning that compaction is near, each after its time,
+oldest first, up to a cap and then a count of the rest. A kind whose notice no later note gives
+again, such as the compaction warning, lists every event outside the cap. A turn after which nothing
+happened gets no block. The block reads a range of the log, from the sequence the last turn's note
+covered to the log's head, so the next turn's note starts where this one ends and no event appears
+twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so adding
@@ -571,6 +572,12 @@ records it reads.
   it out. Each start is read once, because the block's range begins where the last turn's note
   ended, so a later turn never repeats the line. Telling the user about the outage is not part of
   this entry.
+- **A connection status** reads each change of a connection into `needs_consent`, `failing` or
+  `expiring`, each return to `active` with the count of calls that failed during the break, and each
+  break that passes `google.break_notice`, once. The line names the connection by its connector,
+  label and account, and a forgotten connection gives none.
+  [Google connections](../connectors/google-connections.md#status-events) says which records it
+  reads.
 - **A page event** reads each `device.page_event` record that has no wake, because the page did not
   ask for one or the server did not grant it. The line names the device and the region, then shows
   the event's name and data inside the markers of an untrusted page read, because the page's text is

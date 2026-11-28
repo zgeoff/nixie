@@ -289,6 +289,7 @@ the definition:
 | `destinations` | a list of destination patterns, as a rule's `destinations` list takes them        | `[]`    |
 | `maxCalls`     | a map from a listed tool name to a whole-number cap of 1 or more                  | `{}`    |
 | `skills`       | a list of skill names, each a skill that the definitions hold                     | none    |
+| `connections`  | a map from a listed tool name to the short IDs of the connections it may use      | `{}`    |
 
 List `skills` to give each job run of the definition the [skill tools](./skills.md#the-skill-tools)
 that read and reload, the skill catalog and the code tool's `/skills/<name>/`, limited to that list.
@@ -643,8 +644,9 @@ and `tasks.runs`, which [tasks](./tasks.md) describes, are conversation tools to
   offset. The tool reads the user's zone and gives that `at` the zone's offset at that time before
   it calls `requestDefinitionChange`. A refusal comes back as `refused` with the code and what the
   model needs to retry. A change that leaves out `model`, `persona`, `memory`, `tools` or `report`
-  puts each back to its default. When the user approves a call that the define refuses, its card
-  shows it as failed with the refusal code.
+  puts each back to its default. An optional `connections` list pins the task's connector tools to
+  those connections, as [job pins](../connectors/google-connections.md#job-pins) says. When the user
+  approves a call that the define refuses, its card shows it as failed with the refusal code.
 - **`task.undefine`** takes a definition ID and answers the same way.
 - **`tasks.definitions`** lists every definition with its trigger in words and its next fire, and
   marks a disabled, spent, removed or unreadable one as not in force. A definition from the repo
