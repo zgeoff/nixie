@@ -10,16 +10,17 @@ backup notice marks its topic in the transaction that writes it, and the spend w
 `spend` when the gateway's stop differs from its last read. A task that comes due and a forget that
 turns stuck reach the tab on a timer instead.
 
-Nothing publishes a topic when either change happens. A task that comes due changes the task list,
-so the tab reads the list at the `changesAt` time the list returns, as well as on the `tasks`
-topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the stuck forgets on
-a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic either. See
-[Topics](#topics) for each.
+Nothing publishes a topic when a task comes due or a forget turns stuck. A task that comes due
+changes the task list, so the tab reads the list at the `changesAt` time the list returns, as well
+as on the `tasks` topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the
+stuck forgets on a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic
+either. See [Topics](#topics) for each.
 
-On a topic's `changed` event, the tab runs that topic's queries again. When a stream opens, the tab
-runs the queries of every topic again, because `changed` has no event ID and a closed stream misses
-it. A stream that replaces one that is still open skips that step, because the old stream carried
-every change until the new one opened.
+On a topic's `changed` event, the tab marks that topic's queries stale, and TanStack Query fetches
+again each of them that a page still uses. When a stream opens, the tab marks the queries of every
+topic stale, because `changed` has no event ID and a closed stream misses it. A stream that replaces
+one that is still open skips that step, because the old stream carried every change until the new
+one opened.
 
 ```mermaid
 flowchart LR

@@ -18,7 +18,7 @@ The connections module owns five tables and writes every one of them.
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
 | `oauth_clients`        | the client's public ID, its secret, its removal counter                                                                                                | a key of the client's own                |
 | `connections`          | the account, the label, the refresh token, its fingerprint and expiry, the granted and missing scopes, the status, the binding and the removal counter | the account key, and a token key         |
-| `consent_requests`     | each consent that began and has not finished, until the sweep removes it after it lapses: the state's hash and the PKCE verifier                       | a key of the consent's own               |
+| `consent_requests`     | each consent that began and has not finished, until the sweep removes it once it lapses or loses its key: the state's hash and the PKCE verifier       | a key of the consent's own               |
 | `connection_addresses` | each address of a connection's account, under its own reference                                                                                        | the account key                          |
 | `key_marks`            | each key ID that may belong to no row                                                                                                                  | nothing: a mark holds an ID and no value |
 
