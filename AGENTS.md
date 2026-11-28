@@ -94,7 +94,8 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
   itself.
 - imp's client: `adapters/sandbox-imp`.
 - atc's client: `adapters/coding-atc`.
-- `bun:sqlite`: `libs/db`. No zone covers the Kysely dialect, so keep it in `libs/db` yourself.
+- `bun:sqlite`: `libs/db`. Keep the Kysely dialect in `libs/db` yourself, because the rule has no
+  zone for it.
 - ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
 - The CEL library: `modules/policy`.
 

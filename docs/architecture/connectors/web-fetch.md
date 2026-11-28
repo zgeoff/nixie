@@ -459,8 +459,8 @@ IPv6 address whose embedded IPv4 address is not public, and every range the depl
 internal, whatever its class. The embedded forms it reads are IPv4-mapped, IPv4-compatible,
 IPv4-translated, NAT64, 6to4 and Teredo.
 
-nixie runs the fetcher for 3 callers, the web fetch tool, the reader of a skill's files and a
-device's [declared fetches](../channels/devices.md#declared-fetches), and sends each fetch these
+nixie runs the fetcher for 3 callers: the web fetch tool, the reader of a skill's files and a
+device's [declared fetches](../channels/devices.md#declared-fetches). It sends each fetch these
 limits:
 
 | Limit                                           | Web fetch tool         | Skill files                                                           | Declared fetches                   |

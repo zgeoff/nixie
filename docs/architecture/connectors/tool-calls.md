@@ -53,8 +53,8 @@ session.
 
 The registry refuses a tool definition that breaks one of its rules. A definition holds the name,
 the description, the input and output JSON Schemas, the effect declaration, how the tool runs, its
-code, and the optional hooks and fields that `ToolDefinition` in
-[`types.ts`](../../../modules/tools/src/types.ts) explains, such as `resolveInput`, `clear`,
+code, and the optional hooks and fields of `ToolDefinition` in
+[`types.ts`](../../../modules/tools/src/types.ts), such as `resolveInput`, `clear`,
 `resolveDestinations`, `resolvePolicyFacts`, `outsideErrors`, `pinHash` and `variants`. The effect
 declaration lists what the tool does, such as read, send or spend, and gives each field of the
 tool's result a source of content, the origin of what the field holds: the user's own words

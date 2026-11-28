@@ -95,7 +95,7 @@ and before the kind's handler, in the transaction that applies the answer. Every
 passkey reaches `checkPasskey` in `modules/api/src/passkey/`: the answers, the retry of an unknown
 outcome, the registration options while a passkey is live, and the revoke. The answers reach it
 through the `checkPasskey` in `modules/proposals/src/answer/`, which passes a choice that takes no
-passkey untouched. It refuses in this order:
+passkey untouched. The `checkPasskey` in `modules/api` refuses in this order:
 
 1. No passkey is live: `NO_PASSKEY`.
 2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`. A

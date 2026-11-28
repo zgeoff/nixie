@@ -150,10 +150,10 @@ A few imports belong to one package each, and the Agent SDK to two:
 The `zgeoff/import-zones` lint rule refuses each of these imports outside the packages the table
 names. The Agent SDK belongs to two packages because the SDK contract suite and the memory checker
 and writer evals in `evals/` drive the SDK itself, to check the behaviours nixie relies on. The rule
-covers `bun:sqlite`, which Bun provides with no declared dependency. No zone covers the Kysely
-dialect, so review keeps it in `libs/db`. Lint also refuses `require`, `import.meta.require`,
-`node:module` and any `import()` whose specifier the rule cannot read, so no import escapes the
-zones. The zones exist because the Agent SDK runs only inside a sandbox
+covers `bun:sqlite`, which Bun provides with no declared dependency. Check in review that the Kysely
+dialect stays in `libs/db`, because the rule has no zone for it. Lint also refuses `require`,
+`import.meta.require`, `node:module` and any `import()` whose specifier the rule cannot read, so no
+import escapes the zones. The zones exist because the Agent SDK runs only inside a sandbox
 ([0003](../decisions/0003-sdk-placement.md)) and one package owns each outside system.
 
 ## Modules

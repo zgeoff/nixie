@@ -114,8 +114,8 @@ A request carries the model, the prompt, the size, the source bytes of an edit, 
 and an abort signal that fires after `drawTimeoutMs`, from `image-limits.ts`. An adapter throws when
 the signal aborts, and the tool then returns `IMAGE_TIMEOUT`. An adapter holds no key: it sends each
 request through the `ProviderFetch` that the server passes in, which adds the key on the host. The
-[tool-result scan](credentials.md#fingerprints-and-own-values) replaces any secret in a reason it
-returns with `[secret removed]`. The tool never keeps the text of a thrown error.
+[tool-result scan](credentials.md#fingerprints-and-own-values) replaces any secret in a reason the
+adapter returns with `[secret removed]`. The tool never keeps the text of a thrown error.
 
 | Adapter        | Request                                                                                                                      | Refusal                                                                          |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |

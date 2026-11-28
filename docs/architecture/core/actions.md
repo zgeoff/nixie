@@ -84,7 +84,7 @@ a call whose action is done or failed queues a new action, because the model ask
 same action can then never run twice, however many times its step reruns.
 
 The action hash covers the tool, the arguments, the destinations, the deadline, and the URL and
-window that a prepared call expects when it runs, and is the same hash that the approval binds. A
+window that a prepared call expects when it runs. It is the same hash that the approval binds. A
 repeat of a call whose action is pending or unknown returns that action's status and never queues,
 so a model that asks again cannot start a second send.
 

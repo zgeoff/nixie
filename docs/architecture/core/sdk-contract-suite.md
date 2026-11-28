@@ -74,9 +74,9 @@ watchdog to fire.
   model wrote it. A task's [report](started-tasks.md#reports) with a `reportShape` relies on it.
 - `start-tools`: the tool list that the SDK reports at init holds both the task start tool and the
   [coding](coding-tasks.md) start tool from the conversation's own tool list.
-- `model-grant`: a turn whose only credential is the placeholder `nixie-broker-placeholder`, which
-  the Agent SDK harness's `buildGrant` sets, in either auth header's variable, gets its answer
-  through the broker, because the broker replaces the header on each request it carries.
+- `model-grant`: a turn whose only credential is the placeholder `nixie-broker-placeholder`, in
+  either auth header's variable, gets its answer through the broker, because the broker replaces the
+  header on each request it carries. The Agent SDK harness's `buildGrant` sets that placeholder.
   [Model profiles](model-profiles.md) give each model loop that grant.
 
 ## Run it

@@ -6,10 +6,10 @@ sandbox images, answers a memory or skill proposal, resets the event log, or bac
 nixie's data. The image puts a `nixie` command on the PATH, so a script runs `nixie enrol-code` and
 never names the bundle's file or any other path in the image. The commands are the whole interface a
 deployment has into the container, so nixie may move its files, its database and its data directory
-between releases without breaking a deployment that calls only the commands. This doc covers the
+between releases without breaking a deployment that calls only the commands. Read on for the
 commands a deployment runs. `run-cli.ts` in `apps/server/src/cli/` registers every command, such as
-`contacts mark-known`, `prompt-approve`, `spend raise` and `mcp allow`, and the doc of each area
-covers its own.
+`contacts mark-known`, `prompt-approve`, `spend raise` and `mcp allow`, and each area's doc covers
+that area's commands.
 
 [The server](server.md) covers the process the commands talk to, [Kubernetes](kubernetes.md) covers
 the pod a deployment runs them in, and [names in impd](impd-names.md) covers the names that the

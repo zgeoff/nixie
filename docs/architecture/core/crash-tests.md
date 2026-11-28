@@ -151,11 +151,11 @@ start that need a real sandbox.
 The [erasure runner](../memory/store.md#forgetting) forgets each of the 8 kinds in
 `erasableKindSchema`, such as a memory item, a note or a connection's credential. It holds at 6
 fault points behind the test-build flag, in the order of its steps. `recover-erasure.test.ts` arms
-each point but `erasure.revoked` for a note and for a memory item,
+each point but `erasure.revoked` for a note and for a memory item.
 `recover-connection-forget.test.ts` arms `erasure.begun` and `erasure.revoked` for a connection's
-forget, and no test arms them for a moment. A test arms a point, makes the forget reach it, stops
-nixie there and starts it again. The test then checks these beside the oracle, which does not know
-about erasures:
+forget. No test arms them for a moment. A test arms a point, makes the forget reach it, stops nixie
+there and starts it again. The test then checks these beside the oracle, which does not know about
+erasures:
 
 - The erasure finishes.
 - None of the target's encryption keys remains in the key store. These are the keys of its

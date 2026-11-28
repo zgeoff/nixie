@@ -75,7 +75,7 @@ removal counter, sets the binding to `removing`, and captures the account key an
 store refuses every fetch and refresh from then on, and a fetch in flight is aborted with the
 removal's error.
 
-No token enters a session or a logged request, but a wake's mail does. The forget cleans the
+A token never enters a session or a logged request, but a wake's mail does. The forget cleans the
 sessions on each thread that a wake of the connection reached, and removes every logged request on
 those threads, as [forgetting in the Gmail tools](gmail-tools.md#forgetting) describes.
 
