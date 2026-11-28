@@ -409,14 +409,18 @@ In the transaction that delivers a fire, the [trigger core](./triggers.md) asks 
 whether the task takes the fire, before it writes the fire's record. The first answer that holds
 decides:
 
-1. `held`: the task's [gate](./pause.md#the-task-gate) answers `ended`, `limit` or `task`. The core
-   records a skip with `task_held`, and the definition fires again at the first slot after the user
-   resumes, restarts or raises the task.
+1. `held`: the task's [gate](./pause.md#the-task-gate) answers `ended` for a task that is done,
+   stopped or closed, or answers `limit` or `task`. The core records a skip with `task_held`, and
+   the definition fires again at the first slot after the user resumes, restarts or raises the task.
 2. `wait`: the gate answers `spend` or `nixie`. The core writes nothing and takes no key, so the
    source delivers the fire again at its next tick.
-3. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
+3. `revive`: the task is `failed`, and the gate answers no other reason. The core writes
+   `task.revived`, which returns the task to `ready` with no step errors, and then records the fire.
+   The next claim opens a fresh task run for the fire, so one failed task run never stops the
+   schedule.
+4. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
    reply. The core records a skip with `still_running`.
-4. `take`: the task has no pending task run, and its open task run is idle or absent. The core
+5. `take`: the task has no pending task run, and its open task run is idle or absent. The core
    records the fire.
 
 The answer computes whether a task run is pending, because no table holds one. With no open task
@@ -449,9 +453,9 @@ the hash that the fire pins. The next claim opens a task run for it, and the rec
 `task.run_opened` holds the hash, the fire's dedupe key as the trigger key, the report mode and
 target, the report shape, and the limits of the version's file over the defaults. An idle task run
 ends with the cause `no_report` when a fire arrives, and the new task run opens in the same
-transaction. A task that is ended, paused or held at a limit holds the fire, and a task that works
-or has a fire waiting answers `still_running`. The trigger core reads that answer with
-`readDefinitionTaskInTransaction`.
+transaction. A task that is done, stopped, closed, paused or held at a limit holds the fire, a
+failed task takes it with a fresh task run, and a task that works or has a fire waiting answers
+`still_running`. The trigger core reads that answer with `readDefinitionTaskInTransaction`.
 
 When a task run ends at a limit, stopped or failed, a raise of the task's limits or a restart opens
 a task run that carries the ended one, as [limits](./started-tasks.md#limits) describes. A task run

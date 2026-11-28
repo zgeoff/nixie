@@ -360,15 +360,17 @@ report ID.
 
 The same function delivers the report by the first row that applies:
 
-| The case                                    | What nixie writes                               | Delivery    |
-| ------------------------------------------- | ----------------------------------------------- | ----------- |
-| the end cause is `no_work`                  | no message                                      | `kept`      |
-| the report target is done, failed or closed | no message                                      | `kept`      |
-| the report target closed the task           | no message                                      | `kept`      |
-| the mode `none`                             | no message                                      | `kept`      |
-| the mode `next_turn`                        | a `task_message` of kind `report`, with no wake | `next_turn` |
-| the mode `wake`, past the hop limit         | a `task_message` of kind `report`, with no wake | `next_turn` |
-| the mode `wake`, inside the hop limit       | a `task_message` of kind `report`, with a wake  | `wake`      |
+| The case                                                | What nixie writes                               | Delivery    |
+| ------------------------------------------------------- | ----------------------------------------------- | ----------- |
+| the end cause is `no_work`                              | no message                                      | `kept`      |
+| the report target is done, failed or closed             | no message                                      | `kept`      |
+| the report target closed the task                       | no message                                      | `kept`      |
+| the mode `none`                                         | no message                                      | `kept`      |
+| a failed task run of a definition, past the hop limit   | a `task_message` of kind `report`, with no wake | `next_turn` |
+| a failed task run of a definition, inside the hop limit | a `task_message` of kind `report`, with a wake  | `wake`      |
+| the mode `next_turn`                                    | a `task_message` of kind `report`, with no wake | `next_turn` |
+| the mode `wake`, past the hop limit                     | a `task_message` of kind `report`, with no wake | `next_turn` |
+| the mode `wake`, inside the hop limit                   | a `task_message` of kind `report`, with a wake  | `wake`      |
 
 The message goes from the task to the report target, with the report ID as its message ID and the
 body of `task.run_ended`. The hop of an end that a step commits is the hop of that step's lease. An
@@ -380,7 +382,9 @@ wake. A kept report exists only on `task.run_ended`, because a message on the ta
 would read as the task's input. A `task.message` of kind `report` that a task sends during a task
 run is an ordinary message that ends nothing. nixie never treats a report as a message from the
 user. A definition's task run reports under `next_turn` by default, because a scheduled task run
-under `wake` would spend a conversation turn on each fire.
+under `wake` would spend a conversation turn on each fire. A failed task run of a definition wakes
+the conversation under `next_turn` too, so the conversation learns of the failure when it happens,
+and can tell the user or end its turn silently.
 
 ## Reports
 
@@ -429,7 +433,10 @@ session of a carried task run renders both, and takes the fire from the first ta
 The task run's end writes the report, once, in the transaction of the step's commit, the stop or the
 close that ended it. When the task made no report, nixie writes a code-made summary for the cause
 and lists the fields it lacks as `missing`. A forget that destroyed the request before the end
-leaves the same code-made summary. The report mode decides the delivery:
+leaves the same code-made summary. The summary of a failed task run ends with the text of the last
+step error, cut at 2,000 characters with `(cut)`, and the report message is marked as outside
+content, because the text comes from outside nixie, such as the model API. The log keeps the whole
+error on its `task.step_errored` record. The report mode decides the delivery:
 
 - `wake`: a task message of kind `report` goes to the starter and wakes it, inside the
   [hop limit](./task-messages.md#the-hop-limit). Past the hop limit it waits for the starter's next

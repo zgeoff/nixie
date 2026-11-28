@@ -9,6 +9,7 @@ import {
   triggerSkippedCodec,
   triggerTaskInputCodec,
   waitAtFaultPoint,
+  writeDefinitionTaskRevivalInTransaction,
   writeInboxRecordsInTransaction,
 } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
@@ -167,7 +168,11 @@ async function writeEvent(
     return false;
   }
 
-  if (outcome.kind === 'fire') {
+  if (outcome.kind === 'revive') {
+    await writeDefinitionTaskRevivalInTransaction(tx, core, outcome.thread);
+  }
+
+  if (outcome.kind === 'fire' || outcome.kind === 'revive') {
     await writeInboxRecordsInTransaction(tx, core, [
       buildFired(core, sourceID, event, outcome.thread),
     ]);
@@ -270,7 +275,7 @@ async function retireOneShot(
     },
   ]);
 
-  const cause = outcome === 'fire' ? 'one_shot_fired' : 'one_shot_skipped';
+  const cause = outcome === 'skip' ? 'one_shot_skipped' : 'one_shot_fired';
 
   await core.retireOneShot(tx, definitionID, cause);
 }

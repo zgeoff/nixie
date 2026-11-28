@@ -220,13 +220,10 @@ export type {
 } from './definition/write-definition-tasks-in-transaction';
 
 export { writeDefinitionTasksInTransaction } from './definition/write-definition-tasks-in-transaction';
-
-export type {
-  DefinitionFire,
-  DefinitionTaskAnswer,
-} from './definition/read-definition-task-in-transaction';
-
+export type { DefinitionFire } from './definition/pick-definition-fire';
+export type { DefinitionTaskAnswer } from './definition/read-definition-task-in-transaction';
 export { readDefinitionTaskInTransaction } from './definition/read-definition-task-in-transaction';
+export { writeDefinitionTaskRevivalInTransaction } from './definition/write-definition-task-revival-in-transaction';
 export { withdrawDefinitionTaskInTransaction } from './definition/withdraw-definition-task-in-transaction';
 export { taskLeaseExpiredCodec } from './utils/task-lease-expired-codec';
 export { taskRevivedCodec } from './utils/task-revived-codec';

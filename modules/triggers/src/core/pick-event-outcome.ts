@@ -6,6 +6,9 @@ import type { ScheduleTriggerEvent } from '../types';
 export type EventOutcome =
   | { readonly kind: 'fire'; readonly thread: string }
 
+  // the task failed: the fire revives it in the same transaction, then lands as a fire does
+  | { readonly kind: 'revive'; readonly thread: string }
+
   // nixie is paused or the spending stop stands: nothing is written, and the key stays free
   | { readonly kind: 'wait' }
   | { readonly kind: 'skip'; readonly thread: string; readonly reason: SkipReason };
@@ -40,6 +43,7 @@ export function pickEventOutcome(
   return match(answer.fire)
     .with('wait', () => ({ kind: 'wait' as const }))
     .with('take', () => ({ kind: 'fire' as const, thread }))
+    .with('revive', () => ({ kind: 'revive' as const, thread }))
     .with('still_running', () => ({
       kind: 'skip' as const,
       thread,

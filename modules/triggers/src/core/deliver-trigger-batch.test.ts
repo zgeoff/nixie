@@ -12,8 +12,10 @@ import {
   claimTask,
   createConversationTask,
   readInbox,
+  readOpenRun,
   setFaultPointHandler,
   writeStepCommit,
+  writeStepError,
   writeTaskControl,
 } from '@heynixie/tasks';
 import { buildTaskSeeder, readTestTasks, seedDefinitionTask } from '@heynixie/tasks/test-utils';
@@ -1284,4 +1286,98 @@ test('it leaves the key of a task input for a stopped task free, so the same eve
       erasable: { status: 'readable', fields: { event: { title: 'Add a frost warning' } } },
     },
   ]);
+});
+
+test('it fires at the next slot of a definition whose task run failed, and opens a fresh task run', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.deliver([{ scheduledFor: '2027-03-09T21:00:00.000Z', dedupeKey: 'k-1' }]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  if (claim === null || claim.lease.workID !== taskID) {
+    throw new Error('the fire is claimable');
+  }
+
+  await writeStepError(ctx.context, claim, {
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+    error: new Error('the model API answered 429'),
+  });
+
+  await ctx.deliver([{ scheduledFor: '2027-03-10T21:00:00.000Z', dedupeKey: 'k-2' }]);
+
+  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+  const records = await ctx.readTriggerRecords();
+  const open = await readOpenRun(ctx.writer.db, taskID);
+
+  expect(
+    records
+      .filter((record) => record.kind === 'trigger.fired' || record.kind === 'trigger.skipped')
+      .map((record) => [
+        record.kind,
+        record.payload['dedupeKey'],
+        record.payload['reason'] ?? null,
+      ]),
+  ).toStrictEqual([
+    ['trigger.fired', 'k-1', null],
+    ['trigger.fired', 'k-2', null],
+  ]);
+
+  expect([next?.lease.workID, open?.opened.triggerKey, open?.opened.carriesRunID]).toStrictEqual([
+    taskID,
+    'k-2',
+    null,
+  ]);
+});
+
+test('it fires at the next slot of a failed definition task that a new version replaced under the same ID', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await ctx.deliver([{ scheduledFor: '2027-03-09T21:00:00.000Z', dedupeKey: 'k-1' }]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  if (claim === null || claim.lease.workID !== taskID) {
+    throw new Error('the fire is claimable');
+  }
+
+  await writeStepError(ctx.context, claim, {
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+    error: new Error('the model API answered 429'),
+  });
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: 'hash-2' });
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition({ definitionHash: 'hash-2' })]);
+
+  await ctx.deliver([
+    { scheduledFor: '2027-03-10T21:00:00.000Z', dedupeKey: 'k-2', definitionHash: 'hash-2' },
+  ]);
+
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  const open = await readOpenRun(ctx.writer.db, taskID);
+
+  expect([open?.opened.triggerKey, open?.opened.definitionHash]).toStrictEqual(['k-2', 'hash-2']);
 });

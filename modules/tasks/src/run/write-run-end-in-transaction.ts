@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { writeInboxRecordsInTransaction } from '../inbox/write-inbox-records-in-transaction';
 import { taskLimitNoticeCodec } from '../limit/task-limit-notice-codec';
 import { codeMadeSummaries } from '../report/code-made-summaries';
+import { formatLastError } from '../report/format-last-error';
 import type { ReportBody } from '../report/render-report-body';
 import { renderReportBody } from '../report/render-report-body';
 import { writeTaskLimitHoldInTransaction } from '../task/limit/write-task-limit-hold-in-transaction';
@@ -89,6 +90,7 @@ export async function writeRunEndInTransaction(
       request.trigger.kind === 'closed' &&
       request.trigger.closer !== null &&
       request.trigger.closer === target,
+    isDefinitionRun: run.opened.definitionID !== null,
   });
 
   const detail = buildDetail(run, ending, request, used);
@@ -250,12 +252,16 @@ async function readReportBody(
     };
   }
 
+  const summary = renderCodeMadeSummary(context, run, ending, detail);
+  const lastError = ending.cause === 'failed' ? await readLastErrorMessage(context, run) : null;
+
+  // the error text comes from outside nixie, such as a model API's answer
   return {
     body: {
-      summary: renderCodeMadeSummary(context, run, ending, detail),
+      summary: lastError === null ? summary : `${summary} ${formatLastError(lastError)}`,
       ...(shape === null ? {} : { missing: Object.keys(shape.properties) }),
     },
-    isOutside: false,
+    isOutside: lastError !== null,
   };
 }
 
@@ -309,6 +315,21 @@ function renderCodeMadeSummary(
   const limit = meter === undefined ? '' : meter.render(run.opened.limits[meter.name]);
 
   return sentence.replace('{limit}', limit).replace('{count}', String(detail['errors'] ?? 0));
+}
+
+async function readLastErrorMessage(context: EndContext, run: TaskRun): Promise<string | null> {
+  const [errored] = await readRecords(context.log, {
+    afterSequence: run.openedSequence,
+    thread: run.taskID,
+    kinds: ['task.step_errored'],
+    order: 'newest',
+    limit: 1,
+  });
+
+  const erasable = errored?.record.erasable;
+  const message = erasable?.status === 'readable' ? erasable.fields['message'] : undefined;
+
+  return typeof message === 'string' ? message : null;
 }
 
 interface LimitHold {

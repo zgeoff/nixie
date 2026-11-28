@@ -132,7 +132,7 @@ test('it answers held for a paused task', async () => {
   expect(result).toStrictEqual({ taskID, fire: 'held' });
 });
 
-test('it answers held for a failed task, and not held after a restart', async () => {
+test('it answers revive for a failed task', async () => {
   const ctx = await setupTest();
 
   const taskID = await seedDefinitionTask(ctx, {
@@ -155,14 +155,9 @@ test('it answers held for a failed task, and not held after a restart', async ()
     error: new Error('the step broke'),
   });
 
-  const failed = await ctx.readAnswer('water-the-tomatoes');
+  const result = await ctx.readAnswer('water-the-tomatoes');
 
-  await writeTaskControl(ctx.context, { taskID, control: 'restart' });
-
-  const restarted = await ctx.readAnswer('water-the-tomatoes');
-
-  expect(failed).toStrictEqual({ taskID, fire: 'held' });
-  expect(restarted).not.toMatchObject({ fire: 'held' });
+  expect(result).toStrictEqual({ taskID, fire: 'revive' });
 });
 
 test('it answers wait while nixie is paused, and held for a stopped task whatever the pause', async () => {
