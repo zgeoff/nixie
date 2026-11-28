@@ -124,101 +124,93 @@ test('it gives a job run whose definition lists no skill no skill tool and no ca
   expect(system).not.toInclude('tide-tables');
 });
 
-test('it keeps a skill that left the definition out of a job run on every skill tool, though an earlier run pinned it', async () => {
-  const ctx = await setupTest([
-    'context: continuing',
-    'skills:',
-    '  - bird-log',
-    '  - tide-tables',
-  ]);
-
-  const first = ctx.nixie.harness.start();
-
-  await first.ready;
-
-  await ctx.nixie.waitForQueueCheck();
-
-  ctx.nixie.model.addReplies({ text: 'Done.' });
-
-  await ctx.nixie.harness.advance(300_000, { settle: true });
-
-  const fired = await ctx.nixie.waitForRecord((record) => record.kind === 'trigger.fired');
-
-  await ctx.nixie.waitForRecord(
-    (record) => record.kind === 'task.run_ended' && record.thread === fired.thread,
-  );
-
-  await first.kill();
-
-  await writeFile(
-    join(ctx.nixie.directory, 'definitions', 'tasks', 'water-the-tomatoes', 'task.yaml'),
-    [
-      'name: Water the tomatoes',
-      'brief: Water the tomatoes in the greenhouse and report when done.',
+test.each([
+  { tool: 'skill_read', input: { name: 'bird-log' }, outcome: 'error' },
+  { tool: 'skill_reload', input: { name: 'bird-log' }, outcome: 'error' },
+  {
+    tool: 'code.run',
+    input: { language: 'python', program: 'print(1)', skills: ['bird-log'] },
+    outcome: 'error',
+  },
+  { tool: 'skill_reload_all', input: {}, outcome: 'result' },
+] as const)(
+  'it runs $tool of a job run only on the skills its definition lists now, though an earlier run pinned a skill it dropped',
+  async (row) => {
+    const ctx = await setupTest([
       'context: continuing',
       'skills:',
+      '  - bird-log',
       '  - tide-tables',
-      'trigger:',
-      '  schedule:',
-      '    every:',
-      '      minutes: 5',
-      '',
-    ].join('\n'),
-  );
+    ]);
 
-  const second = ctx.nixie.harness.start();
+    const first = ctx.nixie.harness.start();
 
-  await second.ready;
+    await first.ready;
 
-  await ctx.nixie.waitForQueueCheck();
+    await ctx.nixie.waitForQueueCheck();
 
-  const before = await ctx.nixie.readRecords();
+    ctx.nixie.model.addReplies({ text: 'Done.' });
 
-  const lastSequenceBefore = before.at(-1)?.sequence ?? 0;
+    await ctx.nixie.harness.advance(300_000, { settle: true });
 
-  ctx.nixie.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__skill_read', input: { name: 'bird-log' } } },
-    { toolUse: { name: 'mcp__nixie__skill_reload', input: { name: 'bird-log' } } },
-    { toolUse: { name: 'mcp__nixie__skill_reload_all', input: {} } },
-    {
-      toolUse: {
-        name: 'mcp__nixie__code_run',
-        input: { language: 'python', program: 'print(1)', skills: ['bird-log'] },
-      },
-    },
-    { text: 'Done.' },
-  );
+    const fired = await ctx.nixie.waitForRecord((record) => record.kind === 'trigger.fired');
 
-  await ctx.nixie.harness.advance(300_000, { settle: true });
+    await ctx.nixie.waitForRecord(
+      (record) => record.kind === 'task.run_ended' && record.thread === fired.thread,
+    );
 
-  await ctx.nixie.waitForRecord(
-    (record) => record.kind === 'task.run_ended' && record.sequence > lastSequenceBefore,
-  );
+    await first.kill();
 
-  await second.kill();
+    await writeFile(
+      join(ctx.nixie.directory, 'definitions', 'tasks', 'water-the-tomatoes', 'task.yaml'),
+      [
+        'name: Water the tomatoes',
+        'brief: Water the tomatoes in the greenhouse and report when done.',
+        'context: continuing',
+        'skills:',
+        '  - tide-tables',
+        'trigger:',
+        '  schedule:',
+        '    every:',
+        '      minutes: 5',
+        '',
+      ].join('\n'),
+    );
 
-  const all = await ctx.nixie.readRecords();
+    const second = ctx.nixie.harness.start();
 
-  const records = all.filter((record) => record.sequence > lastSequenceBefore);
+    await second.ready;
 
-  const toolNames = new Map(
-    records
-      .filter((record) => record.kind === 'tool_called')
-      .map((record) => [record.payload['callID'], record.payload['tool']]),
-  );
+    await ctx.nixie.waitForQueueCheck();
 
-  const calls = records
-    .filter((record) => record.kind === 'tool_result')
-    .map((record) => [toolNames.get(record.payload['callID']), record.payload['outcome']]);
+    const before = await ctx.nixie.readRecords();
 
-  const reloaded = records.filter((record) => record.kind === 'skills.reloaded');
+    const lastSequenceBefore = before.at(-1)?.sequence ?? 0;
 
-  expect(calls).toStrictEqual([
-    ['skill_read', 'error'],
-    ['skill_reload', 'error'],
-    ['skill_reload_all', 'result'],
-    ['code.run', 'error'],
-  ]);
+    ctx.nixie.model.addReplies(
+      { toolUse: { name: `mcp__nixie__${row.tool.replace('.', '_')}`, input: row.input } },
+      { text: 'Done.' },
+    );
 
-  expect(JSON.stringify(reloaded)).not.toInclude('bird-log');
-});
+    await ctx.nixie.harness.advance(300_000, { settle: true });
+
+    await ctx.nixie.waitForRecord(
+      (record) => record.kind === 'task.run_ended' && record.sequence > lastSequenceBefore,
+    );
+
+    await second.kill();
+
+    const all = await ctx.nixie.readRecords();
+
+    const records = all.filter((record) => record.sequence > lastSequenceBefore);
+
+    const outcomes = records
+      .filter((record) => record.kind === 'tool_result')
+      .map((record) => record.payload['outcome']);
+
+    const reloaded = records.filter((record) => record.kind === 'skills.reloaded');
+
+    expect(outcomes).toStrictEqual([row.outcome]);
+    expect(JSON.stringify(reloaded)).not.toInclude('bird-log');
+  },
+);
