@@ -161,7 +161,8 @@ function buildEntry<Request>(
     revoke: (target) => erasable.revoke?.(target) ?? Promise.resolve(),
     writeFinished: (tx, finished) => erasable.writeFinished?.(tx, finished) ?? Promise.resolve(),
     readChildren: (tx, target) => erasable.readChildren(tx, target),
-    readLateKeyIDs: (tx, target) => erasable.readLateKeyIDs?.(tx, target) ?? Promise.resolve([]),
+    readLateKeyIDs: (tx, target, capture) =>
+      erasable.readLateKeyIDs?.(tx, target, capture) ?? Promise.resolve([]),
     cleanIndexes: (target) => erasable.cleanIndexes(target),
     beginChild: (target, parent) =>
       beginErasure(options, erasable, erasable.toRequest(target), { by: parent.by, parent }),

@@ -18,25 +18,27 @@ const openKinds = [...placeErasableKinds, contactMarkedKnownCodec.kind] as const
 const sealedKinds = [placesRemovedCodec.kind, placesActedCodec.kind] as const;
 const placeIDOf = sql`coalesce(json_extract(payload, '$.placeID'), json_extract(payload, '$.contactID'))`;
 
-// The key of each record of the place that one record names, its own key included. Empty for a
-// record of any other kind, and for a removal or an act whose fields are gone, so run it while the
-// place's records are readable.
-export async function readPlaceCascadeKeyIDs(
+// The place that one record names. Null for a record of any other kind, and for a removal or an act
+// whose fields are gone, so run it while the record is readable.
+export async function readPlaceIDOfRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   recordSequence: number,
-): Promise<readonly string[]> {
+): Promise<string | null> {
   const [target] = await readRecords(log, {
     afterSequence: recordSequence - 1,
     sequences: [recordSequence],
     limit: 1,
   });
 
-  const placeID = target === undefined ? null : findTargetPlaceID(target.record);
+  return target === undefined ? null : findTargetPlaceID(target.record);
+}
 
-  if (placeID === null) {
-    return [];
-  }
-
+// The key of each record of a place, as the place's records read now. An address place's removal
+// or act joins the place only while its own fields are readable.
+export async function readPlaceKeyIDs(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  placeID: string,
+): Promise<readonly string[]> {
   const db = log.writer.db.$extendTables<APITables>();
 
   const open = await db

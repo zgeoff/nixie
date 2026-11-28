@@ -59,6 +59,10 @@ export const erasureCaptureSchema = z.strictObject({
   purges: z.array(purgeSchema),
   sessionCause: sessionCauseSchema,
   turnInputs: turnInputsSchema,
+
+  // The place whose records hold the target's text, which a record forget reads before its own key
+  // goes so that a record of the place written later still finds its way to the scan
+  placeID: z.string().exactOptional(),
 });
 
 export type ErasureCapture = ReadonlyDeep<z.infer<typeof erasureCaptureSchema>>;

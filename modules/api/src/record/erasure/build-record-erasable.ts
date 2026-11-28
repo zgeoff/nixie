@@ -2,7 +2,7 @@ import { readRecordImageUUIDs } from '@heynixie/connectors';
 import type { Erasable } from '@heynixie/log';
 import type { APIContext } from '../../types';
 import { buildTransactionContext } from '../../utils/build-transaction-context';
-import { readPlaceCascadeKeyIDs } from '../read-place-cascade-key-ids';
+import { readPlaceKeyIDs } from '../read-place-key-ids';
 import { readLegacyOpenRecordForgets } from './read-legacy-open-record-forgets';
 import { startRecordErasure } from './start-record-erasure';
 
@@ -28,8 +28,10 @@ export function buildRecordErasable(context: APIContext): Erasable<RecordErasure
 
       return images.map((image) => ({ kind: 'image', targetID: image, version: null }));
     },
-    readLateKeyIDs: (tx, target) =>
-      readPlaceCascadeKeyIDs(buildTransactionContext(context, tx).log, Number(target.targetID)),
+    readLateKeyIDs: (tx, _target, capture) =>
+      capture.placeID === undefined
+        ? Promise.resolve([])
+        : readPlaceKeyIDs(buildTransactionContext(context, tx).log, capture.placeID),
     toRequest: (target) => ({ sequence: Number(target.targetID), thread: null }),
     cleanIndexes: () => Promise.resolve(),
     readLegacyOpen: () => readLegacyOpenRecordForgets(context),

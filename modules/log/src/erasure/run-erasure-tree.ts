@@ -40,11 +40,13 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
 
   const removed = new Set<string>();
   const cleaned = new Set<string>();
+  const lateKeyIDs = new Set<string>();
 
-  // Keys, then cleanup, until a scan after the cleanup finds no child that is new: a call that ran
-  // while the cleanup did can leave a record that holds the target's text.
+  // Keys, then cleanup, until a scan after the cleanup finds no child that is new and no late key
+  // that is new: a call that ran while the cleanup did can leave a record that holds the target's
+  // text.
   for (;;) {
-    await removeTreeKeys(context, { root, tree, reached, removed });
+    await removeTreeKeys(context, { root, tree, reached, removed, lateKeyIDs });
 
     for (const erasure of tree.values()) {
       if (!cleaned.has(erasure.started.erasureID)) {
@@ -60,7 +62,9 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
 
     await growTree(context, tree, reached);
 
-    if ([...tree.values()].every((erasure) => removed.has(erasure.started.erasureID))) {
+    const isLate = await removeLateKeys(context, tree, lateKeyIDs);
+
+    if (!isLate && [...tree.values()].every((erasure) => removed.has(erasure.started.erasureID))) {
       break;
     }
   }
@@ -142,6 +146,7 @@ interface TreeKeys {
   readonly tree: Map<string, OpenErasure>;
   readonly reached: Map<string, Set<string>>;
   readonly removed: Set<string>;
+  readonly lateKeyIDs: Set<string>;
 }
 
 // Steps 3 to 6: children, then revokes, then sandboxes, then keys, until a scan finds no child that
@@ -180,9 +185,11 @@ async function removeTreeKeys(context: ErasureRunContext, state: TreeKeys): Prom
     for (const erasure of pending) {
       const capture = erasure.started.capture;
 
-      const late = await withWriteTransaction(context.log.writer, (tx) =>
-        getEntry(context, erasure.started.kind).readLateKeyIDs(tx, toTarget(erasure)),
-      );
+      const late = await readLateKeyIDs(context, erasure);
+
+      for (const keyID of late) {
+        state.lateKeyIDs.add(keyID);
+      }
 
       await removeErasureKeys(context.log, {
         keys: capture.keys,
@@ -306,6 +313,19 @@ async function beginOrJoin(
   return { status: 'joined', erasure: started };
 }
 
+function readLateKeyIDs(
+  context: ErasureRunContext,
+  erasure: OpenErasure,
+): Promise<readonly string[]> {
+  return withWriteTransaction(context.log.writer, (tx) =>
+    getEntry(context, erasure.started.kind).readLateKeyIDs(
+      tx,
+      toTarget(erasure),
+      erasure.started.capture,
+    ),
+  );
+}
+
 async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): Promise<void> {
   const capture = erasure.started.capture;
 
@@ -337,6 +357,33 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
   for (const purge of capture.purges) {
     await context.effects.finishPurges(purge.recordSequence);
   }
+}
+
+// Scans again for the keys of records written since the last scan, such as a record of the same
+// place that landed during the cleanup, and removes them. Returns whether it found any that is new.
+async function removeLateKeys(
+  context: ErasureRunContext,
+  tree: ReadonlyMap<string, OpenErasure>,
+  seen: Set<string>,
+): Promise<boolean> {
+  const found: string[] = [];
+
+  for (const erasure of tree.values()) {
+    for (const keyID of await readLateKeyIDs(context, erasure)) {
+      if (!seen.has(keyID)) {
+        seen.add(keyID);
+        found.push(keyID);
+      }
+    }
+  }
+
+  if (found.length === 0) {
+    return false;
+  }
+
+  await removeErasureKeys(context.log, { keys: { ids: [] }, cleanupKeys: found });
+
+  return true;
 }
 
 async function removeTurnInputs(effects: ErasureEffects, erasure: OpenErasure): Promise<void> {

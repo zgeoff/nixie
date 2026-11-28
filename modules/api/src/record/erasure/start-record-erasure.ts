@@ -6,7 +6,7 @@ import { readForgetStarted } from '../../forget/read-forget-started';
 import type { APIContext, APITables } from '../../types';
 import { buildTransactionContext } from '../../utils/build-transaction-context';
 import { readRecordForget } from '../../utils/read-record-forget';
-import { readPlaceCascadeKeyIDs } from '../read-place-cascade-key-ids';
+import { readPlaceIDOfRecord, readPlaceKeyIDs } from '../read-place-key-ids';
 import { readRecordForgetCheck } from '../read-record-forget-check';
 import { readRecordKeyIDs } from '../read-record-key-ids';
 import { readRecordStartCalls } from '../read-record-start-calls';
@@ -62,7 +62,10 @@ export async function startRecordErasure(
       ? await readRecordStartCalls(inTransaction, sequence)
       : (legacy.startCallSequences ?? []);
 
-  const cascadeKeyIDs = await readPlaceCascadeKeyIDs(inTransaction.log, sequence);
+  const placeID = await readPlaceIDOfRecord(inTransaction.log, sequence);
+
+  const cascadeKeyIDs = placeID === null ? [] : await readPlaceKeyIDs(inTransaction.log, placeID);
+
   const pictureCalls = await readScreenPictureCallSequences(inTransaction, sequence);
 
   // A forget that an earlier release began has no purge set. It gets one before any key goes,
@@ -101,6 +104,7 @@ export async function startRecordErasure(
           ? { recordSequence: sequence }
           : { recordSequence: sequence, callSequences: [...startCalls] },
       turnInputs: { threads: [], cleaned: true, floor: Math.min(sequence, ...startCalls) },
+      ...(placeID === null ? {} : { placeID }),
     },
   };
 }

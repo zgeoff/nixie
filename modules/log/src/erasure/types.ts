@@ -80,6 +80,7 @@ export interface Erasable<Request> {
   readonly readLateKeyIDs?: (
     tx: WriteTransaction,
     target: ErasureTarget,
+    capture: ErasureCapture,
   ) => Promise<readonly string[]>;
 
   // After the keys go; repeats hide's work safely.
@@ -142,6 +143,7 @@ export interface ErasureEntry {
   readonly readLateKeyIDs: (
     tx: WriteTransaction,
     target: ErasureTarget,
+    capture: ErasureCapture,
   ) => Promise<readonly string[]>;
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
   readonly beginChild: (target: ErasureTarget, parent: ErasureParent) => Promise<ErasureBegin>;
