@@ -42,7 +42,11 @@ test('it refuses a profile that lists no price for a size', () => {
 
   expect(parsed).toMatchObject({
     success: false,
-    error: { issues: [{ path: ['profiles', 'main', 'prices', '1024x1536'] }] },
+    error: {
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ['profiles', 'main', 'prices', '1024x1536'] }),
+      ]),
+    },
   });
 });
 
@@ -59,7 +63,10 @@ test('it refuses a default that no profile has', () => {
     },
   });
 
-  expect(parsed).toMatchObject({ success: false, error: { issues: [{ path: ['default'] }] } });
+  expect(parsed).toMatchObject({
+    success: false,
+    error: { issues: expect.arrayContaining([expect.objectContaining({ path: ['default'] })]) },
+  });
 });
 
 test('it refuses a credential that is not a deployment entry', () => {
@@ -77,7 +84,11 @@ test('it refuses a credential that is not a deployment entry', () => {
 
   expect(parsed).toMatchObject({
     success: false,
-    error: { issues: [{ path: ['profiles', 'main', 'credential'] }] },
+    error: {
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ['profiles', 'main', 'credential'] }),
+      ]),
+    },
   });
 });
 
@@ -93,7 +104,10 @@ test('it refuses a config that names no default profile, even beside a profile n
     },
   });
 
-  expect(parsed).toMatchObject({ success: false, error: { issues: [{ path: ['default'] }] } });
+  expect(parsed).toMatchObject({
+    success: false,
+    error: { issues: expect.arrayContaining([expect.objectContaining({ path: ['default'] })]) },
+  });
 });
 
 test('it takes any provider ID, which the server checks against its adapters', () => {

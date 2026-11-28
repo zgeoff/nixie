@@ -111,9 +111,7 @@ test('it lists a drawn picture as it was once images are on again after a start 
     { text: 'Pear-reply-3KD7' },
   );
 
-  await sendClientMessage(api.client, { text: 'Draw a pear on a sill.' }, 'Pear-reply-3KD7', {
-    timeoutMs: 30_000,
-  });
+  await sendClientMessage(api.client, { text: 'Draw a pear on a sill.' }, 'Pear-reply-3KD7');
 
   const before = await api.client.images.list({});
 
@@ -130,7 +128,8 @@ test('it lists a drawn picture as it was once images are on again after a start 
 
   const second = nixie.harness.start();
 
-  await second.ready;
+  const off = await createTestClient(second, { token: api.token });
+  const offRead = await off.client.nixie.read();
 
   await second.sendStopSignal();
   await second.waitForExit();
@@ -142,5 +141,9 @@ test('it lists a drawn picture as it was once images are on again after a start 
   const again = await createTestClient(third, { token: api.token });
   const after = await again.client.images.list({});
 
-  expect({ drawn: before.images.length, after }).toStrictEqual({ drawn: 1, after: before });
+  expect({
+    drawn: before.images.length,
+    isOffBetween: !offRead.features.includes('images'),
+    after,
+  }).toStrictEqual({ drawn: 1, isOffBetween: true, after: before });
 });
