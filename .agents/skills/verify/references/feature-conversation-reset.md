@@ -11,9 +11,9 @@ stay.
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
 
-Run this journey on `local` only, and after every other journey, because the reset stops the server.
-On `preview`, skip this journey and run no `done`. In your reply, list the feature as not verified
-on `preview`.
+Run this journey on `local` only, and after every other journey, because the reset restarts the
+server. On `preview`, skip this journey and run no `done`. In your reply, list the feature as not
+verified on `preview`.
 
 Before you start:
 
@@ -47,20 +47,22 @@ Before you start:
    Expect: `data.printed` starts with "nixie removed" and holds a line that starts with "Key
    backups".
 
-3. Check that the server stopped for its restart:
+3. Wait for the server to start again, then check what the log holds and what the page shows:
 
    ```bash
-   bun verify status
+   bun verify browser goto /
+   bun verify browser snapshot --until-text 'Send'
+   bun verify db query "select kind, json_extract(payload, '$.kind') as target, json_extract(payload, '$.removedKeys') as removed from records where kind in ('erasure.started', 'erasure.finished', 'log_reset') and (kind = 'log_reset' or json_extract(payload, '$.kind') = 'conversation') order by sequence"
    ```
 
-   Expect: `data.status` is `crashed`. The reset ends the server with exit code 0 so that a
-   supervisor starts it again, and the `local` target has none. The target cannot read the database
-   after this step, so a later `db query` or `done` fails with `not-running`. Skip `done`, and list
-   the feature in your reply with the `status` output. The tests of the reset check the log and the
-   page after the restart.
+   Expect: the query lists `erasure.started`, `erasure.finished` and then `log_reset`, and `removed`
+   on `erasure.finished` is 1 or more. The snapshot shows neither "When does the ferry leave?" nor
+   "The ferry leaves at six."
 
 ## End state
 
 - Step 1: the conversation thread holds at least 2 records that still have a key.
 - Step 2: the host command exits 0 and prints the count of keys removed and a "Key backups" line.
-- Step 3: the server has stopped, and the target reads `crashed`.
+- Step 3: the log holds one finished erasure of the conversation, followed by `log_reset`, and the
+  page shows neither message. A record keeps its `key_id` after the reset: the key is gone from the
+  key store.

@@ -42,6 +42,7 @@ import { runDeviceLayout } from './run-device-layout';
 import { runDeviceShow } from './run-device-show';
 import { sendSpendProbe } from './send-spend-probe';
 import { serveControl } from './serve-control';
+import { startAPIRelay } from './start-api-relay';
 import { startFakeRateSite } from './start-fake-rate-site';
 import { trustSite } from './trust-site';
 
@@ -245,17 +246,39 @@ export async function runVerifyHarness(): Promise<void> {
 
   const running: RunningState = { isRunning: true };
 
-  void watchExit(server.exited, running);
+  const superviseServer = async (state: RunningState): Promise<void> => {
+    for (;;) {
+      await server.exited;
+
+      state.isRunning = false;
+
+      if (stopped.signal.aborted) {
+        return;
+      }
+
+      server = nixie.harness.start();
+
+      api = await createTestClient(server, { token: api.token });
+
+      state.isRunning = true;
+    }
+  };
+
+  void superviseServer(running);
 
   const webServerPath = await readWebBuild();
-  const web = await createBuiltWeb(api.url, webServerPath);
 
+  const relay = startAPIRelay(() => api.url);
+
+  const web = await createBuiltWeb(relay.url.href.replace(/\/$/u, ''), webServerPath);
+
+  stack.defer(() => relay.stop(true));
   stack.defer(web.stop);
 
   const liveOpens = { count: 0 };
 
   const front = createFrontProxy({
-    apiURL: api.url,
+    apiURL: () => api.url,
     webURL: web.url,
 
     // a browser that has no microphone gets a silent one, and its peer connection an end that
@@ -450,12 +473,15 @@ export async function runVerifyHarness(): Promise<void> {
     db: getDataFilePath(nixie.dataDir, 'nixie.db'),
   });
 
-  try {
-    await writeRecordLines(api.client, stopped.signal);
-  } catch (error) {
-    // the stop signals the whole process group, so nixie stops and the stream fails
-    if (!stopped.signal.aborted) {
-      throw error;
+  const seen = { sequence: 0 };
+
+  while (!stopped.signal.aborted) {
+    try {
+      await writeRecordLines(api.client, stopped.signal, seen);
+    } catch {
+      // the stop signals the whole process group, so nixie stops and the stream fails; a reset
+      // stops nixie too, and the supervisor starts it again
+      await Bun.sleep(250);
     }
   }
 }
@@ -513,12 +539,6 @@ function buildMcpConfigLines(url: string, clientID: string): string[] {
   ];
 }
 
-async function watchExit(exited: Promise<unknown>, running: RunningState): Promise<void> {
-  await exited;
-
-  running.isRunning = false;
-}
-
 // how long a check waits for the model to receive text
 const modelWaitMs = 10_000;
 
@@ -544,10 +564,18 @@ function writeLine(line: Readonly<Record<string, unknown>>): void {
   process.stdout.write(`${JSON.stringify(line)}\n`);
 }
 
+interface SeenRecords {
+  sequence: number;
+}
+
 // Each record on the conversation thread, in the order nixie wrote them.
-async function writeRecordLines(client: ContractClient, signal: AbortSignal): Promise<void> {
+async function writeRecordLines(
+  client: ContractClient,
+  signal: AbortSignal,
+  seen: SeenRecords,
+): Promise<void> {
   const records = await client.live.follow(
-    { afterSequence: 0, thread: 'conversation' },
+    { afterSequence: seen.sequence, thread: 'conversation' },
     { signal },
   );
 
@@ -555,6 +583,8 @@ async function writeRecordLines(client: ContractClient, signal: AbortSignal): Pr
     if (event.kind !== 'record') {
       continue;
     }
+
+    seen.sequence = event.record.sequence;
 
     writeLine({
       event: 'record',

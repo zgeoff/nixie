@@ -76,7 +76,7 @@ test.skipIf(!isPreviousReleaseReadable)(
 
     const rolledBack = nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
-    await nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+    await nixie.waitForRecord((record) => record.kind === 'erasure.finished');
     await rolledBack.kill();
 
     const rolledBackState = await readPurgeState(nixie);
@@ -130,7 +130,7 @@ test
 
     const restarted = ctx.nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
-    await ctx.nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+    await ctx.nixie.waitForRecord((record) => record.kind === 'erasure.finished');
     await restarted.kill();
 
     const state = await readPurgeState(ctx.nixie);
