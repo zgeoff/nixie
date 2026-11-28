@@ -1,13 +1,9 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { expect, test } from 'bun:test';
+import { join } from 'node:path';
 import {
   collectFeatureScopes,
   createNodeRepoHost,
-  createWringer,
   isGlobMatch,
-  local,
   resolveFeatures,
 } from '@wringer/core';
 import type { Wringer } from '@wringer/core';
@@ -74,6 +70,24 @@ async function setupTest() {
       return collectFeatureScopes(resolved.wringer).some(
         (scope) => isGlobMatch(path, scope.globs) && !isGlobMatch(path, registry.ignore),
       );
+    },
+
+    // The names of the features that a change to the path flags, resolved from the real registry
+    // narrowed to the named features, so each feature's reached files and extra files count.
+    readFlaggedFeatures: async (
+      path: string,
+      featureNames: readonly string[],
+    ): Promise<readonly string[]> => {
+      const narrowed: Wringer = {
+        ...registry,
+        features: registry.features.filter((feature) => featureNames.includes(feature.name)),
+      };
+
+      const resolved = await resolveFeatures(createNodeRepoHost(), narrowed, rootDir);
+
+      return collectFeatureScopes(resolved.wringer)
+        .filter((scope) => isGlobMatch(path, scope.globs))
+        .map((scope) => scope.name);
     },
     collectFeatureNames: () => registry.features.map((feature) => feature.name),
     collectFeatures: () => registry.features,
@@ -155,6 +169,17 @@ test('it gives the proposals route to the policy-proposal feature alone', async 
   expect(claimants).toStrictEqual(['policy-proposal']);
 });
 
+test('it flags only the feature whose entry imports a file that no other entry imports', async () => {
+  const ctx = await setupTest();
+
+  const flagged = await ctx.readFlaggedFeatures('apps/web/src/routes/proposals.tsx', [
+    'chat-turn',
+    'policy-proposal',
+  ]);
+
+  expect(flagged).toStrictEqual(['policy-proposal']);
+});
+
 test('it flags coding-session for a change to the fake coding gateway that it imports', async () => {
   const ctx = await setupTest();
 
@@ -185,54 +210,4 @@ test('it starts no walk from a file that an ignore glob matches', async () => {
   );
 
   expect(ignoredEntries).toStrictEqual([]);
-});
-
-test('it flags only the feature whose entry imports a file that no other entry imports', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'verify-entries-'));
-
-  onTestFinished(() => rm(directory, { recursive: true }));
-
-  const files = {
-    'src/pantry.ts': "import { stock } from './stock';\nexport const pantry = stock;\n",
-    'src/stock.ts': 'export const stock = 1;\n',
-    'src/orders.ts': "import { cart } from './cart';\nexport const orders = cart;\n",
-    'src/cart.ts': 'export const cart = 2;\n',
-    'src/shared.ts': 'export const shared = 3;\n',
-  };
-
-  for (const [path, text] of Object.entries(files)) {
-    await mkdir(dirname(join(directory, path)), { recursive: true });
-
-    await Bun.write(join(directory, path), text);
-  }
-
-  await Bun.$`git init -q && git add . && git -c user.name=test -c user.email=test@example.test commit -q -m init`.cwd(
-    directory,
-  );
-
-  const wringer = createWringer({ name: 'entries-test' })
-    .target('local', {
-      mode: 'attach',
-      access: 'read-only',
-      refusalHint: 'none',
-      host: local(),
-      endpoints: () => ({}),
-      drivers: {},
-    })
-    .feature(
-      { name: 'pantry', summary: 'Browse the pantry', entries: ['src/pantry.ts'] },
-      { name: 'orders', summary: 'Place an order', entries: ['src/orders.ts'] },
-    )
-    .build();
-
-  const resolved = await resolveFeatures(createNodeRepoHost(), wringer, directory);
-
-  const flagged = (path: string) =>
-    collectFeatureScopes(resolved.wringer)
-      .filter((scope) => isGlobMatch(path, scope.globs))
-      .map((scope) => scope.name);
-
-  expect(flagged('src/stock.ts')).toStrictEqual(['pantry']);
-  expect(flagged('src/cart.ts')).toStrictEqual(['orders']);
-  expect(flagged('src/shared.ts')).toStrictEqual([]);
 });
