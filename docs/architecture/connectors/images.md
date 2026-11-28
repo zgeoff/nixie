@@ -37,9 +37,9 @@ back, the gallery and the notes show them again.
   same.
 - `profile`, a key of `images.profiles`. The `images.default` profile answers when it is absent.
 
-A stored image whose size is not one of the 3 sizes, such as an import, is padded with transparent
-pixels to the size nearest its shape before it goes to the provider, and the edit comes back at that
-size. The price follows that size.
+When the source of an edit is not one of the 3 sizes, such as an import, nixie scales it to fit the
+size nearest its shape and pads it to that size with transparent pixels before it goes to the
+provider. The edit comes back at that size, and the price follows that size.
 
 The tool's description lists every configured profile with its model, one line each, and names the
 default. A result names the image by its short ID, its `from`, the `profile` and `model` that drew
