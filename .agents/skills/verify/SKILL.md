@@ -12,9 +12,9 @@ metadata:
 # Verify nixie
 
 Use `bun verify` to start the app, use each feature your change touches the way a user would, and
-record a verdict that it works. Put the report in the PR with `bun verify publish`, and hand back
-the PR link and each feature you could not verify. Leave `bun verify gate` to CI: it reads the
-report from the PR description, and fails a PR that changes a feature with no verdict there.
+record a verdict that it works. Put the report in the PR with `bun verify publish`. Leave
+`bun verify gate` to CI: it reads the report from the PR description, and fails a PR that changes a
+feature with no verdict there.
 
 ## Key rules
 
@@ -22,8 +22,7 @@ report from the PR description, and fails a PR that changes a feature with no ve
   then `done`.
 - [Read the envelope](#read-the-envelope): branch on the exit code and `error.code`, never on the
   message.
-- [Targets](#targets): check a change on a launch target, a target whose app `bun verify up` starts
-  from your worktree.
+- [Targets](#targets): check a change on a launch target.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file that no
   feature's entry imports, read the reference before you edit the skill, and run `lint`.
@@ -36,8 +35,6 @@ report from the PR description, and fails a PR that changes a feature with no ve
 - [Publish the report](references/publish.md): at step 9 of Check a change.
 - [Preview setup](references/preview-setup.md) and [the prod check](references/prod-check.md):
   before you attach to `preview` or `prod`.
-
-Read a feature's file before you run its journey.
 
 <!-- wringer:features -->
 
@@ -96,7 +93,7 @@ Read a feature's file before you run its journey.
    the commands in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
 3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
-   `doctor` again, not the compare step that the `check-failed` row of
+   `doctor` again. Skip the compare step that the `check-failed` row of
    [Exit codes](references/exit-codes.md) gives.
 4. Run the journey from the feature's file in [References](#references). Its first line,
    `use --feature`, records each later command under that feature. Expect: each command exits 0.
@@ -105,7 +102,7 @@ Read a feature's file before you run its journey.
    - When it matches, and no command failed with `read-only`, go on to step 6.
    - When your change broke the feature, fix the app's code. Then run `bun verify up --restart`,
      `bun verify doctor` and the journey again.
-   - When your change means to change the end state, fix the feature's file, and run
+   - When you mean your change to alter the end state, fix the feature's file, and run
      `bun verify lint`. Then run the journey again.
    - Otherwise, such as a `read-only` failure or a bug your change did not cause, skip `done`. List
      the feature in your reply with the end state you expected and the `data` you got. For a
@@ -181,8 +178,8 @@ index file.
 
 <!-- /repo -->
 
-A file that a feature's entry imports needs no edit. Add any other file to a feature's `extra`, to
-`.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
+Edit nothing for a file that a feature's entry imports. Add any other file to a feature's `extra`,
+to `.shared()` or to `.ignore()`, which fits a file the running app never reads, such as a test. The
 gate fails on a changed file that no feature owns and no glob matches. `bun verify features` lists
 each feature's entries and how many files they reach, and `--feature <name>` lists those files.
 
