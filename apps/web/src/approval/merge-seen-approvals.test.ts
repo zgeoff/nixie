@@ -32,6 +32,7 @@ function setupTest() {
           approveLabel: 'Run',
         },
         task: null,
+        chain: [],
         choices: ['approve', 'defer', 'decline'],
         passkeyChoices: [],
       };

@@ -128,6 +128,27 @@ it. The call leaves out a row it cannot show.
 Each body carries an approve label, such as `Run mail.send to harbour@example.org`, which names what
 Approve does.
 
+### The delegation chain
+
+An action proposal records the task that proposed it in `task_id`. A row from before that change has
+none, and the host reads its `thread` in the same place. Each item of `approvals.listItems` and each
+row of `approvals.readProposals` carries a `chain`: the steps from the work's start down to the
+asking task, which is the last step. The host builds it from the asking task and `tasks.started_by`,
+which names the thread that started each task. The walk stops at a conversation, at a task that
+nothing started, at an ID with no row, and on an ID it has already seen, and it takes at most 20
+steps.
+
+Each step has a `kind`, an `id` and a `name`, and never a UUID:
+
+- A `message` step is the conversation, so the chain starts at the thread that the owner's messages
+  reach. Its `id` is `conversation`.
+- A `coding` step is a task that binds a coding session. Its `id` is the session's short ID.
+- A `task` step is any other task. Its `id` is the task ID, which is a short ID for a started task.
+
+A step's `name` is its entry in the task directory, or else the name its `task.created` record
+holds, or else its `id`. The card lists the steps when the chain has more than one, so you see when
+a message or outside content set off a chain of tasks before the call.
+
 ## The answer
 
 An answer names the proposal, the action hash the client showed, and one choice: approve, always

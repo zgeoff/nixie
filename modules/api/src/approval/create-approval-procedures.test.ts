@@ -18,7 +18,7 @@ import {
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import type { Effect } from '@heynixie/policy';
-import { buildActionProposalInput } from '@heynixie/policy';
+import { buildActionProposalInput, writeActionProposal } from '@heynixie/policy';
 import { promptsOverrideProposedCodec } from '@heynixie/prompts';
 import {
   buildProposeDeps,
@@ -28,6 +28,7 @@ import {
   runProposalReturns,
 } from '@heynixie/proposals';
 import { createConversationTask, readInbox, writeTaskControl } from '@heynixie/tasks';
+import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { toolCalledCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
@@ -988,6 +989,7 @@ test('#approvals.readProposals reads an open row with its choices, its approve l
         proposal: item.proposal,
         body: item.body,
         task: item.task,
+        chain: item.chain,
         choices: ['approve', 'defer', 'decline'],
         passkeyChoices: [],
         answeredOn: null,
@@ -1299,4 +1301,66 @@ test('#approvals.readImage refuses a screen picture ID that names no screen clic
   await Promise.allSettled([refused]);
 
   expect(refused).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
+});
+
+test('#approvals.readProposals and #approvals.listItems give the chain from the conversation through each task to the asking task, by short ID and name', async () => {
+  const ctx = await setupTest();
+
+  const seeder = buildTaskSeeder({ context: ctx.api.context });
+
+  const step = await seeder.conversationStep();
+
+  const parentID = await seeder.task({
+    starter: step.claim,
+    name: 'Read the inbox',
+    brief: 'Read the new mail.',
+  });
+
+  const askingID = await seeder.childTask({
+    parentID,
+    name: 'Check the sender',
+    brief: 'Check who sent it.',
+  });
+
+  const shortID = await withWriteTransaction(ctx.api.context.log.writer, (tx) =>
+    writeActionProposal(
+      tx,
+      {
+        log: ctx.api.context.log,
+        clock: ctx.api.context.clock,
+        definitions: ctx.api.context.definitions,
+      },
+      {
+        definitions: ctx.api.context.definitions(),
+        thread: askingID,
+        callSequence: 1,
+        tool: 'mail.send',
+        effects: ['send'],
+        cause: 'no_rule',
+        input: { to: 'harbour@example.org' },
+        destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+      },
+    ),
+  );
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+
+  invariant(item);
+
+  const read = await ctx.client.approvals.readProposals({
+    proposalIDs: [item.proposal.proposalID],
+  });
+
+  const expected = [
+    { kind: 'message' as const, id: 'conversation', name: 'Conversation' },
+    { kind: 'task' as const, id: parentID, name: 'Read the inbox' },
+    { kind: 'task' as const, id: askingID, name: 'Check the sender' },
+  ];
+
+  expect({ listed: item.chain, read: read.proposals[0]?.chain }).toStrictEqual({
+    listed: expected,
+    read: expected,
+  });
 });

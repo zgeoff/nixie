@@ -23,6 +23,7 @@ export function readMockApprovalItems() {
   return entries
     .toSorted((left, right) => compareEntries(left, right))
     .map((entry) => ({
+      chain: entry.row.chain,
       body: toMockApprovalBody(entry.row),
       choices: [...entry.row.choices],
       group: entry.group,

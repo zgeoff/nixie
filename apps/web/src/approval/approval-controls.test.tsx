@@ -48,6 +48,7 @@ function setupTest() {
           ...body,
         },
         task: null,
+        chain: [],
         choices: ['approve', 'defer', 'decline'],
         passkeyChoices: [],
         answeredOn: null,

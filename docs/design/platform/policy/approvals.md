@@ -29,7 +29,7 @@ change to it is a record. It holds:
 | Cause             | The prompt cause, or the memory gate's review reason                                                        |
 | Deciding rule     | The rule ID and revision, or none                                                                           |
 | Proposed rule     | For a gap or "always allow", the rule as data and a sentence                                                |
-| Task              | The task that proposed it, with its delegation chain                                                        |
+| Task              | The task that proposed it                                                                                   |
 | Proposer          | You, or nixie from a task                                                                                   |
 | Created, lapse    | When it was created, and when it lapses                                                                     |
 | State             | One of the states that [the approval record](../../../architecture/policy/approvals.md#the-shared-row) sets |
@@ -113,8 +113,7 @@ never proposes the same action hash again after a rejection in the same task run
 the earlier rejection instead.
 
 A task or worker never holds wider permissions than the thread that started it. The decision point
-enforces this at its scope stage, and each proposal keeps the delegation chain, so you see which
-task, started by which message, proposed it.
+enforces this at its scope stage.
 
 ### Always allow
 

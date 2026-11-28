@@ -15,6 +15,7 @@ export function toApprovalRead(item: ApprovalItem): ApprovalRead {
     proposal: item.proposal,
     body: item.body,
     task: item.task,
+    chain: item.chain,
     choices: item.choices,
     passkeyChoices: item.passkeyChoices,
     answeredOn: null,
