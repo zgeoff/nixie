@@ -25,18 +25,24 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox | 
 
   const existing = await context.options.adapter.list(computerOwner);
 
-  const kept = findKeptSandbox(existing, spec);
-  const others = existing.filter((sandbox) => sandbox.id !== kept?.id);
+  const found = findKeptSandbox(existing, spec);
+  const lone = existing.length === 1 ? found : undefined;
 
-  // A sandbox of today's spec that stands beside older ones is a replacement whose move never
-  // finished, so its disk is not trusted until a copy passes its check.
-  if (kept !== undefined && others.length === 0) {
-    state.sandbox = kept;
-    state.isAsleep = false;
+  if (lone !== undefined) {
+    const isDone = await probeCopyDone(context, lone);
 
-    return kept;
+    if (isDone) {
+      state.sandbox = lone;
+      state.isAsleep = false;
+
+      return lone;
+    }
   }
 
+  // A sandbox of today's spec that stands beside older ones is a replacement whose move never
+  // finished, so a copy fills it again. Alone with an unfinished copy, it holds no trusted disk.
+  const kept = existing.length > 1 ? found : undefined;
+  const others = existing.filter((sandbox) => sandbox.id !== kept?.id);
   const created = kept === undefined ? await context.options.adapter.create(spec) : kept;
 
   const isReplaced = await replaceOld(context, others, {
@@ -77,15 +83,19 @@ function buildComputerSpec(context: ComputerContext) {
   });
 }
 
+async function probeCopyDone(context: ComputerContext, sandbox: Sandbox): Promise<boolean> {
+  await wakeOld(sandbox);
+
+  return !(await probeCopyIncomplete(sandbox, context.options.homeEnv ?? {}));
+}
+
 interface ReplacementTarget {
   readonly sandbox: Sandbox;
-
-  // true for a sandbox this call created, whose disk holds nothing yet
   readonly isNew: boolean;
 }
 
-// An old sandbox whose last copy never finished is no source. A new disk counts as started from its
-// first step, so a failure that leaves it behind never makes it a source.
+// A new disk counts as started from its first step, so a failure that leaves it behind never makes
+// it a source.
 async function replaceOld(
   context: ComputerContext,
   old: readonly Sandbox[],

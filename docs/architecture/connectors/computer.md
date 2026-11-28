@@ -83,7 +83,8 @@ in `modules/connectors` owns the sandbox:
   started before its first step, and again before each later copy into it, which replaces any
   finished mark from an earlier copy. After the last check passes, nixie marks it as finished. A
   sandbox whose mark says started is never a source: the next call copies into it again or, after a
-  newer release, destroys it once the other disks are copied.
+  newer release, destroys it once the other disks are copied. When no other sandbox is left, nixie
+  destroys it and creates an empty one, so `isDiskNew` is true.
 - Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
   the first result from a disk that started empty, so the assistant knows what it held before is
   gone.

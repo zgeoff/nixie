@@ -10,6 +10,7 @@ import type { DesktopDiskSeed } from '../test-utils/seed-desktop-disk';
 import { seedDesktopDisk } from '../test-utils/seed-desktop-disk';
 import { computerOwner } from './computer-owner';
 import { startComputer } from './start-computer';
+import { writeCopyState } from './write-copy-state';
 
 async function setupTest() {
   const root = await mkdtemp(join(tmpdir(), 'ready-sandbox-'));
@@ -271,8 +272,7 @@ test('it moves the good disk to a newer release after a failed copy over a repla
 
   ctx.lost.path = null;
 
-  await ctx.startImage('computer-newer').settleMove();
-
+  const gate = await ctx.startImage('computer-newer').settleMove();
   const survivors = await ctx.adapter.list(computerOwner);
 
   const disks = await Promise.all(
@@ -281,6 +281,8 @@ test('it moves the good disk to a newer release after a failed copy over a repla
       files: await readDiskFiles(ctx.root, sandbox.id),
     })),
   );
+
+  expect(gate).toBe('ready');
 
   expect(disks).toStrictEqual([
     { image: 'computer-newer', files: [['/home/stub/files/note.txt', 'tide times']] },
@@ -299,8 +301,8 @@ test('it moves the good disk to a newer release after a failed read left an empt
   ctx.adapter.failNextDestroy('impd is down');
 
   await ctx.computer.settleMove();
-  await ctx.startImage('computer-newer').settleMove();
 
+  const gate = await ctx.startImage('computer-newer').settleMove();
   const survivors = await ctx.adapter.list(computerOwner);
 
   const disks = await Promise.all(
@@ -310,7 +312,31 @@ test('it moves the good disk to a newer release after a failed read left an empt
     })),
   );
 
+  expect(gate).toBe('ready');
+
   expect(disks).toStrictEqual([
     { image: 'computer-newer', files: [['/home/stub/files/note.txt', 'tide times']] },
   ]);
+});
+
+test('it replaces a lone desktop of the current image whose copy never finished', async () => {
+  const ctx = await setupTest();
+
+  const unfinished = await ctx.seed.desktopDisk({
+    image: 'computer-new',
+    files: { '/home/stub/files/note.txt': 'tide ti' },
+  });
+
+  await writeCopyState(unfinished, {}, 'started');
+
+  await ctx.computer.settleMove();
+
+  const survivors = await ctx.adapter.list(computerOwner);
+
+  const created = ctx.adapter.created.at(-1);
+
+  invariant(created);
+
+  expect(survivors.map((sandbox) => sandbox.id)).toStrictEqual([created.id]);
+  expect(created.id).not.toBe(unfinished.id);
 });
