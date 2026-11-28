@@ -37,6 +37,7 @@ export { pickOutcome } from './action/pick-outcome';
 export { probeActionUnfinished } from './action/probe-action-unfinished';
 export type { ActionCall } from './action/read-action-calls';
 export { readActionCalls } from './action/read-action-calls';
+export { readActionStepKey } from './action/read-action-step-key';
 export { describeOutcomeReason, isOutcomeReason } from './action/describe-outcome-reason';
 export { readApprovedCalls } from './action/read-approved-calls';
 export { readActionCounts } from './action/read-action-counts';

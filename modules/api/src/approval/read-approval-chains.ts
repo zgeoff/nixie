@@ -1,6 +1,7 @@
+import { readActionStepKey } from '@heynixie/actions';
 import { writeTaskSessionNames } from '@heynixie/coding';
 import type { TasksTables } from '@heynixie/tasks';
-import { readStepOwnerText, readStepWakeCause, readTaskNames } from '@heynixie/tasks';
+import { readStepOrigin, readTaskNames } from '@heynixie/tasks';
 import type { APIContext } from '../types';
 import type { TaskLink } from './collect-approval-chain';
 import { collectApprovalChain } from './collect-approval-chain';
@@ -122,7 +123,7 @@ function collectUnread(ids: readonly string[], links: ReadonlyMap<string, TaskLi
 
 // What woke the step that started the work, and the owner's text when it was the owner. A task the
 // conversation started was started by the step that ran just before it was created.
-async function readStartingMessage(
+function readStartingMessage(
   context: APIContext,
   links: ReadonlyMap<string, TaskLink>,
   ask: ApprovalAsk,
@@ -132,7 +133,7 @@ async function readStartingMessage(
   const rootLink = root === undefined ? undefined : links.get(root);
 
   if (root === undefined || rootLink === undefined || rootLink.startedBy !== null) {
-    return { cause: null, ownerText: null };
+    return Promise.resolve({ cause: null, ownerText: null });
   }
 
   const beforeSequence =
@@ -140,13 +141,12 @@ async function readStartingMessage(
       ? ask.createdSequence
       : (links.get(next)?.createdSequence ?? ask.createdSequence);
 
-  const cause = await readStepWakeCause(context, root, beforeSequence);
-
-  return {
-    cause,
-    ownerText:
-      cause?.kind === 'owner' ? await readStepOwnerText(context, root, beforeSequence) : null,
-  };
+  return readStepOrigin(
+    context,
+    { readActionStepKey: (actionID) => readActionStepKey(context, actionID) },
+    root,
+    beforeSequence,
+  );
 }
 
 // The message step for outside content that woke a task that nothing started, such as a
