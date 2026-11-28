@@ -9,7 +9,7 @@
         "@stylistic/eslint-plugin": "6.0.1",
         "@tsconfig/strictest": "2.0.9",
         "@types/bun": "1.4.4",
-        "@zgeoff/agent-hooks": "0.3.2",
+        "@zgeoff/agent-hooks": "0.3.3",
         "@zgeoff/bun-test-extended": "0.2.4",
         "@zgeoff/bun-test-react": "0.2.4",
         "@zgeoff/chex": "0.4.7",
@@ -2861,7 +2861,7 @@
 
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.15", "", {}, "sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA=="],
 
-    "@zgeoff/agent-hooks": ["@zgeoff/agent-hooks@0.3.2", "", { "bin": { "agent-hooks": "dist/cli.js" } }, "sha512-9F7us6ipxUDEozm0RPGBWlbPVQpr8icqVX5zoZYuyrN1dxSy+NTge7zdUkDFHYVQ4RzHxoz+3kHj/YPZZJiewQ=="],
+    "@zgeoff/agent-hooks": ["@zgeoff/agent-hooks@0.3.3", "", { "bin": { "agent-hooks": "dist/cli.js" } }, "sha512-LfE2vjSdvZS17qsNij8OE4nAM/5HfvvmX/tpOR99DfC3h6DC0rsBpruoPiLwMCmc5CTgolveEh14UtqfonnM/w=="],
 
     "@zgeoff/bun-test-extended": ["@zgeoff/bun-test-extended@0.2.4", "", { "dependencies": { "jest-extended": "7.0.0", "jest-matcher-utils": "30.5.2" } }, "sha512-pjHhfUFSQVOG97CPobmUJ3v1xbigRe5DOD+7VDoe5IIYvAOMkctmkHznj4EKKnZSpQp0b3/jqvYuzIFrpeaZMw=="],
 
