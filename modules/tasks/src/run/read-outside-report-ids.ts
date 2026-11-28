@@ -4,14 +4,17 @@ import type { TasksContext, TasksTables } from '../types';
 import { taskRunReportRequestedCodec } from './task-run-report-requested-codec';
 import type { TaskRun } from './types';
 
-// The report IDs of the ended task runs whose report request marked the summary as outside content.
+// The report IDs of the ended task runs whose end or report request marked the report as outside
+// content.
 export async function readOutsideReportIDs(
   context: Pick<TasksContext, 'log'>,
   runs: readonly TaskRun[],
 ): Promise<ReadonlySet<string>> {
-  const reportIDs = new Set(
-    runs.flatMap((run) => (run.ended === null ? [] : [run.ended.record.reportID])),
-  );
+  const ended = runs.flatMap((run) => (run.ended === null ? [] : [run.ended.record]));
+
+  const reportIDs = new Set(ended.map((record) => record.reportID));
+
+  const marked = ended.filter((record) => record.outside === true).map((record) => record.reportID);
 
   if (reportIDs.size === 0) {
     return new Set();
@@ -31,7 +34,7 @@ export async function readOutsideReportIDs(
     .execute();
 
   if (rows.length === 0) {
-    return new Set();
+    return new Set(marked);
   }
 
   const requests = await readRecords(context.log, {
@@ -41,9 +44,10 @@ export async function readOutsideReportIDs(
     limit: rows.length,
   });
 
-  return new Set(
-    requests
+  return new Set([
+    ...marked,
+    ...requests
       .map((entry) => taskRunReportRequestedCodec.decode(entry.record.payload).reportID)
       .filter((reportID) => reportIDs.has(reportID)),
-  );
+  ]);
 }

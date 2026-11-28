@@ -60,7 +60,28 @@ test.each<[string, TaskState, TaskHolds, DefinitionFire]>([
       waking: null,
       hashInForce: 'hash-1',
     },
+    isPauseUnanswered: false,
   });
 
   expect(result).toBe(expected);
+});
+
+test('it answers held for a failed task whose pause request waited on the step that failed it', () => {
+  const result = pickDefinitionFire({
+    holds: { ended: true, spend: false, nixie: false, limit: false, task: false },
+    state: 'failed',
+    run: {
+      open: null,
+      isLimitHeld: false,
+      control: null,
+      newest: null,
+      fires: [],
+      heldKeys: new Set(),
+      waking: null,
+      hashInForce: 'hash-1',
+    },
+    isPauseUnanswered: true,
+  });
+
+  expect(result).toBe('held');
 });

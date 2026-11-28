@@ -12,6 +12,10 @@ export interface DefinitionFireFacts {
   readonly holds: TaskHolds;
   readonly state: TaskState;
   readonly run: RunDefinitionFacts;
+
+  // whether the user's newest pause request waited on the step that failed the task, so no
+  // task.paused, restart or revival answered it
+  readonly isPauseUnanswered: boolean;
 }
 
 // A failed task's own failure never holds a fire of its definition, so one failed run cannot stop
@@ -28,7 +32,7 @@ export function pickDefinitionFire(facts: DefinitionFireFacts): DefinitionFire {
   }
 
   if (isFailed) {
-    return 'revive';
+    return facts.isPauseUnanswered ? 'held' : 'revive';
   }
 
   const isPending = pickRunDefinition(facts.run).kind === 'open';

@@ -410,14 +410,15 @@ whether the task takes the fire, before it writes the fire's record. The first a
 decides:
 
 1. `held`: the task's [gate](./pause.md#the-task-gate) answers `ended` for a task that is done,
-   stopped or closed, or answers `limit` or `task`. The core records a skip with `task_held`, and
-   the definition fires again at the first slot after the user resumes, restarts or raises the task.
+   stopped or closed, or answers `limit` or `task`, or the task failed while the user's pause
+   request waited on its step. The core records a skip with `task_held`, and the definition fires
+   again at the first slot after the user resumes, restarts or raises the task.
 2. `wait`: the gate answers `spend` or `nixie`. The core writes nothing and takes no key, so the
    source delivers the fire again at its next tick.
-3. `revive`: the task is `failed`, and the gate answers no other reason. The core writes
-   `task.revived`, which returns the task to `ready` with no step errors, and then records the fire.
-   The next claim opens a fresh task run for the fire, so one failed task run never stops the
-   schedule.
+3. `revive`: the task is `failed`, the gate answers no other reason, and no pause request of the
+   user waited on the step that failed it. The core writes `task.revived`, which returns the task to
+   `ready` with no step errors, and then records the fire. The next claim opens a fresh task run for
+   the fire, so one failed task run never stops the schedule.
 4. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
    reply. The core records a skip with `still_running`.
 5. `take`: the task has no pending task run, and its open task run is idle or absent. The core

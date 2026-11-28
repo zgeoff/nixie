@@ -30,8 +30,12 @@ export async function readDefinitionTaskInTransaction(
   }
 
   const holds = await readTaskHolds(tx, taskID);
+  const isPauseUnanswered = await probePauseUnanswered(tx, taskID);
 
-  return { taskID, fire: pickDefinitionFire({ holds, state: read.state, run: read.facts }) };
+  return {
+    taskID,
+    fire: pickDefinitionFire({ holds, state: read.state, run: read.facts, isPauseUnanswered }),
+  };
 }
 
 async function readTaskID(tx: Transaction<unknown>, definitionID: string): Promise<string | null> {
@@ -43,4 +47,26 @@ async function readTaskID(tx: Transaction<unknown>, definitionID: string): Promi
     .executeTakeFirst();
 
   return row?.task_id ?? null;
+}
+
+// A step that fails clears the task's pause request and writes no task.paused, so only the
+// thread's newest pause or restart record shows that the user's pause still stands.
+async function probePauseUnanswered(tx: Transaction<unknown>, taskID: string): Promise<boolean> {
+  const row = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('thread', '=', taskID)
+    .where('kind', 'in', [
+      'task.pause_requested',
+      'task.paused',
+      'task.resumed',
+      'task.restarted',
+      'task.revived',
+    ])
+    .orderBy('sequence', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+
+  return row?.kind === 'task.pause_requested';
 }

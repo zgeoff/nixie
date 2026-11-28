@@ -153,6 +153,7 @@ export async function writeRunEndInTransaction(
         reportID,
         reportTo: target,
         delivery: delivery.delivery,
+        ...(report.isOutside ? { outside: true } : {}),
       }),
       erasable: { body },
     },

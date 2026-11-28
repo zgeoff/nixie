@@ -24,5 +24,8 @@ export const taskRunEndedCodec = defineRecordCodec(
     reportID: z.string(),
     reportTo: z.string().nullable(),
     delivery: z.enum(['wake', 'next_turn', 'kept']),
+
+    // true: the report holds text from outside nixie, such as a failed run's last error
+    outside: z.boolean().exactOptional(),
   }),
 );

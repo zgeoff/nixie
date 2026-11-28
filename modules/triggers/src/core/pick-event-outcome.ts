@@ -13,7 +13,7 @@ export type EventOutcome =
   | { readonly kind: 'wait' }
   | { readonly kind: 'skip'; readonly thread: string; readonly reason: SkipReason };
 
-// Rows 3 to 7 of the table of one deliver call. The answer is null for a conversation target, whose
+// Rows 3 to 8 of the table of one deliver call. The answer is null for a conversation target, whose
 // thread is the conversation's, and which heeds only nixie's pause and the spending stop: the
 // caller says whether one of them holds the conversation's task.
 export function pickEventOutcome(

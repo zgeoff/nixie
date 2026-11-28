@@ -382,9 +382,10 @@ wake. A kept report exists only on `task.run_ended`, because a message on the ta
 would read as the task's input. A `task.message` of kind `report` that a task sends during a task
 run is an ordinary message that ends nothing. nixie never treats a report as a message from the
 user. A definition's task run reports under `next_turn` by default, because a scheduled task run
-under `wake` would spend a conversation turn on each fire. A failed task run of a definition wakes
-the conversation under `next_turn` too, so the conversation learns of the failure when it happens,
-and can tell the user or end its turn silently.
+under `wake` would spend a conversation turn on each fire.
+
+A failed task run of a definition wakes the conversation under `next_turn` too, so the conversation
+learns of the failure when it happens, and can tell the user or end its turn silently.
 
 ## Reports
 
