@@ -1,6 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ExportPathExistsError } from './export-path-exists-error';
@@ -92,5 +92,50 @@ test('it removes the partial file when the rows fail', async () => {
   const names = await readdir(ctx.directory);
 
   expect(write).rejects.toThrow('read failed');
+  expect(names).toStrictEqual([]);
+});
+
+test('it makes a file only its owner reads when the process umask removes owner write', async () => {
+  const ctx = await setupTest();
+
+  const previous = process.umask(0o200);
+
+  onTestFinished(() => {
+    process.umask(previous);
+  });
+
+  const count = await ctx.write(ctx.path, ctx.rows);
+  const info = await stat(ctx.path);
+
+  expect(count).toBe(2);
+  expect(info.mode & 0o777).toBe(0o600);
+});
+
+test('it writes to an unused path beside a partial file an earlier export left', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(`${ctx.path}.partial`, 'left behind');
+
+  const count = await ctx.write(ctx.path, ctx.rows);
+  const names = await readdir(ctx.directory);
+
+  expect(count).toBe(2);
+  expect(names.toSorted()).toStrictEqual(['out.db', 'out.db.partial']);
+});
+
+test('it leaves no file at the path when the directory cannot be synced', async () => {
+  const ctx = await setupTest();
+
+  await chmod(ctx.directory, 0o300);
+
+  const write = ctx.write(ctx.path, ctx.rows);
+
+  await Promise.allSettled([write]);
+
+  await chmod(ctx.directory, 0o700);
+
+  const names = await readdir(ctx.directory);
+
+  expect(write).rejects.toMatchObject({ code: 'EACCES' });
   expect(names).toStrictEqual([]);
 });

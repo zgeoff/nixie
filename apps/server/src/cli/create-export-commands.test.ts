@@ -85,7 +85,7 @@ test('it writes a file that the sqlite3 command opens, with each text decrypted'
   expect(read.stdout.toString()).toBe('1|owner_message|conversation|{"text":"hello"}\n');
 });
 
-test('it leaves a forgotten text as a gap and still finishes', async () => {
+test('it leaves an expired text as a gap and still finishes', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.context.log, [
@@ -115,7 +115,7 @@ test('it leaves a forgotten text as a gap and still finishes', async () => {
   ]);
 
   expect(exitCode).toBe(0);
-  expect(read.stdout.toString()).toBe('1|GAP|shredded\n2|{"text":"kept"}|readable\n');
+  expect(read.stdout.toString()).toBe('1|GAP|expired\n2|{"text":"kept"}|readable\n');
 });
 
 test('it writes no file and exits 1 when a deny rule covers the export', async () => {

@@ -114,22 +114,26 @@ The file holds one table, `records`, with a row per record:
 | Column                                                                              | Holds                                                                       |
 | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `sequence`, `recorded_at`, `kind`, `thread`, `parent`, `step_key`, `content_source` | the envelope, with the time as an ISO 8601 string                           |
+| `short_id`                                                                          | the `shortID` of the record's payload, null when it has none                |
 | `decision`, `approval`                                                              | the envelope's decision and approval as JSON, null when the record has none |
 | `payload`                                                                           | the structured payload as JSON                                              |
 | `text`                                                                              | the decrypted erasable fields as JSON, null for a gap or a record with none |
-| `text_status`                                                                       | `readable`, `none`, `shredded` or `unreadable`                              |
+| `text_status`                                                                       | `readable`, `none`, `shredded`, `expired` or `unreadable`                   |
 
-A record whose key is gone, whether a forget or an expiry removed it, or whose text fails to
-decrypt, keeps its envelope and payload and gets a null `text` with the reason in `text_status`. The
-export counts these gaps and finishes. The file holds no attachment: an image or another binary
-stays in the database.
+A record whose key is gone, or whose text fails to decrypt, keeps its envelope and payload and gets
+a null `text` with the reason in `text_status`. The reason is `shredded` when an erasure that began
+named the key, its family or its thread, and `expired` for a key that left without one. The export
+counts these gaps and finishes. The file holds no attachment: an image or another binary stays in
+the database.
 
 The export is a plain copy of every conversation, so it carries the declared effect `export`, under
 the tool name `log.export`, and passes the [decision point](../policy/decision-point.md) like any
 other action. A deny rule that matches stops it before any file exists. The decision point has no
 user to ask, so an ask outcome or no rule at all lets it run: the command is the user's own request.
-The file is created with the permissions 0600 under a partial name, and a hard link gives it its
-final name only when nothing holds that path, so an export never overwrites a file.
+The server fills the file at the permissions 0600 inside a new directory that only its owner enters,
+beside the final path, and a hard link gives it its final name only when nothing holds that path, so
+an export never overwrites a file. A failure removes the directory and any file at the path. The
+control socket has no idle timeout, because the request answers only when the export finishes.
 
 ## The reset
 
