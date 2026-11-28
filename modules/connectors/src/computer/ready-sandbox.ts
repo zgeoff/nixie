@@ -3,11 +3,14 @@ import { buildSandboxSpec, findKeptSandbox, sandboxSizes } from '@heynixie/sandb
 import { computerOwner } from './computer-owner';
 import { computerFolders, copyComputerFolder } from './copy-computer-folder';
 import { wakeOld } from './move-old-sandboxes';
+import { probeCopyIncomplete } from './probe-copy-incomplete';
 import type { ComputerContext, DesktopState } from './types';
+import { writeCopyState } from './write-copy-state';
+import { writeDiskUsedMarker } from './write-disk-used-marker';
 
-// The computer's sandbox: the kept one that holds today's spec, or a new one. A kept sandbox of an
-// older spec gives its disk to the new one, which replaces it.
-export async function readySandbox(context: ComputerContext): Promise<Sandbox> {
+// The computer's sandbox: a lone one of today's spec whose copy finished, or a new one that replaces
+// every other once each copy passed its check. It is null after a failed copy, with the old ones kept.
+export async function readySandbox(context: ComputerContext): Promise<Sandbox | null> {
   const state = context.state;
 
   if (state.sandbox !== null && !state.sandbox.isRetired) {
@@ -22,18 +25,28 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox> {
 
   const existing = await context.options.adapter.list(computerOwner);
 
-  const kept = findKeptSandbox(existing, spec);
+  const found = findKeptSandbox(existing, spec);
+  const lone = existing.length === 1 ? found : undefined;
 
-  if (kept !== undefined) {
-    state.sandbox = kept;
-    state.isAsleep = false;
+  if (lone !== undefined) {
+    const isDone = await probeCopyDone(context, lone);
 
-    return kept;
+    if (isDone) {
+      state.sandbox = lone;
+      state.isAsleep = false;
+
+      return lone;
+    }
   }
 
   const created = await context.options.adapter.create(spec);
+  const isReplaced = await replaceOld(context, existing, created);
 
-  await replaceOld(context, existing, created);
+  if (!isReplaced) {
+    await removeCreated(context, created);
+
+    return null;
+  }
 
   state.sandbox = created;
   state.isAsleep = false;
@@ -60,17 +73,35 @@ function buildComputerSpec(context: ComputerContext) {
   });
 }
 
+async function probeCopyDone(context: ComputerContext, sandbox: Sandbox): Promise<boolean> {
+  await wakeOld(sandbox);
+
+  return !(await probeCopyIncomplete(sandbox, context.options.homeEnv ?? {}));
+}
+
+// The new disk counts as started from its first step, so a failure that leaves it behind never
+// makes it a source.
 async function replaceOld(
   context: ComputerContext,
   old: readonly Sandbox[],
   created: Sandbox,
-): Promise<void> {
+): Promise<boolean> {
   const homeEnv = context.options.homeEnv ?? {};
+  const sources: Sandbox[] = [];
+  const unverified: Sandbox[] = [];
 
-  for (const sandbox of old) {
-    try {
+  try {
+    await writeCopyState(created, homeEnv, 'started');
+
+    for (const sandbox of old) {
       await wakeOld(sandbox);
 
+      const isIncomplete = await probeCopyIncomplete(sandbox, homeEnv);
+
+      (isIncomplete ? unverified : sources).push(sandbox);
+    }
+
+    for (const sandbox of sources) {
       for (const folder of computerFolders) {
         await copyComputerFolder({
           from: sandbox,
@@ -80,10 +111,31 @@ async function replaceOld(
           folder,
         });
       }
-    } catch (error) {
-      context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
     }
 
+    if (sources.length > 0) {
+      await writeDiskUsedMarker(created, homeEnv);
+    }
+
+    await writeCopyState(created, homeEnv, 'finished');
+  } catch (error) {
+    context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
+
+    return false;
+  }
+
+  for (const sandbox of [...sources, ...unverified]) {
     await sandbox.destroy();
+  }
+
+  return true;
+}
+
+// The half-copied sandbox goes, so the next call does not take its partial disk for a kept one.
+async function removeCreated(context: ComputerContext, created: Sandbox): Promise<void> {
+  try {
+    await created.destroy();
+  } catch (error) {
+    context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
   }
 }

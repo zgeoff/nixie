@@ -13,7 +13,6 @@ export async function runRestartSweepSteps(parts: ServerParts): Promise<void> {
         await removeSweptSandboxes(parts.context, {
           logger: parts.log,
           adapter: parts.tools.adapter,
-          isComputerOn: parts.images.computer !== undefined,
           currentImages: Object.values(parts.images).map((image) => image.name),
 
           // The conversation's own setup replaces its old-image sandbox after it copies the session out.

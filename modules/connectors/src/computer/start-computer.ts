@@ -365,6 +365,11 @@ async function readWatchGuest(
     }
 
     const sandbox = await readySandbox(context);
+
+    if (sandbox === null) {
+      return null;
+    }
+
     const isMoved = await moveOldSandboxes(context, sandbox);
 
     return isMoved && !isEnded() ? await readyGuest(context, sandbox) : null;
@@ -449,6 +454,11 @@ async function runInTurnOrBusy(
 async function runInTurn(context: ComputerContext, call: ComputerCall): Promise<CallResult> {
   try {
     const sandbox = await readySandbox(context);
+
+    if (sandbox === null) {
+      return { status: 'moving' };
+    }
+
     const isMoved = await moveOldSandboxes(context, sandbox);
 
     if (!isMoved) {
@@ -522,6 +532,11 @@ async function settleMove(context: ComputerContext): Promise<MoveGate> {
 
   try {
     const sandbox = await readySandbox(context);
+
+    if (sandbox === null) {
+      return 'moving';
+    }
+
     const isMoved = await moveOldSandboxes(context, sandbox);
 
     return isMoved ? 'ready' : 'moving';

@@ -26,6 +26,12 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   }[];
   readonly countMostLive: () => number;
 
+  // makes the next destroy of any sandbox reject, which keeps the sandbox
+  readonly failNextDestroy: (message: string) => void;
+
+  // makes the next file listing of any sandbox reject
+  readonly failNextFileList: (message: string) => void;
+
   // every exec a sandbox ran, in order
   readonly execs: readonly { readonly sandboxID: string; readonly command: RunSpec }[];
 
@@ -75,6 +81,7 @@ export function buildStubSandboxAdapter(
   const createFailures = [...(options.createFailures ?? [])];
   const listFailures = [...(options.listFailures ?? [])];
   const destroyFailures = [...(options.destroyFailures ?? [])];
+  const fileListFailures: StubCallFailure[] = [];
   const created: { id: string; spec: SandboxSpec }[] = [];
   const destroyed: string[] = [];
 
@@ -117,6 +124,7 @@ export function buildStubSandboxAdapter(
         spawned,
         destroyed,
         destroyFailures,
+        fileListFailures,
         execs,
         files: sandboxFiles,
         exec: options.exec ?? null,
@@ -145,6 +153,12 @@ export function buildStubSandboxAdapter(
     addImage: () => Promise.resolve(),
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     countMostLive: () => mostLive.count,
+    failNextDestroy: (message) => {
+      destroyFailures.push({ kind: 'reject', message });
+    },
+    failNextFileList: (message) => {
+      fileListFailures.push({ kind: 'reject', message });
+    },
   };
 }
 
@@ -172,6 +186,7 @@ interface StubState {
   }[];
   readonly destroyed: string[];
   readonly destroyFailures: StubCallFailure[];
+  readonly fileListFailures: StubCallFailure[];
   readonly execs: { sandboxID: string; command: RunSpec }[];
   readonly files: Map<string, Uint8Array<ArrayBuffer>>;
   readonly exec: StubExec | null;
@@ -240,12 +255,13 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
 
       return Promise.resolve({ copyPath: home, ownPath: home });
     },
-    readFilePaths: (directory) =>
-      Promise.resolve(
-        [...state.files.keys()]
-          .filter((path) => path.startsWith(`${directory}/`))
-          .map((path) => path.slice(directory.length + 1)),
-      ),
+    readFilePaths: async (directory) => {
+      await applyCallFailure(state.fileListFailures.shift());
+
+      return [...state.files.keys()]
+        .filter((path) => path.startsWith(`${directory}/`))
+        .map((path) => path.slice(directory.length + 1));
+    },
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),
     toolRoute: () => Promise.resolve(null),
     suspension: state.isSuspendable

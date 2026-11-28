@@ -4,15 +4,10 @@ import { removeStaleSandboxes } from '@heynixie/sandbox';
 import { checkerOwner } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 
-type SweptSandboxesOptions = Omit<StaleSandboxesOptions, 'log' | 'keptOwners'> & {
-  // With the computer off its image is not current, and its sandbox holds the owner's desktop disk
-  // for when the computer comes back on.
-  readonly isComputerOn: boolean;
-};
+type SweptSandboxesOptions = Omit<StaleSandboxesOptions, 'log' | 'keptOwners'>;
 
-// The restart sweep removes the sandboxes of every owner that no runner keeps and the checker does not own.
-// It spares the computer and the earlier release's browser and shell sandboxes, whatever their
-// image, until the computer's first call copies their disks and destroys them.
+// The computer's next call copies each desktop disk into a sandbox on the current image, and only
+// then destroys the old sandbox, so an old image is no reason to remove one here.
 export async function removeSweptSandboxes(
   context: Pick<TasksContext, 'log' | 'runners'>,
   options: SweptSandboxesOptions,
@@ -20,16 +15,11 @@ export async function removeSweptSandboxes(
   const kept = await context.runners.readKeptSandboxOwners(context);
 
   const legacyOwners = Object.values(legacyComputerOwners);
-  const { isComputerOn, ...staleOptions } = options;
 
   await removeStaleSandboxes({
-    ...staleOptions,
+    ...options,
     log: context.log,
-    imageExemptOwners: [
-      ...options.imageExemptOwners,
-      ...legacyOwners,
-      ...(isComputerOn ? [] : [computerOwner]),
-    ],
+    imageExemptOwners: [...options.imageExemptOwners, ...legacyOwners, computerOwner],
     keptOwners: [checkerOwner, computerOwner, ...legacyOwners, ...kept],
   });
 }

@@ -1,18 +1,16 @@
-import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import type { Sandbox } from '@heynixie/sandbox';
 import { legacyComputerOwners } from './computer-owner';
 import type { ComputerFolder } from './copy-computer-folder';
 import { copyComputerFolder } from './copy-computer-folder';
 import type { ComputerOptions } from './start-computer';
+import { writeDiskUsedMarker } from './write-disk-used-marker';
 
 interface MoveContext {
   readonly options: ComputerOptions;
   readonly clock: Clock;
   readonly state: { isMoved: boolean };
 }
-
-const diskUsedMarker = '.nixie-disk-used';
 
 // Copies the profile and the files of the earlier release's browser and shell sandboxes into the
 // computer's disk and destroys both, only when every copy passed its check. It runs before the
@@ -45,11 +43,7 @@ export async function moveOldSandboxes(context: MoveContext, sandbox: Sandbox): 
       });
     }
 
-    const home = await sandbox.resolveHome(context.options.homeEnv ?? {});
-
-    await sandbox.copyIn([
-      { path: join(home.copyPath, diskUsedMarker), content: new Uint8Array() },
-    ]);
+    await writeDiskUsedMarker(sandbox, context.options.homeEnv ?? {});
   } catch (error) {
     context.options.logger(
       'computer.move_failed',

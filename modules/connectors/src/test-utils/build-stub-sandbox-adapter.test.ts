@@ -469,3 +469,43 @@ test('it leaves the exit of a guest open when the adapter ignores a stop', async
 
   expect(settled).toBe('still running');
 });
+
+test('it keeps the sandbox whose destroy a later failNextDestroy refuses', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(buildMockSandboxSpec({ owner: 'web_fetch' }));
+
+  adapter.failNextDestroy('impd is down');
+
+  const outcome = await Promise.allSettled([sandbox.destroy()]);
+  const listed = await adapter.list('web_fetch');
+
+  expect(outcome).toMatchObject([{ status: 'rejected' }]);
+  expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
+});
+
+test('it rejects the next file listing after failNextFileList', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(buildMockSandboxSpec({ owner: 'web_fetch' }));
+
+  adapter.failNextFileList('impd is down');
+
+  expect(sandbox.readFilePaths('/home/stub')).rejects.toThrowWithMessage(Error, /impd is down/u);
+});
+
+test('it lists the files again on the call after a failed listing', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(buildMockSandboxSpec({ owner: 'web_fetch' }));
+
+  await sandbox.copyIn([{ path: '/home/stub/note.txt', content: new Uint8Array() }]);
+
+  adapter.failNextFileList('impd is down');
+
+  await Promise.allSettled([sandbox.readFilePaths('/home/stub')]);
+
+  const names = await sandbox.readFilePaths('/home/stub');
+
+  expect(names).toStrictEqual(['note.txt']);
+});

@@ -2,6 +2,14 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { startComputer } from '@heynixie/connectors';
+import type { DesktopDiskSeed } from '@heynixie/connectors/test-utils';
+import {
+  buildStubSandboxAdapter,
+  makeFolderExec,
+  readDiskFiles,
+  seedDesktopDisk,
+} from '@heynixie/connectors/test-utils';
 import { writeRecords } from '@heynixie/log';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
@@ -9,6 +17,7 @@ import { checkerOwner } from '@heynixie/sessions';
 import { conversationTaskID, taskCreatedCodec } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import invariant from 'tiny-invariant';
 import { startDataLog } from '../test-utils/start-data-log';
 import { removeSweptSandboxes } from './remove-swept-sandboxes';
 
@@ -48,12 +57,54 @@ async function setupTest() {
     },
   };
 
+  // an adapter whose sandboxes keep real disks, which a computer copies from one image to the next
+  const disks = await mkdtemp(join(tmpdir(), 'nixie-restart-disks-'));
+
+  onTestFinished(() => rm(disks, { recursive: true, force: true }));
+
+  const diskAdapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    exec: makeFolderExec(disks),
+  });
+
   return {
     context,
     adapter,
+    diskAdapter,
     destroyed,
+    disks,
+    startComputerOn: (image: string) => {
+      const computer = startComputer({
+        adapter: diskAdapter,
+        image,
+        argv: ['guest'],
+        scans: {
+          scan: () => Promise.resolve({ kind: 'pass' as const }),
+          scanText: () => Promise.resolve({ kind: 'pass' as const }),
+        },
+        deniedRanges: [],
+        timeZone: 'UTC',
+        logger: () => {},
+      });
+
+      onTestFinished(() => computer.stop());
+
+      return computer;
+    },
     seed: {
       ...buildTaskSeeder({ context }),
+
+      desktopDisk: async (input: DesktopDiskSeed) => {
+        const sandbox = await seedDesktopDisk({ adapter: diskAdapter, root: disks }, input);
+
+        await recorder.write({
+          event: 'created',
+          sandboxID: sandbox.id,
+          adapter: 'stub',
+          spec: sandbox.spec,
+        });
+
+        return sandbox;
+      },
 
       // a started task of an earlier release, whose record names no runner
       unrunnerTask: (taskID: string) =>
@@ -98,7 +149,6 @@ test('it spares the sandboxes of the conversation, the checker and each open sta
   await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
-    isComputerOn: true,
     currentImages: [],
     imageExemptOwners: [],
   });
@@ -112,22 +162,17 @@ test('it keeps the browser and shell sandboxes of an earlier release on images t
   await Promise.all([
     ctx.seed.sandbox('computer-browser', 'nixie-browser-old'),
     ctx.seed.sandbox('computer-shell', 'nixie-shell-old'),
-    ctx.seed.sandbox('computer-desktop', 'nixie-computer-old'),
     ctx.seed.sandbox('a-stranger', 'nixie-browser-old'),
   ]);
 
   await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
-    isComputerOn: true,
     currentImages: ['nixie-computer-new'],
     imageExemptOwners: [],
   });
 
-  expect(ctx.destroyed).toIncludeSameMembers([
-    'sandbox-of-computer-desktop',
-    'sandbox-of-a-stranger',
-  ]);
+  expect(ctx.destroyed).toStrictEqual(['sandbox-of-a-stranger']);
 });
 
 test('it keeps the desktop sandbox of a computer that is off, whatever its image', async () => {
@@ -141,10 +186,65 @@ test('it keeps the desktop sandbox of a computer that is off, whatever its image
   await removeSweptSandboxes(ctx.context, {
     logger: () => {},
     adapter: ctx.adapter,
-    isComputerOn: false,
     currentImages: ['nixie-fetch-new'],
     imageExemptOwners: [],
   });
 
   expect(ctx.destroyed).toStrictEqual(['sandbox-of-a-stranger']);
+});
+
+test('it keeps the desktop sandbox of a computer that is on when its image is no longer current', async () => {
+  const ctx = await setupTest();
+  const old = await ctx.seed.desktopDisk({ image: 'nixie-computer-old', files: {} });
+
+  await removeSweptSandboxes(ctx.context, {
+    logger: () => {},
+    adapter: ctx.diskAdapter,
+    currentImages: ['nixie-computer-new'],
+    imageExemptOwners: [],
+  });
+
+  expect(ctx.diskAdapter.destroyed).not.toContain(old.id);
+});
+
+test('it copies the desktop disk to the new image on the first call after the sweep', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.desktopDisk({
+    image: 'nixie-computer-old',
+    files: { '/home/stub/files/note.txt': 'tide times' },
+  });
+
+  await removeSweptSandboxes(ctx.context, {
+    logger: () => {},
+    adapter: ctx.diskAdapter,
+    currentImages: ['nixie-computer-new'],
+    imageExemptOwners: [],
+  });
+
+  await ctx.startComputerOn('nixie-computer-new').settleMove();
+
+  const created = ctx.diskAdapter.created.at(-1);
+
+  invariant(created);
+
+  const disk = await readDiskFiles(ctx.disks, created.id);
+
+  expect(disk).toStrictEqual([['/home/stub/files/note.txt', 'tide times']]);
+});
+
+test('it destroys the old desktop sandbox only after its disk is copied', async () => {
+  const ctx = await setupTest();
+  const old = await ctx.seed.desktopDisk({ image: 'nixie-computer-old', files: {} });
+
+  await removeSweptSandboxes(ctx.context, {
+    logger: () => {},
+    adapter: ctx.diskAdapter,
+    currentImages: ['nixie-computer-new'],
+    imageExemptOwners: [],
+  });
+
+  await ctx.startComputerOn('nixie-computer-new').settleMove();
+
+  expect(ctx.diskAdapter.destroyed).toStrictEqual([old.id]);
 });
