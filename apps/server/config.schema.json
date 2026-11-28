@@ -919,7 +919,11 @@
                 "properties": {
                   "provider": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "enum": [
+                      "openai",
+                      "gemini"
+                    ]
                   },
                   "model": {
                     "type": "string",

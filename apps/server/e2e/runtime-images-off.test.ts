@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, startE2ENixie } from '@heynixie/server/test-utils';
+import { readFile, writeFile } from 'node:fs/promises';
+import { createTestClient, sendClientMessage, startE2ENixie } from '@heynixie/server/test-utils';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
 async function setupTest() {
@@ -80,4 +82,65 @@ test('it registers the image tools and lists the gallery when the config has an 
     ],
     listed: { images: [], nextCursor: null },
   });
+});
+
+test('it lists a drawn picture as it was once images are on again after a start with them off', async () => {
+  const section = [
+    'images:',
+    '  default: easel',
+    '  profiles:',
+    '    easel:',
+    '      provider: openai',
+    '      model: image-test-1',
+    '      credential: deployment:easel',
+    '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+  ];
+
+  const nixie = await startE2ENixie({
+    isVoiceOff: true,
+    extraConfig: section,
+    extraSecrets: ['connector_credentials:', '  easel: easel-test-key'],
+  });
+
+  const first = nixie.harness.start();
+
+  const api = await createTestClient(first);
+
+  nixie.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__image_draw', input: { prompt: 'a pear on a sill' } } },
+    { text: 'Pear-reply-3KD7' },
+  );
+
+  await sendClientMessage(api.client, { text: 'Draw a pear on a sill.' }, 'Pear-reply-3KD7', {
+    timeoutMs: 30_000,
+  });
+
+  const before = await api.client.images.list({});
+
+  await first.sendStopSignal();
+  await first.waitForExit();
+
+  const onConfig = await readFile(nixie.configPath, 'utf8');
+
+  const offConfig = onConfig.replace(`${section.join('\n')}\n`, '');
+
+  invariant(offConfig !== onConfig, 'the config holds the images section');
+
+  await writeFile(nixie.configPath, offConfig);
+
+  const second = nixie.harness.start();
+
+  await second.ready;
+
+  await second.sendStopSignal();
+  await second.waitForExit();
+
+  await writeFile(nixie.configPath, onConfig);
+
+  const third = nixie.harness.start();
+
+  const again = await createTestClient(third, { token: api.token });
+  const after = await again.client.images.list({});
+
+  expect({ drawn: before.images.length, after }).toStrictEqual({ drawn: 1, after: before });
 });

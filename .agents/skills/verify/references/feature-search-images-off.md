@@ -14,10 +14,9 @@ Run this journey on `local` only, on an `up` of its own, because [drawing](featu
 [images-page](feature-images-page.md) need images on:
 
 - On `local`, run `bun verify use --target local`, then
-  `NIXIE_VERIFY_NO_IMAGES=1 bun verify up --restart` to start a test build of nixie with the
-  `images` section taken out of the config. The test build never has a `search` section, because no
-  journey reaches a search provider. The variable applies to that one `up`, so images stay off until
-  the next `up --restart` without it.
+  `NIXIE_VERIFY_NO_IMAGES=1 NIXIE_VERIFY_NO_SEARCH=1 bun verify up --restart` to start a test build
+  of nixie with no `images` or `search` section in its config. The variables apply to that one `up`,
+  so both features stay off until the next `up --restart` without them.
 - On `preview`, skip this journey and list the feature as not verified there in your reply. The
   preview's config holds an `images` section, so its images are on.
 
@@ -68,8 +67,8 @@ code when your change broke the feature. Otherwise list the feature in your repl
 you expected and the `data` you got. When `done` itself fails, follow its row in Exit codes and run
 the journey again.
 
-Whether the journey passed or failed, run `bun verify up --restart` without
-`NIXIE_VERIFY_NO_IMAGES`, then `bun verify doctor`, so the next journey has images on. When either
-fails, follow its row in Exit codes, and run both again before any other journey. To re-run this
-journey after a fix, start with `NIXIE_VERIFY_NO_IMAGES=1 bun verify up --restart` again, because a
-restart without it turns images on.
+Whether the journey passed or failed, run `bun verify up --restart` without either variable, then
+`bun verify doctor`, so the next journey has images and search on. When either command fails, follow
+its row in Exit codes, and run both again before any other journey. To re-run this journey after a
+fix, start with `NIXIE_VERIFY_NO_IMAGES=1 NIXIE_VERIFY_NO_SEARCH=1 bun verify up --restart` again,
+because a restart without them turns both features on.

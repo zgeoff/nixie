@@ -130,6 +130,9 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_NO_IMAGES=1 leaves the images section out of the config.
   const isImagesOff = process.env['NIXIE_VERIFY_NO_IMAGES'] === '1';
 
+  // A start with NIXIE_VERIFY_NO_SEARCH=1 leaves the search section out of the config.
+  const isSearchOff = process.env['NIXIE_VERIFY_NO_SEARCH'] === '1';
+
   // A start with NIXIE_VERIFY_NO_GOOGLE=1 connects the fake Google account, then takes the google
   // section out of the config and starts nixie again on the same data, so a stored connection meets
   // a nixie that has no Google.
@@ -179,6 +182,9 @@ export async function runVerifyHarness(): Promise<void> {
             '      credential: deployment:images',
             '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
           ]),
+
+      // no journey calls the search tool, so the key is a placeholder
+      ...(isSearchOff ? [] : ['search:', '  credential: deployment:search']),
       'web_fetch:',
       '  package_registry: https://registry.test',
       ...(gateway === null ? [] : buildCodingConfigLines()),
@@ -189,6 +195,7 @@ export async function runVerifyHarness(): Promise<void> {
     extraSecrets: [
       'connector_credentials:',
       '  images: stub-image-key',
+      '  search: stub-search-key',
       '  twilio: stub-twilio-secret',
       ...(isSpendOn ? ['settings:', `  gateway-control: ${testGatewayControlToken}`] : []),
       ...(gateway === null ? [] : [`atc_token: ${gateway.token}`]),
