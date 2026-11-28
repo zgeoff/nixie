@@ -83,14 +83,14 @@ call to that place meets the decision point like any other call, and an acting c
 
 ### The places page
 
-The web client gets a page at `/places`: each entry with its kind, key, level, name, who added it
-and when a call last used it. You add, change and remove entries there. The host CLI
+The web client gets a page at `/places` that lists each entry with its kind, key, level, name, who
+added it and when a call last used it. Add, change and remove entries there. The host CLI
 `nixie contacts` becomes `nixie places`, with the same verbs.
 
 ## Constraints
 
-- The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
-  origin of its entry, even on a site at `act`. A site's key drops a leading `www.`, so
+- The vault keeps each entry's exact origins as a fill constraint. It fills a password only on an
+  exact origin of its entry, even on a site at `act`. A site's key drops a leading `www.`, so
   `www.example.org` and `example.org` are one place, but an origin keeps it: an entry for
   `https://example.org` never fills on `https://www.example.org`. The vault entry links its site's
   place ID.
@@ -113,9 +113,9 @@ and when a call last used it. You add, change and remove entries there. The host
 
 ## Builder decides
 
-- The page's layout and its sort order.
-- What happens to the Always allow rules that pin only a host: they keep working, and the builder
-  may offer a one-time conversion to places on the page.
+- Choose the page's layout and its sort order.
+- Decide what happens to the Always allow rules that pin only a host. They keep working, and you may
+  offer a one-time conversion to places on the page.
 
 ## Out of scope
 

@@ -181,7 +181,7 @@ Declare the registry in
 
 Map each file your change adds in the registry with a glob that matches it. Put the glob in a
 feature's `paths`, in `.shared()`, or in `.ignore()` when the running app never reads the file, such
-as a test. The gate fails on a changed file that no glob matches. Run `bun verify features` for the
+as a test. The gate fails on a changed file that no glob matches. `bun verify features` lists the
 globs. List a feature's files one by one when a directory glob would also match a test.
 
 When a change breaks a feature's journey, fix the journey in the same PR. Read

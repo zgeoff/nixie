@@ -2,14 +2,14 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-The user trusts a place from the card that holds a call, and later sees one line for each place the
-assistant acted on. On `local`, a scripted model answers in place of the real one. It calls
-`computer.screenshot`, then `computer.screen_click` at the point 640, 400, on the tab that
-computer-browser left open on the harness site. nixie holds the click, and its card offers "Trust
-this place to read" and "Trust this place to act" beside the approval. The first answer approves the
-click, adds `pages.test` to the directory at `read` and writes no rule. Once the site is at `act`, a
-second click runs with no card, and the conversation shows the notice of the act: one line that
-names the site and the tool.
+Check that the user can trust a place from the card on a held call, and that the conversation later
+shows one line for each place the assistant acted on. On `local`, a scripted model answers in place
+of the real one. It calls `computer.screenshot`, then `computer.screen_click` at the point 640, 400,
+on the tab that computer-browser left open on the harness site. nixie holds the click, and its card
+offers "Trust this place to read" and "Trust this place to act" beside the approval. The first
+answer approves the click, adds `pages.test` to the directory at `read` and writes no rule. Once the
+site is at `act`, a second click runs with no card, and the conversation shows one line that names
+the site and the tool.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up`, `doctor` and `done`, and for the `data` field of each command's JSON output.
