@@ -127,9 +127,9 @@ them.
 
 `export <path>` asks the server to [export the log](../core/event-log.md#exporting-the-log) into a
 new SQLite file at the path, which the command makes absolute against the folder it runs in. The
-file is a plain copy of every conversation, readable by its owner only. The command exits non-zero
-when a deny rule covers the `export` effect, when something already holds the path, or when nixie
-cannot create a file there. It passes the gate as any other host command does.
+file is a plain copy of every conversation, and only the account that runs nixie can read it. The
+command exits non-zero when a deny rule covers the `export` effect, when something already holds the
+path, or when nixie cannot create a file there. It passes the gate as any other host command does.
 
 ## Backup and restore
 
