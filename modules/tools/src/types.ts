@@ -488,7 +488,10 @@ export interface QueuedAction {
 // What the queue did with an allowed call: it queued an action, or it asked the owner instead.
 export type Enqueued =
   | { readonly status: 'queued'; readonly actionID: string }
-  | { readonly status: 'asked'; readonly shortID: string };
+  | { readonly status: 'asked'; readonly shortID: string }
+
+  // the owner declined this same action earlier in the task run, so nothing is queued or asked
+  | { readonly status: 'declined'; readonly shortID: string };
 
 export type ActionOutcome =
   | {
@@ -520,7 +523,10 @@ export interface OpenRepeat {
 
 export type OpenAsk =
   | { readonly kind: 'action'; readonly repeat: OpenRepeat }
-  | { readonly kind: 'proposal'; readonly shortID: string };
+  | { readonly kind: 'proposal'; readonly shortID: string }
+
+  // the owner declined this same action earlier in the task run, so the call asks nothing more
+  | { readonly kind: 'declined'; readonly shortID: string };
 
 export interface ActionQueue {
   readonly enqueue: (action: QueuedAction) => Promise<Enqueued>;
@@ -528,9 +534,9 @@ export interface ActionQueue {
   // the pending or unknown action that the same call already queued, or null
   readonly readOpenRepeat: (query: RepeatQuery) => Promise<OpenRepeat | null>;
 
-  // What the same call already has open, or null: an approved action no run has settled, or the
-  // proposal that asks the owner about it. It reads in the transaction that would write a second
-  // proposal, so no call proposes beside an approval it has not used.
+  // What the same call already has open, or null: an approved action no run has settled, the
+  // proposal that asks the owner about it, or the owner's decline of it earlier in the task run.
+  // It reads in the transaction that would write a second proposal.
   readonly readOpenAsk: (tx: WriteTransaction, query: RepeatQuery) => Promise<OpenAsk | null>;
 
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;

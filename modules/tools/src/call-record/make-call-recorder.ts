@@ -70,6 +70,10 @@ interface WrittenCall {
   // whether the call is one more than its task run's cap on the tool
   readonly isCapped: boolean;
 
+  // the short ID of the proposal that the owner declined earlier in the task run for this same
+  // action, and null for any other call
+  readonly declinedBy: string | null;
+
   // the approved action that the call repeats: the one the decision found, or one that an approval
   // queued while the call was being written
   readonly repeatOf: OpenRepeat | null;
@@ -174,6 +178,7 @@ export function makeCallRecorder(
               sequence: written.sequence,
               shortID: null,
               isCapped: true,
+              declinedBy: null,
               repeatOf: decided?.repeatOf ?? null,
               gate: null,
             };
@@ -196,6 +201,7 @@ export function makeCallRecorder(
             sequence: written.sequence,
             shortID: null,
             isCapped: false,
+            declinedBy: null,
             repeatOf: decided?.repeatOf ?? null,
             gate,
           };
@@ -220,7 +226,19 @@ export function makeCallRecorder(
             sequence: written.sequence,
             shortID: null,
             isCapped: false,
+            declinedBy: null,
             repeatOf: open.repeat,
+            gate: null,
+          };
+        }
+
+        if (open?.kind === 'declined') {
+          return {
+            sequence: written.sequence,
+            shortID: null,
+            isCapped: false,
+            declinedBy: open.shortID,
+            repeatOf: null,
             gate: null,
           };
         }
@@ -230,6 +248,7 @@ export function makeCallRecorder(
             sequence: written.sequence,
             shortID: open.shortID,
             isCapped: false,
+            declinedBy: null,
             repeatOf: null,
             gate: null,
           };
@@ -267,6 +286,7 @@ export function makeCallRecorder(
           sequence: written.sequence,
           shortID,
           isCapped: false,
+          declinedBy: null,
           repeatOf: null,
           gate: null,
         };

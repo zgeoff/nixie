@@ -47,11 +47,11 @@ Every family goes through the same steps, in the proposals module:
 4. An approve or a discard that succeeds writes `proposals.settled` in the same transaction, on the
    thread of each proposer. A refusal writes none, and the row stays open.
 5. Each proposer hears the settlement. A conversation reads it in the note of its next turn, and a
-   task reads it as an inbox record that wakes it. A task gets no inbox record for an action's
-   settlement, and hears `action.outcome` instead. When a proposer's own withdrawal closes the row,
-   that proposer's note leaves the settlement out, because the withdraw call's result holds the
-   outcome. A finished task takes no input, so its settlement goes to the report target of the task
-   run that opened or merged into the proposal, or else to the task's starter. That settlement
+   task reads it as an inbox record that wakes it. A task gets no inbox record for the settlement of
+   an action proposal, and hears `action.outcome` instead. When a proposer's own withdrawal closes
+   the row, that proposer's note leaves the settlement out, because the withdraw call's result holds
+   the outcome. A finished task takes no input, so its settlement goes to the report target of the
+   task run that opened or merged into the proposal, or else to the task's starter. That settlement
    carries the task's ID. When a finished task has neither, its settlement stays on its own thread
    as a plain record that wakes nothing, so its audit thread stays whole. Settlements that land in
    one batch read as one message.
@@ -61,6 +61,13 @@ lapse, a proposer's withdrawal, a decline of an ask that withdraws the suggested
 the seed that withdraws the pending rule changes it applies, and the purge of a memory item that
 lapses its pending proposals. A proposal that nixie makes on its own, such as a suggested rule, has
 no proposer, so its settlement has no thread.
+
+A task never asks again for an action that the user declined in the same task run. A call whose
+action hash matches a proposal of that task, declined after the task run opened, gets that decline
+back, as a denied result that names the declined proposal's short ID, and writes no proposal. The
+same holds for a call that a rule's lift allowed but a budget refused, on the task's step. A new
+task run starts clear, so it can ask again. A call with no open task run, such as one in a
+conversation, never matches a decline.
 
 A proposal's short ID comes from `createShortID` with a check against every earlier row, for every
 family. A call by short ID finds the newest row that holds it, and a call by proposal ID finds that
@@ -78,10 +85,10 @@ thread of a proposer that left.
 
 A family's handler supplies `lapseIntervalMs(config, cause)`, which reads `approvals.lapse_days`
 from the server config, and `discard`, which undoes what the proposal held for a decline, a lapse or
-a withdrawal. A cause that lapses only at its deadline, such as a mandate, returns no interval.
-`approvals.lapse_days` holds the days per family: 3 for an action and 14 for each other family. The
-key `memory.proposal_lapse_days` is no longer accepted, and the server refuses to start while a
-config holds it.
+a withdrawal. `approvals.lapse_days` holds the days per family: 3 for an action and 14 for each
+other family. A cause that lapses only at its deadline, such as a mandate, returns no interval and
+ignores those days. The key `memory.proposal_lapse_days` is no longer accepted, and the server
+refuses to start while a config holds it.
 
 A prompt override takes the `prompt` family, risk class `always_ask`, so approving it needs a
 passkey. Its action hash is the override's hash, and `readHashes` folds in the base it replaces, so
@@ -210,8 +217,9 @@ proposal instead of a memory proposal, as [moving a topic](../memory/store.md#mo
 A rule on `memory_write` matches as a rule on any other effect does:
 
 - A deny rule denies the write, and the model reads the rule's sentence.
-- An ask rule makes the write a memory proposal with the review reason `ask_rule`. The call writes
-  no action proposal, because the memory proposal is the user's review.
+- An ask rule makes the write a memory proposal with the review reason `ask_rule`, except for
+  `memory.retopic`, which waits as an action proposal. A memory proposal is the user's review, so
+  that call writes no action proposal.
 - An allow rule applies the write at once, with a notice, when it covers the write. The memory gate
   then runs the hidden-character check alone. Whether a rule covers a write depends on its checks on
   `subject` and on the `image` arguments

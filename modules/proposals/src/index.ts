@@ -54,6 +54,7 @@ export { proposalsReturnedCodec } from './records/proposals-returned-codec';
 export { readOpenProposals } from './rows/read-open-proposals';
 export type { OpenProposalQuery } from './rows/probe-open-proposal-since';
 export { probeOpenProposalSince } from './rows/probe-open-proposal-since';
+export { readDeclinedProposalSince } from './rows/read-declined-proposal-since';
 export { readProposal } from './rows/read-proposal';
 export { readProposalsBySequence } from './rows/read-proposals-by-sequence';
 export { readProposalsByID } from './rows/read-proposals-by-id';

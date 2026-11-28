@@ -6,6 +6,7 @@ import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
 import type { ModelView } from '../types';
 import { createAllowedAction } from './create-allowed-action';
 import { readOpenRepeat } from './read-open-repeat';
+import { readRunDecline } from './read-run-decline';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 export interface ActionQueueBridge {
@@ -59,6 +60,10 @@ export function buildActionQueue(
           options?.proposalConfig,
         );
 
+        if ('declinedBy' in queued) {
+          return { status: 'declined', shortID: queued.declinedBy };
+        }
+
         return 'shortID' in queued
           ? { status: 'asked', shortID: queued.shortID }
           : { status: 'queued', actionID: queued.actionID };
@@ -80,6 +85,15 @@ export function buildActionQueue(
 
         if (repeat !== null) {
           return { kind: 'action', repeat };
+        }
+
+        const declined = await readRunDecline(tx, {
+          taskID: query.run.thread,
+          actionHash: query.actionHash,
+        });
+
+        if (declined !== null) {
+          return { kind: 'declined', shortID: declined };
         }
 
         const open = await readOpenProposals(tx, context.clock.now());

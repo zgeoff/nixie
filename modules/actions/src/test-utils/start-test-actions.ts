@@ -57,6 +57,7 @@ export async function startTestActions(): Promise<TestTasks> {
       log,
       clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
+      definitionStore,
     }),
   };
 }

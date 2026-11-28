@@ -30,8 +30,8 @@ places of the directory and the tool declarations from the one snapshot it runs 
 | 9. No rule     | Nothing else decided                                                                                  | Ask     |
 
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
-outcome `gate` at stage 8 (see [memory writes](#memory-writes)). `memory.retopic` is the exception
-that asks at stage 9.
+outcome `gate` at stage 8 (see [memory writes](#memory-writes)). `memory.retopic` declares
+`memory_write` too and is the exception: it asks at stage 9.
 
 The caller's tool list is the run's own: the task definition's list for a task run of a definition,
 and the subset its caller passed for a worker. A tool that the registry knows but the run was not
@@ -131,15 +131,17 @@ checker counts as unreachable.
 ## Asks
 
 An ask writes the `tool_called` record and a `policy.action_proposed` record in one transaction, and
-the model reads "Waiting for approval as `<shortID>`". The model keeps working. The decision point
-gives an ask the cause `outside_steering`, `always_ask`, `ask_rule`, `no_rule` or `condition_error`.
-The last is a call that asks because a deny rule's condition errored, as
+the model reads "Waiting for approval as `<shortID>`". The model keeps working. A memory write that
+an ask rule catches is the one ask that writes no action proposal: it becomes a memory proposal, as
+[Approvals](approvals.md#memory_write) says. The decision point gives an ask the cause
+`outside_steering`, `always_ask`, `ask_rule`, `no_rule` or `condition_error`. The last is a call
+that asks because a deny rule's condition errored, as
 [rule conditions](rule-conditions.md#evaluating-a-condition) describes. The record codecs also
 accept `direct_request` and `repeat` as a cause, but the decision point never writes either as a
 cause.
 
 Answer an ask with `nixie proposals approve <shortID>` or `nixie proposals reject <shortID>`, or on
-the page for actions. The answer lands in the inbox of the task that asked. Approving queues the
+the page for actions. A task that asked hears the answer as `action.outcome`. Approving queues the
 call once, and the call runs as [actions](../core/actions.md#approved-actions) describes. A proposal
 lapses after a fixed time without an answer. For the row and the answer path, read
 [Approvals](approvals.md). `contacts.mark_known` is a tool that declares `policy_widen`, so it
@@ -148,6 +150,9 @@ always asks, and approving it marks the contact.
 A call that asks again while its proposal is open, or while its approval is unused, writes no second
 proposal. The model reads "Waiting for approval as `<shortID>`" with the open proposal's short ID,
 or the status of the approved action.
+
+A call for an action that the user declined earlier in the same task run gets that decline and asks
+nothing, as [Approvals](approvals.md#one-lifecycle) says.
 
 ## Faults
 
