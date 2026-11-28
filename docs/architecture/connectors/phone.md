@@ -121,7 +121,7 @@ model has no phone tool, and `computer.handover` hands the step to the user.
 The queue runs `phone.send` through the phone connector. A send the provider accepts claims the
 message it returns, and its outcome holds the text's short ID and the action's ID. A send that holds
 a claim sends nothing again, and its check answers from the claim before it reads the provider. A
-refusal ends the action with `SEND_FAILED`.
+refusal ends the action with the provider's reason.
 
 A send of unknown outcome reconciles with a read-only check. The connector looks for texts to the
 same number with the same body, created from a minute before the attempt began, to allow for the

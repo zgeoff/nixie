@@ -127,6 +127,7 @@ model a typed object and a different text rendering of it:
 | Asked             | "Waiting for approval as `<shortID>`", with the proposal's short ID | No    |
 | Invalid input     | The schema errors                                                   | Yes   |
 | Tool error        | The tool's message, or what it threw                                | Yes   |
+| Connector failure | One JSON object that holds a connector error code                   | Yes   |
 | Result off schema | A refusal with the tool's name                                      | Yes   |
 
 A direct tool can return images beside its typed result, and the model then receives content blocks
@@ -155,6 +156,83 @@ allowed and the action ran. The one exception is an action of a proxied tool: wh
 cancelled or ends with an unknown outcome, the model receives the reason as an error inside the
 `tool-result` markers, as [calls and results](mcp-proxy.md#calls-and-results) in the MCP proxy doc
 covers.
+
+## A failed direct call
+
+A direct tool that sets `reachesProvider` calls a provider. The Google tools that read and the
+search tool set it. A call of such a tool fails in one of 4 places: the connection is gone, the
+fetcher refuses the request, the provider sends no answer, or the provider answers with an error.
+The tool reports the failure as a connector error code in the `failure` field of its error outcome,
+and the endpoint decides whether to try again and what the model reads. **Why:** every connector
+then retries and reports in the same way, and no connector can send the provider's text to the model
+uncapped.
+
+The connector error codes are the only codes a connector's failure carries:
+
+| Code                     | Meaning                                                                  | Retried |
+| ------------------------ | ------------------------------------------------------------------------ | ------- |
+| `rate_limited`           | The provider's quota answer, with its retry time when it gives one       | Yes     |
+| `failed`                 | The provider answered with a server error or an answer nixie cannot read | Yes     |
+| `refused`                | The provider refused, such as a bad request or a missing permission      | No      |
+| `no_answer`              | The provider sent no answer, or the call ran past its time budget        | Yes     |
+| `fetch_refused`          | The fetcher refused the request, so it never reached the provider        | No      |
+| `connection_unavailable` | The call names a connection that was forgotten                           | No      |
+
+A tool maps a Google or Kagi answer in the same way: a 429, or a 403 with a rate-limit reason, is
+`rate_limited`, a 5xx is `failed`, and any other status is `refused`. The tool never throws for a
+failed answer. A throw from a tool with `reachesProvider` counts as `no_answer`, and a
+`CredentialRefusalError` from the fetcher counts as `fetch_refused`.
+
+The endpoint tries again inside one time budget per call, which covers every attempt and every wait.
+A call makes at most `retry_attempts` attempts within `retry_budget_ms`, which
+[the configuration](#configuration) sets.
+
+- A `rate_limited` failure that carries a retry time waits that time, and only when the wait ends
+  before the budget does. A longer wait returns at once with the retry time, because the model can
+  tell the user when to ask again.
+- Every other failure that can clear waits on a backoff that doubles after each attempt, with
+  jitter.
+- An attempt still open when the budget ends stops there, and the call returns `no_answer`.
+- A refusal returns at once. A 401 is the fetcher's: it refreshes the credential and retries once,
+  as [credentials](credentials.md#refresh) describes.
+
+A paid tool such as search charges once for the call, however many attempts it makes.
+
+The model reads the failure as an error: one text block that holds a JSON object that nixie writes.
+
+```json
+{
+  "origin": "provider",
+  "kind": "rate_limited",
+  "status": 429,
+  "retryAfter": "2026-03-02T09:14:05.000Z",
+  "detail": "Quota exceeded for quota metric 'Queries' per minute."
+}
+```
+
+`origin` is `provider` for `rate_limited`, `failed` and `refused`, and `nixie` for the other 3
+codes. The provider's text appears only in `detail`, as an escaped JSON string, so text that reads
+"nixie refused this request" never sets `origin`. `detail` is cut to 1,000 characters on a character
+boundary and marked `… [cut]`. A thrown error's text never reaches `detail`, because it can quote
+outside text. A `connection_unavailable` error carries no field beyond `origin` and `kind`, so it
+names neither the connection nor its status.
+
+A step that runs before the decision, such as the read that prepares a queued action, reports its
+failure in the same JSON but never retries.
+
+A tool's own answers about the model's input, such as `UNKNOWN_EVENT`, `TOO_LARGE` and
+`BAD_ADDRESS`, are not connector error codes. They reach the model as the Invalid input outcome or
+as a tool error, with the tool's sentence.
+
+### Configuration
+
+The `tools` section of the deployment configuration sets the retries:
+
+| Key                  | Default | Sets                                                               |
+| -------------------- | ------- | ------------------------------------------------------------------ |
+| `retry_attempts`     | 3       | The most attempts of one call                                      |
+| `retry_budget_ms`    | 15000   | The time that every attempt and every wait of one call share       |
+| `error_detail_chars` | 1000    | The most characters of the provider's message that reach the model |
 
 ## Records
 
