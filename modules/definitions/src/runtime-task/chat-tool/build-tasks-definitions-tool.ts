@@ -11,7 +11,8 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
     description:
       'Lists every task definition: its ID, name, trigger in words, next fire and ' +
       'tools, whether it is in force, and whether it comes from the definitions repo or from ' +
-      'a change made here.',
+      'a change made here. A definition that the user stopped, paused or held at a limit shows ' +
+      'that hold in held, and no next fire until the user acts on it.',
     input: { type: 'object', properties: {}, additionalProperties: false },
     output: {
       type: 'object',
@@ -25,6 +26,7 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
               name: { type: ['string', 'null'] },
               enabled: { type: 'boolean' },
               isInForce: { type: 'boolean' },
+              held: { type: ['string', 'null'], enum: ['stopped', 'paused', 'limit', null] },
               isUnreadable: { type: 'boolean' },
               trigger: { type: ['object', 'null'] },
               rendered: { type: ['string', 'null'] },
@@ -37,6 +39,7 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
               'name',
               'enabled',
               'isInForce',
+              'held',
               'isUnreadable',
               'trigger',
               'rendered',

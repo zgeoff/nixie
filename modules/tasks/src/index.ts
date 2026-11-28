@@ -222,6 +222,8 @@ export type {
 
 export { writeDefinitionTasksInTransaction } from './definition/write-definition-tasks-in-transaction';
 export type { DefinitionFire } from './definition/pick-definition-fire';
+export type { DefinitionHold } from './definition/pick-definition-hold';
+export { readDefinitionHold } from './definition/read-definition-hold';
 export type { DefinitionTaskAnswer } from './definition/read-definition-task-in-transaction';
 export { readDefinitionTaskInTransaction } from './definition/read-definition-task-in-transaction';
 export { writeDefinitionTaskRevivalInTransaction } from './definition/write-definition-task-revival-in-transaction';

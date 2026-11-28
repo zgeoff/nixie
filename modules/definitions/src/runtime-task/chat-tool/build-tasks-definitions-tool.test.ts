@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
+import { withWriteTransaction } from '@heynixie/log';
+import { readDefinitionTaskInTransaction, writeTaskControl } from '@heynixie/tasks';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import invariant from 'tiny-invariant';
 import { buildTestDefineInput } from '../../test-utils/build-test-define-input';
 import { buildTestTaskYaml } from '../../test-utils/build-test-task-yaml';
 import { seedLostTaskVersions } from '../../test-utils/seed-lost-task-versions';
@@ -47,6 +50,7 @@ test('it lists a definition from the repo with the default task tools', async ()
           name: 'Water the tomatoes',
           enabled: true,
           isInForce: true,
+          held: null,
           isUnreadable: false,
           trigger: expect.any(Object),
           rendered: 'every Friday at 08:00 (UTC)',
@@ -58,6 +62,36 @@ test('it lists a definition from the repo with the default task tools', async ()
     },
   });
 });
+
+test.each([
+  ['stop', 'stopped'],
+  ['pause', 'paused'],
+] as const)(
+  'it lists a definition whose task the user chose to %s as held, with no next fire',
+  async (control, held) => {
+    const ctx = await setupTest();
+
+    await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
+    await ctx.seed();
+
+    const answer = await withWriteTransaction(ctx.writer, (tx) =>
+      readDefinitionTaskInTransaction(tx, 'water-the-tomatoes'),
+    );
+
+    invariant(answer, 'the seed bound a task to the definition');
+
+    await writeTaskControl(ctx.tasks, { taskID: answer.taskID, control });
+
+    const outcome = await ctx.list();
+
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: {
+        definitions: [expect.objectContaining({ isInForce: true, held, next: null })],
+      },
+    });
+  },
+);
 
 test('it lists a definition from a change made in the conversation with the nixie origin', async () => {
   const ctx = await setupTest();

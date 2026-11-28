@@ -647,8 +647,10 @@ and `tasks.runs`, which [tasks](./tasks.md) describes, are conversation tools to
   shows it as failed with the refusal code.
 - **`task.undefine`** takes a definition ID and answers the same way.
 - **`tasks.definitions`** lists every definition with its trigger in words and its next fire, and
-  marks a disabled, spent, removed or unreadable one as not in force. A definition from the repo
-  whose version names no tools lists the default task tools.
+  marks a disabled, spent, removed or unreadable one as not in force. A definition in force whose
+  task holds its fires lists the hold in `held`, as `stopped`, `paused` or `limit`, and no next
+  fire. A failed task holds no fire, so it lists none. A definition from the repo whose version
+  names no tools lists the default task tools.
 
 A define over a definition whose version has an `instructions.md` file, a step file or a file-only
 key off its default (`context`, `wakeable`, `maxCalls`, `step`, `reportShape`, `log`,

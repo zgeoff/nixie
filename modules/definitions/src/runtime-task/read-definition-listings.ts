@@ -1,4 +1,6 @@
 import type { Trigger } from '@heynixie/contract';
+import type { DefinitionHold } from '@heynixie/tasks';
+import { readDefinitionHold } from '@heynixie/tasks';
 import { readSpentOneShots } from '@heynixie/triggers';
 import type { Kysely } from 'kysely';
 import type { DefinitionsTables } from '../types';
@@ -23,7 +25,10 @@ export interface DefinitionListing {
   // null with no trigger or when unreadable
   readonly rendered: string | null;
 
-  // null when out of force
+  // why the user's own action holds every fire, or null; only for a definition in force
+  readonly held: DefinitionHold | null;
+
+  // null when out of force or held
   readonly next: string | null;
   readonly tools: readonly string[];
   readonly origin: 'definitions' | 'nixie';
@@ -78,15 +83,18 @@ export async function readDefinitionListings(
       form?.enabled === true &&
       !spent.has(definition.definitionID);
 
+    const held = isInForce ? await readDefinitionHold(db, definition.definitionID) : null;
+
     listed.push({
       definitionID: definition.definitionID,
       name: form?.name ?? null,
       enabled: form?.enabled ?? false,
       isInForce,
+      held,
       isUnreadable: definition.isUnreadable,
       trigger: form?.trigger ?? null,
       rendered: rendered.rendered,
-      next: isInForce ? rendered.next : null,
+      next: isInForce && held === null ? rendered.next : null,
       tools: form?.tools ?? [],
       origin: definition.origin,
     });
