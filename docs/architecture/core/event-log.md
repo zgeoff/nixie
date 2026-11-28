@@ -252,11 +252,12 @@ moment now covers and deletes the rest, in one write transaction, so no keep com
 spared key stays in `expired_keys`, so a later batch never names it again.
 
 A crash after the start leaves the erasure open, and the next start finishes it before the sweep
-runs again. The `expired_keys` projection holds each key that an expiry named, so a reader tells an
-expired record from a forgotten one, and a rebuild of the projections gives the same rows. The
-export and `log.read` both read it: `log.read` shows an expired entry with a null `text` and
-`isExpired` true, and never as an error. A forget still wins over expiry: it names its own keys, and
-the key of a record that a forget removed is not an expiry's to name.
+runs again. The `expired_keys` projection holds each key that an expiry named, so `log.read` tells
+an expired record from a forgotten one, and a rebuild of the projections gives the same rows.
+`log.read` shows an expired entry with a null `text` and `isExpired` true, and never as an error.
+The export reads no projection: it calls a record whose key is gone `expired` when no forget covers
+that key, its family or its thread, and `shredded` when one does. A forget still wins over expiry:
+it names its own keys, and the key of a record that a forget removed is not an expiry's to name.
 
 A page on screen learns of an expiry from the stream of its thread. The stream sends the start of an
 expiry as a record with an `expiry` field that lists the records of that thread whose payload it

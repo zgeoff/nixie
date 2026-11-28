@@ -6,7 +6,6 @@ import {
   sendClientMessage,
   startInProcessNixie,
 } from '@heynixie/server/test-utils';
-import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 
 // An age of under a millisecond, so every payload that the first run wrote is old at the next start.
@@ -22,7 +21,7 @@ async function setupTest() {
 
       await writeFile(
         join(definitions, 'rules', 'start.yaml'),
-        'allow-reads:\n  outcome: allow\n  tools: [time.now]\nask-export:\n  outcome: ask\n  tools: [memory.export]\n',
+        'allow-tools:\n  outcome: allow\n  tools: [time.now, log.forget]\n',
       );
     },
   });
@@ -31,40 +30,29 @@ async function setupTest() {
 
   const api = await createTestClient(nixie);
 
+  nixie.guest.addKindReplies('conversation', { text: 'Noted.' });
+
+  const sent = await sendClientMessage(
+    api.client,
+    { text: 'The shed key is under the pot.' },
+    'Noted.',
+  );
+
+  const reply = sent.find((record) => record.kind === 'model.reply');
+
+  invariant(reply, 'the first reply is in the thread');
+
   nixie.guest.addKindReplies(
     'conversation',
     { toolUse: { name: 'time.now', input: {} } },
-    { toolUse: { name: 'memory.export', input: {} } },
-    { text: 'I asked you first.' },
-    { text: 'The export is done.' },
+    { toolUse: { name: 'log.forget', input: { record: String(reply.sequence) } } },
+    { text: 'Removed it.' },
   );
 
-  await sendClientMessage(api.client, { text: 'Export my memory.' }, 'I asked you first.');
-
-  const listed = await api.client.approvals.listItems();
-
-  const item = listed.items.at(0);
-
-  invariant(item, 'the export asks');
-
-  await api.client.approvals.answerProposal({
-    proposalID: item.proposal.proposalID,
-    actionHash: item.proposal.actionHash,
-    choice: 'approve',
-    clientActionID: crypto.randomUUID(),
-  });
-
-  await waitForCondition(async () => {
-    const read = await api.client.conversation.read({ thread: 'conversation' });
-
-    return read.records.some((record) => record.kind === 'action.outcome');
-  });
-
-  await waitForCondition(
-    () =>
-      nixie.guest.received.filter(
-        (received) => received.frame.type === 'turn' && !received.owner.startsWith('worker_run:'),
-      ).length >= 2,
+  await sendClientMessage(
+    api.client,
+    { text: 'What time is it? Then forget your reply.' },
+    'Removed it.',
   );
 
   return { nixie };
@@ -85,9 +73,12 @@ test('it expires the tool result and the connector result of a past run at the n
 
   const second = await again.waitForExit();
 
+  const isForgetOutcome = (record: (typeof first.records)[number]) =>
+    record.kind === 'action.outcome' && record.payload['tool'] === 'log.forget';
+
   const expirable = first.records.filter(
     (record) =>
-      ['tool_result', 'action.outcome'].includes(record.kind) &&
+      (record.kind === 'tool_result' || isForgetOutcome(record)) &&
       record.erasable.status === 'readable',
   );
 
