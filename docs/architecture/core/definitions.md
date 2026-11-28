@@ -649,10 +649,10 @@ and `tasks.runs`, which [tasks](./tasks.md) describes, are conversation tools to
 - **`tasks.definitions`** lists every definition with its trigger in words and its next fire, and
   marks a disabled, spent, removed or unreadable one as not in force. For a definition in force
   whose task holds its fires, the tool gives the hold in `held`, as `stopped`, `paused` or `limit`,
-  and no next fire. A failed task whose step failed while the user's pause request waited on it
-  shows `paused`. For a failed task with no other hold, the tool gives no hold, because the next
-  fire revives the task. For a definition from the repo whose version names no tools, the tool lists
-  the default task tools.
+  and no next fire. The tool gives `paused` for a failed task whose step failed while the user's
+  pause request waited on it. For a failed task with no other hold, the tool gives no hold, because
+  the next fire revives the task. For a definition from the repo whose version names no tools, the
+  tool lists the default task tools.
 
 A define over a definition whose version has an `instructions.md` file, a step file or a file-only
 key off its default (`context`, `wakeable`, `maxCalls`, `step`, `reportShape`, `log`,
