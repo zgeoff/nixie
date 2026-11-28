@@ -81,7 +81,7 @@ package name or a path relative to the importing file. Each package extends the 
 ## Inside a package
 
 The `zgeoff/feature-folders` lint rule checks the layout of each package's `src/`, with no package
-exempt.
+exempt but the spikes, which lint skips.
 
 - The `src/` root holds 8 modules at most. Not counted are `index`, `types` and `constants`,
   declaration files, tests, and every file that `package.json` names in `main`, `module`, `bin`,

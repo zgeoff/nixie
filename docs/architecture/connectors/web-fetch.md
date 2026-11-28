@@ -1,8 +1,8 @@
 # Web fetch
 
 The web fetch tool reads one public web page for the model and returns its text. nixie never parses
-the page itself: a fetcher process inside the fetch sandbox resolves the host, fetches the page and
-extracts its text, and nixie reads back one reply. The fetch sandbox has public egress and no
+a page's HTML itself: a fetcher process inside the fetch sandbox resolves the host, fetches the page
+and extracts its text, and nixie reads back one reply. The fetch sandbox has public egress and no
 grants, and the sandbox adapter enforces public egress at the network layer, so the network layer is
 the boundary that keeps a page away from internal addresses. The fetcher checks every address again
 as a second layer, so a resolver trick fails twice, never once. [Sandboxes](./sandboxes.md) covers
@@ -201,14 +201,15 @@ The `web_fetch` section of the deployment config holds the key, a whole number o
 
 ## Link IDs
 
-Each link in a page's text reads as a short ID that the conversation session numbers, such as
-`[L12]`, so a link costs a few characters in place of its whole URL. A link that leaves the page's
-host shows its host and the start of its path after the ID, such as `[L40 · example.org/docs/…]`, so
-the model can tell where a link goes before it follows it. The `link_path_chars` value in the
-deployment config's `web_fetch` section sets how many characters of the path show, and a longer path
-ends in `…`. The cut never splits the escapes of one character. The tag never shows the query string
-or the fragment, and shows no path for a link to the host's root. The tool fetches the page a link
-ID names, and its result holds the URL the fetch ended at, as a fetch by URL does.
+Each link that the fetcher marks in a page's text reads as a short ID that the conversation session
+numbers, such as `[L12]`, so a link costs a few characters in place of its whole URL. A link that
+leaves the page's host shows its host and the start of its path after the ID, such as
+`[L40 · example.org/docs/…]`, so the model can tell where a link goes before it follows it. The
+`link_path_chars` value in the deployment config's `web_fetch` section sets how many characters of
+the path show, and a longer path ends in `…`. The cut never splits the escapes of one character. The
+tag never shows the query string or the fragment, and shows no path for a link to the host's root.
+The tool fetches the page a link ID names, and its result holds the URL the fetch ended at, as a
+fetch by URL does.
 
 The session numbers each URL once, from a count of its own, so a URL keeps one ID across every page
 the session fetches and every [search](./search.md) hit, and the IDs of two sessions are unrelated.
