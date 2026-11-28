@@ -469,3 +469,17 @@ test('it leaves the exit of a guest open when the adapter ignores a stop', async
 
   expect(settled).toBe('still running');
 });
+
+test('it keeps the sandbox whose destroy a later failNextDestroy refuses', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(buildMockSandboxSpec({ owner: 'web_fetch' }));
+
+  adapter.failNextDestroy('impd is down');
+
+  const outcome = await Promise.allSettled([sandbox.destroy()]);
+  const listed = await adapter.list('web_fetch');
+
+  expect(outcome).toMatchObject([{ status: 'rejected' }]);
+  expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
+});

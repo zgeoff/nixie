@@ -22,3 +22,5 @@ export { buildStubImageProvider } from './build-stub-image-provider';
 export { readImageID, readToolResult } from './read-tool-result';
 export { startTestLog } from './start-test-log';
 export { makeFolderExec, writeDiskFiles, readDiskFiles } from './make-folder-exec';
+export type { DesktopDiskSeed } from './seed-desktop-disk';
+export { seedDesktopDisk } from './seed-desktop-disk';

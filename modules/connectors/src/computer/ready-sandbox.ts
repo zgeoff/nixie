@@ -4,6 +4,7 @@ import { computerOwner } from './computer-owner';
 import { computerFolders, copyComputerFolder } from './copy-computer-folder';
 import { wakeOld } from './move-old-sandboxes';
 import type { ComputerContext, DesktopState } from './types';
+import { writeDiskUsedMarker } from './write-disk-used-marker';
 
 // The computer's sandbox: the kept one that holds today's spec, or a new one that replaces older
 // ones once every copy passed its check. It is null after a failed copy, with the old ones kept.
@@ -23,19 +24,25 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox | 
   const existing = await context.options.adapter.list(computerOwner);
 
   const kept = findKeptSandbox(existing, spec);
+  const others = existing.filter((sandbox) => sandbox.id !== kept?.id);
 
-  if (kept !== undefined) {
+  // A sandbox of today's spec that stands beside older ones is a replacement whose move never
+  // finished, so its disk is not trusted until a copy passes its check.
+  if (kept !== undefined && others.length === 0) {
     state.sandbox = kept;
     state.isAsleep = false;
 
     return kept;
   }
 
-  const created = await context.options.adapter.create(spec);
-  const isReplaced = await replaceOld(context, existing, created);
+  const created = kept === undefined ? await context.options.adapter.create(spec) : kept;
+
+  const isReplaced = await replaceOld(context, others, created);
 
   if (!isReplaced) {
-    await discardCreated(context, created);
+    if (kept === undefined) {
+      await discardCreated(context, created);
+    }
 
     return null;
   }
@@ -87,6 +94,10 @@ async function replaceOld(
           folder,
         });
       }
+    }
+
+    if (old.length > 0) {
+      await writeDiskUsedMarker(created, homeEnv);
     }
   } catch (error) {
     context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');

@@ -26,6 +26,9 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   }[];
   readonly countMostLive: () => number;
 
+  // makes the next destroy of any sandbox reject, which keeps the sandbox
+  readonly failNextDestroy: (message: string) => void;
+
   // every exec a sandbox ran, in order
   readonly execs: readonly { readonly sandboxID: string; readonly command: RunSpec }[];
 
@@ -145,6 +148,9 @@ export function buildStubSandboxAdapter(
     addImage: () => Promise.resolve(),
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     countMostLive: () => mostLive.count,
+    failNextDestroy: (message) => {
+      destroyFailures.push({ kind: 'reject', message });
+    },
   };
 }
 
