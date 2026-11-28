@@ -25,8 +25,8 @@ report from the PR description, and fails a PR that changes a feature with no ve
 - [Targets](#targets): check a change on a launch target, a target whose app `bun verify up` starts
   from your worktree.
 - [Commands](#commands): read `--help` before you guess a flag.
-- [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
-  registry, read the reference before you edit the skill, and run `lint`.
+- [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file that no
+  feature's entry imports, read the reference before you edit the skill, and run `lint`.
 
 ## References
 
@@ -96,7 +96,8 @@ Read a feature's file before you run its journey.
    the commands in its row. Expect from `up` or `attach`: `ok: true`, and the app's endpoints in
    `data.endpoints`.
 3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, fix its cause, and run
-   `doctor` again.
+   `doctor` again, not the compare step that the `check-failed` row of
+   [Exit codes](references/exit-codes.md) gives.
 4. Run the journey from the feature's file in [References](#references). Its first line,
    `use --feature`, records each later command under that feature. Expect: each command exits 0.
    When one fails, do what its row in [Exit codes](references/exit-codes.md) says.
@@ -107,7 +108,8 @@ Read a feature's file before you run its journey.
    - When your change means to change the end state, fix the feature's file, and run
      `bun verify lint`. Then run the journey again.
    - Otherwise, such as a `read-only` failure or a bug your change did not cause, skip `done`. List
-     the feature in your reply with the end state you expected and the `data` you got.
+     the feature in your reply with the end state you expected and the `data` you got. For a
+     `read-only` failure, list the write instead of the `data`.
 6. Record the verdict. Finish each edit to a file the feature owns first: an edit after `done` makes
    the verdict `stale`. Then run `bun verify done`. Expect: `ok: true`. `done` never reads the end
    state, and fails with `check-failed` until a journey command succeeds after `doctor`.
