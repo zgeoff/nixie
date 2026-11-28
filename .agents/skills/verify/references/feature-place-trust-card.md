@@ -95,15 +95,15 @@ Before you start:
 
    ```bash
    bun verify proposals --tool computer.screen_click --waiting none
-   bun verify db query "select state from proposals where family = 'action'"
+   bun verify db query "select json_extract(payload, '$.outcome') as outcome from records where kind = 'proposals.settled' and json_extract(payload, '$.family') = 'action' order by sequence desc limit 1"
    bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.screen_click'"
    bun verify db query "select kind, trust, origin from places"
    bun verify db query "select count(*) as rules from records where kind like '%rule%'"
    ```
 
-   Expect: `proposals` exits 0. The first query returns one row, with `state` `approved`. The second
-   returns one row, with `status` `done`. The third returns one row, with `kind` `site`, `trust`
-   `read` and `origin` `added`. The fourth returns `rules` 0.
+   Expect: `proposals` exits 0. The first query returns one row, with `outcome` `approved`. The
+   second returns one row, with `status` `done`. The third returns one row, with `kind` `site`,
+   `trust` `read` and `origin` `added`. The fourth returns `rules` 0.
 
 8. Raise the site to `act`, then send the same turn again. The entry now allows the click, so nixie
    holds nothing.
