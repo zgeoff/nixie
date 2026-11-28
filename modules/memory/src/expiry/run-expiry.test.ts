@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import {
@@ -32,7 +32,10 @@ async function setupTest() {
   const lookup = buildMockToolDefinition({
     name: 'notes.lookup',
     run: (call) =>
-      Promise.resolve({ status: 'ok', result: { text: String(call.input['query'] ?? '') } }),
+      Promise.resolve({
+        status: 'ok',
+        result: { text: typeof call.input['query'] === 'string' ? call.input['query'] : '' },
+      }),
   });
 
   const toolOptions = {
@@ -391,12 +394,15 @@ test('it writes an export that marks the text of an expiry as expired and the re
 
   const db = startDatabase(path);
 
+  onTestFinished(async () => {
+    await db.destroy();
+  });
+
   const answer = await sql
     .raw<{ sequence: number; text_status: string }>(
       "select sequence, text_status from records where kind in ('tool_result', 'owner_message') order by sequence",
     )
-    .execute(db)
-    .finally(() => db.destroy());
+    .execute(db);
 
   expect(answer.rows).toStrictEqual([
     { sequence: message, text_status: 'readable' },
