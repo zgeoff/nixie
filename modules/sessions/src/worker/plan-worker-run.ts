@@ -157,6 +157,9 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
         thread: facts.run.thread,
         logThread: facts.run.logThread,
         ...(facts.run.taskRun === undefined ? {} : { taskRun: facts.run.taskRun }),
+        ...(facts.run.connectionPins === undefined
+          ? {}
+          : { connectionPins: pickWorkerPins(facts.run.connectionPins, tools) }),
       },
     },
   };
@@ -178,4 +181,13 @@ function renderUnknownModel(name: string, names: readonly string[]): string {
   return names.length === 0
     ? `This deployment offers no model choice, so there is no model ${name} to run a worker on, and nixie started none.`
     : `There is no model ${name} to run a worker on; choose one of ${names.join(', ')}, so nixie started none.`;
+}
+
+// A worker keeps the pins of each tool it holds, so delegation never reaches a connection that the
+// caller could not.
+function pickWorkerPins(
+  pins: Readonly<Record<string, readonly string[]>>,
+  tools: readonly string[],
+): Readonly<Record<string, readonly string[]>> {
+  return Object.fromEntries(Object.entries(pins).filter(([tool]) => tools.includes(tool)));
 }

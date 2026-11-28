@@ -23,6 +23,13 @@ export const taskDefineInputSchema = z.strictObject({
         'task gets. Name each tool as nixie names it, such as web_fetch, or as your tool list shows ' +
         'it, such as mcp__nixie__web_fetch.',
     ),
+  connections: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'The connections the task may use, by the short IDs of the `connection` argument. Leave it ' +
+        'out to let it use every connection you can use now.',
+    ),
   report: z.enum(['wake', 'next_turn', 'none']).optional(),
 });
 

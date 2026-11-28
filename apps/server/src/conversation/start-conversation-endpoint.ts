@@ -152,6 +152,9 @@ export interface ConversationEndpointTools {
   // the tools that a run leaves out of its list; none before the connections start
   readonly readHeldBackTools: () => Promise<readonly string[]>;
 
+  // the short IDs of the connections that are not forgotten; none before the connections start
+  readonly readLiveConnections: () => Promise<ReadonlySet<string>>;
+
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
   readonly runInForceSeed: () => Promise<void>;
@@ -264,6 +267,10 @@ export async function startConversationEndpoint(
   const definitionToolOptions = {
     relatedMemory,
     readDefinitions: tools.readDefinitions,
+    connections: {
+      readUsable: async () => [...(await tools.readLiveConnections())],
+      connectorTools: tools.google.map((tool) => tool.name),
+    },
     readZone: makeReadZone(
       options.context.log.writer,
       options.context.log.writer.db,
@@ -473,6 +480,7 @@ export async function startConversationEndpoint(
     queue: tools.queue,
     readOwnValues: tools.readOwnValues,
     readHeldBackTools: tools.readHeldBackTools,
+    readLiveConnections: tools.readLiveConnections,
     proposalConfig: buildProposalConfig(options.config),
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });

@@ -17,6 +17,7 @@ import { renderChangedSentence } from './call-record/render-changed-sentence';
 import type { ToolCallOptions } from './call-record/tool-call-options';
 import { writeDirectActs } from './call-record/write-direct-acts';
 import { renderCallCapRefusal } from './cap/render-call-cap-refusal';
+import { findToolPins } from './connection/find-tool-pins';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
 import type { PaidState } from './paid/try-prepare-paid-call';
 import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
@@ -86,12 +87,16 @@ export async function runToolCall(
   }
 
   const isListed = found !== null && run.tools.includes(requested.tool);
+  const pinned = findToolPins(run.connectionPins, requested.tool);
   const inputResolver = found !== null && isListed ? found.definition.resolveInput : undefined;
 
   const inputResolution =
     inputResolver === undefined
       ? { status: 'ok' as const, input: requested.input }
-      : await inputResolver(requested.input, { run });
+      : await inputResolver(requested.input, {
+          run,
+          ...(pinned === undefined ? {} : { pinned }),
+        });
 
   if (inputResolution.status === 'error') {
     return writeInvalidCall(requestRecorder, inputResolution.message);

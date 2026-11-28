@@ -340,6 +340,9 @@ function startToolRun(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promi
     skills: plan.skills,
     model: { model: run.names.model, profile: run.names.profile },
     ...(plan.caller.taskRun === undefined ? {} : { taskRun: plan.caller.taskRun }),
+    ...(plan.caller.connectionPins === undefined
+      ? {}
+      : { connectionPins: plan.caller.connectionPins }),
     toolUseMetaKey: plan.target.harness.toolUseMetaKey,
     parent: plan.caller.callSequence,
   });

@@ -36,6 +36,7 @@ test('it stores a version that reads back with its name, brief and defaults', as
     skills: [],
     context: 'fresh',
     wakeable: false,
+    connections: {},
     trigger: null,
   });
 });

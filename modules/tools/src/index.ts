@@ -29,6 +29,7 @@ export { relatedMemoryOutput } from './related/related-memory-output';
 export type { RelatedMemoryItem, RelatedMemoryLookup } from './related/types';
 export { toolCalledCodec } from './tool-called-codec';
 export { toolResultCodec } from './tool-result-codec';
+export { findToolPins } from './connection/find-tool-pins';
 export { toSDKToolName } from './tool-name/to-sdk-tool-name';
 
 export type {

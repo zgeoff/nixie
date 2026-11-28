@@ -6,13 +6,18 @@ import { buildMockWorkerTarget } from '../test-utils/build-mock-worker-target';
 import type { WorkerRunFacts } from './plan-worker-run';
 import { planWorkerRun } from './plan-worker-run';
 
-function setupTest(overrides: Partial<WorkerRunFacts> = {}, left: number | null = null) {
+function setupTest(
+  overrides: Partial<WorkerRunFacts> = {},
+  left: number | null = null,
+  connectionPins?: Readonly<Record<string, readonly string[]>>,
+) {
   const roleTarget = buildMockWorkerTarget('worker-role', 'claude-test-role');
   const bigTarget = buildMockWorkerTarget('big', 'claude-test-big');
 
   const context = buildMockToolContext({
     run: {
       tools: ['notes_read', 'mcp__nixie__web_fetch', 'web_fetch'],
+      ...(connectionPins === undefined ? {} : { connectionPins }),
       stepRunID: 'step-a',
       session: {
         key: 'session-1',
@@ -62,6 +67,23 @@ test('it plans a run with the tools the caller holds and the configured limits',
       caller: { callID: 'call-1', callSequence: 7, stepRunID: 'step-a' },
     },
   });
+});
+
+test("it gives a worker the caller's pins for the tools it holds, and no others", () => {
+  const planned = planWorkerRun(
+    setupTest({}, null, { notes_read: ['k3x9m2p7qa'], web_fetch: ['p8d2v6n4rc'] }),
+  );
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { caller: { connectionPins: { notes_read: ['k3x9m2p7qa'] } } },
+  });
+});
+
+test('it gives a worker of a caller with no pins none', () => {
+  const planned = planWorkerRun(setupTest());
+
+  expect(planned).not.toHaveProperty('plan.caller.connectionPins');
 });
 
 test('it caps the dollars at what the caller has left, and says so', () => {

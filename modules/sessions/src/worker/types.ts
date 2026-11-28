@@ -45,6 +45,7 @@ interface WorkerCaller {
   readonly thread: string;
   readonly logThread: string;
   readonly taskRun?: ToolRun['taskRun'];
+  readonly connectionPins?: ToolRun['connectionPins'];
 }
 
 // what each record of one worker run names it by

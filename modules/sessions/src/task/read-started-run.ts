@@ -18,7 +18,7 @@ import {
   selfNoteToolNames,
   startedTaskDefaultTools,
 } from '@heynixie/tasks';
-import type { ToolRunModel } from '@heynixie/tools';
+import type { ToolRun, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildGuestCommand } from './build-guest-command';
@@ -49,6 +49,9 @@ export interface StartedRun {
   // the skills the version lists, which the run's skill tools and catalog follow; none for a run
   // with no definition
   readonly skills: readonly string[];
+  // the pins of the version the task run pinned, as the tool run takes them: no key for a started
+  // task or a version that pins nothing
+  readonly pinned: Pick<ToolRun, 'connectionPins'>;
 
   // set for a definition's task under a fresh context: the session reads the log after it
   readonly sinceSequence: number | null;
@@ -115,6 +118,7 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
     hasSelfNoteGrant: version.memory === 'self_notes',
     selfNoteOnlyTools: pickSelfNoteOnlyTools(version),
     skills: version.skills,
+    pinned: pickPinned(version.connections),
     sinceSequence: pickSinceSequence(version.context, found),
   });
 }
@@ -127,6 +131,7 @@ type RunParts = Pick<
   | 'hasSelfNoteGrant'
   | 'selfNoteOnlyTools'
   | 'skills'
+  | 'pinned'
   | 'sinceSequence'
 > &
   Partial<Pick<StartedRun, 'call'>>;
@@ -182,6 +187,12 @@ function pickSelfNoteOnlyTools(version: Pick<DefinitionVersion, 'memory' | 'tool
     : [];
 }
 
+function pickPinned(
+  connections: Readonly<Record<string, readonly string[]>>,
+): StartedRun['pinned'] {
+  return Object.keys(connections).length === 0 ? {} : { connectionPins: connections };
+}
+
 // A fresh context opens a session at each piece of work, and a continuing one keeps the last.
 function pickSinceSequence(
   context: 'fresh' | 'continuing',
@@ -223,6 +234,7 @@ async function readCallRun(
     hasSelfNoteGrant: false,
     selfNoteOnlyTools: [],
     skills: [],
+    pinned: {},
     sinceSequence: null,
     call,
   });
@@ -248,6 +260,7 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     hasSelfNoteGrant: false,
     selfNoteOnlyTools: [],
     skills: [],
+    pinned: {},
     sinceSequence: null,
   });
 }

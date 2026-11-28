@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
+import { buildConnectionPins } from './build-connection-pins';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
 import { taskDefineInputSchema } from './task-define-input-schema';
@@ -77,7 +78,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         return { status: 'error', message: notReadyMessage };
       }
 
-      const { definitionID, trigger: givenTrigger, ...rest } = given;
+      const { definitionID, trigger: givenTrigger, connections: named, ...rest } = given;
 
       const ownerZone = await options.readZone('owner');
 
@@ -97,9 +98,33 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 
       const trigger = checked.trigger;
 
+      const usable = await options.connections?.readUsable();
+
+      const pinned = buildConnectionPins({
+        tools: rest.tools,
+        named,
+        usable: usable ?? [],
+        connectorTools: options.connections?.connectorTools ?? [],
+      });
+
+      if (pinned.status === 'refused') {
+        const refused = {
+          code: 'connection_not_usable',
+          path: 'connections',
+          sentence: `You cannot use ${pinned.unusable.join(', ')}, so the task cannot be pinned to it.`,
+        };
+
+        return { status: 'ok', result: { refused }, refusalCode: refused.code };
+      }
+
       const result = await requestDefinitionChange(context, {
         kind: 'define',
-        input: { ...rest, trigger, definitionID },
+        input: {
+          ...rest,
+          trigger,
+          definitionID,
+          ...(Object.keys(pinned.pins).length === 0 ? {} : { connections: pinned.pins }),
+        },
       });
 
       if (result.status === 'refused') {

@@ -14,6 +14,7 @@ import type { ToolContext, ToolDefinition, ToolSource } from './types';
 interface SetupConfig {
   readonly tools: readonly ToolDefinition[];
   readonly heldBack?: readonly string[];
+  readonly liveConnections?: readonly string[];
   readonly sources?: readonly ToolSource[];
 }
 
@@ -32,6 +33,7 @@ async function setupTest(config: SetupConfig) {
     },
     socketDir: join(testLog.dataDir, 'tools'),
     readHeldBackTools: () => Promise.resolve(heldBack.names),
+    readLiveConnections: () => Promise.resolve(new Set(config.liveConnections)),
     registry,
     decide: readStarterDecisionPoint(
       (tool) => registry.findTool(tool)?.definition.declaration ?? null,
@@ -164,6 +166,126 @@ test('it lists a tool again once its scope returns, in a run that started while 
     before.tools.map((tool) => tool.name),
     after.tools.map((tool) => tool.name),
   ]).toStrictEqual([[], ['stub.read_mail']]);
+});
+
+test('it lists no tool whose pins all name forgotten connections', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({ name: 'notes.read' }),
+      buildMockToolDefinition({ name: 'stub.read_mail' }),
+    ],
+    liveConnections: ['p8d2v6n4rc'],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes.read', 'stub.read_mail'],
+    connectionPins: { 'stub.read_mail': ['k3x9m2p7qa'] },
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+  const called = await client.callTool({ name: 'stub.read_mail', arguments: { query: 'milk' } });
+
+  expect([listed.tools.map((tool) => tool.name), called.isError]).toStrictEqual([
+    ['notes.read'],
+    true,
+  ]);
+});
+
+test('it lists a tool pinned to one live connection without the connection argument', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'stub.read_mail',
+        input: { properties: { connection: { type: 'string' } } },
+      }),
+    ],
+    liveConnections: ['k3x9m2p7qa', 'p8d2v6n4rc'],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['stub.read_mail'],
+    connectionPins: { 'stub.read_mail': ['k3x9m2p7qa'] },
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+
+  expect(Object.keys(listed.tools[0]?.inputSchema.properties ?? {})).toStrictEqual(['query']);
+});
+
+test('it keeps the connection argument of a tool pinned to two live connections', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'stub.read_mail',
+        input: { properties: { connection: { type: 'string' } } },
+      }),
+    ],
+    liveConnections: ['k3x9m2p7qa', 'p8d2v6n4rc'],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['stub.read_mail'],
+    connectionPins: { 'stub.read_mail': ['k3x9m2p7qa', 'p8d2v6n4rc'] },
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+
+  expect(Object.keys(listed.tools[0]?.inputSchema.properties ?? {})).toStrictEqual([
+    'query',
+    'connection',
+  ]);
+});
+
+test('it gives a tool the connections its run pins it to when the call resolves its input', async () => {
+  const seen: { pinned: readonly string[] | undefined }[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'stub.read_mail',
+        resolveInput: (input, context) => {
+          seen.push({ pinned: context.pinned });
+
+          return Promise.resolve({ status: 'ok', input });
+        },
+      }),
+    ],
+    liveConnections: ['k3x9m2p7qa'],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['mcp__nixie__stub_read_mail'],
+    connectionPins: { 'stub.read_mail': ['k3x9m2p7qa'] },
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+
+  await client.callTool({ name: 'stub.read_mail', arguments: { query: 'milk' } });
+
+  expect(seen).toStrictEqual([{ pinned: ['k3x9m2p7qa'] }]);
 });
 
 test('it refuses a call to a tool that is held back when the call arrives', async () => {

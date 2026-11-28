@@ -283,6 +283,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         tools: collectEndpointTools(run),
         model: run.model,
         skills: run.skills,
+        ...run.pinned,
         ...(run.hasSelfNoteGrant
           ? { hasSelfNoteGrant: true, selfNoteOnlyTools: run.selfNoteOnlyTools }
           : {}),

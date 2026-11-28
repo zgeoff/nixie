@@ -1,7 +1,9 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
+import { findToolPins } from '@heynixie/tools';
 import { endWakeRuleInTransaction, readWakeRules } from '@heynixie/triggers';
 import { z } from 'zod';
+import { pickPinnedContexts } from '../call/pick-pinned-contexts';
 import { buildGmailMailbox } from './build-gmail-mailbox';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
@@ -9,7 +11,7 @@ import type { GmailDeps } from './types';
 
 const inputSchema = z.strictObject({ rule: z.string() });
 
-// gmail.wake_cancel: ends a live rule of any connected account. It takes the connection from the
+// gmail.wake_cancel: ends a live rule of any account the run may use. It takes the connection from the
 // rule, and refuses UNKNOWN_RULE for a rule of another mailbox. A cancel only narrows what wakes the
 // assistant, so it never asks. The matches that the rule held still arrive in a later wake.
 export function buildGmailWakeCancelTool(deps: GmailDeps): ToolDefinition {
@@ -32,14 +34,16 @@ export function buildGmailWakeCancelTool(deps: GmailDeps): ToolDefinition {
     },
     declaration: gmailDeclarations.wakeCancel,
     execution: 'direct',
-    run: async (call) => {
+    run: async (call, tool) => {
       const parsed = inputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const live = await deps.access.readLiveContexts();
+      const reachable = await deps.access.readLiveContexts();
+
+      const live = pickPinnedContexts(reachable, findToolPins(tool.run.connectionPins, call.tool));
 
       for (const context of live) {
         const rules = await readWakeRules(deps.log.writer.db, {

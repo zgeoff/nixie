@@ -83,6 +83,10 @@ export interface DefinitionVersion {
   readonly context: 'fresh' | 'continuing';
   readonly wakeable: boolean;
 
+  // the short IDs of the connections each connector tool of the list is pinned to, for the life of a
+  // task run of this version; a tool the map leaves out reaches every live connection
+  readonly connections: Readonly<Record<string, readonly string[]>>;
+
   // null: the definition fires by no trigger
   readonly trigger: Trigger | null;
 }

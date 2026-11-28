@@ -10,7 +10,10 @@ export const definitionOnlyKeys = [
   'destinations',
   'maxCalls',
   'skills',
+  'connections',
 ] as const;
+
+const connectionsSchema = z.record(z.string(), z.array(z.string()));
 
 export const definitionOnlySchema = z.object({
   enabled: z.boolean().default(true),
@@ -25,6 +28,10 @@ export const definitionOnlySchema = z.object({
     .default(null),
   destinations: z.array(destinationPatternSchema).default([]),
   skills: z.array(z.string()).optional(),
+
+  // The short IDs of the connections each connector tool of the list may use. A version with no key
+  // pins nothing, and a connector tool that the map leaves out reaches every live connection.
+  connections: connectionsSchema.optional(),
 });
 
 export const maxCallsSchema = z.record(z.string(), z.number()).default({});

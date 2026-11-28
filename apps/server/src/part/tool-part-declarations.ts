@@ -276,6 +276,11 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           readMcp: () => parts.find('mcp') ?? null,
           readHeldBackTools: () =>
             parts.find('connections')?.readHeldBackTools() ?? Promise.resolve([]),
+          readLiveConnections: async () => {
+            const states = await parts.find('connections')?.readStates();
+
+            return new Set((states ?? []).map((state) => state.connection));
+          },
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
           readPlaces: () =>
