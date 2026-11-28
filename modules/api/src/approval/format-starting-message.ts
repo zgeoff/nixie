@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { WakeCause } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 
@@ -33,7 +34,17 @@ function formatOwnerMessage(text: string | null): string {
     return 'Your message';
   }
 
-  const excerpt = flat.length > excerptLimit ? `${flat.slice(0, excerptLimit).trimEnd()}…` : flat;
+  if (flat.length <= excerptLimit) {
+    return `Your message: ${flat}`;
+  }
 
-  return `Your message: ${excerpt}`;
+  return `Your message: ${flat.slice(0, excerptLimit).trimEnd()}… (${digestText(flat)})`;
+}
+
+// A cut message ends in a digest of its whole text, so 2 messages that share their first 60
+// characters still read apart.
+const digestLength = 6;
+
+function digestText(text: string): string {
+  return createHash('sha256').update(text).digest('hex').slice(0, digestLength);
 }

@@ -142,14 +142,15 @@ Each step has a `kind`, an `id` and a `name`, and never a UUID:
 - A `message` step is the conversation, so the chain starts at the thread that the owner's messages
   reach. Its `id` is `conversation`, and its `name` says what woke the conversation step that
   started the work: your message, outside content, a timer, a message from a task, or an earlier
-  message. Your message is named with its first 60 characters, such as `Your message: Book a ferry`,
-  so 2 chains that 2 messages started read apart; a forget that erased the text leaves
-  `Your message`. A step that recorded no cause is named `Conversation`. The text is the one of the
-  message that woke the step, which `task.step_started` records as `source`; a step from before that
-  field has none, so its name reads `Your message`. A task that nothing started, such as a
-  definition's task that a trigger woke, has no conversation step, so its chain starts with a
-  `message` step whose `id` is `outside-content` and whose name is `Outside content`, when outside
-  content woke the task's step that asked.
+  message. Your message is named with its text, such as `Your message: Book a ferry`. A text of more
+  than 60 characters is cut there and ends in a 6-character digest of the whole text, so 2 chains
+  that 2 messages started read apart even when the messages share their start; a forget that erased
+  the text leaves `Your message`. A step that recorded no cause is named `Conversation`. The text is
+  the one of the message that woke the step, which `task.step_started` records as `source`; a step
+  from before that field has none, so its name reads `Your message`. A task that nothing started,
+  such as a definition's task that a trigger woke, has no conversation step, so its chain starts
+  with a `message` step whose `id` is `outside-content` and whose name is `Outside content`, when
+  outside content woke the task's step that asked.
 - A `coding` step is a task that binds a coding session. Its `id` is the session's short ID, which
   the read gives to a session that no listing has named yet.
 - A `task` step is any other task. Its `id` is the task ID, which is a short ID for a started task.

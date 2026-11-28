@@ -14,9 +14,9 @@ test.each<{ title: string; starting: StartingMessage; name: string }>([
     name: 'Your message: Find a cabin',
   },
   {
-    title: 'a long message cut to its first 60 characters',
+    title: 'a long message cut to its first 60 characters and a digest of the whole',
     starting: { cause: { kind: 'owner' }, ownerText: `${'a'.repeat(60)} and more` },
-    name: `Your message: ${'a'.repeat(60)}…`,
+    name: expect.stringMatching(/^Your message: a{60}… \([0-9a-f]{6}\)$/u),
   },
   {
     title: 'a message of several lines on one line',
@@ -54,5 +54,21 @@ test.each<{ title: string; starting: StartingMessage; name: string }>([
     name: 'Conversation',
   },
 ])('#formatStartingMessage names $title', (row) => {
-  expect(formatStartingMessage(row.starting)).toBe(row.name);
+  expect(formatStartingMessage(row.starting)).toStrictEqual(row.name);
+});
+
+test('#formatStartingMessage names 2 messages that share their first 60 characters apart', () => {
+  const shared = 'a'.repeat(60);
+
+  const first = formatStartingMessage({
+    cause: { kind: 'owner' },
+    ownerText: `${shared} then book a ferry`,
+  });
+
+  const second = formatStartingMessage({
+    cause: { kind: 'owner' },
+    ownerText: `${shared} then find a cabin`,
+  });
+
+  expect(first).not.toBe(second);
 });
