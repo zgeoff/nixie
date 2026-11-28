@@ -55,6 +55,12 @@ async function setupTest() {
       return new Set(resolved.reach.get('walked')?.reached);
     },
 
+    // The names of the features whose entries include the file.
+    readClaimants: (path: string): readonly string[] =>
+      registry.features
+        .filter((feature) => feature.entries.includes(path))
+        .map((feature) => feature.name),
+
     // Whether a change to the path flags the feature, resolved from the real registry narrowed to
     // that feature.
     probeFlagged: async (path: string, featureName: string): Promise<boolean> => {
@@ -141,15 +147,21 @@ test('it flags each feature for its own journey file', async () => {
   expect(unflagged).toStrictEqual([]);
 });
 
-test.each([
-  { path: 'apps/web/src/routes/proposals.tsx', feature: 'policy-proposal' },
-  {
-    path: 'adapters/coding-atc/src/test-utils/start-fake-atc-gateway.ts',
-    feature: 'coding-session',
-  },
-])('it flags $feature for a change to $path', async (row) => {
+test('it gives the proposals route to the policy-proposal feature alone', async () => {
   const ctx = await setupTest();
-  const flagged = await ctx.probeFlagged(row.path, row.feature);
+
+  const claimants = ctx.readClaimants('apps/web/src/routes/proposals.tsx');
+
+  expect(claimants).toStrictEqual(['policy-proposal']);
+});
+
+test('it flags coding-session for a change to the fake coding gateway that it imports', async () => {
+  const ctx = await setupTest();
+
+  const flagged = await ctx.probeFlagged(
+    'adapters/coding-atc/src/test-utils/start-fake-atc-gateway.ts',
+    'coding-session',
+  );
 
   expect(flagged).toBe(true);
 });

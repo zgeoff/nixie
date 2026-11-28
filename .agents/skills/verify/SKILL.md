@@ -76,7 +76,6 @@ Read a feature's file before you run its journey.
 | device-view        | Open the browser's own device                    | [references/feature-device-view.md](references/feature-device-view.md)               |
 | live-updates       | Pause from the host, see it on the page          | [references/feature-live-updates.md](references/feature-live-updates.md)             |
 | device-screen      | Enrol a device and see a picture on it           | [references/feature-device-screen.md](references/feature-device-screen.md)           |
-| device-layout      | Lay out a screen in regions, and change them     | [references/feature-device-layout.md](references/feature-device-layout.md)           |
 | mail-wake          | Mail wakes the chat                              | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
 | phone-text         | A text wakes the chat                            | [references/feature-phone-text.md](references/feature-phone-text.md)                 |
 | gmail-tools        | Search and read a mail, and approve a reply      | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
@@ -84,6 +83,7 @@ Read a feature's file before you run its journey.
 | calendar-tools     | Read the calendar, and approve an invitation     | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
 | drive-tools        | Search the files, and create a text file         | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
 | conversation-reset | Reset the conversation from the host             | [references/feature-conversation-reset.md](references/feature-conversation-reset.md) |
+| device-layout      | Lay out a screen in regions, and change them     | [references/feature-device-layout.md](references/feature-device-layout.md)           |
 
 <!-- /wringer:features -->
 

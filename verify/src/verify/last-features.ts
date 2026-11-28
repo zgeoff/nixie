@@ -1,7 +1,8 @@
 import { featureFiles } from './feature-files';
 
 // The features that use a device, a second client, the assistant's own mailbox or Gmail, which the
-// registry lists after the others.
+// registry lists after the others. `device-layout` comes last of all: enrolling a device replaces
+// the browser's session, so no journey can run after it.
 export const lastFeatures = [
   {
     name: 'job-skills',
@@ -49,11 +50,6 @@ export const lastFeatures = [
     ...featureFiles['device-screen'],
   },
   {
-    name: 'device-layout',
-    summary: 'Lay out a screen in regions, and change them',
-    ...featureFiles['device-layout'],
-  },
-  {
     name: 'mail-wake',
     summary: 'Mail wakes the chat',
     ...featureFiles['mail-wake'],
@@ -87,5 +83,10 @@ export const lastFeatures = [
     name: 'conversation-reset',
     summary: 'Reset the conversation from the host',
     ...featureFiles['conversation-reset'],
+  },
+  {
+    name: 'device-layout',
+    summary: 'Lay out a screen in regions, and change them',
+    ...featureFiles['device-layout'],
   },
 ] as const;
