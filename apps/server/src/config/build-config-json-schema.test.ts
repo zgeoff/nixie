@@ -756,11 +756,69 @@ test('it accepts a role that names a missing profile, which a release build refu
   expect(isNixieValid).toBeFalse();
 });
 
-test.each([
-  { provider: 'openai', isAccepted: true },
-  { provider: 'gemini', isAccepted: true },
-  { provider: 'brushwork', isAccepted: false },
-])('it agrees with the runtime check on an image provider $provider', (row) => {
+test.each(['openai', 'gemini'])(
+  'it accepts the image provider %s in the published schema and at load',
+  (provider) => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+    onTestFinished(() => {
+      Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+    });
+
+    const ctx = setupTest();
+
+    const config = {
+      models: {
+        profiles: {
+          main: {
+            harness: 'agent-sdk',
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            outside_claude: false,
+            effort: 'medium',
+            prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 },
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+      images: {
+        default: 'easel',
+        profiles: {
+          easel: {
+            provider,
+            model: 'easel-1',
+            credential: 'deployment:easel',
+            prices: { '1024x1024': 1, '1536x1024': 1, '1024x1536': 1 },
+          },
+        },
+      },
+    };
+
+    const isPublished = ctx.validate(config);
+    const loaded = deploymentConfigSchema.parse(config);
+
+    expect({ isPublished, images: loaded.images }).toStrictEqual({
+      isPublished: true,
+      images: {
+        default: 'easel',
+        profiles: {
+          easel: {
+            provider,
+            model: 'easel-1',
+            credential: 'deployment:easel',
+            prices: { '1024x1024': 1, '1536x1024': 1, '1024x1536': 1 },
+          },
+        },
+      },
+    });
+  },
+);
+
+test('it refuses an image provider that no adapter has, in the published schema and at load', () => {
   Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
 
   onTestFinished(() => {
@@ -791,7 +849,7 @@ test.each([
       default: 'easel',
       profiles: {
         easel: {
-          provider: row.provider,
+          provider: 'brushwork',
           model: 'easel-1',
           credential: 'deployment:easel',
           prices: { '1024x1024': 1, '1536x1024': 1, '1024x1536': 1 },
@@ -801,7 +859,17 @@ test.each([
   };
 
   const isPublished = ctx.validate(config);
-  const isRuntime = deploymentConfigSchema.safeParse(config).success;
+  const loaded = deploymentConfigSchema.safeParse(config);
 
-  expect([isPublished, isRuntime]).toStrictEqual([row.isAccepted, row.isAccepted]);
+  expect({ isPublished, loaded }).toMatchObject({
+    isPublished: false,
+    loaded: {
+      success: false,
+      error: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: ['images', 'profiles', 'easel', 'provider'] }),
+        ]),
+      },
+    },
+  });
 });

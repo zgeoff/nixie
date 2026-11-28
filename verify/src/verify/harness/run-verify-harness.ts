@@ -182,8 +182,6 @@ export async function runVerifyHarness(): Promise<void> {
             '      credential: deployment:images',
             '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
           ]),
-
-      // the key is a placeholder, so a search call fails at the provider
       ...(isSearchOff ? [] : ['search:', '  credential: deployment:search']),
       'web_fetch:',
       '  package_registry: https://registry.test',
