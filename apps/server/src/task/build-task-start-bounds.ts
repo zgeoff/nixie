@@ -1,5 +1,5 @@
 import type { ModelsConfig } from '@heynixie/models';
-import { checkHarnessFit, roleNeeds } from '@heynixie/models';
+import { buildTaskRunLimits, checkHarnessFit, roleNeeds } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -27,7 +27,10 @@ export function buildTaskStartBounds(
           missing: checkHarnessFit(profile, roleNeeds.task).missing,
         };
       }),
-    limits: models.limits.taskRun,
+    limits: {
+      default: buildTaskRunLimits(models.limits.taskRun.default),
+      max: buildTaskRunLimits(models.limits.taskRun.max),
+    },
     memoryTools: {
       read: memoryTools.filter((tool) => isReadOnlyTool(tool)).map((tool) => tool.name),
       write: memoryTools.filter((tool) => !isReadOnlyTool(tool)).map((tool) => tool.name),

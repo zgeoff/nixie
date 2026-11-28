@@ -1,9 +1,9 @@
 import { withWriteTransaction } from '@heynixie/log';
-import type { TaskLimits, TaskRun, TasksContext } from '@heynixie/tasks';
+import type { TaskRun, TaskUsage, TasksContext } from '@heynixie/tasks';
 import { readRunMeters, toTransactionContext } from '@heynixie/tasks';
 
 export interface RunUsageRead {
-  readonly used: TaskLimits;
+  readonly used: TaskUsage;
 }
 
 // Every meter read in one transaction, so a record that lands during the read counts in all of them

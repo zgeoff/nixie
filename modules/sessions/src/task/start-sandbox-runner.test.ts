@@ -1621,6 +1621,37 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
   ]);
 });
 
+test('it runs the turns of a task with no limit and never pauses it', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { report: 'none', limits: { turns: null, dollars: null } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'And the evening tide.');
+  await ctx.runNextStep(runner);
+
+  const [paused, notices] = await Promise.all([
+    ctx.readKinds('task.paused'),
+    ctx.readKinds('task.limit_notice'),
+  ]);
+
+  expect({ turns: ctx.guest.turns.length, paused, notices }).toStrictEqual({
+    turns: 3,
+    paused: [],
+    notices: [],
+  });
+});
+
 test('it voids the replies a dead attempt left, and runs no turn, when a step reruns after its report was asked for', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

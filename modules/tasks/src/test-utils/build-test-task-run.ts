@@ -3,7 +3,7 @@ import type { TaskRun } from '../run/types';
 export interface TestTaskRunOptions {
   readonly runID?: string;
   readonly openedSequence?: number;
-  readonly limits?: { readonly turns: number; readonly dollars: number };
+  readonly limits?: { readonly turns: number | null; readonly dollars: number | null };
   readonly originSequence?: number | null;
   readonly carriesRunID?: string | null;
   readonly definitionHash?: string | null;

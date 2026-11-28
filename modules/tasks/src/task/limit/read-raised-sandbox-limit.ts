@@ -47,6 +47,6 @@ export async function readRaisedSandboxLimit(
       ...reads.filter((read) => read.sandbox === newest.sandbox).map((read) => read.countMicros),
     ),
     readCount: reads.length,
-    leftDollars: carried.dollars,
+    leftDollars: carried.dollars ?? Number.POSITIVE_INFINITY,
   };
 }

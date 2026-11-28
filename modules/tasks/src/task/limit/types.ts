@@ -9,5 +9,6 @@ export interface RaisedSandboxLimit {
 
   // what the raised piece of work may still spend: its new totals less what it used since its newest
   // restart, as the task run that the raise carries holds
+  // Infinity when the raised piece of work has no dollar limit
   readonly leftDollars: number;
 }

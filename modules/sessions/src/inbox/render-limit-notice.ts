@@ -9,11 +9,14 @@ import type { MessageTimeOptions } from '../types';
 export function renderLimitNotice(record: LogRecord, times: MessageTimeOptions): string {
   const notice = taskLimitNoticeCodec.decode(record.payload);
 
+  const turns =
+    notice.limits.turns === null
+      ? `${String(notice.used.turns)} turns`
+      : `${String(notice.used.turns)} of its ${String(notice.limits.turns)} turns`;
+
   return renderSystemMessage({
     type: 'task-limit',
     at: formatMessageTime(record.recordedAt, null, times),
-    body:
-      `[#${record.sequence}] Task ${notice.taskID} paused at its limit after ` +
-      `${String(notice.used.turns)} of its ${String(notice.limits.turns)} turns.`,
+    body: `[#${record.sequence}] Task ${notice.taskID} paused at its limit after ${turns}.`,
   });
 }

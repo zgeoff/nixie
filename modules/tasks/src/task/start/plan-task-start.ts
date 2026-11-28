@@ -138,14 +138,16 @@ export function planTaskStart(
     dollars: choice.limits?.dollars ?? bounds.limits.default.dollars,
   };
 
-  const over = (['turns', 'dollars'] as const).find((key) => limits[key] > bounds.limits.max[key]);
+  // A meter with no max takes any limit, and a meter with no limit passes.
+  const [over] = (['turns', 'dollars'] as const).flatMap((key) => {
+    const value = limits[key];
+    const max = bounds.limits.max[key];
+
+    return value !== null && max !== null && value > max ? [{ key, max }] : [];
+  });
 
   if (over !== undefined) {
-    return refuse({
-      reason: 'over_limit',
-      limit: over,
-      max: bounds.limits.max[over],
-    });
+    return refuse({ reason: 'over_limit', limit: over.key, max: over.max });
   }
 
   const asked =

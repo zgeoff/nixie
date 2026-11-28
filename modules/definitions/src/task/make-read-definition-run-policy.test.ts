@@ -96,3 +96,20 @@ test('it parses the report shape of the file', async () => {
     type: 'object',
   });
 });
+
+test('it gives a job run no limit on a meter that neither its file nor the config sets', async () => {
+  const ctx = await setupTest();
+
+  const readPolicy = makeReadDefinitionRunPolicy({ turns: null, dollars: null });
+
+  await ctx.writeVersion({
+    name: 'Water',
+    brief: 'Water the plants.',
+    wakeable: false,
+    limits: { dollars: 3 },
+  });
+
+  const policy = await readPolicy(ctx.writer.db, 'task-1', 'hash-1');
+
+  expect(policy?.limits).toStrictEqual({ turns: null, dollars: 3, calls: {} });
+});

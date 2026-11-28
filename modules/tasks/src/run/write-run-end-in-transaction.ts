@@ -4,6 +4,7 @@ import type { JSONObject } from '@heynixie/log';
 import { isFinishedState } from '@heynixie/task-control';
 import { countCapCalls } from '@heynixie/tools';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { writeInboxRecordsInTransaction } from '../inbox/write-inbox-records-in-transaction';
 import { taskLimitNoticeCodec } from '../limit/task-limit-notice-codec';
@@ -25,7 +26,7 @@ import { readRunRows } from './read-run-rows';
 import { taskRunEndedCodec } from './task-run-ended-codec';
 import { taskRunReportRequestedCodec } from './task-run-report-requested-codec';
 import { toTransactionContext } from './to-transaction-context';
-import type { TaskRun } from './types';
+import type { RunMeterName, TaskRun } from './types';
 import { writeRunEndReadsInTransaction } from './write-run-end-reads-in-transaction';
 
 export interface RunEndRequest {
@@ -214,7 +215,7 @@ function buildDetail(
     return {
       meter: ending.limitMeter,
       used: used[ending.limitMeter],
-      limit: run.opened.limits[ending.limitMeter],
+      limit: getLimitReached(run, ending.limitMeter),
     };
   }
 
@@ -223,6 +224,15 @@ function buildDetail(
   }
 
   return {};
+}
+
+// A task run ends at a limit only on a meter that has one.
+function getLimitReached(run: TaskRun, meter: RunMeterName): number {
+  const limit = run.opened.limits[meter];
+
+  invariant(limit !== null, `task run ${run.runID} ended at a ${meter} limit it does not have`);
+
+  return limit;
 }
 
 interface RunReport {
@@ -313,7 +323,7 @@ function renderCodeMadeSummary(
 
   const sentences: Readonly<Record<string, string>> = codeMadeSummaries;
   const sentence = sentences[ending.cause] ?? codeMadeSummaries.no_report;
-  const limit = meter === undefined ? '' : meter.render(run.opened.limits[meter.name]);
+  const limit = meter === undefined ? '' : meter.render(getLimitReached(run, meter.name));
 
   return sentence.replace('{limit}', limit).replace('{count}', String(detail['errors'] ?? 0));
 }
