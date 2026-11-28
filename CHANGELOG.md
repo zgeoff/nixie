@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.127.0](https://github.com/zgeoff/nixie/compare/v0.126.0...v0.127.0) (2026-11-28)
+
+
+### Features
+
+* **connections:** pin a job's connections and report when one breaks ([#1561](https://github.com/zgeoff/nixie/issues/1561)) ([8b82930](https://github.com/zgeoff/nixie/commit/8b82930769efe7c31b08957e3848172f5b41fbb2))
+* **connectors:** retry a failed connector call inside the call ([#1571](https://github.com/zgeoff/nixie/issues/1571)) ([77a71b4](https://github.com/zgeoff/nixie/commit/77a71b4d495dfd29c09cc8902e25bdcccf547006))
+* **erasure:** forget records, images and resets on the runner ([#1570](https://github.com/zgeoff/nixie/issues/1570)) ([783b44b](https://github.com/zgeoff/nixie/commit/783b44bfae8713dd957af53d742b6c8f8663434f))
+* **policy:** stop a task asking again for an action you declined ([#1567](https://github.com/zgeoff/nixie/issues/1567)) ([05b49a3](https://github.com/zgeoff/nixie/commit/05b49a3021b1fa5b46f1216f16c1355e0ceb63a0))
+* **skills:** give job runs and workers their skills ([#1560](https://github.com/zgeoff/nixie/issues/1560)) ([a21822d](https://github.com/zgeoff/nixie/commit/a21822d8c99e1581e94fa4640a0338cf4c70ed26))
+* **tasks:** make task run limits opt-in ([#1568](https://github.com/zgeoff/nixie/issues/1568)) ([c5bfdbf](https://github.com/zgeoff/nixie/commit/c5bfdbf9fc9f1f849e9dcb6282814410130d294b))
+
+
+### Bug Fixes
+
+* **definitions:** show a held definition with no next fire ([#1563](https://github.com/zgeoff/nixie/issues/1563)) ([741e60c](https://github.com/zgeoff/nixie/commit/741e60c91551656ead3143759c406accf06992c7))
+
 ## [0.126.0](https://github.com/zgeoff/nixie/compare/v0.125.0...v0.126.0) (2026-11-28)
 
 
