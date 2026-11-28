@@ -14,7 +14,7 @@ export interface WorkerTurn {
 // calling task run's meter adds them as they are.
 export async function writeWorkerTurnEnded(
   deps: Pick<WorkerDeps, 'log' | 'definitions'>,
-  plan: WorkerPlan,
+  plan: Pick<WorkerPlan, 'caller'>,
   names: WorkerRunNames,
   ended: WorkerTurn,
 ): Promise<void> {

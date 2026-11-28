@@ -84,6 +84,14 @@ export interface Erasable<Request> {
     capture: ErasureCapture,
   ) => Promise<readonly string[]>;
 
+  // Optional. Runs in the transaction that holds the writer while the keys of the capture go: the
+  // keys among them that stay, because a write after the start, such as a kept moment, now needs
+  // them. No write commits between this read and the delete.
+  readonly readSparedKeyIDs?: (
+    tx: WriteTransaction,
+    capture: ErasureCapture,
+  ) => Promise<readonly string[]>;
+
   // After the keys go; repeats hide's work safely.
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
 
@@ -144,6 +152,10 @@ export interface ErasureEntry {
   readonly readLateKeyIDs: (
     tx: WriteTransaction,
     target: ErasureTarget,
+    capture: ErasureCapture,
+  ) => Promise<readonly string[]>;
+  readonly readSparedKeyIDs?: (
+    tx: WriteTransaction,
     capture: ErasureCapture,
   ) => Promise<readonly string[]>;
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;

@@ -161,3 +161,38 @@ test('it marks the reply that a void record names as voided', () => {
     { text: 'Final.' },
   ]);
 });
+
+test('it drops the content of a tool record that an expiry names, and marks it expired, not removed', () => {
+  const recordedAt = new Date('2026-11-14T10:00:00Z');
+
+  const result = buildMockLogRecord({
+    kind: 'tool_result',
+    recordedAt,
+    sequence: 7,
+    thread: 'conversation',
+    toolCall: {
+      callID: 'call-1',
+      content: { page: 'The locker code is 2291.' },
+      outcome: 'ok',
+      tool: 'web.fetch',
+    },
+  });
+
+  const expiry = buildMockLogRecord({
+    expiry: { sequences: [7] },
+    kind: 'erasure.started',
+    sequence: 9,
+    thread: 'conversation',
+  });
+
+  const merged = mergeRecords([result], [expiry]);
+
+  expect(merged.records.at(0)).toStrictEqual({
+    isExpired: true,
+    kind: 'tool_result',
+    recordedAt,
+    sequence: 7,
+    thread: 'conversation',
+    toolCall: { callID: 'call-1', outcome: 'ok', tool: 'web.fetch' },
+  });
+});

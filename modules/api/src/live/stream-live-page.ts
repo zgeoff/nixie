@@ -10,6 +10,7 @@ import { withEventMeta } from '@orpc/server';
 import type { APIContext, Identity } from '../types';
 import { sessionRevokedCodec } from '../utils/session-revoked-codec';
 import { pickLiveStart } from './pick-live-start';
+import { readExpiryNotice } from './read-expiry-notice';
 import type { RemovedSequences } from './read-visible-record';
 import { readVisibleRecord } from './read-visible-record';
 
@@ -70,9 +71,9 @@ export async function* streamLivePage(
           throw stream.buildUnauthorized();
         }
 
-        if (record.thread !== null && record.thread === stream.thread) {
-          const visible = await readVisibleRecord(context, record, { removed, ...stream });
+        const visible = await readThreadRecord(context, record, { removed, ...stream });
 
+        if (visible !== null) {
           yield withEventMeta(
             { kind: 'record' as const, record: visible },
             { id: String(record.sequence) },
@@ -137,4 +138,19 @@ function isRevokeOfCaller(record: LogRecord, caller: Identity): boolean {
     record.kind === sessionRevokedCodec.kind &&
     sessionRevokedCodec.decode(record.payload).identityID === caller.identityID
   );
+}
+
+// The record as the page shows it, or the notice that an expiry gives the thread on screen.
+function readThreadRecord(
+  context: APIContext,
+  record: LogRecord,
+  stream: PageStream & { readonly removed: RemovedSequences },
+): Promise<ContractRecord | null> {
+  if (record.thread !== null && record.thread === stream.thread) {
+    return readVisibleRecord(context, record, stream);
+  }
+
+  return stream.thread === undefined
+    ? Promise.resolve(null)
+    : readExpiryNotice(context, record, stream.thread);
 }

@@ -19,6 +19,9 @@ export interface ToolActivity {
   // the call's record or its result's record was removed, so the call keeps no input or content
   readonly isRemoved?: true;
 
+  // the call's result grew old, so its content is gone
+  readonly isExpired?: true;
+
   // the call's result holds a string that the server cut
   readonly isContentCut?: true;
 

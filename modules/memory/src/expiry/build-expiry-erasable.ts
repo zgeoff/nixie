@@ -10,6 +10,7 @@ import type {
 import { ErasureRefusedError } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { MomentTables } from '../utils/moment-context';
+import { readKeptKeyIDs } from './read-kept-key-ids';
 
 export interface ExpiryContext {
   readonly log: Pick<Log, 'writer'>;
@@ -27,7 +28,7 @@ export interface ExpiryRequest {
 }
 
 // The expiry's runner methods. An expiry captures the keys of the old payloads that no kept moment
-// covers, and has no child, no index to clean and no session to clean: no session reads a payload
+// covers, spares those that a moment kept since covers, and has no child, no index to clean and no session to clean: no session reads a payload
 // that old.
 export function buildExpiryErasable(context: ExpiryContext): Erasable<ExpiryRequest> {
   return {
@@ -37,6 +38,7 @@ export function buildExpiryErasable(context: ExpiryContext): Erasable<ExpiryRequ
     toRequest: () => {
       invariant(false, 'an expiry has no child');
     },
+    readSparedKeyIDs: (tx, capture) => readKeptKeyIDs(tx, capture),
     cleanIndexes: () => Promise.resolve(),
   };
 }

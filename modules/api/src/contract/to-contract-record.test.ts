@@ -12,6 +12,7 @@ function setupTest() {
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set(),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
@@ -425,6 +426,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
@@ -798,6 +800,7 @@ test('it carries a task message with its sender named from the directory', () =>
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [
@@ -883,6 +886,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [
@@ -927,6 +931,7 @@ test('it lists the actions a stop cancelled on its record', () => {
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map([
       [19, [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }]],
     ]),
@@ -956,6 +961,7 @@ test('it marks a shredded record that a forget named as removed', () => {
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set([12]),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
@@ -984,6 +990,7 @@ test.each([
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences,
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
@@ -991,6 +998,36 @@ test.each([
   };
 
   expect(toContractRecord(record, lookups)).not.toHaveProperty('isRemoved');
+});
+
+test.each([
+  ['an expiry named', new Set([12]), new Set<number>(), { isExpired: true }],
+  ['a forget named', new Set<number>(), new Set([12]), { isRemoved: true }],
+  ['both named', new Set([12]), new Set([12]), { isRemoved: true }],
+])('it marks a shredded record that %s', (_name, expiredSequences, removedSequences, marked) => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    kind: 'tool_result',
+    thread: 'conversation',
+    erasable: { status: 'shredded' },
+  });
+
+  const lookups = {
+    actions: new Map(),
+    cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
+    placeActs: new Map(),
+    placeNarrowings: new Map(),
+    proposals: new Map(),
+    removedSequences,
+    expiredSequences,
+    stopCancelledActions: new Map(),
+    reminders: new Map(),
+    taskDirectory: [],
+    voidedReplies: new Map(),
+  };
+
+  expect(toContractRecord(record, lookups)).toMatchObject(marked);
 });
 
 test('it carries the proposal that a record created', () => {
@@ -1227,6 +1264,7 @@ test('it marks a model reply that a void names as voided with the reason', () =>
     placeNarrowings: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
+    expiredSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],

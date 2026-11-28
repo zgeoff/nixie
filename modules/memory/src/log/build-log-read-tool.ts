@@ -258,8 +258,16 @@ async function readWholeEntry(
     return { status: 'error', message: 'no such entry' };
   }
 
+  if (entry.text === null) {
+    return {
+      status: 'ok',
+      result: { entries: [toEntryJSON(entry)], next: null },
+      record: { eventIDs: [String(entry.sequence)], next: null },
+    };
+  }
+
   const offset = input.after === undefined ? 0 : Number(input.after);
-  const text = entry.text ?? '';
+  const text = entry.text;
 
   if (offset > text.length) {
     return { status: 'error', message: 'after is past the end of the entry' };
@@ -279,7 +287,7 @@ async function readWholeEntry(
       entries: [
         toEntryJSON({
           ...entry,
-          text: entry.text === null ? null : page.text,
+          text: page.text,
           isCut: page.next !== null,
         }),
       ],
@@ -287,20 +295,6 @@ async function readWholeEntry(
     },
     record: { eventIDs: [String(entry.sequence)], next },
   };
-}
-
-function isInsideSurrogatePair(text: string, offset: number): boolean {
-  return offset > 0 && (text.codePointAt(offset - 1) ?? 0) > 0xff_ff;
-}
-
-// The bytes of a result around the text slice, with the longest cursor the page can carry.
-function measureEntryEnvelope(entry: LogEntry): number {
-  const shell = {
-    entries: [toEntryJSON({ ...entry, text: '', isCut: true })],
-    next: '9'.repeat(16),
-  };
-
-  return Buffer.byteLength(JSON.stringify(shell));
 }
 
 function toEntryJSON(entry: LogEntry): JSONObject {
@@ -319,6 +313,20 @@ function formatRecordedAt(time: number): string {
   const iso = new Date(time).toISOString();
 
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
+function isInsideSurrogatePair(text: string, offset: number): boolean {
+  return offset > 0 && (text.codePointAt(offset - 1) ?? 0) > 0xff_ff;
+}
+
+// The bytes of a result around the text slice, with the longest cursor the page can carry.
+function measureEntryEnvelope(entry: LogEntry): number {
+  const shell = {
+    entries: [toEntryJSON({ ...entry, text: '', isCut: true })],
+    next: '9'.repeat(16),
+  };
+
+  return Buffer.byteLength(JSON.stringify(shell));
 }
 
 interface FittedPage {

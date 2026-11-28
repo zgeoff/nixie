@@ -13,6 +13,9 @@ export interface WorkerTurnActivity {
 
   // a forget erased the turn's text
   readonly isForgotten: boolean;
+
+  // the turn's text grew old and went
+  readonly isExpired?: true;
   readonly record: RecordRef;
   readonly dollars: number;
   readonly text?: string;

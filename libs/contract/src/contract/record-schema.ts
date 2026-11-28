@@ -81,12 +81,19 @@ export const recordSchema = z.object({
 
   forget: z.object({ sequence: sequenceSchema }).optional(),
 
+  // set on the start of an expiry that reached this thread, with the records of the thread whose
+  // payload it removes
+  expiry: z.object({ sequences: z.array(sequenceSchema) }).optional(),
+
   context: contextSchema.optional(),
 
   definitionNotice: definitionNoticeSchema.optional(),
 
   // set on an assistant's ask for a take-over, with the reason while it is readable
   handover: z.object({ reason: z.string().optional() }).optional(),
+
+  // set on a record whose payload left because it grew old, which is no forget
+  isExpired: z.literal(true).optional(),
 
   isRemoved: z.literal(true).optional(),
 

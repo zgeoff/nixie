@@ -1,4 +1,5 @@
 import invariant from 'tiny-invariant';
+import type { WriteTransaction } from '../record/with-write-transaction';
 import { withWriteTransaction } from '../record/with-write-transaction';
 import type { Definitions, Log } from '../types';
 import { collectFinishOrder } from './collect-finish-order';
@@ -191,10 +192,16 @@ async function removeTreeKeys(context: ErasureRunContext, state: TreeKeys): Prom
         state.lateKeyIDs.add(keyID);
       }
 
-      await removeErasureKeys(context.log, {
-        keys: capture.keys,
-        cleanupKeys: [...capture.cleanupKeys, ...late],
-      });
+      const readSpared = getEntry(context, erasure.started.kind).readSparedKeyIDs;
+
+      const spare =
+        readSpared === undefined ? undefined : (tx: WriteTransaction) => readSpared(tx, capture);
+
+      await removeErasureKeys(
+        context.log,
+        { keys: capture.keys, cleanupKeys: [...capture.cleanupKeys, ...late] },
+        spare,
+      );
 
       state.removed.add(erasure.started.erasureID);
     }

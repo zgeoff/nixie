@@ -6,10 +6,16 @@ import type { StartedErasureRunner } from './start-erasure-runner';
 
 const msPerHour = 3_600_000;
 
+type ExpirySweepParts = Pick<ServerParts, 'log'> & {
+  readonly context: Pick<ServerParts['context'], 'clock'>;
+  readonly config: { readonly erasure: Pick<ServerParts['config']['erasure'], 'expireAfterMs'> };
+  readonly cleanup: Pick<ServerParts['cleanup'], 'defer'>;
+};
+
 // At the start and then every hour, expires each tool result, connector result and helper note that
 // is older than the config's expiry age.
 export async function startExpirySweep(
-  parts: ServerParts,
+  parts: ExpirySweepParts,
   runner: Pick<StartedErasureRunner, 'expire'>,
 ): Promise<void> {
   const sweep = startSweep({

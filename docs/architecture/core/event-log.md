@@ -247,9 +247,20 @@ forgotten one does:
    a backup due as a forget does. The sweep then starts the next batch after the last record the
    previous one read, until a start finds nothing to expire.
 
+A moment kept after the start still holds its records: the runner reads which captured keys a kept
+moment now covers and deletes the rest, in one write transaction, so no keep commits in between. A
+spared key stays in `expired_keys`, so a later batch never names it again.
+
 A crash after the start leaves the erasure open, and the next start finishes it before the sweep
 runs again. The `expired_keys` projection holds each key that an expiry named, so a reader tells an
 expired record from a forgotten one, and a rebuild of the projections gives the same rows. The
 export and `log.read` both read it: `log.read` shows an expired entry with a null `text` and
 `isExpired` true, and never as an error. A forget still wins over expiry: it names its own keys, and
 the key of a record that a forget removed is not an expiry's to name.
+
+A page on screen learns of an expiry from the stream of its thread. The stream sends the start of an
+expiry as a record with an `expiry` field that lists the records of that thread whose payload it
+removes. The page drops the payload of each and shows it as expired, never as forgotten. A record
+that a page loads after the expiry carries `isExpired` in place of `isRemoved`. A `log.read` cursor
+that an expiry outlives gets the same gap, with a null `text` and `isExpired` true, in place of an
+error.

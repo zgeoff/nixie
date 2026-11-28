@@ -117,6 +117,8 @@ export { workerRunToolName } from './worker/worker-run-tool-name';
 export { workerRunEndedCodec } from './worker/worker-run-ended-codec';
 export { workerRunStartedCodec } from './worker/worker-run-started-codec';
 export { workerGatewayChargedCodec } from './worker/worker-gateway-charged-codec';
+export type { WorkerTurn } from './worker/write-worker-turn-ended';
+export { writeWorkerTurnEnded } from './worker/write-worker-turn-ended';
 export { workerTurnEndedCodec } from './worker/worker-turn-ended-codec';
 export type { WorkerUsed } from './worker/worker-used';
 export type { WorkerOutcome } from './worker/to-worker-outcome';
