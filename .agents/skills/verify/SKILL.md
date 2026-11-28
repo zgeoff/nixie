@@ -144,7 +144,7 @@ holds `data` when it was too large to print. When a command fails, follow its ro
 
 `up` starts a launch target's app and `down` stops it. `attach` connects to an attach target, whose
 app runs apart from `bun verify`, and `detach` leaves it running. An attach target runs pushed or
-released code, so check a change you are still editing on a launch target.
+released code, so check a change you are editing on a launch target.
 
 Run `bun verify use --target <target>` to point every later command at a target. It saves the choice
 in this worktree's `.wringer/`. Pass `--target` to point one command alone. A command with neither
