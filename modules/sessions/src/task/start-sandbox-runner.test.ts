@@ -3078,6 +3078,8 @@ test('it gives a definition task that lists no skill no skill tool, no catalog a
 
   expect(joined).toStrictEqual([]);
   expect(ctx.guest.turns[0]?.systemPrompt).not.toInclude('<skills>');
+});
+
 test("it starts a definition task's tool run with the pins of the version its task run pins", async () => {
   const ctx = await setupTest();
 
