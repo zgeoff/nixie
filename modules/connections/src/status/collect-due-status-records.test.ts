@@ -70,6 +70,33 @@ test('it dates a break from the end of the grant when the store marked it as nee
   ]);
 });
 
+test('it owes the records of a new break after a renewal that ended the last one', () => {
+  const ctx = setupTest();
+
+  const due = ctx.collect(
+    {
+      ...ctx.watched,
+      status: 'needs_consent',
+      sinceMs: 0.5 * ctx.day,
+      endsAtMs: 0.5 * ctx.day,
+      isStored: false,
+    },
+    [
+      ctx.buildStep(1, 0, { kind: 'needs_consent' }),
+      ctx.buildStep(2, 0, { kind: 'lasted', sinceMs: 0 }),
+      ctx.buildStep(3, 0.25 * ctx.day, { kind: 'expiring', renewed: true }),
+    ],
+  );
+
+  expect(due).toStrictEqual([
+    {
+      kind: 'reached',
+      key: { connection: 'conn-1', status: 'needs_consent', endsAtMs: 0.5 * ctx.day },
+    },
+    { kind: 'lasted', key: { connection: 'conn-1', sinceMs: 0.5 * ctx.day } },
+  ]);
+});
+
 test('it owes one record for the whole break when it moves from failing to needing consent', () => {
   const ctx = setupTest();
 

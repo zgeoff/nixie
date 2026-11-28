@@ -467,6 +467,35 @@ test('it refuses before approval a call that names a connection no listed tool c
   });
 });
 
+test('it refuses to save an approved call whose connections the host never resolved, and saves no version', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const outcome = await ctx.define({
+    ...buildTestDefineInput({ tools: ['time.now'] }),
+    connections: ['k3x9m2p7qa'],
+  });
+
+  const hashes = await ctx.readHashes();
+
+  expect([outcome, hashes]).toStrictEqual([
+    {
+      status: 'ok',
+      result: {
+        refused: {
+          code: 'connections_unresolved',
+          path: 'connections',
+          sentence:
+            'The connections of this call were not resolved before its approval. Call again.',
+        },
+      },
+      refusalCode: 'connections_unresolved',
+    },
+    [],
+  ]);
+});
+
 test('it replaces the named connections of a call that lists no connector tool with an empty pin map', async () => {
   const ctx = await setupTest();
 

@@ -292,6 +292,27 @@ test('it reads a renewal past the end of a grant into a grant within 3 days of i
   ).toStrictEqual([['changed', 'expiring']]);
 });
 
+test('it reads a renewal into a grant within 3 days of its end as a change into expiring when no sweep recorded that the grant before it ended', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 60_000);
+
+  ctx.clock.advance(61_000);
+
+  const afterChange = await ctx.readHead();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 24 * 60 * 60 * 1000);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(
+    events.map((event) => [event.kind, event.kind === 'changed' ? event.status : null]),
+  ).toStrictEqual([['changed', 'expiring']]);
+});
+
 test('it counts a call that failed after the grant ended when no sweep recorded the end before the reconnect', async () => {
   const ctx = await setupTest();
 

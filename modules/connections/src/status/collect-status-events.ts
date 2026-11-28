@@ -1,4 +1,5 @@
 import { collectRemovedToolNames } from './collect-removed-tool-names';
+import { isBreakEnd } from './is-break-end';
 import { pickBreakStartMs } from './pick-break-start-ms';
 import type {
   ConnectionFacts,
@@ -26,7 +27,13 @@ export interface StatusStep {
         readonly endedAtMs?: number;
       }
     | { readonly kind: 'needs_consent' }
-    | { readonly kind: 'expiring' }
+    | {
+        readonly kind: 'expiring';
+
+        // a renewal into a grant within its window, and when the grant it renewed had ended
+        readonly renewed?: boolean;
+        readonly endedAtMs?: number;
+      }
     | { readonly kind: 'failing'; readonly reason: FailingReason | null }
     | { readonly kind: 'lasted'; readonly sinceMs: number };
 }
@@ -84,7 +91,11 @@ export function collectStatusEvents(facts: StatusFacts, range: StatusEventRange)
       continue;
     }
 
-    const heldBefore = held.get(step.connection);
+    const heldBefore =
+      change.kind === 'expiring' && change.endedAtMs !== undefined
+        ? 'needs_consent'
+        : held.get(step.connection);
+
     const heldNow = change.kind === 'failing' ? `failing:${String(change.reason)}` : change.kind;
 
     if (change.kind !== 'lasted') {
@@ -139,8 +150,8 @@ function pickBreakBounds(steps: readonly StatusStep[], returned: StatusStep): Br
     (step) => step.connection === returned.connection && step.sequence < returned.sequence,
   );
 
-  const lastActive = earlier.findLastIndex((step) => step.step.kind === 'active');
-  const recordedMs = pickBreakStartMs(earlier.slice(lastActive + 1));
+  const lastEnd = earlier.findLastIndex((step) => isBreakEnd(step));
+  const recordedMs = pickBreakStartMs(earlier.slice(lastEnd + 1));
   const endedAtMs = returned.step.kind === 'active' ? returned.step.endedAtMs : undefined;
   const starts = [recordedMs, endedAtMs].filter((startMs) => typeof startMs === 'number');
 

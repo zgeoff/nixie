@@ -1,4 +1,5 @@
 import type { StatusStep } from './collect-status-events';
+import { isBreakEnd } from './is-break-end';
 import { pickBreakStartMs } from './pick-break-start-ms';
 import type { AttentionStatus } from './types';
 
@@ -45,8 +46,7 @@ export function collectDueStatusRecords(
 ): DueStatusRecord[] {
   return connections.flatMap((watched): DueStatusRecord[] => {
     const own = steps.filter((step) => step.connection === watched.connection);
-    const lastActive = own.findLastIndex((step) => step.step.kind === 'active');
-    const current = own.slice(lastActive + 1);
+    const current = own.slice(own.findLastIndex((step) => isBreakEnd(step)) + 1);
     const due: DueStatusRecord[] = [];
 
     if (

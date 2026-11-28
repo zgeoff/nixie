@@ -176,10 +176,11 @@ A task run of a definition keeps the connections its definition names for its li
   call's input is rewritten so `connections` holds the short IDs each listed connector tool is
   pinned to, whether the call named connections or not. A call that names a connection no listed
   tool can use ends there as an error, before it asks for any approval, because a list approved
-  unresolved could resolve to other pins at save time. A call that reaches `run` with the list
-  unresolved is refused with `connection_not_usable`. The approval shows those pins and the saved
-  job holds the same pins, so an account that connects, or gains another tool's scope, while the
-  approval waits never joins the job. A `task.yaml` may carry the same map under `connections`.
+  unresolved could resolve to other pins at save time. A call that reaches the save with pins the
+  host never resolved, such as an approval written before the host resolved pins, is refused with
+  `connections_unresolved` and saves nothing. The approval shows those pins and the saved job holds
+  the same pins, so an account that connects, or gains another tool's scope, while the approval
+  waits never joins the job. A `task.yaml` may carry the same map under `connections`.
 - A Google tool resolves its call against the pinned connections only. A call whose `connection`
   argument falls outside the pins fails with `NOT_PINNED` and lists the connections the task may
   use. With no argument, the tool picks among the pinned connections that are live.
@@ -208,12 +209,12 @@ line.
 - The entry renders nothing, and the session opens with no connections line, while every connection
   works.
 - An `expiring` status starts a set time before the grant ends, and reaches `needs_consent` at its
-  end. Neither moves the credential store's status, so an hourly sweep, `runStatusWatch`, writes a
+  end. Neither moves the credential store's status, so a sweep, `runStatusWatch`, writes a
   `connection.status_reached` record the first time the clock takes a connection into either. The
-  sweep compares the status the clock reads with the one the store holds, so a failing connection
-  whose grant ends still gets its record, and it runs at least 4 times in `google.break_notice`. A
-  connection that the store marks `needs_consent` after its grant ended lists from the end of the
-  grant.
+  sweep runs every hour, or 4 times in `google.break_notice` when a quarter of it is shorter than an
+  hour, and never more often than every millisecond. It compares the status the clock reads with the
+  one the store holds, so a failing connection whose grant ends still gets its record. A connection
+  that the store marks `needs_consent` after its grant ended lists from the end of the grant.
 - A task run of a definition reads the same entry, limited to the pinned connections and with no
   model credential, as an `<input name="connections">` block after the trigger. The block renders
   with the run's other blocks, in a new session or at the first step of a task run that nothing
@@ -226,9 +227,11 @@ line.
   those whose scopes the last check found granted, so a tool whose scope the account never held is
   not listed as removed.
 
-A status change reaches the model through the first message and the events block, and never through
-the system prompt or the tool list, which hold the same text before and after it. The status stops
-calls, and the tool list keeps listing the tools.
+A change into or out of `needs_consent`, `failing` or `expiring` reaches the model through the first
+message and the events block, and leaves the system prompt and the tool list as they were, so the
+cached prefix of the session holds. The status stops calls, and the tool list keeps listing the
+tools. A Forget is the exception: it removes the connection's tools at the next turn, as
+[Tasks in flight](#tasks-in-flight) says.
 
 ## Status events
 
@@ -248,14 +251,14 @@ a connection makes, read from the log:
   record of the break exists. A return from `expiring` alone counts none. A reconnect that renews a
   grant already within its window, before the sweep wrote the `expiring` record, still gives a
   return. A reconnect whose new grant ends within the window is no return: it is a change into
-  `expiring`, or no line when the connection was `expiring` already;
+  `expiring`, or no line when the connection was `expiring` and its grant had not ended. It still
+  ends a break, so a later break counts its own calls and gets its own notice;
 - a break that passes `google.break_notice`, once per break, from the `connection.break_lasted`
   record that the sweep writes. A break begins at its earliest failing or consent step after the
   last return, or at the end of the grant when the store marked the connection later, and a consent
   step that the clock took counts from the end of the grant, so the notice falls due at that end
   plus the notice time whenever the sweep runs. A refresh that fails again never moves the start or
-  repeats the record. The sweep runs at least 4 times in the notice time, and as often as every
-  millisecond for a notice time that short.
+  repeats the record.
 
 A change into the status and reason that the connection already holds gives no line. Each line
 leaves out its own time, because the events block puts the time before every line.

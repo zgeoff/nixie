@@ -170,6 +170,58 @@ test('it counts a call that failed after the grant ended but before the sweep re
   ).toStrictEqual([null, 1]);
 });
 
+test('it makes an event of a renewal into a grant within its window after an expiring grant ended with no record of the end', () => {
+  const ctx = setupTest();
+
+  const events = ctx.collect(
+    [
+      ctx.buildStep(5, { kind: 'expiring' }),
+      ctx.buildStep(20, { kind: 'expiring', renewed: true, endedAtMs: 10_000 }),
+    ],
+    {},
+    [10, 30],
+  );
+
+  expect(events).toStrictEqual([
+    {
+      sequence: 20,
+      atMs: 20_000,
+      who: ctx.who,
+      kind: 'changed',
+      status: 'expiring',
+      reason: null,
+      lastSuccessAtMs: 4000,
+      removedTools: [],
+    },
+  ]);
+});
+
+test('it counts only the calls of the break after a renewal that ended the break before it', () => {
+  const ctx = setupTest();
+
+  const events = ctx.collect(
+    [
+      ctx.buildStep(5, { kind: 'needs_consent' }),
+      ctx.buildStep(10, { kind: 'expiring', renewed: true }),
+      ctx.buildStep(15, { kind: 'needs_consent' }),
+      ctx.buildStep(25, { kind: 'active' }),
+    ],
+    { calls: [7000, 17_000] },
+    [20, 30],
+  );
+
+  expect(events).toStrictEqual([
+    {
+      sequence: 25,
+      atMs: 25_000,
+      who: ctx.who,
+      kind: 'returned',
+      failedCalls: 1,
+      skippedRuns: 0,
+    },
+  ]);
+});
+
 test('it makes an event of the return of a connection renewed while it expired, before any record of the expiry', () => {
   const ctx = setupTest();
 

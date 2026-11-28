@@ -139,13 +139,20 @@ async function setupTest() {
         run: buildMockToolContext().run,
       });
     },
-    runDefine: (input: DefineChoice) => {
-      const given = { ...buildTestDefineInput({ tools: ['time.now'] }), ...input };
 
-      const call = buildMockToolCall({
-        tool: 'task.define',
-        input: parseJSONObject(JSON.stringify(given)),
-      });
+    // what the endpoint does with a task.define: it resolves the call's connections, then runs it
+    runDefine: async (input: DefineChoice) => {
+      const given = parseJSONObject(
+        JSON.stringify({ ...buildTestDefineInput({ tools: ['time.now'] }), ...input }),
+      );
+
+      invariant(define.resolveInput, 'task.define resolves its connections');
+
+      const resolved = await define.resolveInput(given, { run: buildMockToolContext().run });
+
+      invariant(resolved.status === 'ok', 'the define names connections the conversation may use');
+
+      const call = buildMockToolCall({ tool: 'task.define', input: resolved.input });
 
       return define.run(call, buildMockToolContext());
     },

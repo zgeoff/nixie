@@ -74,19 +74,16 @@ function parseStep(record: LogRecord, known: ReadonlySet<string>): StatusStep[] 
       return [];
     }
 
-    const endedAtMs = connected.endedAtMs ?? null;
-
     return [
       {
         ...base,
         connection: connected.connection,
-        step: isExpiringGrant(connected.endsAtMs ?? null, base.atMs)
-          ? { kind: 'expiring' }
-          : {
-              kind: 'active',
-              wasAttending: connected.wasAttending === true,
-              ...(endedAtMs !== null && endedAtMs <= base.atMs ? { endedAtMs } : {}),
-            },
+        step: pickRenewalStep({
+          endsAtMs: connected.endsAtMs ?? null,
+          endedAtMs: connected.endedAtMs ?? null,
+          wasAttending: connected.wasAttending === true,
+          atMs: base.atMs,
+        }),
       },
     ];
   }
@@ -111,8 +108,27 @@ function parseStep(record: LogRecord, known: ReadonlySet<string>): StatusStep[] 
   ];
 }
 
-// A renewal that gives a grant within the expiring window of its end leaves the connection
-// `expiring`, so it is no return to `active`.
-function isExpiringGrant(endsAtMs: number | null, atMs: number): boolean {
-  return endsAtMs !== null && endsAtMs - atMs <= expiringWindowMs;
+interface RenewalFacts {
+  // the end of the grant the renewal gave, and of the one it renewed, each null for no limit
+  readonly endsAtMs: number | null;
+  readonly endedAtMs: number | null;
+  readonly wasAttending: boolean;
+  readonly atMs: number;
+}
+
+// The status a renewal leaves: `expiring` for a grant within its window, and `active` for any other.
+// The token exchange refuses a grant whose lifetime is not positive, so no renewal has ended.
+function pickRenewalStep(facts: RenewalFacts): StatusStep['step'] {
+  const ended = facts.endedAtMs !== null && facts.endedAtMs <= facts.atMs ? facts.endedAtMs : null;
+  const endsAtMs = facts.endsAtMs;
+
+  if (endsAtMs !== null && endsAtMs - facts.atMs <= expiringWindowMs) {
+    return { kind: 'expiring', renewed: true, ...(ended === null ? {} : { endedAtMs: ended }) };
+  }
+
+  return {
+    kind: 'active',
+    wasAttending: facts.wasAttending,
+    ...(ended === null ? {} : { endedAtMs: ended }),
+  };
 }

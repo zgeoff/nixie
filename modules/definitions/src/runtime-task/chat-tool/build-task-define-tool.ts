@@ -5,13 +5,16 @@ import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
 import type { ScheduleFacts } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
 import { buildConnectionPins } from './build-connection-pins';
+import type { UsableConnections } from './build-connection-pins';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
+import { pickSavedPins } from './pick-saved-pins';
 import { resolvedTaskDefineInputSchema, taskDefineInputSchema } from './task-define-input-schema';
 
 const jsonSchema = z.toJSONSchema(taskDefineInputSchema, {
@@ -101,16 +104,14 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 
       const usable = await options.connections?.readUsable();
 
-      const pinned =
-        Array.isArray(named) || named === undefined
-          ? buildConnectionPins({ tools: rest.tools, named, usable: usable ?? {} })
-          : ({ status: 'pinned', pins: named } as const);
+      const pinned = pickSavedPins({ tools: rest.tools, connections: named, usable: usable ?? {} });
 
-      if (pinned.status === 'refused') {
+      if (pinned.status === 'unresolved') {
         const refused = {
-          code: 'connection_not_usable',
+          code: 'connections_unresolved',
           path: 'connections',
-          sentence: renderUnusableSentence(pinned.unusable),
+          sentence:
+            'The connections of this call were not resolved before its approval. Call again.',
         };
 
         return { status: 'ok', result: { refused }, refusalCode: refused.code };
@@ -179,21 +180,29 @@ async function resolveDefineConnections(
 
   const usable = await options.connections?.readUsable();
 
-  const pinned = buildConnectionPins({
-    tools: parsed.data.tools,
-    named: parsed.data.connections,
-    usable: usable ?? {},
-  });
+  return pickDefineResolution(input, parsed.data, usable ?? {});
+}
 
-  if (pinned.status === 'refused') {
-    return { status: 'error', message: renderUnusableSentence(pinned.unusable) };
-  }
+// A call that lists no connector tool and names no connection keeps its input as it is.
+function pickDefineResolution(
+  input: JSONObject,
+  given: Pick<z.output<typeof taskDefineInputSchema>, 'tools' | 'connections'>,
+  usable: UsableConnections,
+): InputResolution {
+  const pinned = buildConnectionPins({ tools: given.tools, named: given.connections, usable });
 
-  if (Object.keys(pinned.pins).length === 0 && parsed.data.connections === undefined) {
-    return { status: 'ok', input };
-  }
-
-  return { status: 'ok', input: { ...input, connections: pinned.pins } };
+  return match(pinned)
+    .returnType<InputResolution>()
+    .with({ status: 'refused' }, (refused) => ({
+      status: 'error',
+      message: renderUnusableSentence(refused.unusable),
+    }))
+    .with({ status: 'pinned' }, (found) =>
+      Object.keys(found.pins).length === 0 && given.connections === undefined
+        ? { status: 'ok', input }
+        : { status: 'ok', input: { ...input, connections: found.pins } },
+    )
+    .exhaustive();
 }
 
 function renderUnusableSentence(unusable: readonly string[]): string {
