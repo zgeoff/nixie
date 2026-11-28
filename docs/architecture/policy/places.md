@@ -73,15 +73,17 @@ it was.
 The `places` projection keeps each entry's IDs, kind, level, sequences and last use. A call uses an
 entry when its `tool_called` decision carries the entry's permission, whatever the outcome. The
 projection keeps the key of a site or mail domain, and a removal or an act of one holds the entry's
-IDs in its payload. An address, phone number or handle keeps its key and name in the erasable fields
-of `places.added` and `places.changed`, as a contact keeps a new name. A `places.removed` or
-`places.acted` record of an address, phone number or handle holds the entry's IDs in its own
-erasable fields. A fold cannot read erasable fields, so no projection row holds a value that only an
-erasable field gives. A rebuild gives back the rows of the live log. The writer of an address, phone
-number or handle removal records it in `place_removals`, a table outside the projections, and a
-rebuild and each server start read the removals back. A removed entry keeps its row, so a replay of
-an older call finds the entry. The directory reads the key of an address, phone number or handle
-back from the entry's records.
+IDs in its payload.
+
+An address, phone number or handle keeps its key and name in the erasable fields of `places.added`
+and `places.changed`, as a contact keeps a new name. A `places.removed` or `places.acted` record of
+an address, phone number or handle holds the entry's IDs in its own erasable fields. A fold cannot
+read erasable fields, so no projection row holds a value that only an erasable field gives. A
+rebuild gives back the rows of the live log. The writer of an address, phone number or handle
+removal records it in `place_removals`, a table outside the projections, and a rebuild and each
+server start read the removals back. A removed entry keeps its row, so a replay of an older call
+finds the entry. The directory reads the key of an address, phone number or handle back from the
+entry's records.
 
 A call that an `act` place allowed writes its `places.acted` record on the call's thread once the
 action queue admits the attempt, and a retry of the call reads the act records back and writes none
