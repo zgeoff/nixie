@@ -57,8 +57,8 @@ Read each part's doc for the meaning of its settings. The sections cover:
 - `erasure.stuck_after_minutes`, which sets how long a forget stays open before nixie logs it as
   stuck, shows it to the user and the model, and retries it on a fixed interval (5 by default)
 - `erasure.expire_after_days`, which sets how old a tool result, a connector's result for an action
-  and a helper's working notes grow before nixie removes their text, as
-  [the event log](../core/event-log.md#expiry) describes (365 by default)
+  and a helper's working notes grow before nixie removes their text (365 by default; see
+  [the event log](../core/event-log.md#expiry))
 
 The model profiles and the definitions source have no defaults, so the file always sets them. The
 imp section is required when the sandbox adapter is imp, which a release build always runs. Every

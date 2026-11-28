@@ -149,7 +149,7 @@ it can still decrypt, and updates it on each append. Forgetting a record removes
 Retention expires content by shredding keys, so the log stays append-only. Only the payloads of tool
 results and of helpers' working notes expire, after one age that a single setting holds. Every other
 record kind is kept for the deployment's life, and definition snapshots stay while a record points
-at one. [The event log](../../../architecture/core/event-log.md#expiry) describes how expiry works.
+at one. For how expiry works, read [the event log](../../../architecture/core/event-log.md#expiry).
 
 **Why:** tool results and working notes are the bulk of the log, and nobody rereads them after a
 year. Your messages and the model's text stay because retrieval over past conversation reads them.
