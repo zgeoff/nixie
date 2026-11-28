@@ -9,4 +9,7 @@ export const connectionRecordTopics = {
   'connection.picker_set': ['connections'],
   'connection.connected': ['connections'],
   'connection.consent_discarded': [],
+  'connection.call_failed': [],
+  'connection.status_reached': [],
+  'connection.break_lasted': [],
 } as const satisfies Record<ConnectionRecordKind, readonly LiveTopic[]>;

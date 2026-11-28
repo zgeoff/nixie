@@ -272,6 +272,12 @@ export interface ConversationRun {
 
   readonly defaultZone: string;
 
+  // the status of the connections a task run is pinned to, as text; see the sandbox runner's option
+  readonly readConnectionStatus?: (
+    pinned: ReadonlySet<string>,
+    timeZone: string,
+  ) => Promise<string>;
+
   readonly messaging: TaskMessaging;
 
   readonly imageBudget: ImageTally;

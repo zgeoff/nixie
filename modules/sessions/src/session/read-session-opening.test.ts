@@ -57,6 +57,34 @@ test('it opens a first session with the status and the pinned memory, in that or
   });
 });
 
+test('it leaves a status entry with no text out of the status block and its record', async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'first' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [
+      buildStartStatus(),
+      { name: 'quiet', read: () => Promise.resolve({ value: 0, text: '' }) },
+    ],
+  });
+
+  expect(opening.blocks.at(0)).toInclude(
+    '- Start: a new session. Earlier history is in the event log.\n</system-message id=',
+  );
+
+  expect(opening.record.status).toStrictEqual({ start: 'first' });
+});
+
 test('it opens a rebuild with no summary with the status, the pinned memory and the recent turns, in that order', async () => {
   const ctx = await setupTest();
 

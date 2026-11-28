@@ -6,6 +6,9 @@ export interface RunBlocksTurn {
 
   // whether the turn opens a session, which holds none of the blocks yet
   readonly isNewSession: boolean;
+
+  // the status of the connections the run is pinned to; empty while each works
+  readonly connections?: string;
 }
 
 export interface RunTrigger {
@@ -40,6 +43,7 @@ export function renderRunBlocks(
     renderTriggerBlock(trigger),
     renderShapeBlock(run),
     since === null ? null : renderSinceBlock(since.previousStartedAt, since.startedAt),
+    renderConnectionsBlock(turn.connections ?? ''),
   ].filter((block) => block !== null);
 
   return blocks.length === 0 ? null : blocks.join('\n');
@@ -70,4 +74,9 @@ function renderShapeBlock(run: TaskRun): string | null {
     JSON.stringify(shape),
     `</report-shape fence="${fence}">`,
   ].join('\n');
+}
+
+// The connections block holds only code-made text, and leaves out a run whose pinned connections work.
+function renderConnectionsBlock(status: string): string | null {
+  return status === '' ? null : ['<input name="connections">', status, '</input>'].join('\n');
 }

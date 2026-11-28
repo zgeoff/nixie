@@ -1,6 +1,8 @@
 import { readClientByID } from '../client/read-client-by-id';
 import { buildProviderSpec } from '../provider/build-provider-spec';
 import type { ServiceContext } from '../service-context';
+import { probeConnectionBroken } from '../status/probe-connection-broken';
+import { writeCallFailed } from '../status/write-call-failed';
 import type { ConnectionContext, ConnectionRow } from '../types';
 import { openConnectionValues } from './open-connection-values';
 import { readConnectionRowByID } from './read-connection-rows';
@@ -20,10 +22,17 @@ export async function readConnectionContext(
   return readRowContext(context, row);
 }
 
+interface RowContextOptions {
+  // a call that fails while the connection is in a break leaves a record, so the return counts it;
+  // a tool's context sets it, and a poll's or a check's does not
+  readonly isCaller?: boolean;
+}
+
 // The context of a row, which a consent builds before it has a fingerprint.
 export async function readRowContext(
   context: ServiceContext,
   row: ConnectionRow,
+  options: RowContextOptions = {},
 ): Promise<ConnectionContext | null> {
   const client = await readClientByID(context, row.oauth_client_id);
 
@@ -46,7 +55,27 @@ export async function readRowContext(
       }),
     );
 
-    return context.store.fetcher(binding, context.endpoints.apiOrigins)(input, init);
+    const send = context.store.fetcher(binding, context.endpoints.apiOrigins);
+
+    if (options.isCaller !== true) {
+      return send(input, init);
+    }
+
+    // The store moves a connection back to `active` when a request answers, so the break is read
+    // before the request leaves.
+    const wasBroken = await probeConnectionBroken(context, row.connection_id);
+
+    const response = await send(input, init).catch(async (error: unknown) => {
+      await noteFailure(context, row.connection_id, wasBroken);
+
+      throw error;
+    });
+
+    if (!response.ok) {
+      await noteFailure(context, row.connection_id, wasBroken);
+    }
+
+    return response;
   };
 
   return {
@@ -55,4 +84,14 @@ export async function readRowContext(
     account: values?.account?.email ?? '',
     fetch: readResponse,
   };
+}
+
+async function noteFailure(
+  context: ServiceContext,
+  connectionID: string,
+  wasBroken: boolean,
+): Promise<void> {
+  if (wasBroken) {
+    await writeCallFailed(context, connectionID);
+  }
 }

@@ -15,7 +15,9 @@ export async function readLiveContexts(
     (row) => row.binding === 'enabled' && (connection === null || row.short_id === connection),
   );
 
-  const contexts = await Promise.all(live.map((row) => readRowContext(context, row)));
+  const contexts = await Promise.all(
+    live.map((row) => readRowContext(context, row, { isCaller: true })),
+  );
 
   return contexts.filter((entry): entry is ConnectionContext => entry !== null);
 }

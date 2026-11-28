@@ -42,9 +42,13 @@ export const restartSweepPartDeclarations: readonly AnyPartDeclaration<ServerPar
   {
     name: 'conversation_imp',
     needs: ['server_parts', 'add_images'],
-    uses: ['memory'],
+    uses: ['memory', 'connections'],
     start: makeRetriedStart('conversation_imp', (parts, reader) =>
-      startConversationImp(parts, () => reader.get('memory')),
+      startConversationImp(
+        parts,
+        () => reader.get('memory'),
+        () => reader.find('connections') ?? null,
+      ),
     ),
   },
 ];

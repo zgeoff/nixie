@@ -225,3 +225,39 @@ test('it renders no since block at a later step of a session that holds the bloc
     renderRunBlocks(ctx.base, { stepKey: 'tide-tables:2', isNewSession: false }, null, ctx.since),
   ).toBeNull();
 });
+
+test('it renders the status of the pinned connections after the trigger and the since block', () => {
+  const ctx = setupTest();
+
+  const blocks = renderRunBlocks(
+    ctx.base,
+    {
+      stepKey: ctx.base.opened.openedByStep,
+      isNewSession: true,
+      connections:
+        'Connections that need attention:\n- google connection "Work" (sam@example.com): failing',
+    },
+    ctx.trigger,
+    ctx.since,
+  );
+
+  expect(blocks?.split('\n').slice(-4)).toStrictEqual([
+    '<input name="connections">',
+    'Connections that need attention:',
+    '- google connection "Work" (sam@example.com): failing',
+    '</input>',
+  ]);
+});
+
+test('it renders no connections block while the pinned connections work', () => {
+  const ctx = setupTest();
+
+  const blocks = renderRunBlocks(
+    ctx.base,
+    { stepKey: ctx.base.opened.openedByStep, isNewSession: true, connections: '' },
+    ctx.trigger,
+    null,
+  );
+
+  expect(blocks).not.toInclude('connections');
+});

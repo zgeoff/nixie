@@ -72,6 +72,9 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
     memorySettings: options.memorySettings,
     compaction: options.compaction,
     defaultZone: options.defaultZone,
+    ...(options.readConnectionStatus === undefined
+      ? {}
+      : { readConnectionStatus: options.readConnectionStatus }),
     messaging: options.messaging,
     imageBudget: sessionImageBudget,
     session: buildHeldSessionGuard(parts.invalidated),

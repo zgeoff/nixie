@@ -7,6 +7,16 @@ export { buildProviderEndpoints } from './provider/provider-endpoints';
 export type { ConnectionRecordKind } from './record/connection-record-kind';
 export { connectionRecordTopics } from './record/connection-record-topics';
 export { revocationRecordedCodec } from './record/revocation-recorded-codec';
+
+export type {
+  AttentionConnection,
+  AttentionStatus,
+  ConnectionIdentity,
+  FailingReason,
+  StatusEvent,
+  StatusEventRange,
+} from './status/types';
+
 export type { Connections, ConnectionsOptions, ConnectionsPort } from './start-connections';
 export { startConnections } from './start-connections';
 export { probeConnectionEnabled } from './connection/probe-connection-enabled';

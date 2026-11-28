@@ -18,3 +18,5 @@ export {
 } from './build-test-connector';
 
 export type { TestConnectorHosts } from './build-test-connector';
+export { seedConnectionStatus } from './seed-connection-status';
+export { seedGrantEnd } from './seed-grant-end';

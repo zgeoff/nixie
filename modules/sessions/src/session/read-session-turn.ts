@@ -1,6 +1,7 @@
 import { readRunSince, readTaskBrief } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readRunTrigger } from '../task/read-run-trigger';
+import type { RunBlocksTurn } from '../task/render-run-blocks';
 import { isRunBlocksTurn, renderRunBlocks } from '../task/render-run-blocks';
 import { pickTurnInbox } from '../turn/pick-turn-inbox';
 import { readTurnContext } from '../turn/read-turn-context';
@@ -80,7 +81,7 @@ async function readRunBlocks(step: SessionStep, isNewSession: boolean): Promise<
     return null;
   }
 
-  const turn = { stepKey: step.input.stepKey, isNewSession };
+  const turn: RunBlocksTurn = { stepKey: step.input.stepKey, isNewSession };
 
   // a later step of a session that holds the blocks reads nothing
   if (!isRunBlocksTurn(run, turn)) {
@@ -89,8 +90,29 @@ async function readRunBlocks(step: SessionStep, isNewSession: boolean): Promise<
 
   const trigger = await readRunTrigger(step.run, run);
   const since = await readRunSince(step.run.context, run);
+  const connections = await readRunConnectionStatus(step, trigger?.zone ?? step.run.defaultZone);
 
-  return renderRunBlocks(run, turn, trigger, since);
+  return renderRunBlocks(run, { ...turn, connections }, trigger, since);
+}
+
+// The status of the connections that the run's pinned version names. A run with no pins, or in a
+// deployment with no connections, reads none.
+async function readRunConnectionStatus(step: SessionStep, timeZone: string): Promise<string> {
+  const hash = step.input.run?.opened.definitionHash ?? null;
+  const read = step.run.readConnectionStatus;
+
+  if (hash === null || read === undefined) {
+    return '';
+  }
+
+  const version = await step.run.context.readDefinitionVersion(
+    step.run.context.log.writer.db,
+    hash,
+  );
+
+  const pinned = new Set(Object.values(version?.connections ?? {}).flat());
+
+  return pinned.size === 0 ? '' : read(pinned, timeZone);
 }
 
 // a session resumes only after its opening, which keeps or gives its key
