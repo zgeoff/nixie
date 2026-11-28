@@ -1007,6 +1007,7 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/egress": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/proposals": "workspace:*",
         "@heynixie/retry": "workspace:*",

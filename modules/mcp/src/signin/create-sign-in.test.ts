@@ -1,35 +1,36 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { makeLogger, startLineLog } from '@heynixie/logger';
 import { standInNixieOrigin, startStandInMcp } from '../test-utils/start-stand-in-mcp';
 
 async function setupTest() {
-  const logged: { event: string; fields: unknown; level: unknown }[] = [];
+  const lines: string[] = [];
 
-  const standIn = await startStandInMcp({
-    facts: { privateRange: null },
-    logger: (event, fields, level) => {
-      logged.push({ event, fields, level });
-    },
+  const lineLog = await startLineLog((line) => {
+    lines.push(line);
   });
+
+  onTestFinished(lineLog.stop);
+
+  return { lines, logger: makeLogger() };
+}
+
+test('#connect logs a warning with the server ID and no host or address when discovery refuses a private address', async () => {
+  const ctx = await setupTest();
+  const standIn = await startStandInMcp({ facts: { privateRange: null }, logger: ctx.logger });
 
   await standIn.approveServer();
 
-  return {
-    logged,
-    connect: () => standIn.mcp.connect('tracker', standInNixieOrigin),
-  };
-}
-
-test('#connect logs a warning with the server and the reason when discovery fails', async () => {
-  const ctx = await setupTest();
-  const result = await ctx.connect();
+  const result = await standIn.mcp.connect('tracker', standInNixieOrigin);
 
   expect(result.status).toBe('discovery_failed');
+  expect(ctx.lines).toHaveLength(1);
 
-  expect(ctx.logged).toStrictEqual([
-    {
-      event: 'mcp.sign_in_discovery_failed',
-      fields: { serverID: 'tracker', reason: expect.stringContaining('not a public address') },
-      level: 'warn',
-    },
-  ]);
+  expect(JSON.parse(ctx.lines[0] ?? '')).toMatchObject({
+    event: 'mcp.sign_in_discovery_failed',
+    level: 'warn',
+    serverID: 'tracker',
+  });
+
+  expect(ctx.lines[0]).not.toContain('127.0.0.1');
+  expect(ctx.lines[0]).not.toContain('public address');
 });

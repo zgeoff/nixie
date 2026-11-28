@@ -47,7 +47,6 @@ export function ConnectServerButton(props: ConnectServerButtonProps): ReactNode 
   );
 }
 
-// The reason that discovery gave for refusing the server, when the error carries one.
 function readDiscoveryReason(error: unknown): string | null {
   if (!(error instanceof ORPCError) || error.code !== 'DISCOVERY_FAILED') {
     return null;

@@ -9,7 +9,7 @@ const finishes: string[] = [];
 const discoveryFailures = new Map<string, string>();
 
 // The MCP servers that the mock proxy holds, and the sign-ins that a page started, and the state of each return that finished one. A test puts a
-// server in with `add`, and the mock's connect answers any server that is in, unless `discoveryFailures` holds a reason for it.
+// server in with `add`, and the mock's connect answers any server that is in.
 export const mcpStore = {
   servers,
   connects,
