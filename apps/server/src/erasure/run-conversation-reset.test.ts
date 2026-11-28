@@ -187,7 +187,7 @@ test('it shreds every record on the conversation thread, records the reset there
   ]);
 });
 
-test('it writes log_reset in the transaction of erasure.finished', async () => {
+test('it writes neither erasure.finished nor log_reset before the turn inputs are removed', async () => {
   const ctx = await setupTest();
 
   await runTestSeed(ctx.context.log, ctx.dataDir);

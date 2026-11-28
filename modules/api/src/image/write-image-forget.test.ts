@@ -55,8 +55,8 @@ test('it writes erasure.started and erasure.finished for an image, and no record
   }).toStrictEqual({
     first: 'erasure.started',
     last: 'erasure.finished',
-    startedCount: expect.toBePositive(),
-    finishedCount: erasures.filter((kind) => kind === 'erasure.started').length,
+    startedCount: 3,
+    finishedCount: 3,
   });
 });
 
@@ -88,9 +88,8 @@ test.each<ErasureFaultPoint>([
 
     expect({
       entry: entry.kind,
-      isEveryStartFinished:
-        kinds.filter((kind) => kind === 'erasure.started').length ===
-        kinds.filter((kind) => kind === 'erasure.finished').length,
-    }).toStrictEqual({ entry: 'forgotten', isEveryStartFinished: true });
+      started: kinds.filter((kind) => kind === 'erasure.started').length,
+      finished: kinds.filter((kind) => kind === 'erasure.finished').length,
+    }).toStrictEqual({ entry: 'forgotten', started: 3, finished: 3 });
   },
 );
