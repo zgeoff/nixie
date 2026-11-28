@@ -283,15 +283,14 @@ forgets every record that holds, names or quotes the image, and leaves the image
 [images](../connectors/images.md#storage) says. The runner revokes any grant before it destroys a
 code sandbox, and destroys every sandbox before any key goes.
 
-A forget of a record of a trusted place also removes the keys of the place's other records, and a
-forget removes the keys of each photo imported from the record. A record of either kind can land
-while the cleanup runs. So the runner scans again after the cleanup, and once more in the
-transaction that commits `erasure.finished`, and removes each key it finds. A place act that lands
-once the forget has begun is written with no erasable fields, in the same transaction that checks
-for the forget, so it is never readable. A forget that stored no place ID, such as one an earlier
-release began, finds the place from the record or from the open place records it captured, and both
-the scans and that check use the place it finds. No such record stays readable once the forget
-finishes.
+A forget of a record of a trusted place also removes the keys of the place's other records. Every
+forget removes the keys of each photo imported from the record. Either kind of record can land while
+the cleanup runs, so the runner scans again after the cleanup and once more in the transaction that
+commits `erasure.finished`, and removes each key it finds. The API writes a place act that lands
+after the forget has begun with no erasable fields, in the same transaction that checks for the
+forget, so nobody can read it. A forget that stored no place ID, such as one an earlier release
+began, finds the place from the record or from the open place records it captured. The scans and
+that check use the place it finds. No such record stays readable once the forget finishes.
 
 The key goes before the session cleanup, so the session the next turn rebuilds reads the record as a
 gap. Every step is safe to run twice. A forget that a crash cuts short stays open, and the server's
