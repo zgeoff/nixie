@@ -480,7 +480,8 @@ and the schema refuses a default above its max on a meter that sets both. A star
 value above a max refuses. A start that asks for a value on a meter with no max takes it. A job
 definition's own limits replace the config's default on the meters it names, and a job run has no
 limit on a meter that neither its definition nor the config sets. A meter with no limit never ends a
-task run, and its limit is null in the task run's records.
+task run. The server reads such a limit as null. The log stores it as the number 1,000,000,000, so
+the release before this one reads the records. A limit set to exactly that number reads as none.
 
 The limits belong to the task run, and 2 meters count a task run's use, whether or not the meter has
 a limit:

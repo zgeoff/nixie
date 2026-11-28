@@ -146,6 +146,26 @@ test('#raise resumes a task that its limit paused, under the raised limits', asy
   });
 });
 
+test('#raise of the turns keeps the dollars of a task with no dollar limit at none', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.pausedTask({
+    starter: starter.claim,
+    limits: { turns: 3, dollars: null },
+  });
+
+  const raised = await ctx.client.raise({ taskID, turns: 9 });
+
+  expect(raised).toStrictEqual({
+    taskID,
+    state: 'ready',
+    isPauseRequested: false,
+    turns: 9,
+    dollars: null,
+  });
+});
+
 test('#raise refuses a task that its limit does not hold', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'sort the receipts');

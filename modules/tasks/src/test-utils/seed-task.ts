@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant';
-import { taskRunOptionsSchema } from '../limit/task-run-options-schema';
+import { encodeTaskRunOptions } from '../limit/encode-task-run-options';
 import { sandboxRunner } from '../runner/sandbox-runner';
 import { buildStepRunID } from '../step/build-step-run-id';
 import { writeTaskStart } from '../task/start/write-task-start';
@@ -25,7 +25,7 @@ export async function seedTask(context: TasksContext, seed: StartedTaskSeed): Pr
     runner: sandboxRunner.key,
     stored: {
       kind: 'built',
-      options: taskRunOptionsSchema.parse({
+      options: encodeTaskRunOptions({
         model: null,
         profile: null,
         persona: 'none',

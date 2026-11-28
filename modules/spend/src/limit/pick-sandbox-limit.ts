@@ -1,5 +1,7 @@
 import type { SandboxLimit } from '../types';
 
+const maxMicros = 1_000_000_000_000_000;
+
 export interface SandboxLimitFacts {
   // the sandbox's count when the step began, in whole micros
   readonly startMicros: number;
@@ -10,9 +12,9 @@ export interface SandboxLimitFacts {
   readonly leftDollars: number;
 }
 
-// The sandbox may spend what the task run has left on top of the count it began the step with. The
-// gateway compares in whole micros, so the left dollars round down and never allow a micro more. A
-// task run with no dollar limit leaves the sandbox with none, and the gateway's own brakes stay.
+// The sandbox may spend what the task run has left on top of its count at the step's start, rounded
+// down to whole micros. A limit past a billion dollars takes a billion, because the sum would
+// overflow to a value that JSON writes as null. No dollar limit leaves the sandbox none.
 export function pickSandboxLimit(facts: SandboxLimitFacts): SandboxLimit | null {
   if (!Number.isFinite(facts.leftDollars)) {
     return null;
@@ -20,5 +22,5 @@ export function pickSandboxLimit(facts: SandboxLimitFacts): SandboxLimit | null 
 
   const leftMicros = Math.floor(Number((Math.max(0, facts.leftDollars) * 1_000_000).toFixed(3)));
 
-  return { dollars: (facts.startMicros + leftMicros) / 1_000_000 };
+  return { dollars: Math.min(maxMicros, facts.startMicros + leftMicros) / 1_000_000 };
 }

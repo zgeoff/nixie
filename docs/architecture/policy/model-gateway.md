@@ -558,8 +558,9 @@ Before a sandbox's first model request, the server registers it with `PUT /sandb
 A sandbox with no limit of its own still gets the limit 403 once its route's or its provider's day
 or month count reaches that period's limit. At the start of a task run, the server uses `PATCH` to
 set the limit of the task's sandbox to the sandbox's count plus the task run's dollar limit, so the
-gateway ends a turn at the task's limit. While a worker run is under way, that limit is lower by the
-run's planned dollars. The server patches the limit after a raise of the task's limit commits;
+gateway ends a turn at the task's limit. A task run with no dollar limit patches `null`, which sets
+no limit on the sandbox. While a worker run is under way, that limit is lower by the run's planned
+dollars. The server patches the limit after a raise of the task's limit commits;
 [the task meter](metering.md#the-task-meter) has the details. Once a sandbox reaches its own limit,
 the gateway refuses each of its requests, and the sandbox's last refusal names the counter
 `sandbox`.

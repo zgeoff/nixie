@@ -67,7 +67,7 @@ and a looping search hits it long before it costs much.
 ## Model cost
 
 Model use has 3 measures: dollars, tokens and turns. Each limit in the table sets all 3. A job run
-sets none of them unless its definition or the config does. The
+has no dollar or turn limit unless its definition or the config sets one, and no token limit. The
 [model gateway](#the-hard-spending-stop) counts tokens from each response, and nixie prices them
 with the role's [model profile](../core/models.md#cost), never with the cost the Agent SDK reports.
 A token count includes input, cache writes, cached input and output. **Why:** dollars bound what a

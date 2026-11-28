@@ -198,7 +198,9 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 
       const usage = await readRunUsage(deps.context, taskRun);
 
-      const isRefused = isRefusedBySandbox(count, startedAtMs);
+      // A task run with no dollar limit leaves its sandbox none, so a refusal the sandbox holds is
+      // from the limit of a task run that used the sandbox before.
+      const isRefused = limits.dollars !== null && isRefusedBySandbox(count, startedAtMs);
 
       return { isLimitReached: isRefused, isRefused, used: usage.used };
     },

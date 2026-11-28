@@ -1,5 +1,5 @@
 import { taskControls } from '@heynixie/task-control';
-import { taskRunOptionsSchema } from '../limit/task-run-options-schema';
+import { encodeTaskRunOptions } from '../limit/encode-task-run-options';
 import { planTaskStart } from '../task/start/plan-task-start';
 import type { TaskStarter } from '../task/start/plan-task-start';
 import { renderChoiceRefusal } from '../task/start/render-choice-refusal';
@@ -29,7 +29,7 @@ export const sandboxRunner: TaskRunnerDefinition = {
     declaration: sandboxStartDeclaration,
     storesBuiltOptions: true,
     plan: (start, starter, bounds) => Promise.resolve(planSandboxStart(start, starter, bounds)),
-    encodeOptions: (options) => taskRunOptionsSchema.parse(options),
+    encodeOptions: encodeTaskRunOptions,
   }),
   fixedTasks: [],
   keepsSandboxes: true,
