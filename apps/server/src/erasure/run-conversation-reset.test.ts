@@ -196,7 +196,11 @@ test('it writes neither erasure.finished nor log_reset before the turn inputs ar
 
   reset.effects.crashAt('erasure.turn_inputs_removed');
 
-  await Promise.allSettled([reset.run()]);
+  const failed = reset.run();
+
+  await Promise.allSettled([failed]);
+
+  expect(failed).rejects.toThrow('crash at erasure.turn_inputs_removed');
 
   const kinds = await ctx.readKinds();
 
@@ -229,7 +233,12 @@ test.each<ErasureFaultPoint>([
 
   reset.effects.crashAt(point);
 
-  await Promise.allSettled([reset.run()]);
+  const failed = reset.run();
+
+  await Promise.allSettled([failed]);
+
+  expect(failed).rejects.toThrow(`crash at ${point}`);
+
   await ctx.start().runner.finishOpen();
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });

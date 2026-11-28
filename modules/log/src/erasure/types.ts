@@ -75,6 +75,13 @@ export interface Erasable<Request> {
   // runs nothing.
   readonly writeFinished?: (tx: WriteTransaction, finished: ErasureFinishedFacts) => Promise<void>;
 
+  // Optional. Runs just before the target's keys go: the keys of records that hold the target's text
+  // and were written after the start, such as a record of the same place. They go with the capture.
+  readonly readLateKeyIDs?: (
+    tx: WriteTransaction,
+    target: ErasureTarget,
+  ) => Promise<readonly string[]>;
+
   // After the keys go; repeats hide's work safely.
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
 
@@ -132,6 +139,10 @@ export interface ErasureEntry {
   readonly revoke: (target: ErasureTarget) => Promise<void>;
   readonly writeFinished: (tx: WriteTransaction, finished: ErasureFinishedFacts) => Promise<void>;
   readonly readChildren: (tx: WriteTransaction, target: ErasureTarget) => Promise<ErasureTarget[]>;
+  readonly readLateKeyIDs: (
+    tx: WriteTransaction,
+    target: ErasureTarget,
+  ) => Promise<readonly string[]>;
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
   readonly beginChild: (target: ErasureTarget, parent: ErasureParent) => Promise<ErasureBegin>;
   readonly beginLegacy: () => Promise<void>;

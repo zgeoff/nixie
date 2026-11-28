@@ -229,6 +229,86 @@ test('it finishes a child that two parents reach, and a cycle, once', async () =
   ]);
 });
 
+test('it finishes the images of a record before the record after a crash, when each lists the other as a child', async () => {
+  const ctx = await setupTest();
+
+  const record = ctx.register('record', 'image', [{ id: 'p', keyIDs: [], childIDs: ['i1'] }]);
+
+  ctx.register('image', 'record', [{ id: 'i1', keyIDs: [], childIDs: ['p'] }]);
+
+  await record.begin({ id: 'p' }, { by: 'user' });
+
+  ctx.crashAt('erasure.cleaned');
+
+  const failed = record.finish('p');
+
+  await Promise.allSettled([failed]);
+
+  expect(failed).rejects.toThrow('crash at erasure.cleaned');
+
+  const openAtCrash = await ctx.readOpenCount();
+
+  await record.finish('p');
+
+  const records = await ctx.readErasureRecords();
+
+  const finished = records
+    .filter((entry) => entry.kind === 'erasure.finished')
+    .map((entry) => entry.payload['targetID']);
+
+  expect({ openAtCrash, finished }).toStrictEqual({ openAtCrash: 2, finished: ['i1', 'p'] });
+});
+
+test('it finishes the forget that a running forget waits on, instead of queueing behind itself', async () => {
+  const testLog = await startTestLog();
+
+  const fake = buildTestErasureEffects();
+  const events: string[] = [];
+
+  const pending: { finish: (targetID: string) => Promise<void> } = {
+    finish: () => Promise.resolve(),
+  };
+
+  const runner = makeErasureRunner({
+    log: testLog.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    effects: {
+      ...fake.effects,
+      cleanupSessions: async (cause) => {
+        if ('noteID' in cause && cause.noteID === 'outer') {
+          await pending.finish('inner');
+        }
+      },
+    },
+  });
+
+  const note = runner.register(
+    buildTestErasable({
+      kind: 'note',
+      childKind: 'image',
+      targets: [
+        { id: 'outer', keyIDs: [], childIDs: [] },
+        { id: 'inner', keyIDs: [], childIDs: [] },
+      ],
+      events,
+    }),
+  );
+
+  pending.finish = note.finish;
+
+  await note.begin({ id: 'inner' }, { by: 'user' });
+  await note.begin({ id: 'outer' }, { by: 'user' });
+  await note.finish('outer');
+
+  const records = await readTestRecordRows(testLog.writer);
+
+  const finished = records
+    .filter((row) => row.kind === 'erasure.finished')
+    .map((row) => parseJSONObject(row.payload)['targetID']);
+
+  expect(finished).toStrictEqual(['inner', 'outer']);
+});
+
 test('it answers a refusal as a value and writes no record', async () => {
   const ctx = await setupTest();
 

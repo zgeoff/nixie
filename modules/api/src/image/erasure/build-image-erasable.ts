@@ -15,6 +15,8 @@ export interface ImageErasureRequest {
 export function buildImageErasable(context: APIContext): Erasable<ImageErasureRequest> {
   return {
     start: (tx, request) => startImageErasure(tx, context, request),
+
+    // The readers of the gallery and of the image tools hide an image once erasure.started names it.
     hide: () => Promise.resolve(),
     readChildren: async (tx, target) => {
       const found = await readImageForgetTargets(

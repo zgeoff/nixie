@@ -22,8 +22,9 @@ import { seedQuotedMemoryItems } from '../test-utils/seed-quoted-memory-items';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { startTestMemoryForgets } from '../test-utils/start-test-memory-forgets';
 import type { CleanupRecordSessions } from '../types';
+import { beginRecordForget } from './begin-record-forget';
 import { readRecordForgetCheck } from './read-record-forget-check';
-import { runRecordForget } from './run-record-forget';
+import { finishRecordForget, runRecordForget } from './run-record-forget';
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -512,4 +513,52 @@ test('it refuses to forget the removal of a site place, which holds nothing a ke
   });
 
   expect(forgotten).toStrictEqual({ status: 'wrong_kind', kind: 'places.removed' });
+});
+
+test("it shreds an act of a place written after the forget of the place's act began", async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  await beginRecordForget(
+    ctx.context,
+    { thread: 'conversation', sequence: first.record.sequence },
+    { by: 'user' },
+  );
+
+  await writePlaceActed(places, { ...act, callID: 'call-2' });
+  await finishRecordForget(ctx.context, first.record.sequence);
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
 });

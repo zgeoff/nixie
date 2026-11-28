@@ -141,6 +141,8 @@ export { readRemovedSequences } from './record/read-removed-sequences';
 export { recordForgottenCodec } from './record/record-forgotten-codec';
 export { readPurgeSet } from './record/read-purge-set';
 export { writeRecordPurgeSet } from './purge/write-record-purge-set';
+export type { ThreadPurge } from './purge/write-thread-purge-sets';
+export { writeThreadPurgeSets } from './purge/write-thread-purge-sets';
 export type { RecordForgetPreview, RecordForgetTarget } from './record/read-record-forget-preview';
 export { readRecordForgetPreview } from './record/read-record-forget-preview';
 

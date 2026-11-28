@@ -4,6 +4,7 @@ import { ORPCError } from '@orpc/server';
 import { readRecordForgets } from '../record/begin-record-forget';
 import type { APIContext, ForgetProgress, Identity } from '../types';
 import { writeMemoryChange } from '../utils/write-memory-change';
+import { readEarlierImageForget } from './read-earlier-image-forget';
 
 interface ImageForgetInput {
   readonly clientActionID: string;
@@ -24,8 +25,8 @@ export type ImageForgetResult =
   | { readonly status: 'unauthorized' };
 
 // Forgets an image to its end: the erasure of the image takes every record that holds, names or
-// quotes it, so no prompt, name or picture stays readable. A retry with the same client action ID
-// finishes what the first call left open and answers the time of the first call.
+// quotes it. A retry with the same client action ID finishes what the first call left open and
+// answers the time of the first call.
 export async function writeImageForget(
   context: APIContext,
   caller: Identity,
@@ -75,11 +76,22 @@ export async function writeImageForget(
   await finishImageForget(forgets.image.finish, found.uuid);
 
   const [first] = await readErasures(context.log, { kind: 'image', targetID: found.uuid });
+
+  if (first === undefined) {
+    const earlier = await readEarlierImageForget(context, input.clientActionID);
+
+    return {
+      status: 'forgotten',
+      forgottenAt: earlier?.forgottenAt ?? context.clock.now(),
+      progress: earlier?.progress ?? { stage: 'deleting' },
+    };
+  }
+
   const finishedAt = await readErasureFinishedSequence(context.log, 'image', found.uuid);
 
   return {
     status: 'forgotten',
-    forgottenAt: first?.startedAtMs ?? context.clock.now(),
+    forgottenAt: first.startedAtMs,
     progress:
       finishedAt === null ? { stage: 'deleting' } : { stage: 'forgotten', sequence: finishedAt },
   };

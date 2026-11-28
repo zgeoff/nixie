@@ -7,8 +7,13 @@ import {
 } from '@heynixie/api';
 import { logProjections } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
-import { createMemoryItem, startTestMemoryStore } from '@heynixie/memory/test-utils';
-import { tasksProjections } from '@heynixie/tasks';
+import {
+  buildMockProvenance,
+  createMemoryItem,
+  startTestMemoryStore,
+  writeOwnerMessageRecord,
+} from '@heynixie/memory/test-utils';
+import { conversationTaskID, tasksProjections } from '@heynixie/tasks';
 import {
   buildTaskSeeder,
   buildTestDefinitionReaders,
@@ -19,6 +24,8 @@ import { startTestTurnInputs } from '@heynixie/turn-inputs/test-utils';
 import type { PartReader } from '../types';
 import type { ErasureRunnerValues } from './start-erasure-runner';
 import { startErasureRunner } from './start-erasure-runner';
+
+type FinishEvidencePurges = ErasureRunnerValues['memory']['finishEvidencePurges'];
 
 async function setupTest() {
   const inputs = await startTestTurnInputs();
@@ -42,10 +49,12 @@ async function setupTest() {
     runners: buildTestTaskRunners(),
   };
 
+  const finishPurges = mock<FinishEvidencePurges>(() => Promise.resolve());
+
   const values: ErasureRunnerValues = {
     conversation_imp: { cleanupSessions: mock(() => Promise.resolve()) },
     sandbox_runner: { cleanupSessions: mock(() => Promise.resolve()) },
-    memory: { finishEvidencePurges: mock(() => Promise.resolve()) },
+    memory: { finishEvidencePurges: finishPurges },
     phone: { bindForget: mock(() => {}) },
     api_gate: { close: mock(() => Promise.resolve()) },
   };
@@ -79,6 +88,14 @@ async function setupTest() {
   );
 
   return {
+    runner,
+    finishPurges,
+    writeMessage: (text: string) =>
+      writeOwnerMessageRecord(context.log, {
+        thread: conversationTaskID,
+        text,
+        spans: [{ start: 0, end: text.length, source: 'typed' }],
+      }),
     seed: buildTaskSeeder({ context }),
     memory: await startTestMemoryStore(context, undefined, { erasure: runner }),
 
@@ -143,4 +160,21 @@ test('it removes the requests of a forgotten memory item on the conversation and
     [other, 'stored', null],
     [other, 'removed', 'forget'],
   ]);
+});
+
+test('it purges the memory items that quote a record of the conversation when it resets the conversation', async () => {
+  const ctx = await setupTest();
+  const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
+
+  await ctx.memory.remember({
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.runner.forgetConversation.begin({ mode: 'conversations' }, { by: 'user' });
+  await ctx.runner.forgetConversation.finish(conversationTaskID);
+
+  expect(ctx.finishPurges.mock.calls).toStrictEqual([[{ recordSequence }]]);
 });

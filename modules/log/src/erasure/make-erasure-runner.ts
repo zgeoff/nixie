@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { ErasableKind } from '../erasure/erasable-kind';
 import type { Definitions, Log } from '../types';
 import type { ErasureEffects } from './erasure-effects';
@@ -64,13 +65,21 @@ export function makeErasureRunner(options: ErasureRunnerOptions): ErasureRunnerC
   // releases the capture hold that another still needs.
   const queue = { tail: Promise.resolve() };
 
+  const running = new AsyncLocalStorage<true>();
+
+  // A call that a running tree makes itself, such as the purge of an item whose own forget is open,
+  // runs at once, because waiting for the tree that waits for it would never end.
   const runSerially = <T>(task: () => Promise<T>): Promise<T> => {
+    if (running.getStore() === true) {
+      return task();
+    }
+
     const previous = queue.tail;
 
     const run = (async () => {
       await previous;
 
-      return task();
+      return running.run(true, task);
     })();
 
     queue.tail = (async () => {
@@ -152,6 +161,7 @@ function buildEntry<Request>(
     revoke: (target) => erasable.revoke?.(target) ?? Promise.resolve(),
     writeFinished: (tx, finished) => erasable.writeFinished?.(tx, finished) ?? Promise.resolve(),
     readChildren: (tx, target) => erasable.readChildren(tx, target),
+    readLateKeyIDs: (tx, target) => erasable.readLateKeyIDs?.(tx, target) ?? Promise.resolve([]),
     cleanIndexes: (target) => erasable.cleanIndexes(target),
     beginChild: (target, parent) =>
       beginErasure(options, erasable, erasable.toRequest(target), { by: parent.by, parent }),

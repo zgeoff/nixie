@@ -5,8 +5,7 @@
 You can forget a memory item, a moment, a note, a record, an image or the whole conversation, and
 nixie forgets each of them through one erasure runner, as
 [forgetting in the memory store](../../architecture/memory/store.md#forgetting) describes. This
-design holds what is left: the memory quotes that a reset of the conversation leaves in memory
-items, and the vault and locked entries, which still need a kind of their own.
+design holds what is left: the vault and locked entries, which still need a kind of their own.
 
 Once the owner approves this design, build its work items from it.
 
@@ -18,18 +17,6 @@ Once the owner approves this design, build its work items from it.
   the item's own text stays. It isn't an erasure.
 
 ## Contracts
-
-### The conversation reset
-
-The reset is an erasure of kind `conversation`, as
-[resetting the conversation](../../architecture/core/event-log.md#resetting-the-conversation)
-describes. It does not yet purge the memory quotes of the thread's records, as a record forget does.
-
-- After the keys go, it runs an evidence purge for every memory item whose version or proposal
-  quotes a record on the conversation thread. The purge set goes in the capture of
-  `erasure.started`, as a record forget's does.
-- A memory item whose evidence a reset purged reads "backed by your words, since forgotten", never
-  as unconfirmed.
 
 ### The vault and locked entries
 

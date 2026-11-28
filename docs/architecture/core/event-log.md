@@ -160,13 +160,14 @@ reset:
    that disk. A failed destroy stops the reset before it writes anything, and the server exits 1.
 3. It writes a `model.session_invalidated` record on the thread, so the next turn opens a new
    session instead of resuming the old one, then `erasure.started`, which names the key of every
-   record on the thread, the calls whose code sandboxes hold clear text, and the threads whose turn
-   inputs go.
+   record on the thread, the calls whose code sandboxes hold clear text, the threads whose turn
+   inputs go, and the purge set of every record on the thread that a memory item quotes.
 4. The runner destroys the code sandboxes of the conversation's calls, then deletes the keys and
    checkpoints the key store. It deletes the links that the web fetch tool numbered and the pages it
-   stored on the thread, then removes the turn inputs of the thread. It scans the thread again after
-   its cleanup, because a record written during the cleanup gets a key that the first capture
-   missed, and shreds it too.
+   stored on the thread, then removes the turn inputs of the thread, then runs the evidence purge of
+   each record in the purge set, as a [record forget](../memory/store.md#forgetting) does. It scans
+   the thread again after its cleanup, because a record written during the cleanup gets a key that
+   the first capture missed, and shreds it too.
 5. In the transaction of `erasure.finished`, it writes a `log_reset` record on the thread, with the
    mode `conversations`, the sequence of the invalidation record and the number of records it
    shredded. The tasks projection moves the conversation task's read cursor to this record, so a
@@ -180,8 +181,9 @@ reset:
    [forget set](../deployment/backups.md#staging-a-set) due, so the backup schedule stages one at
    that start.
 
-The memory items keep their own keys, so the reset leaves every item readable. The next session
-opens as a rebuild after a forget: every summary on the thread is shredded, and the recent turns
-stop at the newest `log_reset` record, so the model reads no line of the old conversation. A crash
-before stage 5 leaves the erasure open with no `log_reset` record, and the next start finishes it
-and writes the `log_reset` record.
+The memory items keep their own keys and their own text, and each quote of a shredded record goes
+from them, so an item reads as backed by words that were since forgotten. The next session opens as
+a rebuild after a forget: every summary on the thread is shredded, and the recent turns stop at the
+newest `log_reset` record, so the model reads no line of the old conversation. A crash before stage
+5 leaves the erasure open with no `log_reset` record, and the next start finishes it and writes the
+`log_reset` record.

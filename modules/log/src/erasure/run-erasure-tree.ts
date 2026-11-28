@@ -75,7 +75,14 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
     await effects.reachFaultPoint('erasure.turn_inputs_removed', root.started.erasureID);
   }
 
-  for (const erasureID of collectFinishOrder([...tree.keys()], reached)) {
+  // The walk starts at the root, so when a child reaches its own parent, as an image and its record
+  // do, the root still finishes last, whatever order the open erasures read in after a crash.
+  const erasureIDs = [
+    root.started.erasureID,
+    ...[...tree.keys()].filter((id) => id !== root.started.erasureID),
+  ];
+
+  for (const erasureID of collectFinishOrder(erasureIDs, reached)) {
     const erasure = tree.get(erasureID);
 
     invariant(erasure, 'the finish order names only erasures of the tree');
@@ -171,7 +178,16 @@ async function removeTreeKeys(context: ErasureRunContext, state: TreeKeys): Prom
     }
 
     for (const erasure of pending) {
-      await removeErasureKeys(context.log, erasure.started.capture);
+      const capture = erasure.started.capture;
+
+      const late = await withWriteTransaction(context.log.writer, (tx) =>
+        getEntry(context, erasure.started.kind).readLateKeyIDs(tx, toTarget(erasure)),
+      );
+
+      await removeErasureKeys(context.log, {
+        keys: capture.keys,
+        cleanupKeys: [...capture.cleanupKeys, ...late],
+      });
 
       state.removed.add(erasure.started.erasureID);
     }
