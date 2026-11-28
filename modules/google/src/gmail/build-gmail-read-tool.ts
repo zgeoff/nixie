@@ -94,7 +94,7 @@ export function buildGmailReadTool(deps: GmailDeps): ToolDefinition {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       const item = parseItemID(parsed.data.message);
 

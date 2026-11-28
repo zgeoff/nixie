@@ -5,6 +5,7 @@ import type {
   SearchReply,
   SearchRequest,
 } from '@heynixie/connectors';
+import { readRetryAfterMs } from '@heynixie/connectors';
 import { CredentialRefusalError } from '@heynixie/egress';
 import { parseJSONOrNull } from '@heynixie/wire';
 import type { KagiSearchRequest } from './kagi-search-request-schema';
@@ -21,7 +22,7 @@ export interface KagiSearchOptions {
 
 export function buildKagiSearch(options: KagiSearchOptions): SearchProvider {
   return {
-    readHits: (request) => readKagiReply(options, request),
+    readHits: (request, signal) => readKagiReply(options, request, signal),
   };
 }
 
@@ -31,13 +32,14 @@ const requestTimeoutMs = 15_000;
 async function readKagiReply(
   options: KagiSearchOptions,
   request: SearchRequest,
+  signal: AbortSignal | undefined,
 ): Promise<SearchReply> {
   const response = await options
     .fetch(`${options.apiURL}/search`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(buildKagiRequest(request)),
-      signal: AbortSignal.timeout(requestTimeoutMs),
+      signal: AbortSignal.any([AbortSignal.timeout(requestTimeoutMs), ...(signal ? [signal] : [])]),
     })
     .catch((error: unknown) => error);
 
@@ -107,13 +109,13 @@ function parseKagiResponse(response: Response, text: string): SearchReply {
 // change.
 function buildKagiFailure(response: Response, detail: string): ConnectorFailure {
   const status = response.status;
-  const seconds = Number(response.headers.get('retry-after') ?? Number.NaN);
+  const retryAfterMs = readRetryAfterMs(response.headers);
 
   if (status === 429) {
     return {
       code: 'rate_limited',
       status,
-      ...(Number.isFinite(seconds) ? { retryAfterMs: seconds * 1000 } : {}),
+      ...(retryAfterMs === null ? {} : { retryAfterMs }),
       detail,
     };
   }

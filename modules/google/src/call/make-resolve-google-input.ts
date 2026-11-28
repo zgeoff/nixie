@@ -2,6 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
 import { parseItemID } from '../gmail/parse-item-id';
 import type { GmailAccess } from '../gmail/types';
+import { forgottenOutcome } from './build-google-failure';
 import { pickPinnedContexts } from './pick-pinned-contexts';
 
 // Names the connection of a Calendar or Drive call before anything else reads it, as the Gmail tools
@@ -48,10 +49,7 @@ export function makeResolveGoogleInput(
 
     if (wanted !== undefined) {
       return live.length === 0
-        ? {
-            status: 'error',
-            message: `UNKNOWN_CONNECTION: no live connection has the ID ${wanted}`,
-          }
+        ? forgottenOutcome
         : { status: 'ok', input: { ...input, connection: wanted } };
     }
 

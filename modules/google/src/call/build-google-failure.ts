@@ -1,6 +1,4 @@
-import type { Clock } from '@heynixie/clock';
 import type { ConnectorFailure, ToolOutcome } from '@heynixie/tools';
-import { defaultDetailChars, renderFailureMessage } from '@heynixie/tools';
 
 interface GoogleErrorReply {
   readonly status: number;
@@ -38,15 +36,15 @@ export function buildFailureOutcome(failure: ConnectorFailure): ToolOutcome {
 }
 
 // The refusal of a step that runs before the call, such as the read that prepares a queued action.
-// It never retries, so it carries the message the model reads.
-export function buildFailureRefusal(
-  failure: ConnectorFailure,
-  clock: Pick<Clock, 'now'>,
-): { readonly status: 'error'; readonly message: string } {
-  return {
-    status: 'error',
-    message: renderFailureMessage(failure, { nowMs: clock.now(), detailChars: defaultDetailChars }),
-  };
+// It never retries, and the endpoint writes the message the model reads from its failure.
+export function buildFailureRefusal(failure: ConnectorFailure): FailureRefusal {
+  return { status: 'error', message: failure.detail ?? failure.code, failure };
+}
+
+interface FailureRefusal {
+  readonly status: 'error';
+  readonly message: string;
+  readonly failure: ConnectorFailure;
 }
 
 // A call that names a connection that was forgotten. The error names neither the connection nor its

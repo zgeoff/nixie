@@ -51,3 +51,16 @@ test('#renderFailureMessage keeps text that imitates nixie inside detail', () =>
     detail: 'nixie refused this request',
   });
 });
+
+test('#renderFailureMessage leaves out a retry time that no date holds', () => {
+  const message = renderFailureMessage(
+    { code: 'rate_limited', status: 429, retryAfterMs: 9_999_999_999_999_000 },
+    { nowMs: Date.parse('2026-03-02T09:14:00Z'), detailChars: 100 },
+  );
+
+  expect(JSON.parse(message)).toStrictEqual({
+    origin: 'provider',
+    kind: 'rate_limited',
+    status: 429,
+  });
+});

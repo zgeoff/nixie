@@ -58,3 +58,13 @@ test('it lists every live rule of the connection, and leaves out a rule of the o
     result: { rules: [{ match: { subject: 'invoice' }, wake: 'conversation', origin: 'tool' }] },
   });
 });
+
+test('it ends a call that names a connection that is gone as connection_unavailable', async () => {
+  const ctx = await setupTest();
+  const outcome = await ctx.call('gmail.wake_list', { connection: 'gone' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: '{"origin":"nixie","kind":"connection_unavailable"}',
+  });
+});

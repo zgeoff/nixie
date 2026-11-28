@@ -128,7 +128,7 @@ test('it keeps every attempt, so image.list finds each edit of an image', async 
   });
 });
 
-test('it returns a refusal with every profile, and credits the charge', async () => {
+test('it returns a provider refusal as a connector failure, and credits the charge', async () => {
   const ctx = await setupTest();
 
   ctx.main.replyWith(() => ({
@@ -140,16 +140,17 @@ test('it returns a refusal with every profile, and credits the charge', async ()
 
   const reply = await ctx.call('image.draw', { prompt: 'a keeper asleep' });
 
-  expect(readToolResult(reply)).toStrictEqual({
-    refused: {
-      code: 'IMAGE_REFUSED',
-      message: 'The request was rejected.',
-      profile: 'main',
-      reason: 'safety',
-    },
-    profiles: [
-      { profile: 'main', model: 'model-a' },
-      { profile: 'second', model: 'model-b' },
+  expect(reply).toStrictEqual({
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          origin: 'provider',
+          kind: 'refused',
+          detail: 'The request was rejected.',
+        }),
+      },
     ],
   });
 
@@ -199,11 +200,17 @@ test('it credits a failure the provider did not bill', async () => {
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toStrictEqual({
-    refused: { code: 'IMAGE_FAILED', message: 'The provider failed: the provider answered 503' },
-    profiles: [
-      { profile: 'main', model: 'model-a' },
-      { profile: 'second', model: 'model-b' },
+  expect(reply).toStrictEqual({
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          origin: 'provider',
+          kind: 'failed',
+          detail: 'the provider answered 503',
+        }),
+      },
     ],
   });
 
@@ -233,12 +240,9 @@ test('it keeps the charge when the provider throws, because the call may have be
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toMatchObject({
-    refused: { code: 'IMAGE_FAILED' },
-    profiles: [
-      { profile: 'main', model: 'model-a' },
-      { profile: 'second', model: 'model-b' },
-    ],
+  expect(reply).toStrictEqual({
+    isError: true,
+    content: [{ type: 'text', text: JSON.stringify({ origin: 'nixie', kind: 'no_answer' }) }],
   });
 
   const spentMicros = await ctx.readSpentMicros();
@@ -266,7 +270,11 @@ test('it keeps the charge of a draw that passes its time limit', async () => {
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
   const ledger = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'image.draw-day');
 
-  expect(readToolResult(reply)).toMatchObject({ refused: { code: 'IMAGE_TIMEOUT' } });
+  expect(reply).toStrictEqual({
+    isError: true,
+    content: [{ type: 'text', text: JSON.stringify({ origin: 'nixie', kind: 'no_answer' }) }],
+  });
+
   expect(ledger?.spentMicros).toBe(40_000);
 });
 
@@ -281,12 +289,9 @@ test('it keeps the charge of a reply that does not decode as a picture', async (
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toMatchObject({
-    refused: { code: 'IMAGE_FAILED' },
-    profiles: [
-      { profile: 'main', model: 'model-a' },
-      { profile: 'second', model: 'model-b' },
-    ],
+  expect(reply).toMatchObject({
+    isError: true,
+    content: [{ type: 'text', text: expect.stringContaining('"kind":"failed"') }],
   });
 
   const spentMicros = await ctx.readSpentMicros();
@@ -305,11 +310,17 @@ test('it keeps the charge of a reply over 8 MiB', async () => {
 
   const reply = await ctx.call('image.draw', { prompt: 'a cove' });
 
-  expect(readToolResult(reply)).toMatchObject({
-    refused: { code: 'IMAGE_FAILED' },
-    profiles: [
-      { profile: 'main', model: 'model-a' },
-      { profile: 'second', model: 'model-b' },
+  expect(reply).toStrictEqual({
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          origin: 'provider',
+          kind: 'failed',
+          detail: 'The reply is longer than the 8 MiB that nixie stores.',
+        }),
+      },
     ],
   });
 

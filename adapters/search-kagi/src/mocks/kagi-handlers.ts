@@ -16,6 +16,10 @@ export const kagiHandlers = [
     await kagiStore.requests.create({ authorization: request.headers.get('authorization') ?? '' });
     await kagiStore.hooks.onRequest?.();
 
+    if (kagiStore.hooks.failWith !== null) {
+      return answerError(kagiStore.hooks.failWith, { code: '9', message: 'Backend busy' });
+    }
+
     const key = /^Bearer (?<key>\S+)$/u.exec(request.headers.get('authorization') ?? '')?.groups?.[
       'key'
     ];

@@ -63,7 +63,7 @@ export function buildDriveChangeTool(deps: GoogleDeps): ToolDefinition {
       if (read.kind !== 'file') {
         return read.kind === 'missing'
           ? { status: 'error', message: `UNKNOWN_FILE: no file has the ID ${parsed.data.file}` }
-          : buildFailureRefusal(read.failure, deps.clock);
+          : buildFailureRefusal(read.failure);
       }
 
       const refusal = pickDriveChangeRefusal(read.file);

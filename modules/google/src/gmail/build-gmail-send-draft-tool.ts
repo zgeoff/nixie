@@ -62,7 +62,7 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
       if (read.kind !== 'draft') {
         return read.kind === 'missing'
           ? { status: 'error', message: `UNKNOWN_DRAFT: no draft has the ID ${parsed.data.draft}` }
-          : buildFailureRefusal(read.failure, deps.clock);
+          : buildFailureRefusal(read.failure);
       }
 
       // The card shows this message, so the digest the queued send carries must be this message's.
@@ -70,7 +70,7 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
       const raw = await readGmailRaw(deps.hosts, account, read.message.id);
 
       if (raw.kind === 'failed') {
-        return buildFailureRefusal(raw.failure, deps.clock);
+        return buildFailureRefusal(raw.failure);
       }
 
       if (buildDraftDigest(raw.text) !== parsed.data.digest) {
@@ -100,7 +100,7 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
             });
 
       if (text?.kind === 'failed') {
-        return buildFailureRefusal(text.failure, deps.clock);
+        return buildFailureRefusal(text.failure);
       }
 
       return {

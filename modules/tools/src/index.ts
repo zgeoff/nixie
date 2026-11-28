@@ -28,6 +28,7 @@ export type {
 export type { ToolsConfig } from './config/tools-config-schema';
 export { toolsConfigSchema } from './config/tools-config-schema';
 export { defaultDetailChars } from './failure/constants';
+export { readRetryAfterMs } from './failure/read-retry-after-ms';
 export { renderFailureMessage } from './failure/render-failure-message';
 export type { ToolCallRequest } from './run-tool-call';
 export { runToolCall } from './run-tool-call';

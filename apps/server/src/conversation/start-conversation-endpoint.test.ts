@@ -1021,3 +1021,79 @@ test('it offers the conversation no coding.start when the configuration sets no 
   expect(names).toContain('task.start');
   expect(names).not.toContain('coding.start');
 });
+
+test('it makes the one attempt that the deployment allows at a search that Kagi fails', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  credential: deployment:search',
+      `  api_url: ${kagiAPIURL}`,
+      'tools:',
+      '  retry_attempts: 1',
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  kagiStore.hooks.failWith = 503;
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Failed.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Failed.');
+
+  const searched = nixie.toolResults.at(-1);
+
+  invariant(searched);
+
+  expect(kagiStore.requests.findMany()).toHaveLength(1);
+
+  expect(JSON.parse(searched.result)).toMatchObject({
+    isError: true,
+    content: [{ type: 'text', text: expect.stringContaining('"kind":"failed"') }],
+  });
+});
+
+test("it cuts Kagi's message to the length that the deployment sets", async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  credential: deployment:search',
+      `  api_url: ${kagiAPIURL}`,
+      'tools:',
+      '  error_detail_chars: 5',
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Refused.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Refused.');
+
+  const searched = nixie.toolResults.at(-1);
+
+  invariant(searched);
+
+  expect(JSON.parse(searched.result)).toMatchObject({
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          origin: 'provider',
+          kind: 'refused',
+          status: 401,
+          detail: 'Unaut… [cut]',
+        }),
+      },
+    ],
+  });
+});

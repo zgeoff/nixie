@@ -84,14 +84,14 @@ export function buildDriveSearchTool(deps: GoogleDeps): ToolDefinition {
     execution: 'direct',
     reachesProvider: true,
     resolveInput: makeResolveGoogleInput(deps.access, ['after']),
-    run: async (call): Promise<ToolOutcome> => {
+    run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       if (context === null) {
         return forgottenOutcome;

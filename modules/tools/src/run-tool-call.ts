@@ -14,7 +14,10 @@ import { writeInvalidCall } from './call-record/write-invalid-call';
 import { writeRefusedCall } from './call-record/write-refused-call';
 import { renderCallCapRefusal } from './cap/render-call-cap-refusal';
 import { findToolPins } from './connection/find-tool-pins';
+import { catchFetchRefusal } from './failure/catch-fetch-refusal';
+import { isPrepareRefusal } from './failure/is-prepare-refusal';
 import { makeToolRunner } from './failure/make-tool-runner';
+import { readRefusalMessage } from './failure/read-refusal-message';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
 import type { PaidState } from './paid/try-prepare-paid-call';
 import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
@@ -93,13 +96,15 @@ export async function runToolCall(
   const inputResolution =
     inputResolver === undefined
       ? { status: 'ok' as const, input: requested.input }
-      : await inputResolver(requested.input, {
-          run,
-          ...(pinned === undefined ? {} : { pinned }),
-        });
+      : await catchFetchRefusal(() =>
+          inputResolver(requested.input, {
+            run,
+            ...(pinned === undefined ? {} : { pinned }),
+          }),
+        );
 
   if (inputResolution.status === 'error') {
-    return writeInvalidCall(requestRecorder, inputResolution.message);
+    return writeInvalidCall(requestRecorder, readRefusalMessage(inputResolution, options));
   }
 
   const call: ToolCall = { ...requested, input: inputResolution.input };
@@ -132,10 +137,12 @@ export async function runToolCall(
   }
 
   const prepare = registered !== null && isListed ? registered.definition.prepare : undefined;
-  const prepared = prepare === undefined ? null : await prepare(call.input, { run });
+
+  const prepared =
+    prepare === undefined ? null : await catchFetchRefusal(() => prepare(call.input, { run }));
 
   if (prepared !== null && isPrepareRefusal(prepared)) {
-    return writeInvalidCall(recorder, prepared.message);
+    return writeInvalidCall(recorder, readRefusalMessage(prepared, options));
   }
 
   if (prepared !== null && !isPrepared(prepared)) {
@@ -301,12 +308,6 @@ function checkListedInput(
   return registered !== null && run.tools.includes(call.tool)
     ? registered.parseInput(call.input)
     : { isValid: true };
-}
-
-function isPrepareRefusal(
-  value: Prepared | DirectResult | PrepareRefusal,
-): value is PrepareRefusal {
-  return 'status' in value && value.status === 'error';
 }
 
 function isPrepared(value: Prepared | DirectResult | PrepareRefusal): value is Prepared {

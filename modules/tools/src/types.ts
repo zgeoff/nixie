@@ -42,6 +42,10 @@ export interface ToolContext extends ToolResolveContext {
   // The allow rules that matched the call and list the tool by its exact name, present only when
   // a rule allowed the call and one such rule matched.
   readonly namingRules?: readonly NamingRule[];
+
+  // Set on a call of a tool that has `reachesProvider`. It aborts when the call's time budget ends,
+  // so the tool passes it to each request it sends.
+  readonly signal?: AbortSignal;
 }
 
 export type MemoryWriteVerdict =
@@ -265,6 +269,9 @@ export interface Prepared {
 export interface PrepareRefusal {
   readonly status: 'error';
   readonly message: string;
+
+  // A connector failure. The endpoint writes the message the model reads from it.
+  readonly failure?: ConnectorFailure;
 }
 
 export interface PaidTool {
@@ -325,7 +332,13 @@ export type PolicyFactsResolution =
 
 export type InputResolution =
   | { readonly status: 'ok'; readonly input: JSONObject }
-  | { readonly status: 'error'; readonly message: string };
+  | {
+      readonly status: 'error';
+      readonly message: string;
+
+      // A connector failure. The endpoint writes the message the model reads from it.
+      readonly failure?: ConnectorFailure;
+    };
 
 export type DeadlineResolution =
   | { readonly status: 'ok'; readonly deadlineAt: number | null }

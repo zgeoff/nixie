@@ -38,13 +38,13 @@ export function makeResolveGmailDraftInput(
     if (read.kind !== 'draft') {
       return read.kind === 'missing'
         ? { status: 'error', message: `UNKNOWN_DRAFT: no draft has the ID ${draftText}` }
-        : buildFailureRefusal(read.failure, deps.clock);
+        : buildFailureRefusal(read.failure);
     }
 
     const raw = await readGmailRaw(deps.hosts, context, read.message.id);
 
     return raw.kind === 'raw'
       ? { status: 'ok', input: { ...resolved.input, digest: buildDraftDigest(raw.text) } }
-      : buildFailureRefusal(raw.failure, deps.clock);
+      : buildFailureRefusal(raw.failure);
   };
 }

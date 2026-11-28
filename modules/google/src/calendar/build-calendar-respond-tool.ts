@@ -61,7 +61,7 @@ export function buildCalendarRespondTool(deps: GoogleDeps): ToolDefinition {
       if (read.kind !== 'event') {
         return read.kind === 'missing'
           ? { status: 'error', message: `UNKNOWN_EVENT: no event has the ID ${parsed.data.event}` }
-          : buildFailureRefusal(read.failure, deps.clock);
+          : buildFailureRefusal(read.failure);
       }
 
       if (read.event.yourResponse === null) {

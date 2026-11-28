@@ -311,6 +311,78 @@ test('it fails as rate limited with the time Kagi gives when Kagi answers 429', 
   });
 });
 
+test('it reads a retry time that Kagi gives as an HTTP date from the date of its own answer', async () => {
+  const ctx = setupTest();
+
+  network.use(
+    http.post(
+      `${kagiAPIURL}/search`,
+      () =>
+        new HttpResponse('slow down', {
+          status: 429,
+          headers: {
+            date: 'Mon, 23 Nov 2026 09:00:00 GMT',
+            'retry-after': 'Mon, 23 Nov 2026 09:00:09 GMT',
+          },
+        }),
+    ),
+  );
+
+  const reply = await ctx.provider.readHits({
+    query: 'tide times',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    failure: { code: 'rate_limited', status: 429, retryAfterMs: 9000, detail: 'no error detail' },
+  });
+});
+
+test('it keeps a retry time that no date can hold within a day', async () => {
+  const ctx = setupTest();
+
+  network.use(
+    http.post(
+      `${kagiAPIURL}/search`,
+      () =>
+        new HttpResponse('slow down', { status: 429, headers: { 'retry-after': '9999999999999' } }),
+    ),
+  );
+
+  const reply = await ctx.provider.readHits({
+    query: 'tide times',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    failure: {
+      code: 'rate_limited',
+      status: 429,
+      retryAfterMs: 86_400_000,
+      detail: 'no error detail',
+    },
+  });
+});
+
+test('it aborts the request of Kagi when the call is aborted', async () => {
+  const ctx = setupTest();
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  const reply = ctx.provider.readHits(
+    { query: 'tide times', limit: 10, sites: [], freshness: null },
+    AbortSignal.abort(),
+  );
+
+  await expect(reply).resolves.toStrictEqual({ kind: 'failed', failure: { code: 'no_answer' } });
+});
+
 test('it throws a refusal of the fetcher, so the call fails with an error and no reply', () => {
   const refusal = new CredentialRefusalError('the request sets the cookie header');
 

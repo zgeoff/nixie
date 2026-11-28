@@ -64,7 +64,7 @@ export function buildGmailReplyTool(deps: GmailDeps): ToolDefinition {
               status: 'error',
               message: `UNKNOWN_MESSAGE: no message has the ID ${parsed.data.message}`,
             }
-          : buildFailureRefusal(read.failure, deps.clock);
+          : buildFailureRefusal(read.failure);
       }
 
       const plan = planReply(read.message, account.account, parsed.data.replyAll === true);

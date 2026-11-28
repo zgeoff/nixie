@@ -50,20 +50,21 @@ false on `image.read` and `image.import` when the caps leave no room.
 
 ## Refusals
 
-A refusal is a result with a `refusalCode`, never a thrown error. The model reads it and chooses.
+A refusal of nixie's own check is a result with a `refusalCode`, never a thrown error. The model
+reads it and chooses. What the provider says goes by the
+[connector error codes](tool-calls.md#a-failed-direct-call): a refusal is `refused`, an error answer
+or a reply that is too big or does not decode is `failed`, and a draw that passes its time limit or
+throws is `no_answer`. Each one is an error whose message holds the code as JSON. A charge that the
+provider did not bill is credited, and nixie never retries a draw by itself.
 
-| Code                               | Cause                                                                         |
-| ---------------------------------- | ----------------------------------------------------------------------------- |
-| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot                |
-| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                   |
-| `NO_EDIT`                          | The profile's provider takes no source or no references                       |
-| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0    |
-| `IMAGE_REFUSED`                    | The provider refused the prompt                                               |
-| `IMAGE_FAILED`                     | The provider failed, or its reply is over `maxStoredBytes` or does not decode |
-| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                             |
+| Code                               | Cause                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot             |
+| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                |
+| `NO_EDIT`                          | The profile's provider takes no source or no references                    |
+| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0 |
 
-Every refusal and failure of `image.draw` sets `profiles` to every configured profile, so the model
-can pick one to retry on. Each entry holds the profile's key and its `model`.
+The tool's description lists every configured profile, so the model can pick another to retry on.
 
 `image.import` also returns `UNKNOWN_FILE`, `FILE_FORGOTTEN`, `UNKNOWN_PHOTO` and `NOT_IMAGE`.
 `image.name`, `image.pin`, `image.unpin` and `image.read` return `UNKNOWN_IMAGE` or
@@ -118,7 +119,7 @@ type DrawReply =
 
 A request carries the model, the prompt, the size, the source bytes of an edit, the reference bytes
 and an abort signal that fires after `drawTimeoutMs`, from `image-limits.ts`. An adapter throws when
-the signal aborts, and the tool then returns `IMAGE_TIMEOUT`. An adapter holds no key: it sends each
+the signal aborts, and the tool then returns `no_answer`. An adapter holds no key: it sends each
 request through the `ProviderFetch` that the server passes in, which adds the key on the host. The
 [tool-result scan](credentials.md#fingerprints-and-own-values) replaces any secret in a reason the
 adapter returns with `[secret removed]`. The tool never keeps the text of a thrown error.

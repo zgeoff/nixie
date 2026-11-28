@@ -178,9 +178,12 @@ The connector error codes are the only codes a connector's failure carries:
 | `fetch_refused`          | The fetcher refused the request, so it never reached the provider        | No      |
 | `connection_unavailable` | The call names a connection that was forgotten                           | No      |
 
-A tool maps a Google or Kagi answer in the same way: a 429, or a 403 with a rate-limit reason, is
-`rate_limited`, a 5xx is `failed`, and any other status is `refused`. The tool never throws for a
-failed answer. A throw from a tool with `reachesProvider` counts as `no_answer`, and a
+A tool maps a Google or Kagi answer in the same way: a 429, or a 403 whose structured reason is a
+rate limit, is `rate_limited`, a 5xx is `failed`, and any other status is `refused`. A rate-limit
+word in an error's message never counts, only the structured reason. A 2xx answer that is no JSON
+the tool can read is `failed`. A `Retry-After` header counts as seconds or as an HTTP date measured
+from the `Date` header of the same answer, and nixie keeps at most a day of it. The tool never
+throws for a failed answer. A throw from a tool with `reachesProvider` counts as `no_answer`, and a
 `CredentialRefusalError` from the fetcher counts as `fetch_refused`.
 
 The endpoint tries again inside one time budget per call, which covers every attempt and every wait.
@@ -192,7 +195,11 @@ A call makes at most `retry_attempts` attempts within `retry_budget_ms`, which
   tell the user when to ask again.
 - Every other failure that can clear waits on a backoff that doubles after each attempt, with
   jitter.
-- An attempt still open when the budget ends stops there, and the call returns `no_answer`.
+- An attempt still open when the budget ends is aborted and the call returns `no_answer`. A tool
+  passes the abort signal of its call to each request, so no provider work goes on after the call
+  returns, and a refund never meets a finished call.
+- A wait that ends after the budget starts no attempt, and the call returns the failure that came
+  before it.
 - A refusal returns at once. A 401 is the fetcher's: it refreshes the credential and retries once,
   as [credentials](credentials.md#refresh) describes.
 
@@ -218,7 +225,8 @@ outside text. A `connection_unavailable` error carries no field beyond `origin` 
 names neither the connection nor its status.
 
 A step that runs before the decision, such as the read that prepares a queued action, reports its
-failure in the same JSON but never retries.
+failure in the same JSON, cut to the same `error_detail_chars`, but never retries. The fetcher's
+refusal of such a step's request is `fetch_refused`.
 
 A tool's own answers about the model's input, such as `UNKNOWN_EVENT`, `TOO_LARGE` and
 `BAD_ADDRESS`, are not connector error codes. They reach the model as the Invalid input outcome or

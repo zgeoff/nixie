@@ -67,8 +67,8 @@ own data, and the model's input and the provider's text count as untrusted, as t
 [Tool calls](../../../architecture/connectors/tool-calls.md#a-failed-direct-call) describes how a
 failed direct call retries and what the model reads. Two parts are not built yet, and
 [GEO-2775](https://linear.app/zgeoff/issue/GEO-2775/nixie-connectors-build-or-cut-what-the-tools-design-still-lacks)
-tracks them: the connectors outside Google and search that still return their own error text, and
-the fields of `connection_unavailable` for a connection whose status stops its tools.
+tracks them: the connectors outside Google, search and images that still return their own error
+text, and the fields of `connection_unavailable` for a connection whose status stops its tools.
 
 A `connection_unavailable` error carries 4 fields, with the values that the
 [status line](#what-the-model-learns-about-a-connection) holds for the connection:

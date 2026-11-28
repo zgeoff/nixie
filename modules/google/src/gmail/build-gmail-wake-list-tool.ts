@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { formatDurationText, readWakeRules } from '@heynixie/triggers';
+import { forgottenOutcome } from '../call/build-google-failure';
 import { buildGmailMailbox } from './build-gmail-mailbox';
 import { gmailDeclarations } from './gmail-declarations';
 import { gmailToolNames } from './gmail-tool-names';
@@ -33,7 +34,7 @@ export function buildGmailWakeListTool(deps: GmailDeps): ToolDefinition {
       const context = await readCallContext(deps.access, call.input);
 
       if (context === null) {
-        return { status: 'error', message: 'UNKNOWN_CONNECTION: no live connection has that ID' };
+        return forgottenOutcome;
       }
 
       const rules = await readWakeRules(deps.log.writer.db, {

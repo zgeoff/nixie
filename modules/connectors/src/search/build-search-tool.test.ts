@@ -754,3 +754,49 @@ test('it is a tool the registry accepts, whose output schema holds a dated hit',
     }),
   ).toStrictEqual({ isValid: true });
 });
+
+test('it makes the endpoint retry a search, and hands the provider the signal of the call', async () => {
+  const ctx = await setupTest();
+
+  const stop = new AbortController();
+
+  const signals: (AbortSignal | undefined)[] = [];
+
+  const tool = buildSearchTool(
+    {
+      readHits: (_request, signal) => {
+        signals.push(signal);
+
+        return Promise.resolve<SearchReply>({ kind: 'hits', hits: [] });
+      },
+    },
+    {
+      log: ctx.log,
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
+      dailyCallCap: 200,
+      priceMicros: 12_000,
+      timeZone: 'Australia/Sydney',
+    },
+  );
+
+  await tool.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
+    {
+      callSequence: 1,
+      signal: stop.signal,
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: ['search'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  expect({ reachesProvider: tool.reachesProvider, signals }).toStrictEqual({
+    reachesProvider: true,
+    signals: [stop.signal],
+  });
+});

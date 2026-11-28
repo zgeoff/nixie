@@ -136,7 +136,7 @@ export function buildSearchTool(
     run: async (call, context) => {
       const request: SearchRequest = searchArguments.parse(call.input);
 
-      const reply = await provider.readHits(request);
+      const reply = await provider.readHits(request, context.signal);
 
       if (reply.kind === 'failed') {
         return {

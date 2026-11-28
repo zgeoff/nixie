@@ -55,7 +55,8 @@ export type SearchReply =
   | { readonly kind: 'failed'; readonly failure: ConnectorFailure };
 
 export interface SearchProvider {
-  readonly readHits: (request: SearchRequest) => Promise<SearchReply>;
+  // `signal` aborts when the call's time budget ends
+  readonly readHits: (request: SearchRequest, signal?: AbortSignal) => Promise<SearchReply>;
 }
 
 export interface DrawImage {

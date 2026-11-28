@@ -14,13 +14,15 @@ export function renderFailureMessage(failure: ConnectorFailure, time: FailureTim
       ? 'provider'
       : 'nixie';
 
+  const retryAt = new Date(time.nowMs + (failure.retryAfterMs ?? 0));
+
   return JSON.stringify({
     origin,
     kind: failure.code,
     ...(failure.status === undefined ? {} : { status: failure.status }),
-    ...(failure.retryAfterMs === undefined
+    ...(failure.retryAfterMs === undefined || Number.isNaN(retryAt.getTime())
       ? {}
-      : { retryAfter: new Date(time.nowMs + failure.retryAfterMs).toISOString() }),
+      : { retryAfter: retryAt.toISOString() }),
     ...(failure.detail === undefined
       ? {}
       : { detail: cutDetail(failure.detail, time.detailChars) }),

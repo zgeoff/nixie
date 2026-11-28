@@ -1,8 +1,11 @@
 import { expect, test } from 'bun:test';
+import { runClockUntil } from '@zgeoff/testing/clock';
 import { startGmailTools } from '../test-utils/start-gmail-tools';
 
 async function setupTest() {
-  const ctx = await startGmailTools();
+  const ctx = await startGmailTools({
+    retry: { random: () => 0.5, maxAttempts: 2, budgetMs: 3_600_000 },
+  });
 
   const tool = ctx.findAction('gmail.search').tool;
 
@@ -17,6 +20,29 @@ async function setupTest() {
           toolUseID: null,
         },
         ctx.buildContext(),
+      ),
+    callSearch: async (query: string) => {
+      const results: Awaited<ReturnType<typeof ctx.callTool>>[] = [];
+
+      void (async () => {
+        const result = await ctx.callTool('gmail.search', { query });
+
+        results.push(result);
+      })();
+
+      await runClockUntil(ctx.clock, () => results.length === 1, { maxMs: 3_600_000, stepMs: 500 });
+
+      return results;
+    },
+    runAbortedSearch: (input: Record<string, string | number>) =>
+      tool.run(
+        {
+          callID: 'call-1',
+          tool: 'gmail.search',
+          input: { connection: 'k3x9m2p7qa', ...input },
+          toolUseID: null,
+        },
+        { ...ctx.buildContext(), signal: AbortSignal.abort() },
       ),
   };
 }
@@ -154,5 +180,148 @@ test('it marks the date, the unread flag and the attachment flag of a hit as end
         },
       },
     },
+  });
+});
+
+test('it reads a retry time that Gmail gives as an HTTP date from the date of its own answer', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push({
+    line: 'GET /messages?',
+    status: 429,
+    body: '{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}',
+    headers: {
+      date: 'Mon, 23 Nov 2026 09:00:00 GMT',
+      'retry-after': 'Mon, 23 Nov 2026 09:00:07 GMT',
+    },
+  });
+
+  const outcome = await ctx.runSearch({ query: 'anything' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'Gmail answered rateLimitExceeded',
+    failure: {
+      code: 'rate_limited',
+      status: 429,
+      retryAfterMs: 7000,
+      detail: 'Gmail answered rateLimitExceeded',
+    },
+  });
+});
+
+test('it keeps the retry time of a rate limit that a hit read returns', async () => {
+  const ctx = await setupTest();
+
+  const seeded = ctx.site.gmail.seed({ from: 'sam@example.org', subject: 'Q3', text: 'figures' });
+
+  ctx.site.gmail.failures.push({
+    line: `GET /messages/${seeded.id}`,
+    status: 429,
+    headers: { 'retry-after': '10' },
+  });
+
+  const outcome = await ctx.runSearch({ query: 'figures' });
+
+  expect(outcome).toMatchObject({
+    status: 'error',
+    failure: { code: 'rate_limited', retryAfterMs: 10_000 },
+  });
+});
+
+test('it treats a refusal whose message names a rate limit as a refusal', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push({
+    line: 'GET /messages?',
+    status: 403,
+    body: '{"error":{"message":"rateLimitExceeded is not why","errors":[{"reason":"insufficientPermissions"}]}}',
+  });
+
+  const outcome = await ctx.runSearch({ query: 'anything' });
+
+  expect(outcome).toMatchObject({ status: 'error', failure: { code: 'refused', status: 403 } });
+});
+
+test('it ends the search with a failure when Gmail answers 200 with text that is no JSON', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push({ line: 'GET /messages?', status: 200, body: '<html>oops' });
+
+  const outcome = await ctx.runSearch({ query: 'figures' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'Gmail answered with no list of messages',
+    failure: { code: 'failed', detail: 'Gmail answered with no list of messages' },
+  });
+});
+
+test('it sends no request once the call is aborted', async () => {
+  const ctx = await setupTest();
+
+  await expect(ctx.runAbortedSearch({ query: 'figures' })).rejects.toThrow();
+});
+
+test.each([
+  'gmail.search',
+  'gmail.read',
+  'gmail.read_attachment',
+  'calendar.list_calendars',
+  'calendar.list_events',
+  'calendar.read_event',
+  'drive.search',
+  'drive.read',
+])('it makes the endpoint retry a call of %s', async (name) => {
+  const ctx = await setupTest();
+
+  expect(ctx.findAction(name).tool.reachesProvider).toBeTrue();
+});
+
+test('it tries a search again after a server error and returns the hits', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.seed({ from: 'sam@example.org', subject: 'Q3', text: 'figures' });
+  ctx.site.gmail.failures.push({ line: 'GET /messages?', status: 503 });
+
+  const results = await ctx.callSearch('figures');
+
+  expect(results).toMatchObject([
+    {
+      content: [],
+      structuredContent: { messages: [{ message: 'k3x9m2p7qa.m0001' }], next: null },
+    },
+  ]);
+});
+
+test('it stops after the attempts that the retry settings give, and tells the model the failure', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push(
+    { line: 'GET /messages?', status: 503 },
+    { line: 'GET /messages?', status: 503 },
+    { line: 'GET /messages?', status: 503 },
+  );
+
+  const results = await ctx.callSearch('figures');
+
+  expect({ results, left: ctx.site.gmail.failures.length }).toStrictEqual({
+    results: [
+      {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              origin: 'provider',
+              kind: 'failed',
+              status: 503,
+              detail: 'Gmail answered backendError',
+            }),
+          },
+        ],
+      },
+    ],
+    left: 1,
   });
 });

@@ -1,4 +1,5 @@
 export type { ImageToolOptions } from './image/types';
+export { readRetryAfterMs } from '@heynixie/tools';
 export { buildImageTools } from './image/build-image-tools';
 export type { ImageProfile, ImagesConfig } from './image/images-config-schema';
 export { imagesConfigSchema } from './image/images-config-schema';

@@ -90,7 +90,7 @@ export function buildCalendarChangeTool(deps: GoogleDeps, withGuests: boolean): 
       if (read.kind !== 'event') {
         return read.kind === 'missing'
           ? { status: 'error', message: `UNKNOWN_EVENT: no event has the ID ${parsed.data.event}` }
-          : buildFailureRefusal(read.failure, deps.clock);
+          : buildFailureRefusal(read.failure);
       }
 
       const args = parsed.data;

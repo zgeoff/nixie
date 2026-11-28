@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { CredentialRefusalError } from '@heynixie/egress';
+import { waitFor } from '@zgeoff/testing';
 import { createFakeClock, runClockUntil } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import type { ToolOutcome } from '../types';
@@ -17,8 +18,11 @@ function setupTest(steps: readonly Step[], overrides: { maxAttempts?: number } =
   const startedAtMs = clock.now();
   const finished: Finished[] = [];
   const calls = { count: 0 };
+  const signals: AbortSignal[] = [];
 
-  const attempt = (): Promise<ToolOutcome> => {
+  const attempt = (signal: AbortSignal): Promise<ToolOutcome> => {
+    signals.push(signal);
+
     const step = steps[Math.min(calls.count, steps.length - 1)];
 
     invariant(step !== undefined, 'a test gives at least one step');
@@ -34,6 +38,20 @@ function setupTest(steps: readonly Step[], overrides: { maxAttempts?: number } =
 
   return {
     calls,
+    signals,
+    clock,
+    finished,
+    start: () => {
+      void (async () => {
+        const outcome = await runWithRetries(attempt, {
+          clock,
+          config: { maxAttempts: overrides.maxAttempts ?? 3, budgetMs: 15_000, detailChars: 1000 },
+          random: () => 0.5,
+        });
+
+        finished.push({ outcome, atMs: clock.now() - startedAtMs });
+      })();
+    },
     run: async (): Promise<Finished[]> => {
       void (async () => {
         const outcome = await runWithRetries(attempt, {
@@ -248,5 +266,72 @@ test('#runWithRetries returns an error with no failure as it is, with no retry',
 
   expect(finished).toStrictEqual([
     { outcome: { status: 'error', message: 'UNKNOWN_EVENT: no such event' }, atMs: 0 },
+  ]);
+});
+
+test('#runWithRetries aborts an attempt that is still open when the budget ends', async () => {
+  const ctx = setupTest(['never']);
+
+  await ctx.run();
+
+  expect(ctx.signals.map((signal) => signal.aborted)).toStrictEqual([true]);
+});
+
+test('#runWithRetries leaves the signal of an attempt that answered unaborted', async () => {
+  const ctx = setupTest([{ status: 'ok', result: { text: 'a note' } }]);
+
+  await ctx.run();
+
+  expect(ctx.signals.map((signal) => signal.aborted)).toStrictEqual([false]);
+});
+
+test('#runWithRetries starts no attempt when a wait ends after the budget, and returns the last failure', async () => {
+  const ctx = setupTest([
+    {
+      status: 'error',
+      message: 'x',
+      failure: { code: 'rate_limited', status: 429, retryAfterMs: 14_000 },
+    },
+    { status: 'ok', result: { text: 'a note' } },
+  ]);
+
+  ctx.start();
+
+  await waitFor(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(16_000);
+
+  await waitFor(() => ctx.finished.length === 1);
+
+  expect(ctx.finished).toStrictEqual([
+    {
+      outcome: {
+        status: 'error',
+        message: JSON.stringify({
+          origin: 'provider',
+          kind: 'rate_limited',
+          status: 429,
+          retryAfter: '2026-03-02T09:14:14.000Z',
+        }),
+        failure: { code: 'rate_limited', status: 429, retryAfterMs: 14_000 },
+      },
+      atMs: 16_000,
+    },
+  ]);
+
+  expect(ctx.calls.count).toBe(1);
+});
+
+test('#runWithRetries waits for the retry time of a rate limit that follows a server error', async () => {
+  const ctx = setupTest([
+    { status: 'error', message: 'x', failure: { code: 'failed', status: 503 } },
+    { status: 'error', message: 'x', failure: { code: 'rate_limited', retryAfterMs: 10_000 } },
+    { status: 'ok', result: { text: 'a note' } },
+  ]);
+
+  const finished = await ctx.run();
+
+  expect(finished).toStrictEqual([
+    { outcome: { status: 'ok', result: { text: 'a note' } }, atMs: 11_000 },
   ]);
 });

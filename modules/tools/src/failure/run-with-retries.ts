@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { ConnectorFailure, ToolOutcome } from '../types';
 import { pickRetryWait } from './pick-retry-wait';
 import { readThrownFailure } from './read-thrown-failure';
-import { renderFailureMessage } from './render-failure-message';
+import { renderFailedOutcome } from './render-failed-outcome';
 import type { RetryConfig } from './types';
 
 export interface RetryDependencies {
@@ -11,23 +11,28 @@ export interface RetryDependencies {
   readonly random: () => number;
 }
 
+type Failed = Extract<ToolOutcome, { readonly status: 'error' }>;
+
 // Runs a call of a tool that reaches a provider, and tries again after a failure that can clear.
-// Every attempt and every wait counts against one time budget, and an attempt still open when it
-// ends reports no answer. A failed call returns the message the model reads.
+// Every attempt and every wait counts against one time budget. An attempt still open when it ends
+// is aborted and reports no answer, and a wait that ends after it starts no attempt.
 export async function runWithRetries(
-  attempt: () => Promise<ToolOutcome>,
+  attempt: (signal: AbortSignal) => Promise<ToolOutcome>,
   dependencies: RetryDependencies,
 ): Promise<ToolOutcome> {
   const clock = dependencies.clock;
   const config = dependencies.config;
   const startedAtMs = clock.now();
+  let lastFailed: { readonly outcome: Failed; readonly atMs: number } | null = null;
 
   for (let attempts = 1; ; attempts += 1) {
-    const outcome = await runWithinBudget(
-      attempt,
-      clock,
-      config.budgetMs - (clock.now() - startedAtMs),
-    );
+    const remainingMs = config.budgetMs - (clock.now() - startedAtMs);
+
+    if (lastFailed !== null && remainingMs <= 0) {
+      return renderFailedOutcome(lastFailed.outcome, dependencies, lastFailed.atMs);
+    }
+
+    const outcome = await runWithinBudget(attempt, clock, remainingMs);
 
     if (outcome.status !== 'error' || outcome.failure === undefined) {
       return outcome;
@@ -41,35 +46,42 @@ export async function runWithRetries(
     );
 
     if (wait.kind === 'stop') {
-      return writeFailureMessage(outcome, outcome.failure, dependencies);
+      return renderFailedOutcome(outcome, dependencies, clock.now());
     }
+
+    lastFailed = { outcome, atMs: clock.now() };
 
     await clock.sleep(wait.waitMs);
   }
 }
 
 async function runWithinBudget(
-  attempt: () => Promise<ToolOutcome>,
+  attempt: (signal: AbortSignal) => Promise<ToolOutcome>,
   clock: RetryDependencies['clock'],
   remainingMs: number,
 ): Promise<ToolOutcome> {
   const stopTimer = new AbortController();
+  const stopAttempt = new AbortController();
 
   const timedOut = (async (): Promise<ToolOutcome> => {
     await clock.sleep(remainingMs, stopTimer.signal);
+
+    // a sleep that the call's own end cancels resolves too, and that is no timeout
+    if (!stopTimer.signal.aborted) {
+      stopAttempt.abort();
+    }
 
     return buildFailed({ code: 'no_answer' });
   })();
 
   const answered = (async (): Promise<ToolOutcome> => {
     try {
-      return await attempt();
+      return await attempt(stopAttempt.signal);
     } catch (error) {
       return buildFailed(readThrownFailure(error));
     }
   })();
 
-  // the attempt that loses the race goes on in the background, and its answer is dropped
   const outcome = await Promise.race([answered, timedOut]);
 
   stopTimer.abort();
@@ -77,22 +89,6 @@ async function runWithinBudget(
   return outcome;
 }
 
-type Failed = Extract<ToolOutcome, { readonly status: 'error' }>;
-
 function buildFailed(failure: ConnectorFailure): Failed {
   return { status: 'error', message: failure.code, failure };
-}
-
-function writeFailureMessage(
-  outcome: Failed,
-  failure: ConnectorFailure,
-  dependencies: RetryDependencies,
-): Failed {
-  return {
-    ...outcome,
-    message: renderFailureMessage(failure, {
-      nowMs: dependencies.clock.now(),
-      detailChars: dependencies.config.detailChars,
-    }),
-  };
 }
