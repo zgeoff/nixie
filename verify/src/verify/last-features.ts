@@ -83,4 +83,9 @@ export const lastFeatures = [
     summary: 'Search the files, and create a text file',
     paths: featurePaths['drive-tools'],
   },
+  {
+    name: 'conversation-reset',
+    summary: 'Reset the conversation from the host',
+    paths: featurePaths['conversation-reset'],
+  },
 ] as const;

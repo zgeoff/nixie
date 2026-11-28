@@ -140,6 +140,14 @@ export const featurePaths = {
   'gmail-wake': buildFeatureGlobs(workspace, google),
   'calendar-tools': buildFeatureGlobs(workspace, google),
   'drive-tools': buildFeatureGlobs(workspace, google),
+  'conversation-reset': buildFeatureGlobs(workspace, {
+    packages: [],
+    paths: [
+      'apps/server/src/erasure/**',
+      'apps/server/src/server/{build-server-reset,make-stop-work}.ts',
+      'apps/server/src/cli/create-reset-commands.ts',
+    ],
+  }),
   'device-in-browser': buildFeatureGlobs(workspace, devices),
   'device-screen': buildFeatureGlobs(workspace, devices),
   'device-layout': buildFeatureGlobs(workspace, devices),

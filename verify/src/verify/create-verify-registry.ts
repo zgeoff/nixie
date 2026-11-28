@@ -301,6 +301,19 @@ export function createVerifyRegistry(): Wringer {
         printed: await runHostCLI(ctx, ['reset', '--keep-sessions', '--yes']),
       }),
     })
+    .action({
+      name: 'reset-conversations-from-host',
+      summary:
+        "Reset the conversation with `nixie reset --only conversations`, which forgets each of its messages and restarts the server's next turn with no history",
+      effect: 'write',
+      targets: ['local'],
+      input: z.strictObject({}),
+      data: z.strictObject({ printed: z.string() }),
+      timeoutMs: 120_000,
+      run: async (_input, ctx) => ({
+        printed: await runHostCLI(ctx, ['reset', '--only', 'conversations', '--yes']),
+      }),
+    })
     .command({
       path: ['sessions'],
       summary: 'Check with `nixie sessions` that a signed-in session has the device name --device',

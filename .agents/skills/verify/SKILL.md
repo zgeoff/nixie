@@ -82,6 +82,7 @@ feature with no verdict in its description.
 | gmail-wake         | A matching Gmail mail wakes the chat             | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
 | calendar-tools     | Read the calendar, and approve an invitation     | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
 | drive-tools        | Search the files, and create a text file         | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
+| conversation-reset | Reset the conversation from the host             | [references/feature-conversation-reset.md](references/feature-conversation-reset.md) |
 
 <!-- /wringer:features -->
 

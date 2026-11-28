@@ -83,15 +83,16 @@ Before you start:
    bun verify browser click --role button --name Forget
    bun verify browser click --role button --name 'Forget for good'
    bun verify browser snapshot --until-text 'Key backups'
-   bun verify db query "select count(*) as forgotten from records where kind = 'record.forgotten'"
+   bun verify db query "select json_extract(payload, '$.kind') as target, count(*) as finished from records where kind = 'erasure.finished' group by target"
    bun verify browser goto '/images?all=true'
    bun verify browser snapshot
    ```
 
    Expect: the first snapshot shows the text "Forgotten" in place of the picture and a line that
-   starts with "Key backups". The query's `forgotten` is 3: the image's call record, its result
-   record, and the result of the `image.list` call that `--draw` queues, which quotes the image's
-   prompt. The last snapshot lists the button "Open <second>" and no button "Open <first>".
+   starts with "Key backups". The query lists 1 finished erasure of the target `image` and 3 of the
+   target `record`: the image's call record, its result record, and the result of the `image.list`
+   call that `--draw` queues, which quotes the image's prompt. The last snapshot lists the button
+   "Open <second>" and no button "Open <first>".
 
 ## End state
 
