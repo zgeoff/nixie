@@ -357,6 +357,10 @@ export interface ToolRun {
   // them out: they write self-notes and nothing else
   readonly selfNoteOnlyTools?: readonly string[];
 
+  // The skills this run may use, set by nixie from the task's definition or from a worker's call,
+  // never from a tool's input. Unset for the conversation, whose list is the definitions'.
+  readonly skills?: readonly string[];
+
   readonly stepRunID?: string;
 
   // the open task run, with the caps of its limits; a started task passes none

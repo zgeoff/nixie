@@ -6,6 +6,7 @@ export { buildSkillVendorTool } from './skill/build-skill-vendor-tool';
 export type { ReadPage } from './skill/read-github-skill';
 export type { TaskSkill, TaskSkillsQuery } from './skill/load-or-pin-task-skills';
 export { loadOrPinTaskSkills } from './skill/load-or-pin-task-skills';
+export { joinListedSkills } from './skill/join-listed-skills';
 export { loadSkillPin } from './skill/load-skill-pin';
 export { readPendingSkillProposals } from './skill/read-pending-skill-proposals';
 export type { SkillPinInput } from './skill/record-skill-pin';

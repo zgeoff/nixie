@@ -68,6 +68,7 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
         thread: tool.run.thread,
         inForce,
         list: context.readSkillList(tool.run, inForce),
+        isRestricted: tool.run.skills !== undefined,
       });
 
       const skill = skills.find((candidate) => candidate.name === name);

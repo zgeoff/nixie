@@ -60,7 +60,12 @@ async function runOneReload(
 
   const list = context.readSkillList(run, inForce);
 
-  const skills = await loadOrPinTaskSkills(context.log, { thread: run.thread, inForce, list });
+  const skills = await loadOrPinTaskSkills(context.log, {
+    thread: run.thread,
+    inForce,
+    list,
+    isRestricted: run.skills !== undefined,
+  });
 
   if (name !== null && !list.includes(name) && !skills.some((skill) => skill.name === name)) {
     return { status: 'error', message: `the skill ${name} is not on your skill list` };
