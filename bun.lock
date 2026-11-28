@@ -14,7 +14,7 @@
         "@zgeoff/bun-test-react": "0.2.4",
         "@zgeoff/chex": "0.4.7",
         "@zgeoff/commitlint-config": "0.1.2",
-        "@zgeoff/diet": "0.3.2",
+        "@zgeoff/diet": "0.3.3",
         "@zgeoff/format-codemod": "0.3.6",
         "@zgeoff/oxlint-config": "0.11.3",
         "@zgeoff/rig": "catalog:",
@@ -2871,7 +2871,7 @@
 
     "@zgeoff/commitlint-config": ["@zgeoff/commitlint-config@0.1.2", "", { "peerDependencies": { "@commitlint/cli": ">=21.0.0" } }, "sha512-D5OJIMD4wBDJ4ad1z8LubHoRQNYDRtwu3LCGZj9m2TLmnpLuuN82/myTx6U7pBSteUGpqH19EJhTIthLCi1Vvg=="],
 
-    "@zgeoff/diet": ["@zgeoff/diet@0.3.2", "", { "bin": { "diet": "diet.sh" } }, "sha512-WTr8W2oOHfGFSASJgy/8LFHmiW5vRu2jduhsM5ixsMi7gAiTcERG7JhdLcIwksuyGTmOVxlCf7cRP6crAPDOig=="],
+    "@zgeoff/diet": ["@zgeoff/diet@0.3.3", "", { "bin": { "diet": "diet.sh" } }, "sha512-jJY5zvsgWXU/OMh1r4kXVcrB0GIHyviS0qVJb54soUXpLEbvMIFtL2+C9q+ACghbzykh6IJRTRN5vMaZKtRLGQ=="],
 
     "@zgeoff/format-codemod": ["@zgeoff/format-codemod@0.3.6", "", { "dependencies": { "gunshi": "1.0.0-rc.1", "oxc-parser": "0.158.0" }, "bin": { "format-codemod": "dist/cli.js" } }, "sha512-hoa6JerU9JHgikqumdtu23VE8wemOgkTr1zrwBFGnLyBns59bTt7Z3kkV6IBxc07CveYKtPT94IDTWFmFj5qHA=="],
 
@@ -4180,6 +4180,8 @@
     "@zgeoff/format-codemod/gunshi": ["gunshi@1.0.0-rc.1", "", {}, "sha512-/nSFKVrJHKg9O4ppBl+lOSLDQWmvJ5fG3ldVsdJX8KMtUV2uYwlx/a8OaOWuvniuV28bZDjsB8p6YFtDxSlMcw=="],
 
     "@zgeoff/oxlint-config/@stylistic/eslint-plugin": ["@stylistic/eslint-plugin@5.10.0", "", { "dependencies": { "@eslint-community/eslint-utils": "^4.9.1", "@typescript-eslint/types": "^8.56.0", "eslint-visitor-keys": "^4.2.1", "espree": "^10.4.0", "estraverse": "^5.3.0", "picomatch": "^4.0.3" }, "peerDependencies": { "eslint": "^9.0.0 || ^10.0.0" } }, "sha512-nPK52ZHvot8Ju/0A4ucSX1dcPV2/1clx0kLcH5wDmrE4naKso7TUC/voUyU1O9OTKTrR6MYip6LP0ogEMQ9jPQ=="],
+
+    "@zgeoff/rig/@zgeoff/diet": ["@zgeoff/diet@0.3.2", "", { "bin": { "diet": "diet.sh" } }, "sha512-WTr8W2oOHfGFSASJgy/8LFHmiW5vRu2jduhsM5ixsMi7gAiTcERG7JhdLcIwksuyGTmOVxlCf7cRP6crAPDOig=="],
 
     "@zgeoff/rig/gunshi": ["gunshi@1.0.0-rc.1", "", {}, "sha512-/nSFKVrJHKg9O4ppBl+lOSLDQWmvJ5fG3ldVsdJX8KMtUV2uYwlx/a8OaOWuvniuV28bZDjsB8p6YFtDxSlMcw=="],
 
