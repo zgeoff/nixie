@@ -3,9 +3,8 @@
 This spike compares 4 ways to find memory items for a question: keyword search, SQLite FTS5 with
 BM25 ranking, vectors from a small local embedding model, and BM25 fused with vectors. It runs over
 276 synthetic memory items for a fictional owner and 75 questions, and it times an FTS5 index held
-in memory, as the
-[event log design](../../docs/design/platform/core/event-log.md#memory-history-and-export) requires
-for free text that can be shredded.
+in memory, as the [event log design](../../docs/design/platform/core/event-log.md#memory-history)
+requires for free text that can be shredded.
 
 ## Question
 

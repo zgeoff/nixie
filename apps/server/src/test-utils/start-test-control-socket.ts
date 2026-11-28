@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import type { HostRouterOptions } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { startControlSocket } from '../part/start-control-socket';
 import { buildAPIGate } from '../utils/build-api-gate';
 
@@ -14,6 +15,7 @@ export interface TestControlSocketOptions {
   readonly readMemory?: HostRouterOptions['readMemory'];
   readonly readBackups?: HostRouterOptions['readBackups'];
   readonly runReset?: HostRouterOptions['runReset'];
+  readonly decide?: HostRouterOptions['decide'];
 }
 
 type TestAPI = Awaited<ReturnType<typeof startTestAPI>>;
@@ -27,6 +29,7 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
       context: api.context,
       readMemory: options.readMemory ?? (() => null),
       readBackups: options.readBackups ?? (() => null),
+      decide: options.decide ?? buildAllowingDecisionPoint(),
 
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,

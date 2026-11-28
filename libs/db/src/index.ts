@@ -25,3 +25,6 @@ export { spendMigrationVersion } from './migration/spend-migration-version';
 export { spendLedgerMigrationVersion } from './migration/spend-ledger-migration-version';
 export { reopenToOlderReaders } from './migration/reopen-to-older-readers';
 export { syncPauseGate } from './migration/sync-pause-gate';
+export type { ExportColumn, ExportFileOptions, ExportValue } from './export/write-export-file';
+export { writeExportFile } from './export/write-export-file';
+export { ExportPathExistsError } from './export/export-path-exists-error';

@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildHostClient } from '../cli/build-host-client';
 import type { ConversationReset } from '../erasure/run-conversation-reset';
 import { buildCleanup } from '../server/build-cleanup';
@@ -31,6 +32,7 @@ async function setupTest() {
       apiContext: api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

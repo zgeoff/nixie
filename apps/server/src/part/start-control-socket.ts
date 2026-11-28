@@ -14,7 +14,8 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
   await mkdir(dirname(options.path), { recursive: true, mode: 0o700 });
   await rm(options.path, { force: true });
 
-  const server = Bun.serve({ unix: options.path, fetch: options.respond });
+  // an export answers only when it finishes, which can outlast Bun's 10-second idle timeout
+  const server = Bun.serve({ unix: options.path, idleTimeout: 0, fetch: options.respond });
 
   return {
     stop: async () => {

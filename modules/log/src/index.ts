@@ -173,3 +173,5 @@ export type {
 } from './erasure/make-erasure-runner';
 
 export { makeErasureRunner } from './erasure/make-erasure-runner';
+export type { LogExport } from './export/run-log-export';
+export { runLogExport } from './export/run-log-export';

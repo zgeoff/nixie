@@ -4,7 +4,11 @@ import { readOwnerAddress } from '@heynixie/connections';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { buildDevicesFeatureProcedures } from '@heynixie/devices';
 import { buildTaskRunLimits } from '@heynixie/models';
-import { writeChatChannels } from '@heynixie/policy';
+import {
+  findLogExportDeclaration,
+  makeFaultSafeDecisionPoint,
+  writeChatChannels,
+} from '@heynixie/policy';
 import { buildRunSettings } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { buildServerCoding } from '../coding/build-server-coding';
@@ -267,7 +271,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   },
   {
     name: 'host_commands',
-    needs: ['inputs', 'context', 'reset', 'api_gate', 'turn_inputs'],
+    needs: ['inputs', 'context', 'decisions', 'reset', 'api_gate', 'turn_inputs'],
     uses: ['memory', 'backups', 'server_parts', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -278,6 +282,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           apiContext: parts.get('context').apiContext,
           readMemory: () => parts.find('memory'),
           readBackups: () => parts.find('backups'),
+          decide: makeFaultSafeDecisionPoint(parts.get('decisions')(findLogExportDeclaration)),
           runInForceSeed: () =>
             runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
           readDefinitions: () =>

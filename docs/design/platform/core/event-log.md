@@ -80,7 +80,7 @@ current key store backup and the deployment key.
 
 The database's full-text index covers only the envelope. A persisted index would keep the words of
 an erasable field after its key is gone, so search over free text runs on an index held in memory,
-as [memory history and export](#memory-history-and-export) describes.
+as [memory history](#memory-history) describes.
 
 ## Projections
 
@@ -132,7 +132,7 @@ A deployment moves the volume to another node only after the old node is powered
 node that still runs nixie behind a forced volume detach shares no lock with the new node, and both
 can write.
 
-## Memory history and export
+## Memory history
 
 Memory lives in its own tables with a history table, not in the log. Every memory write appends a
 record that names the memory item and its new version, and the record, the history row and any
@@ -143,10 +143,6 @@ Retrieval over past conversation searches the log, and [memory context](../memor
 the retrieval design. nixie builds the free-text search index in memory at start, from the payloads
 it can still decrypt, and updates it on each append. Forgetting a record removes its entries.
 **Why:** the index never reaches a backup.
-
-The event log exports as a SQLite file holding the records with decrypted payloads. **Why:** any
-SQLite reader opens it with its schema. A shredded payload stays a gap in the export, and creating
-an export carries its own declared effect.
 
 ## Retention
 

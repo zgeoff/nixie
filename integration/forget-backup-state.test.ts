@@ -24,6 +24,7 @@ import {
   memoryProjections,
   startMemoryStore,
 } from '@heynixie/memory';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { erasableDescriptors } from '@heynixie/server';
 import { startTestConversationReset } from '@heynixie/server/test-utils';
 import { tasksProjections } from '@heynixie/tasks';
@@ -138,6 +139,7 @@ async function setupTest() {
     context,
     readMemory: () => memory,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -155,6 +157,7 @@ async function setupTest() {
     context: offContext,
     readMemory: () => memory,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,

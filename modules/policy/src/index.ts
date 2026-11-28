@@ -253,3 +253,11 @@ export { matchRule } from './rule/is-rule-match';
 export type { RuleMatch } from './rule/is-rule-match';
 export type { ActedDecision } from './place/collect-acted-places';
 export { collectActedPlaces } from './place/collect-acted-places';
+export type { LogExportCallOptions } from './export/build-log-export-call';
+
+export {
+  buildLogExportCall,
+  findLogExportDeclaration,
+  logExportDeclaration,
+  logExportToolName,
+} from './export/build-log-export-call';

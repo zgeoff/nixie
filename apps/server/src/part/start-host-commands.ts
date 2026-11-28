@@ -3,6 +3,7 @@ import type { APIContext, HostBackups } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
+import type { DecisionPoint } from '@heynixie/policy';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ConversationReset } from '../erasure/run-conversation-reset';
@@ -17,6 +18,7 @@ export interface HostCommandsOptions {
 
   readonly readMemory: () => StartedMemoryStore | null;
   readonly readBackups: () => HostBackups | null;
+  readonly decide: DecisionPoint;
 
   readonly runInForceSeed: () => Promise<void>;
   readonly readDefinitions: () => DefinitionsContext | null;
@@ -38,6 +40,7 @@ export async function startHostCommands(
     context: options.apiContext,
     readMemory: options.readMemory,
     readBackups: options.readBackups,
+    decide: options.decide,
     runInForceSeed: options.runInForceSeed,
     readDefinitions: options.readDefinitions,
     readInForce: options.readInForce,

@@ -38,6 +38,7 @@ log line, so a deployment's check reads the report and not the log.
 | `nixie passkeys`                     | every passkey, live and revoked, as JSON                                                    | the server answered                  |
 | `nixie passkeys revoke <id>`         | the revoked passkey's ID                                                                    | the passkey existed and is revoked   |
 | `nixie sessions`                     | the live device sessions, as JSON                                                           | the server answered                  |
+| `nixie export <path>`                | the number of records it wrote, the path and the number of gaps                             | the server wrote the new file        |
 | `nixie backup --to <directory>`      | each database it copied, then the directory and the number of copies                        | both copies match                    |
 | `nixie stage-backup`                 | the sequence and kind of the set it staged                                                  | the server staged a set              |
 | `nixie restore --from … --yes`       | the databases it restored and the directory they came from                                  | both databases were replaced         |
@@ -121,6 +122,14 @@ no key, so its line reads complete. The `memory-forget` command prints the same 
 answer, under `backup`. The warning that each filtered reset prints without `--yes` says that, when
 backups are on, the next backup job run removes the old keys, and that a backup copied by hand keeps
 them.
+
+## Exporting the log
+
+`export <path>` asks the server to [export the log](../core/event-log.md#exporting-the-log) into a
+new SQLite file at the path, which the command makes absolute against the folder it runs in. The
+file is a plain copy of every conversation, and only the account that runs nixie can read it. The
+command exits non-zero when a deny rule covers the `export` effect, when something already holds the
+path, or when nixie cannot create a file there. It passes the gate as any other host command does.
 
 ## Backup and restore
 

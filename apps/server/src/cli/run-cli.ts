@@ -14,6 +14,7 @@ import { buildBackupCommands } from './build-backup-commands';
 import { checkEncoder } from './check-encoder';
 import { createContactCommands } from './create-contact-commands';
 import { createDefinitionCommands } from './create-definition-commands';
+import { createExportCommands } from './create-export-commands';
 import { createMandateCommands } from './create-mandate-commands';
 import { createMcpCommands } from './create-mcp-commands';
 import { createMemoryCommands } from './create-memory-commands';
@@ -54,6 +55,7 @@ const commands = new Map<string, Command>([
   ...createTurnInputCommands(host),
   ...buildBackupCommands(),
   ...createStageBackupCommands(host),
+  ...createExportCommands(host),
 ]);
 
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {
