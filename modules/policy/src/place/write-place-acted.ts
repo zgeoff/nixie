@@ -5,6 +5,7 @@ import {
   writeRecordsInTransaction,
 } from '@heynixie/log';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import type { PolicyTables } from '../policy/policy-tables';
 import type { PlaceContext } from './place-context';
 import { placesActedCodec } from './places-acted-codec';
@@ -68,6 +69,9 @@ export async function writePlaceActed(
   });
 }
 
+const keysSchema = z.object({ ids: z.array(z.string()).optional() });
+const startedSchema = z.object({ targetID: z.string(), capture: z.object({ keys: keysSchema }) });
+
 // A record forget names its place in its stored capture. A forget that an earlier release began
 // stored none, so its place comes from the target or from the open records it captured by key.
 async function probeForgottenPlace(
@@ -87,8 +91,8 @@ async function probeForgottenPlace(
   }
 
   for (const row of rows.filter((entry) => entry.place_id === null)) {
-    const started = erasureStartedCodec.decode(JSON.parse(row.payload));
-    const keyIDs = 'ids' in started.capture.keys ? started.capture.keys.ids : [];
+    const started = startedSchema.parse(JSON.parse(row.payload));
+    const keyIDs = started.capture.keys.ids ?? [];
 
     const forgotten = await readPlaceIDOfForget(log, Number(started.targetID), keyIDs);
 

@@ -797,7 +797,7 @@ test('it writes an act of a place with no readable fields for a forget that stor
 
   const [targetKeyID] = await readRecordKeyIDs(ctx.context.log.writer.db, [first.record.sequence]);
 
-  invariant(targetKeyID);
+  invariant(targetKeyID !== undefined);
 
   await removeRecordKey(ctx.context.log, targetKeyID);
   await writePlaceActed(places, { ...act, callID: 'call-2' });
@@ -877,7 +877,7 @@ test('it shreds a readable act of a place on finish for a forget that stored no 
 
   const [targetKeyID] = await readRecordKeyIDs(ctx.context.log.writer.db, [first.record.sequence]);
 
-  invariant(targetKeyID);
+  invariant(targetKeyID !== undefined);
 
   await removeRecordKey(ctx.context.log, targetKeyID);
 
