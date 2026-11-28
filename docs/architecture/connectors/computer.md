@@ -78,8 +78,10 @@ in `modules/connectors` owns the sandbox:
   call and copies the `profile` and `files` folders into it, then marks the new disk as used, so
   `isDiskNew` stays false. It destroys the old sandbox only when every copy passed its check. When a
   copy fails, nixie destroys the new sandbox, keeps the old one, logs `computer.copy_failed`, and
-  answers `COMPUTER_MOVING` until a later call copies the disk. A new sandbox that stands beside an
-  older one, because its destroy failed, is not trusted: the next call copies into it again.
+  answers `COMPUTER_MOVING` until a later call copies the disk. A new sandbox gets a started mark
+  before its first copy and a finished mark after the last check. One that holds only the started
+  mark is never a source: the next call copies into it again or, after a newer release, destroys it
+  once the other disks are copied.
 - Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
   the first result from a disk that started empty, so the assistant knows what it held before is
   gone.

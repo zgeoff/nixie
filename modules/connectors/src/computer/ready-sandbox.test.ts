@@ -22,26 +22,31 @@ async function setupTest() {
     exec: makeFolderExec(root, { loseWrite: (path) => path === lost.path }),
   });
 
-  const computer = startComputer({
-    adapter,
-    image: 'computer-new',
-    argv: ['guest'],
-    scans: {
-      scan: () => Promise.resolve({ kind: 'pass' as const }),
-      scanText: () => Promise.resolve({ kind: 'pass' as const }),
-    },
-    deniedRanges: [],
-    timeZone: 'UTC',
-    logger: () => {},
-    clock: createFakeClock({ startMs: 1_000_000 }),
-  });
+  const startImage = (image: string) => {
+    const computer = startComputer({
+      adapter,
+      image,
+      argv: ['guest'],
+      scans: {
+        scan: () => Promise.resolve({ kind: 'pass' as const }),
+        scanText: () => Promise.resolve({ kind: 'pass' as const }),
+      },
+      deniedRanges: [],
+      timeZone: 'UTC',
+      logger: () => {},
+      clock: createFakeClock({ startMs: 1_000_000 }),
+    });
 
-  onTestFinished(() => computer.stop());
+    onTestFinished(() => computer.stop());
+
+    return computer;
+  };
 
   return {
     root,
     adapter,
-    computer,
+    computer: startImage('computer-new'),
+    startImage,
     lost,
     seed: { desktopDisk: (input: DesktopDiskSeed) => seedDesktopDisk({ adapter, root }, input) },
   };
@@ -147,7 +152,26 @@ test('it keeps only the old desktop when a copy fails its check', async () => {
   expect(survivors.map((sandbox) => sandbox.id)).toStrictEqual([old.id]);
 });
 
-test('it copies the files again on the next call after a failed copy', async () => {
+test('it answers ready on the next call after a failed copy', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.desktopDisk({
+    image: 'computer-old',
+    files: { '/home/stub/files/note.txt': 'tide times' },
+  });
+
+  ctx.lost.path = 'home/stub/files/note.txt';
+
+  await ctx.computer.settleMove();
+
+  ctx.lost.path = null;
+
+  const gate = await ctx.computer.settleMove();
+
+  expect(gate).toBe('ready');
+});
+
+test('it copies the files into the new sandbox on the next call after a failed copy', async () => {
   const ctx = await setupTest();
 
   await ctx.seed.desktopDisk({
@@ -162,6 +186,33 @@ test('it copies the files again on the next call after a failed copy', async () 
   ctx.lost.path = null;
 
   await ctx.computer.settleMove();
+
+  const created = ctx.adapter.created.at(-1);
+
+  invariant(created);
+
+  const disk = await readDiskFiles(ctx.root, created.id);
+
+  expect(disk).toStrictEqual([['/home/stub/files/note.txt', 'tide times']]);
+});
+
+test('it keeps the good disk when a newer release follows a failed copy that left a half copy', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.desktopDisk({
+    image: 'computer-old',
+    files: { '/home/stub/files/note.txt': 'tide times' },
+  });
+
+  ctx.lost.path = 'home/stub/files/note.txt';
+
+  ctx.adapter.failNextDestroy('impd is down');
+
+  await ctx.computer.settleMove();
+
+  ctx.lost.path = null;
+
+  await ctx.startImage('computer-newer').settleMove();
 
   const survivors = await ctx.adapter.list(computerOwner);
 

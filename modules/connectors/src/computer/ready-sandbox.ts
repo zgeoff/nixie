@@ -3,7 +3,10 @@ import { buildSandboxSpec, findKeptSandbox, sandboxSizes } from '@heynixie/sandb
 import { computerOwner } from './computer-owner';
 import { computerFolders, copyComputerFolder } from './copy-computer-folder';
 import { wakeOld } from './move-old-sandboxes';
+import { probeCopyIncomplete } from './probe-copy-incomplete';
 import type { ComputerContext, DesktopState } from './types';
+import { writeCopyFinished } from './write-copy-finished';
+import { writeCopyStarted } from './write-copy-started';
 import { writeDiskUsedMarker } from './write-disk-used-marker';
 
 // The computer's sandbox: the kept one that holds today's spec, or a new one that replaces older
@@ -73,18 +76,29 @@ function buildComputerSpec(context: ComputerContext) {
 }
 
 // Copies each old sandbox's folders into the new one and destroys the old ones only when every
-// copy passed its check. It returns false, with nothing destroyed, when a copy failed.
+// copy passed its check. An old sandbox with a started mark and no finished mark is a failed
+// replacement: it is no source, and it goes with the others. It returns false when a copy failed.
 async function replaceOld(
   context: ComputerContext,
   old: readonly Sandbox[],
   created: Sandbox,
 ): Promise<boolean> {
   const homeEnv = context.options.homeEnv ?? {};
+  const sources: Sandbox[] = [];
+  const unverified: Sandbox[] = [];
 
   try {
+    await writeCopyStarted(created, homeEnv);
+
     for (const sandbox of old) {
       await wakeOld(sandbox);
 
+      const isIncomplete = await probeCopyIncomplete(sandbox, homeEnv);
+
+      (isIncomplete ? unverified : sources).push(sandbox);
+    }
+
+    for (const sandbox of sources) {
       for (const folder of computerFolders) {
         await copyComputerFolder({
           from: sandbox,
@@ -96,16 +110,18 @@ async function replaceOld(
       }
     }
 
-    if (old.length > 0) {
+    if (sources.length > 0) {
       await writeDiskUsedMarker(created, homeEnv);
     }
+
+    await writeCopyFinished(created, homeEnv);
   } catch (error) {
     context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
 
     return false;
   }
 
-  for (const sandbox of old) {
+  for (const sandbox of [...sources, ...unverified]) {
     await sandbox.destroy();
   }
 
