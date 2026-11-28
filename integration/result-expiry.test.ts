@@ -14,7 +14,6 @@ async function setupTest() {
   const nixie = await startInProcessNixie({
     hasStarterRules: false,
     extraConfig: ['erasure:', '  expire_after_days: 0.00000001'],
-    roleModelURLs: { worker: 'http://127.0.0.1:4050' },
     beforeStart: async (files) => {
       const definitions = join(dirname(files.configPath), 'definitions');
 
@@ -23,7 +22,7 @@ async function setupTest() {
 
       await writeFile(
         join(definitions, 'rules', 'start.yaml'),
-        'allow-reads:\n  outcome: allow\n  tools: [time.now]\nask-worker:\n  outcome: ask\n  tools: [worker.run]\n',
+        'allow-reads:\n  outcome: allow\n  tools: [time.now]\nask-export:\n  outcome: ask\n  tools: [memory.export]\n',
       );
     },
   });
@@ -35,20 +34,18 @@ async function setupTest() {
   nixie.guest.addKindReplies(
     'conversation',
     { toolUse: { name: 'time.now', input: {} } },
-    { toolUse: { name: 'worker.run', input: { question: 'What is 2 + 2?' } } },
+    { toolUse: { name: 'memory.export', input: {} } },
     { text: 'I asked you first.' },
-    { text: 'The worker says four.' },
+    { text: 'The export is done.' },
   );
 
-  nixie.guest.addKindReplies('worker', { text: 'Four.' });
-
-  await sendClientMessage(api.client, { text: 'Ask a worker.' }, 'I asked you first.');
+  await sendClientMessage(api.client, { text: 'Export my memory.' }, 'I asked you first.');
 
   const listed = await api.client.approvals.listItems();
 
   const item = listed.items.at(0);
 
-  invariant(item, 'the worker call asks');
+  invariant(item, 'the export asks');
 
   await api.client.approvals.answerProposal({
     proposalID: item.proposal.proposalID,

@@ -78,6 +78,16 @@ async function setupTest() {
   };
 }
 
+test('it sleeps an hour between passes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startSweep(365 * ctx.dayMs);
+
+  await waitForCondition(() => ctx.clock.delays.length > 0);
+
+  expect(ctx.clock.delays).toStrictEqual([ctx.hourMs]);
+});
+
 test('it expires a payload that outgrows the configured age at a later hourly pass, not at the first', async () => {
   const ctx = await setupTest();
 
@@ -86,6 +96,8 @@ test('it expires a payload that outgrows the configured age at a later hourly pa
   ctx.clock.advance(29 * ctx.dayMs);
 
   await ctx.startSweep(30 * ctx.dayMs);
+
+  await waitForCondition(() => ctx.clock.delays.length === 1);
 
   const atStart = await ctx.readStatuses();
 
@@ -109,9 +121,11 @@ test('it leaves a payload alone while the configured age has not passed', async 
 
   await ctx.startSweep(365 * ctx.dayMs);
 
+  await waitForCondition(() => ctx.clock.delays.length === 1);
+
   ctx.clock.advance(ctx.hourMs);
 
-  await waitForCondition(() => ctx.clock.countPending() === 1);
+  await waitForCondition(() => ctx.clock.delays.length === 2);
 
   const statuses = await ctx.readStatuses();
 
