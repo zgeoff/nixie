@@ -1,5 +1,6 @@
 import { readImportedImageKeyIDs, readRecordImageUUIDs } from '@heynixie/connectors';
 import type { Erasable } from '@heynixie/log';
+import { readPlaceIDOfForget } from '@heynixie/policy';
 import type { APIContext } from '../../types';
 import { buildTransactionContext } from '../../utils/build-transaction-context';
 import { readPlaceKeyIDs } from '../read-place-key-ids';
@@ -29,10 +30,12 @@ export function buildRecordErasable(context: APIContext): Erasable<RecordErasure
       return images.map((image) => ({ kind: 'image', targetID: image, version: null }));
     },
     readLateKeyIDs: async (tx, target, capture) => {
-      const placeKeyIDs =
-        capture.placeID === undefined
-          ? []
-          : await readPlaceKeyIDs(buildTransactionContext(context, tx).log, capture.placeID);
+      const log = buildTransactionContext(context, tx).log;
+      const keyIDs = 'ids' in capture.keys ? capture.keys.ids : [];
+
+      const placeID = await readCapturedPlaceID(log, target.targetID, capture.placeID, keyIDs);
+
+      const placeKeyIDs = placeID === null ? [] : await readPlaceKeyIDs(log, placeID);
 
       const importedKeyIDs = await readImportedImageKeyIDs(tx, Number(target.targetID));
 
@@ -42,4 +45,19 @@ export function buildRecordErasable(context: APIContext): Erasable<RecordErasure
     cleanIndexes: () => Promise.resolve(),
     readLegacyOpen: () => readLegacyOpenRecordForgets(context),
   };
+}
+
+// The place a forget captured, or null when it captured none. A forget that stored no place ID, such
+// as one an earlier release began, takes its place from the record or the open records it captured.
+function readCapturedPlaceID(
+  log: Parameters<typeof readPlaceIDOfForget>[0],
+  targetID: string,
+  captured: string | null | undefined,
+  keyIDs: readonly string[],
+): Promise<string | null> {
+  if (captured !== undefined) {
+    return Promise.resolve(captured);
+  }
+
+  return readPlaceIDOfForget(log, Number(targetID), keyIDs);
 }

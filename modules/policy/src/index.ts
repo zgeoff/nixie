@@ -83,6 +83,14 @@ export type {
 export type { PlaceAdd, PlaceAddResult } from './place/write-place-added';
 export { writePlaceAdded } from './place/write-place-added';
 export { writePlaceActed } from './place/write-place-acted';
+
+export {
+  openPlaceKinds,
+  placeIDOfOpenRecord,
+  readPlaceIDOfForget,
+  readPlaceIDOfRecord,
+} from './place/read-place-id-of-forget';
+
 export type { PlaceActed } from './place/write-place-acted';
 export type { PlaceChange, PlaceChangeResult } from './place/write-place-changed';
 export { writePlaceChanged } from './place/write-place-changed';
