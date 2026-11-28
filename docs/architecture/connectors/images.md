@@ -24,8 +24,9 @@ as [photos of the user](#photos-of-the-user) says.
 Images are on only when the deployment config has an `images` section, as
 [feature switches](../deployment/server.md#feature-switches) says. With no `images` section, nixie
 offers no image tool, `nixie.read` leaves `images` out of its features, and each `images` procedure
-of the gallery answers `FEATURE_OFF`. The web client then hides the Images page. The stored images
-stay, and the gallery shows them again once the section is back.
+of the gallery answers `FEATURE_OFF`. The web client then hides the Images page, and a note shows
+each stored image in its body as unavailable. The stored images stay, and the gallery and the notes
+show them again once the section is back.
 
 `image.draw` takes a prompt of 1 to 4,000 characters, and optionally:
 
