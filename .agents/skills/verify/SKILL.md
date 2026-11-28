@@ -65,6 +65,7 @@ feature with no verdict in its description.
 | computer-watch     | Watch the assistant's desktop                      | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
 | computer-off       | Turn the computer off                              | [references/feature-computer-off.md](references/feature-computer-off.md)             |
 | trusted-places     | Trust a site once                                  | [references/feature-trusted-places.md](references/feature-trusted-places.md)         |
+| place-trust-card   | Trust a place from a card                          | [references/feature-place-trust-card.md](references/feature-place-trust-card.md)     |
 | calls-off          | Turn calls off                                     | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
 | devices-off        | Turn devices off                                   | [references/feature-devices-off.md](references/feature-devices-off.md)               |
 | search-images-off  | Turn search and images off                         | [references/feature-search-images-off.md](references/feature-search-images-off.md)   |
@@ -172,9 +173,9 @@ target refuses each `[write]` command except `publish`, which writes no app data
 <!-- repo: registry -->
 
 Declare the registry in
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). List each
-feature's packages and files in [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts),
-and what every journey runs in [`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts),
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) and
+[`core-paths.ts`](../../../verify/src/verify/core-paths.ts).
 
 <!-- /repo -->
 

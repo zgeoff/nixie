@@ -217,7 +217,10 @@ export const controlRoutes = {
   trustSite: {
     method: 'POST',
     path: '/control/trust-site',
-    input: z.strictObject({ domain: z.string().min(1) }),
+    input: z.strictObject({
+      domain: z.string().min(1),
+      trust: z.enum(['read', 'act']).default('read'),
+    }),
     output: z.strictObject({ place: z.string().min(1) }),
   },
   advanceClock: {
