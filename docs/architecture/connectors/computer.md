@@ -31,21 +31,21 @@ defaults. Set `idle_hand_back_minutes` and `handover_expiry_minutes` in that sec
 - `nixie.read` leaves `computer` out of `features`, the web client hides the Computer menu entry and
   the take-over banner, and `/computer` shows the page that says the feature is off.
 
-The computer adds entries to two lists that core modules own, each filled from the composition root:
-the inbox kinds of take-over and handover records in the tasks module, which also decide whether
-each wakes, and the policy's tool shapes, which tell it that `computer.run` holds a command line and
-that the two screen acts share one always-allow rule. When the computer is off, both lists hold none
-of its entries, and the log registers the topics of its records only when it is on. Turning it off
-keeps its records and its [desktop sandbox](#the-sandbox), so both are as they were when the
-computer is turned on again.
+The composition root fills two lists that core modules own with the computer's entries. In the tasks
+module's inbox kinds, it adds the take-over and handover records and whether each wakes. In the
+policy's tool shapes, it marks `computer.run` as holding a command line and the two screen acts as
+sharing one always-allow rule. With the computer off, neither list holds those entries, and the log
+registers the topics of the computer's records only when the computer is on. Turning the computer
+off keeps its records and its [desktop sandbox](#the-sandbox), so both are as they were when the
+computer is on again.
 
 ## The sandbox
 
 The kind `computer` has public egress, no grant and no tool route. A deployment holds one, owned by
-`computer-desktop`. The restart sweep keeps it whatever its image, and whether the computer is on or
-off, so a call on the next release can copy its disk into a sandbox on that release's image. The
-[sandbox sizes](sandboxes.md#sizes) hold its memory and disk. The image `nixie-computer` comes from
-`guests/computer`.
+`computer-desktop`. The restart sweep keeps it whatever its image and whether the computer is on or
+off, so a call on the next release can copy its disk into a sandbox on that release's image. Its
+memory and disk are in the [sandbox sizes](sandboxes.md#sizes). The image `nixie-computer` comes
+from `guests/computer`.
 
 The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
@@ -81,10 +81,10 @@ in `modules/connectors` owns the sandbox:
   copy fails, nixie destroys the new sandbox, keeps the old one, logs `computer.copy_failed`, and
   answers `COMPUTER_MOVING` until a later call copies the disk. Nixie marks a new sandbox's disk as
   started before its first step, and again before each later copy into it, which replaces any
-  finished mark from an earlier copy. After the last check passes, nixie marks it as finished. A
-  sandbox whose mark says started is never a source: the next call copies into it again or, after a
-  newer release, destroys it once the other disks are copied. When no other sandbox is left, nixie
-  destroys it and creates an empty one, so `isDiskNew` is true.
+  finished mark from an earlier copy. After the last check passes, nixie marks it as finished. Nixie
+  never copies from a sandbox whose disk is marked started. The next call copies into that sandbox
+  again or, after a newer release, destroys it once the other disks are copied. When no other
+  sandbox is left, nixie destroys it and creates an empty one, so `isDiskNew` is true.
 - Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
   the first result from a disk that started empty, so the assistant knows what it held before is
   gone.
