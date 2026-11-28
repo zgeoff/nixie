@@ -16,7 +16,7 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 - Plug each outside service that the server reaches in as an adapter, behind an interface that a
   nixie module owns. nixie's core never names an outside service or an optional feature. Each
-  optional feature is on only when its section is in the deployment config, and the config key of a
+  optional feature is on only when the deployment config switches it on, and the config key of a
   feature that is off leaves no trace in nixie. A key that picks a test-only provider is allowed
   under rule 7: the sandbox config's `adapter` key, `imp` or `test`, is one. Read
   [Feature switches](deployment/server.md#feature-switches) for the switches and the two checks that

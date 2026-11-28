@@ -240,7 +240,7 @@ and `window` as [the mailbox's wake tools](../core/mailbox.md#wake-rules), with 
 
 ### Forgetting
 
-Forgetting a connection calls the trigger module's `eraseGmailMailbox` twice, once when the
+Forgetting a connection calls the trigger module's `eraseConnectionMailbox` twice, once when the
 connection is hidden and once when its indexes clean. Each call ends the connection's rules as
 `connection_forgotten`, drops the matches they held, and destroys the sender and subject of every
 arrival and wake of that mailbox. A wake keeps its record, which renders each mail as forgotten. The

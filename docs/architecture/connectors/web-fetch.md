@@ -1,8 +1,8 @@
 # Web fetch
 
 The web fetch tool reads one public web page for the model and returns its text. nixie never parses
-the page itself: a fetcher process inside the fetch sandbox resolves the host, fetches the page and
-extracts its text, and nixie reads back one reply. The fetch sandbox has public egress and no
+a page's HTML itself: a fetcher process inside the fetch sandbox resolves the host, fetches the page
+and extracts its text, and nixie reads back one reply. The fetch sandbox has public egress and no
 grants, and the sandbox adapter enforces public egress at the network layer, so the network layer is
 the boundary that keeps a page away from internal addresses. The fetcher checks every address again
 as a second layer, so a resolver trick fails twice, never once. [Sandboxes](./sandboxes.md) covers
@@ -12,8 +12,8 @@ the tool.
 ```mermaid
 flowchart LR
   E["tool endpoint"] --> T["web fetch tool"]
-  T -->|"spawn, one request frame on stdin"| F["fetcher process<br>in the fetch sandbox"]
-  F -->|"one reply frame on stdout"| T
+  T -->|"spawn, request and hop-pass frames on stdin"| F["fetcher process<br>in the fetch sandbox"]
+  F -->|"hop and reply frames on stdout"| T
   F -->|"public egress only"| W["the page's host"]
 ```
 
@@ -110,9 +110,10 @@ host is longer than a call waits. A 200, a refused or failed fetch and a blocked
 The fallback fetches the named URL as named and never runs twice, so its reply is the call's result,
 a 404 or a rate limit included.
 
-The tool stores the page of the one fetch that ends the call. After a fallback, only the named URL's
-page is stored, never the body of the first fetch's 404 or rate limit. The result's `url` is the URL
-the fetch ended at, so a rewritten fetch shows the rewritten URL. The tool's description says so.
+The tool stores the page of the one fetch that ends the call, when that page holds text. After a
+fallback, only the named URL's page is stored, never the body of the first fetch's 404 or rate
+limit. The result's `url` is the URL the fetch ended at, so a rewritten fetch shows the rewritten
+URL. The tool's description says so.
 
 ## Pauses
 
@@ -134,8 +135,8 @@ After a fetch, a reply with a status and no blocked reason sets a pause when its
 503, or when it carries `retryAfterMs`. A 2xx reply that carries `retryAfterMs` returns and stores
 its page, and pauses its host, with no fallback. The pause lasts `retryAfterMs`, or `backoff_ms`
 when the reply names none, and never passes `backoff_cap_ms`. A `retryAfterMs` of 0 sets no pause,
-and a new pause never shortens one that is set. A reply with a blocked reason sets no pause, because
-a site's bot protection is not a rate limit.
+even on a 429 or a 503, and a new pause never shortens one that is set. A reply with a blocked
+reason sets no pause, because a site's bot protection is not a rate limit.
 
 The pause goes on the host of the reply's final URL. When the final host differs from the sent URL's
 host, the pause goes on the sent host too. nixie never checks a redirect hop against the pauses, so
@@ -163,7 +164,7 @@ skill's files takes no pause.
 
 The cache is the session's page store, with no table of its own. Step 4 of the first pass returns
 the stored copy of the sent URL when the session holds one that is fresh enough, so the call starts
-no sandbox and writes nothing. The result is the page's stored view with `isCached` true, and every
+no sandbox and stores no page. The result is the page's stored view with `isCached` true, and every
 other result has it false.
 
 A stored page answers when all of these hold:
@@ -200,14 +201,15 @@ The `web_fetch` section of the deployment config holds the key, a whole number o
 
 ## Link IDs
 
-Each link in a page's text reads as a short ID that the conversation session numbers, such as
-`[L12]`, so a link costs a few characters in place of its whole URL. A link that leaves the page's
-host shows its host and the start of its path after the ID, such as `[L40 · example.org/docs/…]`, so
-the model can tell where a link goes before it follows it. The `link_path_chars` value in the
-deployment config's `web_fetch` section sets how many characters of the path show, and a longer path
-ends in `…`. The cut never splits the escapes of one character. The tag never shows the query string
-or the fragment, and shows no path for a link to the host's root. The tool fetches the page a link
-ID names, and its result holds the URL the fetch ended at, as a fetch by URL does.
+Each link that the fetcher marks in a page's text reads as a short ID that the conversation session
+numbers, such as `[L12]`, so a link costs a few characters in place of its whole URL. A link that
+leaves the page's host shows its host and the start of its path after the ID, such as
+`[L40 · example.org/docs/…]`, so the model can tell where a link goes before it follows it. The
+`link_path_chars` value in the deployment config's `web_fetch` section sets how many characters of
+the path show, and a longer path ends in `…`. The cut never splits the escapes of one character. The
+tag never shows the query string or the fragment, and shows no path for a link to the host's root.
+The tool fetches the page a link ID names, and its result holds the URL the fetch ended at, as a
+fetch by URL does.
 
 The session numbers each URL once, from a count of its own, so a URL keeps one ID across every page
 the session fetches and every [search](./search.md) hit, and the IDs of two sessions are unrelated.
@@ -285,7 +287,8 @@ compromises the fetcher sees only its own fetch and never the URL of another. Th
 inside a new temporary directory that it removes when the fetch ends. nixie talks to the fetcher
 only over that process's stdin and stdout, each frame holding one line of JSON in the format
 `libs/wire` defines. An ungated fetch takes one frame each way. The request carries the URL, the
-fetch limits and the ranges the deployment lists as internal; nothing else nixie holds reaches the
+fetch limits, the ranges the deployment lists as internal, and the `html` field and the `hopGate`
+object when a fetch uses them, as the next paragraphs describe. Nothing else nixie holds reaches the
 sandbox.
 
 A request may also carry an `html` field, a document that nixie already holds, such as a mail's HTML
@@ -338,9 +341,9 @@ The web fetch tool gates every `url` and `link` fetch with [the secret scan](#th
 server of this release on a fetch image of an older release fails every page that redirects. Update
 the fetch image with the server. The skill file reader gates none.
 
-Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
-fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and
-destroys the sandbox after, which keeps the destroy off the reply's path.
+Each caller's fetches run one at a time, and its next fetch starts only once its last fetch's
+destroy ends, so 2 fetchers of one caller never run side by side. nixie returns the reply as soon as
+the fetcher sends it and destroys the sandbox after, which keeps the destroy off the reply's path.
 
 A fetch that does not end in a page destroys its sandbox the same way: a refusal, a failure the
 fetcher reports, a fetcher that exits non-zero or sends no reply, a reply nixie cannot decode, or a
@@ -348,8 +351,10 @@ fetcher that outlives the fetch's time limit, which nixie stops. Every call nixi
 sandbox adapter has a time limit as well, so a create or a destroy that never ends fails one fetch
 and never blocks the fetches after it.
 
-Every fetch sandbox has the same owner. The first fetch after nixie starts removes every fetch
-sandbox of that owner, which clears what an earlier process left. The next fetch after a failed
+Each caller's fetch sandboxes have an owner of their own: the default owner for the web fetch tool,
+whose queue also reads each HTML mail, `skill_fetch` for the skill file reader and `device_fetch`
+for a device's declared fetches. A caller's first fetch after nixie starts removes every fetch
+sandbox of its owner, which clears what an earlier process left. The next fetch after a failed
 create or a destroy that fails or passes its time limit does the same, because a create can fail
 after the runtime made the sandbox and then fail to remove it. After a create passes its time limit,
 the fetch uses no sandbox from it; when the create still returns one, nixie's only call on it is the
@@ -418,8 +423,8 @@ The `web_fetch` section of the deployment config takes 3 keys for the scan:
 - A value shorter than `secret_own_value_min_chars` is left out, because a short value matches an
   ordinary URL by chance, and a site that redirects to a URL with its guess of an own value learns
   one yes or no per fetch.
-- `modules/connectors` defines the entry names once, and a compile-time check in `apps/server` fails
-  the build when they differ from the keys of the secrets file.
+- `modules/credentials` defines the entry names once, in `secrets-entry-names.ts`, and a
+  compile-time check beside it fails the build when they differ from the keys of the secrets file.
 
 ### What the scan leaves out
 
@@ -458,16 +463,17 @@ IPv6 address whose embedded IPv4 address is not public, and every range the depl
 internal, whatever its class. The embedded forms it reads are IPv4-mapped, IPv4-compatible,
 IPv4-translated, NAT64, 6to4 and Teredo.
 
-nixie runs the fetcher for 2 callers, the web fetch tool and the reader of a skill's files, and
-sends each fetch these limits:
+nixie runs the fetcher for 3 callers: the web fetch tool, the reader of a skill's files and a
+device's [declared fetches](../channels/devices.md#declared-fetches). A mail's HTML goes through the
+web fetch tool's queue, in a fetch sandbox of its own. nixie sends each fetch these limits:
 
-| Limit                                           | Web fetch tool         | Skill files                                                           |
-| ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- |
-| the body bytes read                             | the deployment config  | the file size limit of the [definitions repo](../core/definitions.md) |
-| the body bytes of an image                      | the deployment config  | 0, since a skill holds only text                                      |
-| the time for the whole call, redirects included | the deployment config  | the deployment config                                                 |
-| the number of redirects                         | the deployment config  | the deployment config                                                 |
-| the bytes of text returned                      | 3 times the body limit | the file size limit                                                   |
+| Limit                                           | Web fetch tool         | Skill files                                                           | Declared fetches                   |
+| ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- | ---------------------------------- |
+| the body bytes read                             | the deployment config  | the file size limit of the [definitions repo](../core/definitions.md) | a constant in `start-web-fetch.ts` |
+| the body bytes of an image                      | the deployment config  | 0, since a skill holds only text                                      | 0                                  |
+| the time for the whole call, redirects included | the deployment config  | the deployment config                                                 | the deployment config              |
+| the number of redirects                         | the deployment config  | the deployment config                                                 | a constant in `start-web-fetch.ts` |
+| the bytes of text returned                      | 3 times the body limit | the file size limit                                                   | 3 times the body limit             |
 
 The fetcher asks for markdown first, with the header
 `text/markdown, text/html;q=0.9, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.7`. A site

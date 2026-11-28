@@ -52,12 +52,12 @@ start, and `bun run --cwd apps/server forgettable-kinds` generates the contract'
 list from them. Never edit that list by hand, because a CI check fails on a hand edit. A test checks
 that each record kind sits in exactly one descriptor list.
 
-The forget of a memory item, a note or a moment runs through the erasure runner in `modules/log`.
-For the steps of a forget of an item, see the [memory store](../memory/store.md#forgetting). The
-runner writes `erasure.started` and `erasure.finished` in clear, because a forget must not need the
-text it deletes. Only `erasure.started` carries the selection of keys to delete, which is the
-target's key family and the keys of any child the forget reaches. `erasure.finished` carries the
-count of keys removed.
+The forget of each kind in `erasableKindSchema`, such as a memory item, a note, a moment or a
+record, runs through the erasure runner in `modules/log`. For the steps of a forget of an item, see
+the [memory store](../memory/store.md#forgetting). The runner writes `erasure.started` and
+`erasure.finished` in clear, because a forget must not need the text it deletes. Only
+`erasure.started` carries the selection of keys to delete, which is the target's key family and the
+keys of any child the forget reaches. `erasure.finished` carries the count of keys removed.
 
 A text that [the phone](../connectors/phone.md) stored forgets as the `text` kind. Its descriptor
 lists `phone.text_received` as erasable and leaves no kind to a record forget, because the text's

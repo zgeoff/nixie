@@ -56,7 +56,9 @@ a lib.
   [the web client's preload](../../../apps/web/src/mocks/test-preload.ts) does, and add it at the
   end of the `preload` list in the root `bunfig.toml`.
 - Give each handler a URL that no other package's handler matches. Of 2 matching handlers, the one
-  whose preload comes first in `bunfig.toml` wins.
+  whose preload comes last in [`bunfig.toml`](../../../bunfig.toml) wins. Each preload's
+  `addMockHandlers` calls `network.use` before each test, and `network.use` puts the handlers it
+  gets in front.
 - For one test's handler, call `network.use(...)`, as
   [Per-test handlers](../testing/references/http.md#per-test-handlers) says. After each test,
   `@heynixie/mock-server` resets the handlers to those that `addMockHandlers` added.
@@ -72,19 +74,19 @@ a lib.
 Before you call a test done, run it with its command from this table. Use the first row whose files
 match the test file.
 
-| Files                                                                                                               | Command                                       | In CI                     |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------- |
-| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                        | in `pr.yml`               |
-| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                      | in `pr.yml`               |
-| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                            | in `pr.yml`               |
-| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                       | in `journeys.yml`         |
-| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                         | in `pr.yml`               |
-| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                         | in `images.yml`           |
-| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                            | no                        |
-| `*.userns.test.ts`                                                                                                  | `bun run test:userns`                         | in `shell-namespaces.yml` |
-| `*.model-api.test.ts`                                                                                               | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                        |
-| `*.gpt-live.test.ts`                                                                                                | `NIXIE_GPT_LIVE=1 bun run test:gpt-live`      | no                        |
-| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                | in `pr.yml`               |
+| Files                                                                                                               | Command                                                                                                                     | In CI                     |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                                                                                                      | in `pr.yml`               |
+| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                                                                                                    | in `pr.yml`               |
+| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                                                                                                          | in `pr.yml`               |
+| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                                                                                                     | in `journeys.yml`         |
+| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                                                                                                       | in `pr.yml`               |
+| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                                                                                                       | in `images.yml`           |
+| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                                                                                                          | no                        |
+| `*.userns.test.ts`                                                                                                  | `bun run test:userns`                                                                                                       | in `shell-namespaces.yml` |
+| `*.model-api.test.ts`                                                                                               | `bun run test:model-api`, in an imp, as the [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md) says | no                        |
+| `*.gpt-live.test.ts`                                                                                                | `NIXIE_GPT_LIVE=1 bun run test:gpt-live`                                                                                    | no                        |
+| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                                                                                              | in `pr.yml`               |
 
 ### One unit test file
 

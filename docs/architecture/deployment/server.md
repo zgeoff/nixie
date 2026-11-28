@@ -118,10 +118,16 @@ sidecar's first checkout can, therefore seeds within seconds.
 
 A feature is an optional part of nixie, such as the computer, calls, devices or Google. A feature is
 on only when its section is in the deployment config: `computer`, `google`, `devices`, `search` and
-`images` switch the feature of the same name, and the `voice` section switches calls, whose feature
-ID is `voice`. A deployment that already has a `voice` section keeps calls on. A `search` section
-needs a `credential`, and an `images` section needs a `default`. A feature that is off starts none
-of its parts, needs none of its images and offers none of its tools or pages. Read
+`images` switch the feature of the same name, the `voice` section switches calls, whose feature ID
+is `voice`, and the `spendStop` section switches `spend`. A `search` section needs a `credential`,
+and an `images` section needs a `default`. `apps/server/src/feature/list-features-on.ts` holds 2
+exceptions:
+
+- `mcp` is always on.
+- `coding` is on only when the `coding` section holds `atc`.
+
+A deployment that already has a `voice` section keeps calls on. A feature that is off starts none of
+its parts, needs none of its images and offers none of its tools or pages. Read
 [the design](../../design/queue/feature-switches.md) for the full rules. The code still breaks them
 in a few places. Find each one in `apps/server/src/leak/leak-exceptions.ts`, or as a table in
 [the ports doc](../ports.md).

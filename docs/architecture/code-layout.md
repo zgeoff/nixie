@@ -63,8 +63,8 @@ pins the versions the component's tests run against. These rules don't cover the
 and nothing builds it before use. A package whose helpers other packages' tests use exports them as
 a second entry, `./test-utils`. A package that nothing imports, such as the fetch guest or the root
 suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
-`turbo boundaries` refuses a relative path into another package, so no package imports another
-package's internal files. Only a spike imports product files by path.
+`turbo boundaries` refuses a relative path into another package, so no package but a spike imports
+another package's internal files.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
 for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The
@@ -81,7 +81,7 @@ package name or a path relative to the importing file. Each package extends the 
 ## Inside a package
 
 The `zgeoff/feature-folders` lint rule checks the layout of each package's `src/`, with no package
-exempt.
+exempt but the spikes, which lint skips.
 
 - The `src/` root holds 8 modules at most. Not counted are `index`, `types` and `constants`,
   declaration files, tests, and every file that `package.json` names in `main`, `module`, `bin`,
@@ -102,32 +102,36 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag           | Packages                            | May depend on                       |
-| ------------- | ----------------------------------- | ----------------------------------- |
-| `app`         | `apps/server`, `apps/model-gateway` | modules, adapters, libs, other apps |
-| `client`      | `apps/web`                          | libs without `server-only`          |
-| `sidecar`     | `apps/backup-job`                   | modules, libs                       |
-| `module`      | `modules/*`                         | other modules, libs                 |
-| `adapter`     | `adapters/*`                        | modules, libs                       |
-| `guest`       | `guests/*`                          | libs without `server-only`          |
-| `lib`         | `libs/*`                            | libs                                |
-| `deploy`      | `deploy/pulumi-k8s`                 | no workspace package                |
-| `verify`      | `verify/`                           | the apps, modules, adapters, libs   |
-| `integration` | `integration/`                      | the app, modules, adapters, libs    |
-| `eval`        | `evals/`                            | modules, guests, libs               |
+| Tag           | Packages                                           | May depend on                                                         |
+| ------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
+| `app`         | `apps/server`, `apps/model-gateway`                | the other apps, the client, the backup job, modules, adapters, libs   |
+| `client`      | `apps/web`                                         | libs without `server-only`                                            |
+| `sidecar`     | `apps/backup-job`                                  | modules, libs                                                         |
+| `core`        | the core modules                                   | core modules, libs                                                    |
+| `feature`     | the feature modules                                | modules, libs                                                         |
+| `leaking`     | the core modules that still reach a feature module | modules, libs                                                         |
+| `adapter`     | `adapters/*`                                       | modules, libs                                                         |
+| `guest`       | `guests/*`                                         | libs without `server-only`                                            |
+| `lib`         | `libs/*`                                           | libs                                                                  |
+| `deploy`      | `deploy/pulumi-k8s`                                | no workspace package                                                  |
+| `verify`      | `verify/`                                          | the apps, the client, the backup job, modules, adapters, libs         |
+| `integration` | `integration/`                                     | the apps, the client, the backup job, modules, adapters, libs         |
+| `eval`        | `evals/`                                           | the apps, the client, the backup job, modules, adapters, guests, libs |
 
 The backup job's own source imports libs alone, so it never reaches the modules that hold the
 deployment key; its `e2e/` suites seed real log data, so its dev dependencies reach the modules. An
 app may depend on the other deployables, so its `e2e/` suites can read their test helpers. Nothing
 depends on the `verify`, `integration` and `eval` packages, so their wide rules never let production
-code reach test code.
+code reach test code. A module tagged `core` never depends on a feature module. A module tagged
+`leaking` still does, until the work item that removes its leak lands, as
+[feature switches](deployment/server.md#feature-switches) explains.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
-- **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
-  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `module`, `adapter`,
-  `server-only`, `verify`, `integration` or `eval`, so a guest or a client that declares it fails
-  the check.
+- **`server-only`** marks a lib that only server-side packages and the test suites may use:
+  `libs/db` and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `core`,
+  `leaking`, `feature`, `adapter`, `server-only`, `verify`, `integration` or `eval`, so a guest or a
+  client that declares it fails the check.
 - **An adapter depends only on the module that owns its interface.** Check this rule in review,
   because the tags allow any module.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
@@ -135,21 +139,24 @@ code reach test code.
 
 A few imports belong to one package each, and the Agent SDK to two:
 
-| Import                              | The packages that may import it    |
-| ----------------------------------- | ---------------------------------- |
-| The Agent SDK                       | `guests/conversation` and `evals/` |
-| imp's client                        | `adapters/sandbox-imp`             |
-| atc's client                        | `adapters/coding-atc`              |
-| `bun:sqlite` and the Kysely dialect | `libs/db`                          |
-| ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`            |
+| Import                         | The packages that may import it                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| The Agent SDK                  | `guests/conversation`, and in the `evals/` package the SDK contract suite and the memory checker and writer eval runners |
+| imp's client                   | `adapters/sandbox-imp`                                                                                                   |
+| atc's client                   | `adapters/coding-atc`                                                                                                    |
+| `bun:sqlite`                   | `libs/db`                                                                                                                |
+| ONNX Runtime and its tokenizer | `adapters/encoder-onnx`                                                                                                  |
+| The CEL library                | `modules/policy`                                                                                                         |
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside the packages the table
-names. The Agent SDK belongs to two packages because the SDK contract suite and the memory checker's
-eval in `evals/` drive the SDK itself, to check the behaviours nixie relies on. The rule covers
-`bun:sqlite`, which Bun provides with no declared dependency. Lint also refuses `require`,
+names. The Agent SDK belongs to two packages because the SDK contract suite and the memory checker
+and writer evals in `evals/` drive the SDK itself, to check the behaviours nixie relies on. The rule
+covers `bun:sqlite`, which Bun provides with no declared dependency. Check in review that the Kysely
+dialect stays in `libs/db`, because the rule has no zone for it. Lint also refuses `require`,
 `import.meta.require`, `node:module` and any `import()` whose specifier the rule cannot read, so no
-import escapes the zones. The zones exist because the Agent SDK runs only inside a sandbox
-([0003](../decisions/0003-sdk-placement.md)) and one package owns each outside system.
+import escapes the zones. The zones exist because product code runs the Agent SDK only inside a
+sandbox ([0003](../decisions/0003-sdk-placement.md)) and one package owns each outside system. Tests
+and evals run it outside one, as [tests and checks](#tests-and-checks) describes.
 
 ## Modules
 
@@ -161,7 +168,7 @@ package.
 | `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                                     |
 | `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-restart-sweep.md), the inbox, waits and timers                                                     |
 | `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                                 |
-| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                                            |
+| `models`      | [Model profiles](core/model-profiles.md), roles, cost, the harness definitions and the `model.*` session records                                    |
 | `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session               |
 | `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                         |
 | `triggers`    | [Triggers](core/triggers.md): the trigger core, the arming hook, the watermark and the fire times                                                   |
@@ -186,10 +193,17 @@ package.
 | `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                            |
 | `proposals`   | The review lifecycle that [skill proposals](core/skills.md#skills-that-nixie-writes) run on: its moves, its lapse time and the lapse sweep          |
 | `turn-inputs` | The [turn-input log](policy/turn-input-log.md): the capture of a step, the intake, the removals and the reading                                     |
+| `budgets`     | [Budgets](policy/budgets.md): the ledger, the limits, the periods and the charges                                                                   |
+| `spend`       | [The spending stop](policy/spending-stop.md): the gate, the route limits, the raises, the plan logins and the display currency                      |
+| `mcp`         | [The MCP proxy](connectors/mcp-proxy.md): the servers, their tool listings, the pins, the sign-in and the calls                                     |
+| `phone`       | [The assistant's phone](connectors/phone.md): the stored texts, the phone tools, the arrival source and the provider interface                      |
+| `reminders`   | [Reminders](core/reminders.md): the reminder records, their tools and their moves                                                                   |
 
 The other packages each hold one piece the modules and apps share:
 
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
+- `guests/codex` runs the turns of a `codex` profile through the Codex CLI's app server. The
+  `guests/code` folder holds no package, only the Dockerfile of the code tool's image.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
 - `guests/render` runs headless Chromium inside the render sandbox, to draw the device preview.
 - `guests/computer` runs the assistant's virtual desktop, with its browser and its shell, inside the
@@ -204,6 +218,11 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
   and on the Gemini API.
 - `adapters/speech-gpt-live` is the calls module's speech layer on OpenAI's GPT-Live.
+- `adapters/phone-twilio` is the phone module's provider on Twilio.
+- `adapters/spend-model-gateway` is the spend module's client of the model gateway's
+  [control listener](policy/model-gateway.md#the-control-listener).
+- `adapters/rates-frankfurter` is the spend module's source of the
+  [display currency's](policy/metering.md#the-display-currency) rate, on the Frankfurter API.
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model
   on ONNX Runtime.
 - `libs/contract` holds the oRPC contracts of the API and the host commands, with the client code
@@ -233,6 +252,7 @@ The other packages each hold one piece the modules and apps share:
   each take.
 - `libs/logger` is the logger, so a module that logs needs none of the health code.
 - `libs/testing` holds the test helpers and the [crash test harness](core/crash-tests.md).
+- `libs/mock-server` builds the one MSW test network that every package's tests share.
 
 ## Tests and checks
 
@@ -249,9 +269,9 @@ and the conversation guest.
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an
 imp or a real model. Each probe of the [SDK contract suite](core/sdk-contract-suite.md) is a
-function in the guest's `sdk-contract` folder: the guest's tests run it against the stub model, and
-the suite in `evals/` runs it against a real model, to check the SDK behaviours nixie relies on. The
-suite's doc lists the probes that only the real model can check, which no guest test runs. The
+function in the guest's `sdk-contract` folder. The suite in `evals/` runs each probe against a real
+model, to check the SDK behaviours nixie relies on, and the guest's tests run each probe but those
+that only the real model can check against the stub model. The suite's doc lists those probes. The
 suite's probes run only with `NIXIE_SDK_CONTRACT=1` and a model credential, and skip otherwise, so a
 plain `bun test` never calls a model. Whole-program suites in an app's `e2e/` folder run nixie with
 the sandbox double, which starts the conversation guest as a local process, so the SDK still loads

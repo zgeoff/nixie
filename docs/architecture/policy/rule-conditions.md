@@ -26,7 +26,7 @@ A condition sees 8 names, each declared with its CEL type, and nothing else:
   `double` literal alike, but two literals of different number types fail the type check.
 - A content argument never reaches `args`, so a condition that reads one errors with `no_such_key`,
   and text from outside never steers a rule. A tool lists as content each argument that holds
-  model-written text, such as the `reason` of `prompt.write`.
+  model-written text, such as the `reason` of `prompt_write`.
 - A map in the input holds at most 1,000 keys, and `args` itself too.
 - A condition never reads memory, secrets, contacts, budgets, the conversation or another call's
   result, because the call holds none of them.

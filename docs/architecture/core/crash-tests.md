@@ -56,9 +56,9 @@ The release build also drops these test-only paths:
 - The OAuth client accepts an `http` loopback origin, so a local run can register one.
 
 The server's action queue bridge, which the test build composes like any other part, maps the thread
-of a running step to that step's claim. It queues each allowed call under that claim with an action
-hash built from the tool and its arguments. The bridge sorts every object's keys before it hashes,
-so a rerun that sends the same arguments in another key order matches the action it queued.
+of a running step to that step's claim. It queues each allowed call under that claim with the
+[action hash](actions.md#queuing-a-call) of the call. The bridge sorts every object's keys before it
+hashes, so a rerun that sends the same arguments in another key order matches the action it queued.
 
 ## The harness link
 
@@ -128,8 +128,7 @@ A forgotten record can leave evidence quotes in memory items. The evidence purge
 one for each row of its kill table. Each point sits behind the test-build flag. A test arms a point,
 makes the forget or the purge reach it, stops nixie there and starts it again, and checks that the
 purge finishes and the current text of each item still reads. `recover-record-forget-purge.test.ts`
-does this. The erasure runner forgets a memory item, a note or a moment, and the next section covers
-it.
+does this. The next section covers the erasure runner.
 
 | Fault point                 | Reached                                                   |
 | --------------------------- | --------------------------------------------------------- |
@@ -149,11 +148,14 @@ start that need a real sandbox.
 
 ## Fault points of the erasure runner
 
-The [erasure runner](../memory/store.md#forgetting) forgets a memory item, a note or a moment. It
-holds at 5 fault points behind the test-build flag, in the order of its steps.
-`recover-erasure.test.ts` arms each point for a note and for a memory item, and no test arms them
-for a moment. A test arms a point, makes the forget reach it, stops nixie there and starts it again.
-The test then checks these beside the oracle, which does not know about erasures:
+The [erasure runner](../memory/store.md#forgetting) forgets each of the 8 kinds in
+`erasableKindSchema`, such as a memory item, a note or a connection's credential. It holds at 6
+fault points behind the test-build flag, in the order of its steps. `recover-erasure.test.ts` arms
+each point but `erasure.revoked` for a note and for a memory item.
+`recover-connection-forget.test.ts` arms `erasure.begun` and `erasure.revoked` for a connection's
+forget. No test arms them for a moment. A test arms a point, makes the forget reach it, stops nixie
+there and starts it again. The test then checks these beside the oracle, which does not know about
+erasures:
 
 - The erasure finishes.
 - None of the target's encryption keys remains in the key store. These are the keys of its
@@ -164,7 +166,8 @@ The test then checks these beside the oracle, which does not know about erasures
 | Fault point                   | Reached                                                                                                    |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `erasure.begun`               | after `erasure.started` commits, and when a run of the open erasure begins, before any sandbox or key goes |
-| `erasure.sandboxes_destroyed` | after the code sandboxes, before the keys                                                                  |
+| `erasure.sandboxes_destroyed` | after the code sandboxes, before each target's revoke                                                      |
+| `erasure.revoked`             | once every pending target is revoked, before the keys                                                      |
 | `erasure.keys_removed`        | after the key deletes, before the session cleanup                                                          |
 | `erasure.cleaned`             | after the session cleanup, before the turn inputs                                                          |
 | `erasure.turn_inputs_removed` | after the turn inputs, before `erasure.finished`                                                           |

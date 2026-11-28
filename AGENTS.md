@@ -81,18 +81,21 @@ Boundaries:
 
 - `turbo boundaries` checks each dependency against the tags in the root `turbo.json`.
 - A lib depends only on libs.
-- A module never imports an adapter and never forms a cycle with another module.
+- A module never imports an adapter and never forms a cycle with another module. A module tagged
+  `core` depends only on core modules and libs, never on a module tagged `feature`.
 - A lib tagged `server-only`, such as `libs/db`, is closed to guests and clients.
 - An adapter depends only on the module that owns its interface. The tags allow any module, so check
   this rule yourself in review.
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 
-- The Agent SDK: `guests/conversation`. The SDK contract suite in `evals/` may import it too,
-  because it checks the SDK itself.
+- The Agent SDK: `guests/conversation`. The SDK contract suite in `evals/sdk-contract/` and the
+  runners of the memory checker and writer evals may import it too, because they drive the SDK
+  itself.
 - imp's client: `adapters/sandbox-imp`.
 - atc's client: `adapters/coding-atc`.
-- `bun:sqlite` and the Kysely dialect: `libs/db`.
+- `bun:sqlite`: `libs/db`. Keep the Kysely dialect in `libs/db` yourself, because the rule has no
+  zone for it.
 - ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
 - The CEL library: `modules/policy`.
 
@@ -150,8 +153,9 @@ a secret value, and never write one to a file in the repo.
 ## Toolchain
 
 - Bun is pinned in `.bun-version`. `bun run format` fixes formatting.
-- `bun run check` chains every check that CI runs, including `lint:full`. Locally, run the scripts
-  it chains one at a time, and skip `lint:full`.
+- `bun run check` chains the main checks that CI runs, including `lint:full`. CI also runs the
+  `test:userns` and `test:restic` lanes and the `ci:*` scripts that `check` leaves out. Locally, run
+  the scripts it chains one at a time, and skip `lint:full`.
 - lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
   the host may have little memory.
 - `bun run lint` runs oxlint on its syntax rules. `bun run lint:full` adds the type-aware pass and
