@@ -52,7 +52,9 @@ the gateway prices each reply from its route's prices, so the config refuses a p
 `prices`, as [metering](../policy/metering.md#prices) says.
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
-count of turns and an amount of dollars. The schema refuses a default above its max.
+count of turns and an amount of dollars, and both keys are optional with no default value. A meter
+that the config leaves unset has no default limit or no max, as [limits](./started-tasks.md#limits)
+describes. The schema refuses a default above its max on a meter that sets both.
 
 ## Harnesses
 
