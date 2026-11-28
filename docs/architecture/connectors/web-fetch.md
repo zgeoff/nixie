@@ -12,8 +12,8 @@ the tool.
 ```mermaid
 flowchart LR
   E["tool endpoint"] --> T["web fetch tool"]
-  T -->|"spawn, one request frame on stdin"| F["fetcher process<br>in the fetch sandbox"]
-  F -->|"one reply frame on stdout"| T
+  T -->|"spawn, request and hop-pass frames on stdin"| F["fetcher process<br>in the fetch sandbox"]
+  F -->|"hop and reply frames on stdout"| T
   F -->|"public egress only"| W["the page's host"]
 ```
 
@@ -134,8 +134,8 @@ After a fetch, a reply with a status and no blocked reason sets a pause when its
 503, or when it carries `retryAfterMs`. A 2xx reply that carries `retryAfterMs` returns and stores
 its page, and pauses its host, with no fallback. The pause lasts `retryAfterMs`, or `backoff_ms`
 when the reply names none, and never passes `backoff_cap_ms`. A `retryAfterMs` of 0 sets no pause,
-and a new pause never shortens one that is set. A reply with a blocked reason sets no pause, because
-a site's bot protection is not a rate limit.
+even on a 429 or a 503, and a new pause never shortens one that is set. A reply with a blocked
+reason sets no pause, because a site's bot protection is not a rate limit.
 
 The pause goes on the host of the reply's final URL. When the final host differs from the sent URL's
 host, the pause goes on the sent host too. nixie never checks a redirect hop against the pauses, so
@@ -285,7 +285,8 @@ compromises the fetcher sees only its own fetch and never the URL of another. Th
 inside a new temporary directory that it removes when the fetch ends. nixie talks to the fetcher
 only over that process's stdin and stdout, each frame holding one line of JSON in the format
 `libs/wire` defines. An ungated fetch takes one frame each way. The request carries the URL, the
-fetch limits and the ranges the deployment lists as internal; nothing else nixie holds reaches the
+fetch limits, the ranges the deployment lists as internal, and the `html` field and the `hopGate`
+object when a fetch uses them, as the next paragraphs describe. Nothing else nixie holds reaches the
 sandbox.
 
 A request may also carry an `html` field, a document that nixie already holds, such as a mail's HTML
@@ -349,12 +350,13 @@ sandbox adapter has a time limit as well, so a create or a destroy that never en
 and never blocks the fetches after it.
 
 Each caller's fetch sandboxes have an owner of their own: the default owner for the web fetch tool,
-`skill_fetch` for the skill file reader and `device_fetch` for a device's declared fetches. A
-caller's first fetch after nixie starts removes every fetch sandbox of its owner, which clears what
-an earlier process left. The next fetch after a failed create or a destroy that fails or passes its
-time limit does the same, because a create can fail after the runtime made the sandbox and then fail
-to remove it. After a create passes its time limit, the fetch uses no sandbox from it; when the
-create still returns one, nixie's only call on it is the destroy, as soon as it arrives.
+whose sandbox also reads each HTML mail, `skill_fetch` for the skill file reader and `device_fetch`
+for a device's declared fetches. A caller's first fetch after nixie starts removes every fetch
+sandbox of its owner, which clears what an earlier process left. The next fetch after a failed
+create or a destroy that fails or passes its time limit does the same, because a create can fail
+after the runtime made the sandbox and then fail to remove it. After a create passes its time limit,
+the fetch uses no sandbox from it; when the create still returns one, nixie's only call on it is the
+destroy, as soon as it arrives.
 
 ## The secret scan
 
@@ -460,8 +462,8 @@ internal, whatever its class. The embedded forms it reads are IPv4-mapped, IPv4-
 IPv4-translated, NAT64, 6to4 and Teredo.
 
 nixie runs the fetcher for 3 callers: the web fetch tool, the reader of a skill's files and a
-device's [declared fetches](../channels/devices.md#declared-fetches). It sends each fetch these
-limits:
+device's [declared fetches](../channels/devices.md#declared-fetches). A mail's HTML goes through the
+web fetch tool's sandbox. nixie sends each fetch these limits:
 
 | Limit                                           | Web fetch tool         | Skill files                                                           | Declared fetches                   |
 | ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- | ---------------------------------- |

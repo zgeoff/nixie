@@ -5,11 +5,11 @@ reports as changed. The stream carries the records of the one thread on screen, 
 event that names each kind of state a commit touched, such as the pause, the task list or a backup
 notice. A device screen opens the same procedure in its own form, which carries only its screen.
 
-A change that writes no record, or that no write makes, still reaches the tab through a topic. A
-backup notice marks its topic in the transaction that writes it, and the spend watcher publishes
-`spend` when the gateway's stop differs from its last read. The tab reads a topic's reads again on
-its `changed` event, and reads every topic again when a stream opens, because `changed` has no event
-ID and a closed stream misses it.
+A change that writes no record, or that no write makes, still reaches the tab through a topic, apart
+from the 2 changes the next paragraph names. A backup notice marks its topic in the transaction that
+writes it, and the spend watcher publishes `spend` when the gateway's stop differs from its last
+read. The tab reads a topic's reads again on its `changed` event, and reads every topic again when a
+stream opens, because `changed` has no event ID and a closed stream misses it.
 
 Two changes happen with no write, so the tab reads again on a timer. A task that comes due changes
 the task list, so the tab reads the list at the `changesAt` time the list returns, as well as on the

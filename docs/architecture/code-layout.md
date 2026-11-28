@@ -63,8 +63,8 @@ pins the versions the component's tests run against. These rules don't cover the
 and nothing builds it before use. A package whose helpers other packages' tests use exports them as
 a second entry, `./test-utils`. A package that nothing imports, such as the fetch guest or the root
 suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
-`turbo boundaries` refuses a relative path into another package, so no package imports another
-package's internal files. Only a spike imports product files by path.
+`turbo boundaries` refuses a relative path into another package, so no package but a spike imports
+another package's internal files. A spike imports product files by path.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
 for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The
@@ -115,14 +115,15 @@ outside the importer's package, and a cycle between packages.
 | `lib`         | `libs/*`                                           | libs                                              |
 | `deploy`      | `deploy/pulumi-k8s`                                | no workspace package                              |
 | `verify`      | `verify/`                                          | the apps, modules, adapters, libs                 |
-| `integration` | `integration/`                                     | the app, modules, adapters, libs                  |
+| `integration` | `integration/`                                     | the apps, modules, adapters, libs                 |
 | `eval`        | `evals/`                                           | apps, the client, modules, adapters, guests, libs |
 
 The backup job's own source imports libs alone, so it never reaches the modules that hold the
 deployment key; its `e2e/` suites seed real log data, so its dev dependencies reach the modules. An
 app may depend on the other deployables, so its `e2e/` suites can read their test helpers. Nothing
 depends on the `verify`, `integration` and `eval` packages, so their wide rules never let production
-code reach test code. A core module never depends on a feature module, as
+code reach test code. A module tagged `core` never depends on a feature module. A module tagged
+`leaking` still does, until the work item that removes its leak lands, as
 [feature switches](deployment/server.md#feature-switches) explains.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
@@ -138,14 +139,14 @@ code reach test code. A core module never depends on a feature module, as
 
 A few imports belong to one package each, and the Agent SDK to two:
 
-| Import                         | The packages that may import it                                                             |
-| ------------------------------ | ------------------------------------------------------------------------------------------- |
-| The Agent SDK                  | `guests/conversation`, `evals/sdk-contract/` and the memory checker and writer eval runners |
-| imp's client                   | `adapters/sandbox-imp`                                                                      |
-| atc's client                   | `adapters/coding-atc`                                                                       |
-| `bun:sqlite`                   | `libs/db`                                                                                   |
-| ONNX Runtime and its tokenizer | `adapters/encoder-onnx`                                                                     |
-| The CEL library                | `modules/policy`                                                                            |
+| Import                         | The packages that may import it                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| The Agent SDK                  | `guests/conversation`, and in the `evals/` package the SDK contract suite and the memory checker and writer eval runners |
+| imp's client                   | `adapters/sandbox-imp`                                                                                                   |
+| atc's client                   | `adapters/coding-atc`                                                                                                    |
+| `bun:sqlite`                   | `libs/db`                                                                                                                |
+| ONNX Runtime and its tokenizer | `adapters/encoder-onnx`                                                                                                  |
+| The CEL library                | `modules/policy`                                                                                                         |
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside the packages the table
 names. The Agent SDK belongs to two packages because the SDK contract suite and the memory checker
