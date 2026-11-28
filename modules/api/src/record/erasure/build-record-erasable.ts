@@ -1,8 +1,9 @@
 import { readImportedImageKeyIDs, readRecordImageUUIDs } from '@heynixie/connectors';
 import type { Erasable } from '@heynixie/log';
+import { readPlaceIDOfForget } from '@heynixie/policy';
 import type { APIContext } from '../../types';
 import { buildTransactionContext } from '../../utils/build-transaction-context';
-import { readPlaceIDOfForget, readPlaceKeyIDs } from '../read-place-key-ids';
+import { readPlaceKeyIDs } from '../read-place-key-ids';
 import { readLegacyOpenRecordForgets } from './read-legacy-open-record-forgets';
 import { startRecordErasure } from './start-record-erasure';
 
