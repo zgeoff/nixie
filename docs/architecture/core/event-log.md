@@ -130,10 +130,12 @@ The export is a plain copy of every conversation, so it carries the declared eff
 the tool name `log.export`, and passes the [decision point](../policy/decision-point.md) like any
 other action. A deny rule that matches stops it before any file exists. The decision point has no
 user to ask, so an ask outcome or no rule at all lets it run: the command is the user's own request.
-The server fills the file at the permissions 0600 inside a new directory that only its owner enters,
-beside the final path, and a hard link gives it its final name only when nothing holds that path, so
-an export never overwrites a file. A failure removes the directory and any file at the path. The
-control socket has no idle timeout, because the request answers only when the export finishes.
+The server first creates the file at the final path with the permissions 0600, and refuses a path
+that exists or is a link, so an export never overwrites a file. It builds the export in a directory
+that only its owner enters, under the system temporary directory, and copies it into the file
+through that descriptor, so no other account reaches the data by path. A failure at any step,
+including the sync of the directory, removes the file at the path. The control socket has no idle
+timeout, because the request answers only when the export finishes.
 
 ## The reset
 

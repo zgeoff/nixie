@@ -1,6 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { expect, onTestFinished, test } from 'bun:test';
-import { chmod, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ExportPathExistsError } from './export-path-exists-error';
@@ -14,7 +14,12 @@ async function setupTest() {
   return {
     path: join(directory, 'out.db'),
     directory,
-    write: (path: string, rows: Iterable<readonly (string | number | null)[]>) =>
+    write: (
+      path: string,
+      rows:
+        | AsyncIterable<readonly (string | number | null)[]>
+        | Iterable<readonly (string | number | null)[]>,
+    ) =>
       writeExportFile(path, {
         table: 'notes',
         columns: [
@@ -111,26 +116,58 @@ test('it makes a file only its owner reads when the process umask removes owner 
   expect(info.mode & 0o777).toBe(0o600);
 });
 
-test('it writes to an unused path beside a partial file an earlier export left', async () => {
+test('it builds the export outside the destination directory and holds the path from the start', async () => {
   const ctx = await setupTest();
 
-  await writeFile(`${ctx.path}.partial`, 'left behind');
+  const seen: { names: string[]; mode: number; size: number }[] = [];
 
-  const count = await ctx.write(ctx.path, ctx.rows);
-  const names = await readdir(ctx.directory);
+  const spying = {
+    async *[Symbol.asyncIterator]() {
+      const names = await readdir(ctx.directory);
+      const info = await stat(ctx.path);
 
-  expect(count).toBe(2);
-  expect(names.toSorted()).toStrictEqual(['out.db', 'out.db.partial']);
+      seen.push({ names, mode: info.mode & 0o777, size: info.size });
+      yield [1, 'alpha'] as const;
+    },
+  };
+
+  await ctx.write(ctx.path, spying);
+
+  expect(seen).toStrictEqual([{ names: ['out.db'], mode: 0o600, size: 0 }]);
 });
 
-test('it keeps the finished file when the directory refuses a sync', async () => {
+test('it refuses a link at the path and leaves its target alone', async () => {
+  const ctx = await setupTest();
+
+  const target = join(ctx.directory, 'target');
+
+  await writeFile(target, 'precious');
+  await symlink(target, ctx.path);
+
+  const write = ctx.write(ctx.path, ctx.rows);
+
+  await Promise.allSettled([write]);
+
+  expect(write).rejects.toBeInstanceOf(ExportPathExistsError);
+
+  const text = await Bun.file(target).text();
+
+  expect(text).toBe('precious');
+});
+
+test('it removes the file and fails when the directory refuses a sync', async () => {
   const ctx = await setupTest();
 
   await chmod(ctx.directory, 0o300);
 
-  const count = await ctx.write(ctx.path, ctx.rows).finally(() => chmod(ctx.directory, 0o700));
+  const write = ctx.write(ctx.path, ctx.rows);
+
+  await Promise.allSettled([write]);
+
+  await chmod(ctx.directory, 0o700);
+
   const names = await readdir(ctx.directory);
 
-  expect(count).toBe(2);
-  expect(names).toStrictEqual(['out.db']);
+  expect(write).rejects.toBeInstanceOf(Error);
+  expect(names).toStrictEqual([]);
 });

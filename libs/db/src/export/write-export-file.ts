@@ -1,5 +1,8 @@
 import { Database } from 'bun:sqlite';
-import { chmod, link, lstat, mkdtemp, open, rm } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import type { FileHandle } from 'node:fs/promises';
+import { chmod, mkdtemp, open, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { ExportPathExistsError } from './export-path-exists-error';
 
@@ -19,59 +22,39 @@ export interface ExportFileOptions {
 }
 
 // Writes the rows into a new SQLite file that only its owner reads, and refuses a path that exists.
-// The file fills inside a directory that only its owner enters, and a hard link gives it its name,
-// because a link fails on an existing path where a rename would replace it.
+// The export is built in a private directory of its own and copied through the descriptor of a
+// destination made exclusively, so no other account reaches it by path. A failure removes the file.
 export async function writeExportFile(path: string, options: ExportFileOptions): Promise<number> {
-  const exists = await probePathExists(path);
-
-  if (exists) {
-    throw new ExportPathExistsError(path);
-  }
-
-  const workDirectory = await mkdtemp(`${path}.partial-`);
+  const destination = await openDestination(path);
 
   try {
-    // an explicit mode, because a restrictive umask changes the one the directory was made with
-    await chmod(workDirectory, 0o700);
+    // an explicit mode, because a restrictive umask changes the one the file was made with
+    await destination.chmod(0o600);
 
-    const partialPath = join(workDirectory, 'export.db');
+    const count = await writeStagedExport(destination, options);
 
-    const created = await open(partialPath, 'wx', 0o600);
+    await destination.sync();
+    await destination.close();
 
-    try {
-      await created.chmod(0o600);
-    } finally {
-      await created.close();
-    }
-
-    const count = await fillExportFile(partialPath, options);
-
-    // the file syncs before it gets its name, so a failure here leaves nothing at the path
-    await syncPath(partialPath);
-
-    await link(partialPath, path).catch((error: unknown) => {
-      throw isErrorWithCode(error, 'EEXIST') ? new ExportPathExistsError(path) : error;
-    });
-
-    await syncDirectory(dirname(path));
+    await syncPath(dirname(path));
 
     return count;
-  } finally {
-    await rm(workDirectory, { recursive: true, force: true });
+  } catch (error) {
+    await destination.close().catch(() => null);
+
+    await rm(path, { force: true });
+
+    throw error;
   }
 }
 
-async function probePathExists(path: string): Promise<boolean> {
+async function openDestination(path: string): Promise<FileHandle> {
+  const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW;
+
   try {
-    await lstat(path);
-
-    return true;
+    return await open(path, flags, 0o600);
   } catch (error) {
-    if (isErrorWithCode(error, 'ENOENT')) {
-      return false;
-    }
-
-    throw error;
+    throw isErrorWithCode(error, 'EEXIST') ? new ExportPathExistsError(path) : error;
   }
 }
 
@@ -79,7 +62,29 @@ function isErrorWithCode(error: unknown, code: string): boolean {
   return error instanceof Error && 'code' in error && error.code === code;
 }
 
-async function fillExportFile(path: string, options: ExportFileOptions): Promise<number> {
+async function writeStagedExport(
+  destination: FileHandle,
+  options: ExportFileOptions,
+): Promise<number> {
+  const stagingDirectory = await mkdtemp(join(tmpdir(), 'nixie-export-'));
+
+  try {
+    // an explicit mode, because a restrictive umask changes the one the directory was made with
+    await chmod(stagingDirectory, 0o700);
+
+    const stagedPath = join(stagingDirectory, 'export.db');
+
+    const count = await writeExportTable(stagedPath, options);
+
+    await copyInto(destination, stagedPath);
+
+    return count;
+  } finally {
+    await rm(stagingDirectory, { recursive: true, force: true });
+  }
+}
+
+async function writeExportTable(path: string, options: ExportFileOptions): Promise<number> {
   const db = new Database(path);
 
   try {
@@ -120,6 +125,28 @@ function quote(name: string): string {
   return `"${name.replaceAll('"', '""')}"`;
 }
 
+const COPY_CHUNK_BYTES = 1024 * 1024;
+
+async function copyInto(destination: FileHandle, sourcePath: string): Promise<void> {
+  const source = await open(sourcePath, 'r');
+
+  try {
+    const buffer = Buffer.alloc(COPY_CHUNK_BYTES);
+
+    for (;;) {
+      const result = await source.read(buffer, 0, buffer.length, null);
+
+      if (result.bytesRead === 0) {
+        return;
+      }
+
+      await destination.write(buffer, 0, result.bytesRead);
+    }
+  } finally {
+    await source.close();
+  }
+}
+
 async function syncPath(path: string): Promise<void> {
   const handle = await open(path, 'r');
 
@@ -127,15 +154,5 @@ async function syncPath(path: string): Promise<void> {
     await handle.sync();
   } finally {
     await handle.close();
-  }
-}
-
-// The directory sync only makes the new name durable, and a directory that its owner writes but
-// cannot read refuses it, so a refusal leaves the finished file in place.
-async function syncDirectory(path: string): Promise<void> {
-  try {
-    await syncPath(path);
-  } catch {
-    // the file is complete and linked; losing the name to a crash is the only cost
   }
 }
