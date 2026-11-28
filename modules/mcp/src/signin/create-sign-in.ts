@@ -12,6 +12,7 @@ import type { McpContext } from '../types';
 import { buildPKCE } from './build-pkce';
 import { readBindings, toBinding } from './read-bindings';
 import type { BindingsRuntime, ServerBindings } from './read-bindings';
+import { toLoggedReason } from './to-logged-reason';
 
 export type ConnectResult =
   | { readonly status: 'ok'; readonly authorizeURL: string }
@@ -96,7 +97,11 @@ export function createSignIn(options: SignInOptions): SignIn {
       const bound = await readBindings(options.runtime, server);
 
       if (bound.kind === 'failed') {
-        options.logger('mcp.sign_in_discovery_failed', { serverID, reason: bound.reason }, 'warn');
+        options.logger(
+          'mcp.sign_in_discovery_failed',
+          { serverID, reason: toLoggedReason(bound.reason) },
+          'warn',
+        );
 
         return { status: 'discovery_failed', reason: bound.reason };
       }
