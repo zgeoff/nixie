@@ -203,8 +203,8 @@ line holds its connector, label, account, status, reason, the time the status be
 success, the removed tools and where to reconnect, which is Settings → Connections. The removed
 tools are the tools whose calls the status stops: a `needs_consent` connection stops every tool of
 its connector whose scopes it holds, and a `failing` or `expiring` one stops none. The line names up
-to 5 by name and counts the rest. A rule under the list tells the model when to raise each kind of
-line.
+to 5 by name and counts the rest. Under the list, the message adds a rule for when to raise each
+kind of line.
 
 - The entry renders nothing, and the session opens with no connections line, while every connection
   works.
@@ -230,7 +230,7 @@ line.
 A change into or out of `needs_consent`, `failing` or `expiring` reaches the model through the first
 message and the events block, and leaves the system prompt and the tool list as they were, so the
 cached prefix of the session holds. The status stops calls, and the tool list keeps listing the
-tools. A Forget is the exception: it removes the connection's tools at the next turn, as
+tools. A Forget removes the connection's tools at the next turn, as
 [Tasks in flight](#tasks-in-flight) says.
 
 ## Status events
@@ -249,7 +249,7 @@ a connection makes, read from the log:
   their own times. A break that the clock began starts when the grant ended, not when the sweep
   wrote its record, and a reconnect that renews a grant that had ended counts from that end when no
   record of the break exists. A return from `expiring` alone counts none. A reconnect that renews a
-  grant already within its window, before the sweep wrote the `expiring` record, still gives a
+  grant already within its window, before the sweep wrote the `expiring` record, still counts as a
   return. A reconnect whose new grant ends within the window is no return: it is a change into
   `expiring`, or no line when the connection was `expiring` and its grant had not ended. It still
   ends a break, so a later break counts its own calls and gets its own notice;
@@ -260,7 +260,7 @@ a connection makes, read from the log:
   plus the notice time whenever the sweep runs. A refresh that fails again never moves the start or
   repeats the record.
 
-A change into the status and reason that the connection already holds gives no line. Each line
+A change into the status and reason that the connection already holds writes no line. Each line
 leaves out its own time, because the events block puts the time before every line.
 
 A model-originated call through a connection writes one `connection.call_failed` record, holding the
