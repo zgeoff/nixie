@@ -173,6 +173,11 @@ export const leakExceptions: LeakExceptions = {
       removedBy: 'GEO-2881',
     },
     {
+      where: 'libs/contract/src/contract/approval-contract.ts',
+      names: ['coding'],
+      removedBy: 'GEO-2881',
+    },
+    {
       where: 'modules/api/src/kept/write-owner-message.ts',
       names: ['images'],
       removedBy: 'never',
