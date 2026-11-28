@@ -20,16 +20,18 @@ function setupTest() {
     actions,
     mailOnly: {
       connection: 'k3x9m2p7qa',
+      granted: ['gmail.modify'],
       missing: [{ scope: 'drive.file', reason: 'not_granted' }],
     },
     driveOnly: {
       connection: 'p8d2v6n4rc',
+      granted: ['drive.file'],
       missing: [{ scope: 'gmail.modify', reason: 'not_granted' }],
     },
   } as const;
 }
 
-test('it lists for each tool only the connections that lack none of its scopes', () => {
+test('it lists for each tool only the connections that hold all its scopes', () => {
   const ctx = setupTest();
 
   expect(collectToolConnections(ctx.actions, [ctx.mailOnly, ctx.driveOnly])).toStrictEqual({

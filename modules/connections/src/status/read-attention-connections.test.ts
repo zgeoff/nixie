@@ -7,11 +7,18 @@ import { seedGrantEnd } from '../test-utils/seed-grant-end';
 import { startGoogleConnections } from '../test-utils/start-google-connections';
 
 async function setupTest() {
-  const actions: ConnectorAction[] = ['stub.read_mail', 'stub.read_file'].map((name) => ({
-    tool: buildMockToolDefinition({ name }),
-    scopes: [],
-    reconcile: { kind: 'none' },
-  }));
+  const actions: ConnectorAction[] = [
+    ...['stub.read_mail', 'stub.read_file'].map((name): ConnectorAction => ({
+      tool: buildMockToolDefinition({ name }),
+      scopes: [],
+      reconcile: { kind: 'none' },
+    })),
+    {
+      tool: buildMockToolDefinition({ name: 'stub.added_later' }),
+      scopes: ['added.later'],
+      reconcile: { kind: 'none' },
+    },
+  ];
 
   const ctx = await startGoogleConnections({ actions });
 
@@ -70,7 +77,7 @@ test('it lists a failing connection with its reason, its times and no removed to
   ]);
 });
 
-test('it lists the tools that a connection needing consent stops', async () => {
+test('it lists the tools that a connection needing consent stops, and leaves out a tool whose scope it never held', async () => {
   const ctx = await setupTest();
   const row = await ctx.connectAccount('code-work');
 

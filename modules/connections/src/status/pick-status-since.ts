@@ -1,7 +1,6 @@
 import type { ConnectionRow } from '../types';
+import { pickReachedAtMs } from './pick-reached-at-ms';
 import type { AttentionStatus } from './types';
-
-const expiringWindowMs = 3 * 24 * 60 * 60 * 1000;
 
 // When the status began. The clock sets an `expiring` status, 3 days before the grant ends, and a
 // `needs_consent` status past the grant's end, and no other write records either time.
@@ -16,8 +15,10 @@ export function pickStatusSince(
   }
 
   if (status === 'expiring') {
-    return endsAtMs - expiringWindowMs;
+    return pickReachedAtMs('expiring', endsAtMs);
   }
 
-  return status === 'needs_consent' && row.status !== 'needs_consent' ? endsAtMs : row.status_since;
+  return status === 'needs_consent' && row.status !== 'needs_consent'
+    ? pickReachedAtMs('needs_consent', endsAtMs)
+    : row.status_since;
 }

@@ -1,6 +1,6 @@
 import type { ServiceContext } from '../service-context';
 import { collectToolConnections } from './collect-tool-connections';
-import { readMissing } from './list-connections';
+import { readGranted, readMissing } from './list-connections';
 import { readConnectionRows } from './read-connection-rows';
 
 // The short IDs of the connections that can run each connector tool. A connection under Forget or
@@ -14,6 +14,10 @@ export async function readToolConnections(
     context.connector.actions,
     rows
       .filter((row) => row.binding === 'enabled')
-      .map((row) => ({ connection: row.short_id, missing: readMissing(row) })),
+      .map((row) => ({
+        connection: row.short_id,
+        granted: readGranted(row),
+        missing: readMissing(row),
+      })),
   );
 }

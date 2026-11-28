@@ -19,10 +19,21 @@ function setupTest() {
   };
 }
 
-test('it names only the tools whose scopes the connection lacks none of', () => {
+test('it names only the tools whose scopes the connection holds', () => {
   const ctx = setupTest();
 
   expect(
-    collectCoveredToolNames(ctx.actions, [{ scope: 'gmail.modify', reason: 'not_granted' }]),
+    collectCoveredToolNames(ctx.actions, {
+      granted: ['gmail.modify', 'drive.file'],
+      missing: [{ scope: 'gmail.modify', reason: 'api_disabled' }],
+    }),
   ).toStrictEqual(['stub.read_file', 'stub.plain']);
+});
+
+test('it leaves out a tool whose scope the last check never saw', () => {
+  const ctx = setupTest();
+
+  expect(
+    collectCoveredToolNames(ctx.actions, { granted: ['gmail.modify'], missing: [] }),
+  ).toStrictEqual(['stub.read_mail', 'stub.plain']);
 });

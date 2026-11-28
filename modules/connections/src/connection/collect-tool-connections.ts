@@ -1,15 +1,14 @@
 import type { ConnectorAction } from '../connector/types';
 import { collectCoveredToolNames } from '../status/collect-covered-tool-names';
-import type { ConnectionMissingScope } from '../types';
+import type { ConnectionScopes } from '../status/collect-covered-tool-names';
 
-export interface ScopedConnection {
+export interface ScopedConnection extends ConnectionScopes {
   // the short ID
   readonly connection: string;
-  readonly missing: readonly ConnectionMissingScope[];
 }
 
 // The short IDs of the connections that can run each connector tool, keyed by the tool's name: those
-// that lack none of its scopes. A tool no connection can run maps to an empty list, so a caller still
+// that hold all its scopes. A tool no connection can run maps to an empty list, so a caller still
 // sees the tool exists.
 export function collectToolConnections(
   actions: readonly ConnectorAction[],
@@ -17,7 +16,7 @@ export function collectToolConnections(
 ): Record<string, string[]> {
   const covered = connections.map((entry) => ({
     connection: entry.connection,
-    tools: collectCoveredToolNames(actions, entry.missing),
+    tools: collectCoveredToolNames(actions, entry),
   }));
 
   return Object.fromEntries(

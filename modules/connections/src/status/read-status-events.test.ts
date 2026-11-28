@@ -206,3 +206,46 @@ test('it counts the job runs that started while the connection was broken', asyn
     events.map((event) => (event.kind === 'returned' ? event.skippedRuns : null)),
   ).toStrictEqual([1]);
 });
+
+test('it reads a reconnect that renews an expiring grant before the sweep recorded the expiry as a return', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * 24 * 60 * 60 * 1000);
+
+  const afterChange = await ctx.readHead();
+
+  await ctx.connect('code-work', ctx.row.short_id);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(events.map((event) => event.kind)).toStrictEqual(['returned']);
+});
+
+test('it counts a call that failed after the grant ended and before the sweep recorded it', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 60_000);
+
+  const afterChange = await ctx.readHead();
+
+  ctx.clock.advance(61_000);
+
+  await ctx.callGmail();
+  await ctx.connections.runStatusWatch();
+  await ctx.connect('code-work', ctx.row.short_id);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(
+    events.map((event) => [event.kind, event.kind === 'returned' ? event.failedCalls : null]),
+  ).toStrictEqual([
+    ['changed', null],
+    ['returned', 1],
+  ]);
+});

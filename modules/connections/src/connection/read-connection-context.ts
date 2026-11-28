@@ -66,13 +66,15 @@ export async function readRowContext(
 
     // The store moves a connection back to `active` when a request answers, so the break is read
     // before the request leaves.
+    const callAtMs = context.now();
+
     const wasBroken = await probeConnectionBroken(context, row.connection_id);
 
     const noteOnce = async (): Promise<void> => {
       if (wasBroken && !hasNoted) {
         hasNoted = true;
 
-        await writeCallFailed(context, row.connection_id);
+        await writeCallFailed(context, row.connection_id, callAtMs);
       }
     };
 

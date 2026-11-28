@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildConnectionPins, collectUsableConnections } from './build-connection-pins';
+import { buildConnectionPins } from './build-connection-pins';
 
 interface PinFacts {
   readonly tools: readonly string[];
@@ -63,16 +63,4 @@ test('it pins nothing when the list holds no connector tool', () => {
   const pins = ctx.pin({ tools: ['time.now'], named: null });
 
   expect(pins).toStrictEqual({ status: 'pinned', pins: {} });
-});
-
-test('it collects the connections that hold the scopes of any listed connector tool', () => {
-  const ctx = setupTest();
-
-  expect(collectUsableConnections(['gmail.search'], ctx.usable)).toStrictEqual(['k3x9m2p7qa']);
-});
-
-test('it collects nothing when the list holds no connector tool', () => {
-  const ctx = setupTest();
-
-  expect(collectUsableConnections(['time.now'], ctx.usable)).toBeNull();
 });

@@ -16,7 +16,7 @@ export async function runStatusWatch(context: ServiceContext, noticeMs: number):
   const rows = await readConnectionRows(context.log);
 
   const nowMs = context.now();
-  const live = rows.filter((row) => row.binding === 'enabled' || row.binding === 'disabled');
+  const live = rows.filter((row) => row.binding === 'enabled');
 
   const watched = live.map((row): WatchedConnection => {
     const status = pickRowAttention(row, nowMs);

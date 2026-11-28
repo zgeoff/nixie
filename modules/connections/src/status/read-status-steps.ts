@@ -5,6 +5,7 @@ import { connectedCodec } from '../record/connected-codec';
 import { statusReachedCodec } from '../record/status-reached-codec';
 import type { ServiceContext } from '../service-context';
 import type { StatusStep } from './collect-status-events';
+import { pickReachedAtMs } from './pick-reached-at-ms';
 import { readAllRecords } from './read-all-records';
 
 const stepKinds = [
@@ -15,8 +16,8 @@ const stepKinds = [
 ] as const satisfies readonly RecordKind[];
 
 // Every step of the status of the connections the IDs name, oldest first, from the whole log. A
-// reconnect that renewed a connection steps it back to `active`, because it writes no status change
-// of its own.
+// step the clock took holds the time of the grant, not of the record. A reconnect that renewed a
+// connection steps it back to `active`, because it writes no status change of its own.
 export async function readStatusSteps(
   context: ServiceContext,
   known: ReadonlySet<string>,
@@ -29,7 +30,7 @@ export async function readStatusSteps(
 // The credential store's record of a status change, which names a connection by its ID.
 const storedChangeSchema = z.object({
   credentialID: z.string(),
-  status: z.enum(['active', 'failing', 'needs_consent', 'disconnected']),
+  status: z.enum(['active', 'failing', 'needs_consent']),
   reason: z.enum(['unauthorised', 'service_error', 'no_answer']).optional(),
 });
 
@@ -40,7 +41,14 @@ function parseStep(record: LogRecord, known: ReadonlySet<string>): StatusStep[] 
     const reached = statusReachedCodec.decode(record.payload);
 
     return known.has(reached.connection)
-      ? [{ ...base, connection: reached.connection, step: { kind: reached.status } }]
+      ? [
+          {
+            ...base,
+            atMs: pickReachedAtMs(reached.status, reached.endsAtMs),
+            connection: reached.connection,
+            step: { kind: reached.status },
+          },
+        ]
       : [];
   }
 
@@ -62,7 +70,13 @@ function parseStep(record: LogRecord, known: ReadonlySet<string>): StatusStep[] 
     const connected = connectedCodec.decode(record.payload);
 
     return connected.again && known.has(connected.connection)
-      ? [{ ...base, connection: connected.connection, step: { kind: 'active' } }]
+      ? [
+          {
+            ...base,
+            connection: connected.connection,
+            step: { kind: 'active', wasAttending: connected.wasAttending === true },
+          },
+        ]
       : [];
   }
 

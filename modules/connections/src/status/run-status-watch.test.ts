@@ -164,3 +164,25 @@ test('it writes a record again for an expiry that a reconnect renewed', async ()
 
   expect(written).toBe(1);
 });
+
+test('it counts a break from the end of its grant, though the sweep ran a second after it', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 60_000);
+
+  const endsAtMs = ctx.clock.now() + 60_000;
+
+  ctx.clock.advance(61_000);
+
+  await ctx.connections.runStatusWatch();
+
+  ctx.clock.advance(2 * ctx.day - 500);
+
+  const written = await ctx.connections.runStatusWatch();
+  const payloads = await ctx.readRecordPayloads('connection.break_lasted');
+
+  expect([written, payloads]).toStrictEqual([
+    1,
+    [{ connection: ctx.row.connection_id, sinceMs: endsAtMs }],
+  ]);
+});

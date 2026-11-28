@@ -20,7 +20,6 @@ export const connectionStatusText = {
   statusRule: [
     'Tell the owner about a connection that needs attention when a request needs it, or when they ask.',
     'Tell the owner about a break that has lasted a long time once, at a natural moment, when an event says so.',
-    'Raise a disconnected connection only when a request needs it, because the owner chose it.',
     'Mention an expiry only when it falls within the time a request covers, or when the owner asks. The model credential is the exception: when the entry lists it, tell the owner once, unprompted.',
     'Say each of these once per session.',
   ].join('\n'),
@@ -44,7 +43,6 @@ export const connectionStatusText = {
 
   statusNames: {
     needs_consent: 'needs consent',
-    disconnected: 'disconnected',
     failing: 'failing',
     expiring: 'expiring',
   },

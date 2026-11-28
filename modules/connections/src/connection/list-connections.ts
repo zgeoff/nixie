@@ -45,7 +45,7 @@ export async function listConnections(context: ServiceContext): Promise<ListedCo
         reason: status === 'failing' ? readReason(row) : null,
         statusSince: row.status_since,
         lastSuccessAt: row.last_success_at,
-        scopes: scopesSchema.parse(JSON.parse(row.granted_scopes)),
+        scopes: readGranted(row),
         missing: readMissing(row),
         fingerprint: row.token_fingerprint,
         forget:
@@ -63,6 +63,10 @@ function readReason(row: ConnectionRow): ListedConnection['reason'] {
   const parsed = reasonSchema.safeParse(row.status_reason);
 
   return parsed.success ? parsed.data : null;
+}
+
+export function readGranted(row: Pick<ConnectionRow, 'granted_scopes'>): string[] {
+  return scopesSchema.parse(JSON.parse(row.granted_scopes));
 }
 
 export function readMissing(row: Pick<ConnectionRow, 'missing_scopes'>): ConnectionMissingScope[] {

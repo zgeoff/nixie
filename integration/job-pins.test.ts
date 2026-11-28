@@ -1,6 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { seedConnectionStatus, startGoogleConnections } from '@heynixie/connections/test-utils';
 import { buildTaskDefineTool, readDefinitionVersion } from '@heynixie/definitions';
 import { buildTestDefineInput, startTestDefinitions } from '@heynixie/definitions/test-utils';
 import { startGmailTools } from '@heynixie/google/test-utils';
@@ -445,42 +444,4 @@ test('it refuses a child task of a pinned job an account outside the pins of the
     true,
     expect.stringContaining('NOT_PINNED'),
   ]);
-});
-
-test('it lists the same tools, byte for byte, whatever status a pinned connection holds', async () => {
-  const ctx = await setupTest();
-
-  const connected = await startGoogleConnections({
-    sharedLog: { log: ctx.log, dataDir: ctx.writer.dataDir },
-  });
-
-  const first = await connected.connect('code-work');
-
-  invariant(first.kind === 'finished', 'the consent finishes');
-
-  const [row] = await connected.readRows();
-
-  invariant(row, 'the connection is stored');
-
-  const readList = () =>
-    ctx.withRun(['time.now'], { 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] }, async (client) => {
-      const listed = await client.listTools();
-
-      return JSON.stringify(listed);
-    });
-
-  const working = await readList();
-
-  await seedConnectionStatus(connected, row.connection_id, { status: 'needs_consent' });
-
-  const consent = await readList();
-
-  await seedConnectionStatus(connected, row.connection_id, {
-    status: 'failing',
-    reason: 'no_answer',
-  });
-
-  const failing = await readList();
-
-  expect([consent, failing]).toStrictEqual([working, working]);
 });

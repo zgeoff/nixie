@@ -1,4 +1,4 @@
-import { readMissing } from '../connection/list-connections';
+import { readGranted, readMissing } from '../connection/list-connections';
 import { openConnectionValues } from '../connection/open-connection-values';
 import type { ServiceContext } from '../service-context';
 import type { ConnectionRow } from '../types';
@@ -31,7 +31,10 @@ export async function readConnectionFacts(
             label: values.label,
             account: values.account?.email ?? '',
             lastSuccessAtMs: row.last_success_at,
-            toolNames: collectCoveredToolNames(context.connector.actions, readMissing(row)),
+            toolNames: collectCoveredToolNames(context.connector.actions, {
+              granted: readGranted(row),
+              missing: readMissing(row),
+            }),
           },
         ],
       ];

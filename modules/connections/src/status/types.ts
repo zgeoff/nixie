@@ -1,6 +1,5 @@
-// The statuses that tell the model about a connection. `disconnected` is the owner's own choice: the
-// binding of the connection is disabled.
-export type AttentionStatus = 'needs_consent' | 'disconnected' | 'failing' | 'expiring';
+// The statuses that tell the model about a connection.
+export type AttentionStatus = 'needs_consent' | 'failing' | 'expiring';
 
 export type FailingReason = 'unauthorised' | 'service_error' | 'no_answer';
 

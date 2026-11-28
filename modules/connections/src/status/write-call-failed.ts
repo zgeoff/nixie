@@ -7,12 +7,13 @@ import type { ServiceContext } from '../service-context';
 export async function writeCallFailed(
   context: ServiceContext,
   connectionID: string,
+  callAtMs: number,
 ): Promise<void> {
   await writeRecords(context.log, [
     {
       kind: callFailedCodec.kind,
       definitions: context.definitions(),
-      payload: callFailedCodec.encode({ connection: connectionID }),
+      payload: callFailedCodec.encode({ connection: connectionID, callAtMs }),
     },
   ]);
 }

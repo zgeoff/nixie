@@ -18,17 +18,6 @@ export type ConnectionPins =
   | { readonly status: 'pinned'; readonly pins: Readonly<Record<string, readonly string[]>> }
   | { readonly status: 'refused'; readonly unusable: readonly string[] };
 
-// The short IDs of every connection that holds the scopes of at least one connector tool the list
-// names, or null when the list names no connector tool.
-export function collectUsableConnections(
-  tools: readonly string[] | undefined,
-  usable: UsableConnections,
-): string[] | null {
-  const listed = collectListedTools(tools, usable);
-
-  return listed.length === 0 ? null : [...new Set(listed.flatMap((tool) => usable[tool] ?? []))];
-}
-
 // Pins each connector tool of a definition's list to the connections that hold its scopes: those the
 // creating call named, or every one when it named none. A call that names a connection that no
 // listed tool can use is refused, so a definition never reaches an account its creator could not.

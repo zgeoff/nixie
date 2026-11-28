@@ -388,10 +388,33 @@ test('it resolves the omitted connections before approval, so an account that co
   expect([resolved, version?.connections]).toStrictEqual([
     {
       status: 'ok',
-      input: parseJSONObject(JSON.stringify({ ...input, connections: ['k3x9m2p7qa'] })),
+      input: parseJSONObject(
+        JSON.stringify({ ...input, connections: { 'time.now': ['k3x9m2p7qa'] } }),
+      ),
     },
     { 'time.now': ['k3x9m2p7qa'] },
   ]);
+});
+
+test('it saves the pins the approval showed when an account gains another tool while the approval waits', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  ctx.usable.now = { 'time.now': ['k3x9m2p7qa'], 'task.message': [] };
+
+  const resolved = await ctx.resolve(buildTestDefineInput({ tools: ['time.now', 'task.message'] }));
+
+  ctx.usable.now = { 'time.now': ['k3x9m2p7qa'], 'task.message': ['k3x9m2p7qa'] };
+
+  const approved = resolved?.status === 'ok' ? resolved.input : {};
+
+  await ctx.define(approved);
+
+  const hashes = await ctx.readHashes();
+  const version = await readDefinitionVersion(ctx.writer.db, hashes[0] ?? '');
+
+  expect(version?.connections).toStrictEqual({ 'time.now': ['k3x9m2p7qa'], 'task.message': [] });
 });
 
 test('it pins a tool to no account of a definition that was approved when none was connected', async () => {

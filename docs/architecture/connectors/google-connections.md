@@ -170,11 +170,14 @@ A task run of a definition keeps the connections its definition names for its li
   reaches every live connection. A definition with no `connections` key pins nothing.
 - `task.define` takes `connections`, a list of short IDs, and pins each connector tool the task
   holds to those connections that hold the tool's scopes, so a job never reaches an account that
-  lacks a tool's scope now and gains it later. It refuses a connection that no listed tool can use
-  with `connection_not_usable`. A call that names none gets the accounts the user may use now
-  written into its input before the decision point, so the approval and the saved job cover the same
-  accounts and an account that connects while the approval waits never joins the job. A `task.yaml`
-  may carry the same map under `connections`.
+  lacks a tool's scope now and gains it later. An account holds a tool's scope only when the last
+  check found every scope of the tool granted, so a tool that a release added after the account
+  consented pins to no account until the account consents again. It refuses a connection that no
+  listed tool can use with `connection_not_usable`. Before the decision point, the call's input is
+  rewritten so `connections` holds the short IDs each listed connector tool is pinned to, whether
+  the call named connections or not. The approval shows those pins and the saved job holds the same
+  pins, so an account that connects, or gains another tool's scope, while the approval waits never
+  joins the job. A `task.yaml` may carry the same map under `connections`.
 - A Google tool resolves its call against the pinned connections only. A call whose `connection`
   argument falls outside the pins fails with `NOT_PINNED` and lists the connections the task may
   use. With no argument, the tool picks among the pinned connections that are live.
@@ -190,12 +193,12 @@ A task run of a definition keeps the connections its definition names for its li
 
 ## The status line
 
-The first message of a session lists each connection that is `needs_consent`, `disconnected`,
-`failing` or `expiring`, and never one that is `forgotten`. A connection's line holds its connector,
-label, account, status, reason, the time the status began, its last success, the removed tools and
-where to reconnect, which is Settings → Connections. The removed tools are the tools whose calls the
-status stops: a `needs_consent` or `disconnected` connection stops every tool of its connector, and
-a `failing` or `expiring` one stops none. The line names up to 5 by name and counts the rest. A rule
+The first message of a session lists each connection that is `needs_consent`, `failing` or
+`expiring`, and never one that is `forgotten`. A connection's line holds its connector, label,
+account, status, reason, the time the status began, its last success, the removed tools and where to
+reconnect, which is Settings → Connections. The removed tools are the tools whose calls the status
+stops: a `needs_consent` connection stops every tool of its connector whose scopes it holds, and a
+`failing` or `expiring` one stops none. The line names up to 5 by name and counts the rest. A rule
 under the list tells the model when to raise each kind of line.
 
 - The entry renders nothing, and the session opens with no connections line, while every connection
@@ -213,9 +216,9 @@ under the list tells the model when to raise each kind of line.
   never refreshes, so the deployment's `model_credential` section names its `expires_at`, and the
   line appears from `warn_before` (3 days by default) before that time. The rule under the list
   tells the model to mention it once, unprompted.
-- A connection whose binding the owner disabled is `disconnected`. A connection whose account holds
-  no address lists with its label alone, and the removed tools are those the scopes it was granted
-  cover.
+- A connection whose account holds no address lists with its label alone. The removed tools are
+  those whose scopes the last check found granted, so a tool whose scope the account never held is
+  not listed as removed.
 
 A status change reaches the model through the first message and the events block, and never through
 the system prompt or the tool list, which hold the same text before and after it. The status stops
@@ -226,25 +229,31 @@ calls, and the tool list keeps listing the tools.
 [The events block](../core/conversation-turns.md#the-events-block) carries one line for each change
 a connection makes, read from the log:
 
-- a change into `needs_consent`, `disconnected`, `failing` or `expiring`, from a
-  `credential.status_changed` or a `connection.status_reached` record. The line gives the last
-  success, the tools the status removed and where to reconnect;
+- a change into `needs_consent`, `failing` or `expiring`, from a `credential.status_changed` or a
+  `connection.status_reached` record. The line gives the last success, the tools the status removed
+  and where to reconnect;
 - a return to `active` from any of them, from a `credential.status_changed` record or from the
   `connection.connected` record of a reconnect that renewed the connection. The line counts the tool
   calls that failed during the break, from the `connection.call_failed` records, and the job runs
   that started with the connection broken, from the `connection.run_without` records. Each count
-  covers the records after the break's first failing or consent step and before the next break's,
-  and a return from `expiring` alone counts none;
+  covers the calls that began, and the runs that started, from the break's start to the return, by
+  their own times. A break that the clock began starts when the grant ended, not when the sweep
+  wrote its record. A return from `expiring` alone counts none. A reconnect that renews a grant
+  already within its window, before the sweep wrote the `expiring` record, still gives a return;
 - a break that passes `google.break_notice`, once per break, from the `connection.break_lasted`
-  record that the sweep writes. A break begins at its first failing or consent step after the last
-  return, so a refresh that fails again never moves the start or repeats the record.
+  record that the sweep writes. A break begins at its earliest failing or consent step after the
+  last return, and a consent step that the clock took counts from the end of the grant, so the
+  notice falls due at that end plus the notice time whenever the sweep runs. A refresh that fails
+  again never moves the start or repeats the record. The sweep runs at least 4 times in the notice
+  time, and as often as every millisecond for a notice time that short.
 
-A model-originated call through a connection writes one `connection.call_failed` record when the
-call fails or answers a non-ok status while the connection is `failing` or `needs_consent`, however
-many requests the call sends. A job run writes one `connection.run_without` record for each pinned
-connection that is broken when the run opens. The label and account of a line are read at render
-time, because no record holds them, so a forgotten connection has no line. The events block never
-caps the entry, so no notice falls off a block that the next turn moves past.
+A model-originated call through a connection writes one `connection.call_failed` record, holding the
+time the call began, when the call fails or answers a non-ok status while the connection is
+`failing` or `needs_consent`, however many requests the call sends. A job run writes one
+`connection.run_without` record for each pinned connection that is broken when the run opens. The
+label and account of a line are read at render time, because no record holds them, so a forgotten
+connection has no line. The events block never caps the entry, so no notice falls off a block that
+the next turn moves past.
 
 ## The web client
 

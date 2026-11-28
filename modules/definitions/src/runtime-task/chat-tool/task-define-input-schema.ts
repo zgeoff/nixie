@@ -33,4 +33,13 @@ export const taskDefineInputSchema = z.strictObject({
   report: z.enum(['wake', 'next_turn', 'none']).optional(),
 });
 
+// What the call holds once the host resolved its connections: the short IDs each connector tool is
+// pinned to, in place of the list the model wrote, so the approval covers the pins that get saved.
+const namedSchema = z.array(z.string());
+const pinsSchema = z.record(z.string(), namedSchema);
+
+export const resolvedTaskDefineInputSchema = taskDefineInputSchema.extend({
+  connections: z.union([namedSchema, pinsSchema]).optional(),
+});
+
 export const taskUndefineInputSchema = z.strictObject({ definitionID: z.string().min(1) });

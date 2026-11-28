@@ -8,7 +8,7 @@ import { pickStatusSince } from './pick-status-since';
 import { readConnectionFacts } from './read-connection-facts';
 import type { AttentionConnection, FailingReason } from './types';
 
-// Each connection that is `needs_consent`, `disconnected`, `failing` or `expiring`, in the order the
+// Each connection that is `needs_consent`, `failing` or `expiring`, in the order the
 // connections were made. A forgotten connection never lists, and `scope` limits the list to the
 // short IDs it holds, as a job run's pins do; null lists every connection.
 export async function readAttentionConnections(
@@ -21,7 +21,7 @@ export async function readAttentionConnections(
 
   const attended = rows.filter(
     (row) =>
-      (row.binding === 'enabled' || row.binding === 'disabled') &&
+      row.binding === 'enabled' &&
       (scope === null || scope.has(row.short_id)) &&
       pickRowAttention(row, nowMs) !== null,
   );

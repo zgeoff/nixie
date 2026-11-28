@@ -572,10 +572,10 @@ records it reads.
   it out. Each start is read once, because the block's range begins where the last turn's note
   ended, so a later turn never repeats the line. Telling the user about the outage is not part of
   this entry.
-- **A connection status** reads each change of a connection into `needs_consent`, `disconnected`,
-  `failing` or `expiring`, each return to `active` with the count of calls that failed and of job
-  runs that ran without it during the break, and each break that passes `google.break_notice`, once.
-  It is uncapped. The line names the connection by its connector, label and account, and a forgotten
+- **A connection status** reads each change of a connection into `needs_consent`, `failing` or
+  `expiring`, each return to `active` with the count of calls that failed and of job runs that ran
+  without it during the break, and each break that passes `google.break_notice`, once. It is
+  uncapped. The line names the connection by its connector, label and account, and a forgotten
   connection gives none. [Google connections](../connectors/google-connections.md#status-events)
   says which records it reads.
 - **A page event** reads each `device.page_event` record that has no wake, because the page did not

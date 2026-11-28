@@ -9,10 +9,10 @@ import { z } from 'zod';
 import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
-import { buildConnectionPins, collectUsableConnections } from './build-connection-pins';
+import { buildConnectionPins } from './build-connection-pins';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
-import { taskDefineInputSchema } from './task-define-input-schema';
+import { resolvedTaskDefineInputSchema, taskDefineInputSchema } from './task-define-input-schema';
 
 const jsonSchema = z.toJSONSchema(taskDefineInputSchema, {
   io: 'input',
@@ -66,7 +66,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
     resolveInput: (input) => resolveDefineConnections(options, input),
     prepare: (input) => Promise.resolve(prepareDefine(input)),
     run: async (call) => {
-      const parsed = taskDefineInputSchema.safeParse(call.input);
+      const parsed = resolvedTaskDefineInputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
@@ -101,11 +101,10 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 
       const usable = await options.connections?.readUsable();
 
-      const pinned = buildConnectionPins({
-        tools: rest.tools,
-        named,
-        usable: usable ?? {},
-      });
+      const pinned =
+        Array.isArray(named) || named === undefined
+          ? buildConnectionPins({ tools: rest.tools, named, usable: usable ?? {} })
+          : ({ status: 'pinned', pins: named } as const);
 
       if (pinned.status === 'refused') {
         const refused = {
@@ -165,31 +164,36 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
   };
 }
 
-// A call that names no connections gets the ones its caller may use now, before the decision point
-// reads it, so the approval covers exactly the accounts the saved job is pinned to. An account that
-// connects while the approval waits never joins the job.
+// A call that lists connector tools gets the connections each one is pinned to now, before the
+// decision point reads it, so the approval covers exactly the pins the saved job holds. An account
+// that connects, or gains a scope, while the approval waits never joins the job.
 async function resolveDefineConnections(options: ChatToolOptions, input: JSONObject) {
   const parsed = taskDefineInputSchema.safeParse(input);
 
-  if (!parsed.success || parsed.data.connections !== undefined) {
+  if (!parsed.success) {
     return { status: 'ok' as const, input };
   }
 
   const usable = await options.connections?.readUsable();
 
-  const connections = collectUsableConnections(parsed.data.tools, usable ?? {});
+  const pinned = buildConnectionPins({
+    tools: parsed.data.tools,
+    named: parsed.data.connections,
+    usable: usable ?? {},
+  });
 
-  return {
-    status: 'ok' as const,
-    input: connections === null ? input : { ...input, connections },
-  };
+  if (pinned.status === 'refused' || Object.keys(pinned.pins).length === 0) {
+    return { status: 'ok' as const, input };
+  }
+
+  return { status: 'ok' as const, input: { ...input, connections: pinned.pins } };
 }
 
 // A define that sets `memory` to `self_notes` hands the task the self-note write tools, so the call
 // adds `policy_widen` to the tool's effects: stage 4 then asks before it applies, and a deny rule on
 // any effect of the tool still denies at stage 3.
 function prepareDefine(input: JSONObject) {
-  const parsed = taskDefineInputSchema.safeParse(input);
+  const parsed = resolvedTaskDefineInputSchema.safeParse(input);
 
   return parsed.success && parsed.data.memory === 'self_notes'
     ? { destinations: [], effects: ['policy_widen'] as const }

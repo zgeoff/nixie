@@ -18,10 +18,7 @@ export async function writeRunsWithout(
   const broken = rows.filter((row) => {
     const status = pickRowAttention(row, nowMs);
 
-    return (
-      pinned.has(row.short_id) &&
-      (status === 'failing' || status === 'needs_consent' || status === 'disconnected')
-    );
+    return pinned.has(row.short_id) && (status === 'failing' || status === 'needs_consent');
   });
 
   await writeRecords(

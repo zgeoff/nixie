@@ -17,7 +17,7 @@ export async function readStatusEvents(
 ): Promise<StatusEvent[]> {
   const rows = await readConnectionRows(context.log);
 
-  const live = rows.filter((row) => row.binding === 'enabled' || row.binding === 'disabled');
+  const live = rows.filter((row) => row.binding === 'enabled');
 
   const facts = await readConnectionFacts(context, live);
   const steps = await readStatusSteps(context, new Set(facts.keys()));
@@ -30,8 +30,8 @@ export async function readStatusEvents(
   return collectStatusEvents(
     {
       steps,
-      failedCalls: hasReturn ? await readNotes(context, callFailedCodec) : [],
-      skippedRuns: hasReturn ? await readNotes(context, runWithoutCodec) : [],
+      failedCalls: hasReturn ? await readCallNotes(context) : [],
+      skippedRuns: hasReturn ? await readRunNotes(context) : [],
       facts,
     },
     range,
@@ -39,15 +39,22 @@ export async function readStatusEvents(
 }
 
 // A call that began in a break notes its failure after the answer that ended the break, so the read
-// runs past the range.
-async function readNotes(
-  context: ServiceContext,
-  codec: typeof callFailedCodec | typeof runWithoutCodec,
-): Promise<BreakNote[]> {
-  const records = await readAllRecords(context.log, [codec.kind]);
+// runs past the range. A call counts at the time it began, and a job run at the time it started.
+async function readCallNotes(context: ServiceContext): Promise<BreakNote[]> {
+  const records = await readAllRecords(context.log, [callFailedCodec.kind]);
+
+  return records.map((record) => {
+    const note = callFailedCodec.decode(record.payload);
+
+    return { atMs: note.callAtMs, connection: note.connection };
+  });
+}
+
+async function readRunNotes(context: ServiceContext): Promise<BreakNote[]> {
+  const records = await readAllRecords(context.log, [runWithoutCodec.kind]);
 
   return records.map((record) => ({
-    sequence: record.sequence,
-    connection: codec.decode(record.payload).connection,
+    atMs: record.recordedAt.getTime(),
+    connection: runWithoutCodec.decode(record.payload).connection,
   }));
 }

@@ -1,4 +1,5 @@
 import type { StatusStep } from './collect-status-events';
+import { pickBreakStartMs } from './pick-break-start-ms';
 import type { AttentionStatus } from './types';
 
 // A connection as the watch sees it.
@@ -36,7 +37,7 @@ interface DueOptions {
 
 // The records that the clock owes the log: each time the clock alone took a connection into
 // `expiring` or `needs_consent`, and each break that passed `noticeMs`, once per break. A break
-// begins at its first failing or consent step after the last return to `active`.
+// begins at its earliest failing or consent step after the last return to `active`.
 export function collectDueStatusRecords(
   connections: readonly WatchedConnection[],
   steps: readonly StatusStep[],
@@ -64,14 +65,8 @@ export function collectDueStatusRecords(
       });
     }
 
-    const isBreak =
-      watched.status === 'needs_consent' ||
-      watched.status === 'failing' ||
-      watched.status === 'disconnected';
-
-    const sinceMs =
-      current.find((step) => step.step.kind === 'failing' || step.step.kind === 'needs_consent')
-        ?.atMs ?? watched.sinceMs;
+    const isBreak = watched.status === 'needs_consent' || watched.status === 'failing';
+    const sinceMs = pickBreakStartMs(current) ?? watched.sinceMs;
 
     if (
       isBreak &&

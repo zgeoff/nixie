@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { collectStatusEvents } from './collect-status-events';
 import type { StatusStep } from './collect-status-events';
 
+// the times a call began and a job run started, in ms
 interface BreakNotes {
   readonly calls?: readonly number[];
   readonly runs?: readonly number[];
@@ -19,9 +20,9 @@ function setupTest() {
 
   return {
     who,
-    buildStep: (sequence: number, step: StatusStep['step']): StatusStep => ({
+    buildStep: (sequence: number, step: StatusStep['step'], atMs?: number): StatusStep => ({
       sequence,
-      atMs: sequence * 1000,
+      atMs: atMs ?? sequence * 1000,
       connection: 'conn-1',
       step,
     }),
@@ -29,8 +30,8 @@ function setupTest() {
       collectStatusEvents(
         {
           steps,
-          failedCalls: (notes.calls ?? []).map((sequence) => ({ sequence, connection: 'conn-1' })),
-          skippedRuns: (notes.runs ?? []).map((sequence) => ({ sequence, connection: 'conn-1' })),
+          failedCalls: (notes.calls ?? []).map((atMs) => ({ atMs, connection: 'conn-1' })),
+          skippedRuns: (notes.runs ?? []).map((atMs) => ({ atMs, connection: 'conn-1' })),
           facts: new Map([['conn-1', facts]]),
         },
         { after: range[0], through: range[1] },
@@ -70,21 +71,13 @@ test('it names the tools that a change into needs consent removes', () => {
   ).toStrictEqual([['gmail.search', 'gmail.read']]);
 });
 
-test('it makes an event of each change into expiring and into disconnected', () => {
+test('it makes an event of each change into expiring', () => {
   const ctx = setupTest();
-
-  const events = ctx.collect(
-    [ctx.buildStep(5, { kind: 'expiring' }), ctx.buildStep(6, { kind: 'disconnected' })],
-    {},
-    [0, 9],
-  );
+  const events = ctx.collect([ctx.buildStep(5, { kind: 'expiring' })], {}, [0, 9]);
 
   expect(
     events.map((event) => [event.kind, event.kind === 'changed' ? event.status : null]),
-  ).toStrictEqual([
-    ['changed', 'expiring'],
-    ['changed', 'disconnected'],
-  ]);
+  ).toStrictEqual([['changed', 'expiring']]);
 });
 
 test('it makes an event of the return to active with the calls that failed and the job runs that ran without it', () => {
@@ -92,7 +85,7 @@ test('it makes an event of the return to active with the calls that failed and t
 
   const events = ctx.collect(
     [ctx.buildStep(5, { kind: 'failing', reason: null }), ctx.buildStep(20, { kind: 'active' })],
-    { calls: [3, 7, 9], runs: [4, 8, 12] },
+    { calls: [3000, 7000, 9000], runs: [4000, 8000, 12_000] },
     [10, 30],
   );
 
@@ -111,7 +104,7 @@ test('it makes an event of the return of a connection that only expired, with no
 
   const events = ctx.collect(
     [ctx.buildStep(5, { kind: 'expiring' }), ctx.buildStep(20, { kind: 'active' })],
-    { calls: [7] },
+    { calls: [7000] },
     [10, 30],
   );
 
@@ -127,12 +120,12 @@ test('it makes an event of the return of a connection that only expired, with no
   ]);
 });
 
-test('it counts a call of the break that noted its failure after the answer that ended it', () => {
+test('it counts a call that began in the break, though its note landed after the break ended', () => {
   const ctx = setupTest();
 
   const events = ctx.collect(
     [ctx.buildStep(5, { kind: 'failing', reason: null }), ctx.buildStep(20, { kind: 'active' })],
-    { calls: [7, 21] },
+    { calls: [7000, 19_000] },
     [10, 30],
   );
 
@@ -141,7 +134,7 @@ test('it counts a call of the break that noted its failure after the answer that
   ).toStrictEqual([2]);
 });
 
-test('it leaves a call of a later break out of the count of the earlier one, though the break is past the range', () => {
+test('it counts a call of the first break by the time it began, though its note landed in the second break', () => {
   const ctx = setupTest();
 
   const events = ctx.collect(
@@ -149,14 +142,44 @@ test('it leaves a call of a later break out of the count of the earlier one, tho
       ctx.buildStep(5, { kind: 'failing', reason: null }),
       ctx.buildStep(20, { kind: 'active' }),
       ctx.buildStep(35, { kind: 'failing', reason: null }),
+      ctx.buildStep(50, { kind: 'active' }),
     ],
-    { calls: [7, 36] },
-    [10, 30],
+    { calls: [19_000, 40_000] },
+    [10, 60],
   );
 
   expect(
     events.map((event) => (event.kind === 'returned' ? event.failedCalls : null)),
-  ).toStrictEqual([1]);
+  ).toStrictEqual([1, null, 1]);
+});
+
+test('it counts a call that failed after the grant ended but before the sweep recorded it', () => {
+  const ctx = setupTest();
+
+  const events = ctx.collect(
+    [
+      ctx.buildStep(25, { kind: 'needs_consent' }, 10_000),
+      ctx.buildStep(30, { kind: 'active' }, 40_000),
+    ],
+    { calls: [12_000] },
+    [10, 40],
+  );
+
+  expect(
+    events.map((event) => (event.kind === 'returned' ? event.failedCalls : null)),
+  ).toStrictEqual([null, 1]);
+});
+
+test('it makes an event of the return of a connection renewed while it expired, before any record of the expiry', () => {
+  const ctx = setupTest();
+
+  const events = ctx.collect(
+    [ctx.buildStep(20, { kind: 'active', wasAttending: true })],
+    {},
+    [10, 30],
+  );
+
+  expect(events.map((event) => event.kind)).toStrictEqual(['returned']);
 });
 
 test('it counts the calls of the whole break when the break moved from failing to needs consent', () => {
@@ -168,7 +191,7 @@ test('it counts the calls of the whole break when the break moved from failing t
       ctx.buildStep(8, { kind: 'needs_consent' }),
       ctx.buildStep(20, { kind: 'active' }),
     ],
-    { calls: [6, 9] },
+    { calls: [6000, 9000] },
     [10, 30],
   );
 
