@@ -83,9 +83,9 @@ the projections that fold before it, never the clock, which is why a rebuild giv
 
 A read returns the records after a sequence, oldest first, each with its decrypted erasable fields
 and the projection rows it changed. A reader that applies a record and its rows together, then moves
-its cursor, stays consistent at every step. A record whose key is gone reads as shredded, and one
-whose key or ciphertext fails to decrypt reads as unreadable, both with the envelope intact, so
-neither stops a reader at its sequence.
+its cursor, stays consistent at every step. A record whose key is gone reads as shredded, or as
+expired when an [expiry](#expiry) removed it, and one whose key or ciphertext fails to decrypt reads
+as unreadable, each with the envelope intact, so none stops a reader at its sequence.
 
 A subscription yields the same entries, then waits for the next commit. The writer holds a commit
 bus, an event target in its own process that fires after each write transaction commits, so a reader
@@ -226,14 +226,14 @@ newest `log_reset` record, so the model reads no line of the old conversation. A
 
 ## Expiry
 
-The payloads that nobody rereads expire once they are old enough: the result of a tool call, the
-result that a connector returned for an action, and the working notes of a helper. The record stays
-as a stub, with its envelope and payload, so a reader sees that the call happened and that its text
-is gone. The age is the `erasure.expire_after_days` setting, and
+The text that nobody rereads expires once it is old enough: the result of a tool call, the result
+that a connector returned for an action, and the working notes of a helper. The record stays as a
+stub, with its envelope and payload, so a reader sees that the call happened and that its text is
+gone. The age is the `erasure.expire_after_days` setting, and
 [the configuration](../deployment/configuration.md) gives its default.
 
 An expiry is an erasure of the kind `expiry`, which the
-[erasure runner](../memory/store.md#forgetting) runs, so an expired payload becomes a gap the way a
+[erasure runner](../memory/store.md#forgetting) runs, so expired text becomes a gap the way a
 forgotten one does:
 
 1. At the start, after the catch-up of open erasures, and then every hour, the server's expiry sweep
@@ -261,8 +261,7 @@ that key, its family or its thread, and `shredded` when one does. A forget still
 it names its own keys, and the key of a record that a forget removed is not an expiry's to name.
 
 A page on screen learns of an expiry from the stream of its thread. The stream sends the start of an
-expiry as a record with an `expiry` field that lists the records of that thread whose payload it
-removes. The page drops the payload of each and shows it as expired, never as forgotten. A record
-that a page loads after the expiry carries `isExpired` in place of `isRemoved`. A `log.read` cursor
-that an expiry outlives gets the same gap, with a null `text` and `isExpired` true, in place of an
-error.
+expiry as a record with an `expiry` field that lists the records of that thread whose text it
+removes. The page drops the text of each and shows it as expired, never as forgotten. A record that
+a page loads after the expiry carries `isExpired` in place of `isRemoved`. A `log.read` cursor that
+an expiry outlives gets the same gap, with a null `text` and `isExpired` true, in place of an error.
