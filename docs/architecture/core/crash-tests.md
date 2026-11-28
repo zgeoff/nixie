@@ -167,7 +167,7 @@ erasures:
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `erasure.begun`               | after `erasure.started` commits, and when a run of the open erasure begins, before any sandbox or key goes |
 | `erasure.sandboxes_destroyed` | after the code sandboxes, before each target's revoke                                                      |
-| `erasure.revoked`             | after each target's revoke, before the keys                                                                |
+| `erasure.revoked`             | once every pending target is revoked, before the keys                                                      |
 | `erasure.keys_removed`        | after the key deletes, before the session cleanup                                                          |
 | `erasure.cleaned`             | after the session cleanup, before the turn inputs                                                          |
 | `erasure.turn_inputs_removed` | after the turn inputs, before `erasure.finished`                                                           |

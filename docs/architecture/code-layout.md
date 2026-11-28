@@ -64,7 +64,7 @@ and nothing builds it before use. A package whose helpers other packages' tests 
 a second entry, `./test-utils`. A package that nothing imports, such as the fetch guest or the root
 suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
 `turbo boundaries` refuses a relative path into another package, so no package but a spike imports
-another package's internal files. A spike imports product files by path.
+another package's internal files.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
 for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The
@@ -102,21 +102,21 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag           | Packages                                           | May depend on                                     |
-| ------------- | -------------------------------------------------- | ------------------------------------------------- |
-| `app`         | `apps/server`, `apps/model-gateway`                | modules, adapters, libs, other apps               |
-| `client`      | `apps/web`                                         | libs without `server-only`                        |
-| `sidecar`     | `apps/backup-job`                                  | modules, libs                                     |
-| `core`        | the core modules                                   | core modules, libs                                |
-| `feature`     | the feature modules                                | modules, libs                                     |
-| `leaking`     | the core modules that still reach a feature module | modules, libs                                     |
-| `adapter`     | `adapters/*`                                       | modules, libs                                     |
-| `guest`       | `guests/*`                                         | libs without `server-only`                        |
-| `lib`         | `libs/*`                                           | libs                                              |
-| `deploy`      | `deploy/pulumi-k8s`                                | no workspace package                              |
-| `verify`      | `verify/`                                          | the apps, modules, adapters, libs                 |
-| `integration` | `integration/`                                     | the apps, modules, adapters, libs                 |
-| `eval`        | `evals/`                                           | apps, the client, modules, adapters, guests, libs |
+| Tag           | Packages                                           | May depend on                                                         |
+| ------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
+| `app`         | `apps/server`, `apps/model-gateway`                | the other apps, the client, the backup job, modules, adapters, libs   |
+| `client`      | `apps/web`                                         | libs without `server-only`                                            |
+| `sidecar`     | `apps/backup-job`                                  | modules, libs                                                         |
+| `core`        | the core modules                                   | core modules, libs                                                    |
+| `feature`     | the feature modules                                | modules, libs                                                         |
+| `leaking`     | the core modules that still reach a feature module | modules, libs                                                         |
+| `adapter`     | `adapters/*`                                       | modules, libs                                                         |
+| `guest`       | `guests/*`                                         | libs without `server-only`                                            |
+| `lib`         | `libs/*`                                           | libs                                                                  |
+| `deploy`      | `deploy/pulumi-k8s`                                | no workspace package                                                  |
+| `verify`      | `verify/`                                          | the apps, the client, the backup job, modules, adapters, libs         |
+| `integration` | `integration/`                                     | the apps, the client, the backup job, modules, adapters, libs         |
+| `eval`        | `evals/`                                           | the apps, the client, the backup job, modules, adapters, guests, libs |
 
 The backup job's own source imports libs alone, so it never reaches the modules that hold the
 deployment key; its `e2e/` suites seed real log data, so its dev dependencies reach the modules. An
@@ -128,10 +128,10 @@ code reach test code. A module tagged `core` never depends on a feature module. 
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
-- **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
-  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `core`, `leaking`,
-  `feature`, `adapter`, `server-only`, `verify`, `integration` or `eval`, so a guest or a client
-  that declares it fails the check.
+- **`server-only`** marks a lib that only server-side packages and the test suites may use:
+  `libs/db` and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `core`,
+  `leaking`, `feature`, `adapter`, `server-only`, `verify`, `integration` or `eval`, so a guest or a
+  client that declares it fails the check.
 - **An adapter depends only on the module that owns its interface.** Check this rule in review,
   because the tags allow any module.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a

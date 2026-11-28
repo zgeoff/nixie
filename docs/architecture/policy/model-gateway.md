@@ -369,6 +369,9 @@ its provider's. No route or provider limit is in tokens. Each period resets at l
 sit in the gateway's own config, so code in the deployment cannot lower a limit or move a cap. That
 code can only raise a day's limit within the cap, with `POST /raise`.
 
+This excerpt of a gateway config shows the keys that hold the limits, and the comments name the
+route keys it leaves out:
+
 ```yaml
 listen: { hostname: 127.0.0.1, port: 8789 } # the model listener
 store: /var/lib/model-gateway/counts.json
@@ -381,9 +384,11 @@ providers:
     limits: { day: 10, month: 100, dayCap: 20 }
 routes:
   codex-plan:
-    # api, upstream, model and prices as in the routes above
+    # api, upstream, model and prices as in the routes above, and maxOutputTokens, which an
+    # openai-responses route requires
     provider: openai-plan # required; a key of providers
   router:
+    # upstream, model and prices, which every route requires
     provider: openrouter
     limits: { day: 5, month: 50 } # optional; caps this route inside its provider
 control:

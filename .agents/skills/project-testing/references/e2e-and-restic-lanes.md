@@ -115,8 +115,7 @@ program.
   submits the form as plain HTML, and React never sees it. On the conversation page, wait for an
   enabled `input[type=file]`: the image pickers stay disabled until the page hydrates. On any other
   page, wait with `waitForPage` for the enabled control, as the
-  [browser lane's](browser-lane.md#traps) trap about controls in the server's HTML says. Never wait
-  for `_reactListening` on `document`, because React sets it before it hydrates the page.
+  [browser lane's](browser-lane.md#traps) trap about controls in the server's HTML says.
 - **Wait on the page with `waitForPage(view, expression)`** from `@heynixie/web/test-utils`. It runs
   the expression, a string of JavaScript, in the page until it gives `true`. After 5 s it throws an
   error that holds the expression, so you see a failed wait before the 10 s limit ends the test.

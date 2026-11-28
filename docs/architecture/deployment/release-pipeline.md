@@ -151,11 +151,11 @@ built.
 
 ## The release contract
 
-A deployment reads two assets of the GitHub release and nothing else of nixie's: no copy of a file
-from the repo, and no parse of the release notes. Each release publishes both, and their shape is a
-contract that changes only in step with the readers. Each release also publishes
-`model-gateway-linux-x64`, the model gateway's binary, which a host that runs the gateway outside a
-container pins by its sha256.
+A deployment of the server images reads two assets of the GitHub release and nothing else of
+nixie's: no copy of a file from the repo, and no parse of the release notes. Each release publishes
+both, and their shape is a contract that changes only in step with the readers. A host that runs the
+model gateway outside a container also reads a third asset, `model-gateway-linux-x64`, the gateway's
+binary, which it pins by its sha256.
 
 - **`release.json`** holds the version, its tag and its commit; the server, web and backup images
   and the sandbox images, each by version tag and digest; the migrations the release adds since the

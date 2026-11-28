@@ -154,8 +154,8 @@ a secret value, and never write one to a file in the repo.
 
 - Bun is pinned in `.bun-version`. `bun run format` fixes formatting.
 - `bun run check` chains the main checks that CI runs, including `lint:full`. CI also runs the
-  `test:userns` and `test:restic` lanes and the `ci:*` scripts, which `check` leaves out. Locally,
-  run the scripts it chains one at a time, and skip `lint:full`.
+  `test:userns` and `test:restic` lanes and the `ci:*` scripts that `check` leaves out. Locally, run
+  the scripts it chains one at a time, and skip `lint:full`.
 - lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
   the host may have little memory.
 - `bun run lint` runs oxlint on its syntax rules. `bun run lint:full` adds the type-aware pass and

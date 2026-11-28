@@ -15,7 +15,9 @@ budget always asks, so no rule can give the assistant more room than the user ap
 applies a widening from the definitions without asking, because the user wrote them, as
 [rules in force](#rules-in-force) describes. A call that installs a package always asks, as
 [packages](../channels/devices.md#packages) describes. A call that spends passes only an allow rule
-with a [lift](budgets.md#lifts), which caps each purchase and charges a budget.
+with a [lift](budgets.md#lifts), which caps each purchase and charges a budget. A deny rule or a
+blocked place still denies any of these calls, because [the decision point](decision-point.md) runs
+its deny stage first.
 
 ## The rule format
 

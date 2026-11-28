@@ -16,18 +16,18 @@ still to build, read the [decision point design](../../design/platform/policy/de
 The stages run in order, and the first that decides returns. Each call reads the rules in force, the
 places of the directory and the tool declarations from the one snapshot it runs under.
 
-| Stage          | Decides when                                                              | Outcome |
-| -------------- | ------------------------------------------------------------------------- | ------- |
-| 1. Registry    | The registry holds no declaration for the tool, or no effect              | Deny    |
-| 2. Scope       | The tool is missing from the caller's tool list                           | Deny    |
-| 3. Deny rules  | A deny rule matches, or a blocked place covers a destination              | Deny    |
-| 4. Always ask  | The tool spends, widens the policy, raises a budget or installs a package | Ask     |
-| 5. Destination | A destination has no permission and no consent covers it                  | Ask     |
-| 6. Ask rules   | An ask rule matches                                                       | Ask     |
-| 7. Allow rules | Every destination's place allows the call, or a rule matches              | Allow   |
-| 8. Consent     | You asked for the call in typed words, and the checker agrees             | Allow   |
-|                | The call is a memory write that no earlier stage decided                  | Gate    |
-| 9. No rule     | Nothing else decided                                                      | Ask     |
+| Stage          | Decides when                                                                                          | Outcome |
+| -------------- | ----------------------------------------------------------------------------------------------------- | ------- |
+| 1. Registry    | The registry holds no declaration for the tool, or no effect                                          | Deny    |
+| 2. Scope       | The tool is missing from the caller's tool list                                                       | Deny    |
+| 3. Deny rules  | A deny rule matches, or a blocked place covers a destination                                          | Deny    |
+| 4. Always ask  | The tool spends with no lift that covers it, widens the policy, raises a budget or installs a package | Ask     |
+| 5. Destination | A destination has no permission and no consent covers it                                              | Ask     |
+| 6. Ask rules   | An ask rule matches                                                                                   | Ask     |
+| 7. Allow rules | Every destination's place allows the call, or a rule matches                                          | Allow   |
+| 8. Consent     | You asked for the call in typed words, and the checker agrees                                         | Allow   |
+|                | The call is a memory write that no earlier stage decided                                              | Gate    |
+| 9. No rule     | Nothing else decided                                                                                  | Ask     |
 
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
 outcome `gate` at stage 8 (see [memory writes](#memory-writes)). `memory.retopic` is the exception
@@ -131,10 +131,12 @@ checker counts as unreachable.
 ## Asks
 
 An ask writes the `tool_called` record and a `policy.action_proposed` record in one transaction, and
-the model reads "Waiting for approval as `<shortID>`". The model keeps working. An ask's cause is
-`outside_steering`, `always_ask`, `ask_rule`, `no_rule` or `condition_error`. The last is a call
-that asks because a deny rule's condition errored, as
-[rule conditions](rule-conditions.md#evaluating-a-condition) describes.
+the model reads "Waiting for approval as `<shortID>`". The model keeps working. The decision point
+gives an ask the cause `outside_steering`, `always_ask`, `ask_rule`, `no_rule` or `condition_error`.
+The last is a call that asks because a deny rule's condition errored, as
+[rule conditions](rule-conditions.md#evaluating-a-condition) describes. The record codecs also read
+`direct_request` and `repeat` as a cause, because older records hold them there, but the decision
+point never writes either as a cause.
 
 Answer an ask with `nixie proposals approve <shortID>` or `nixie proposals reject <shortID>`, or on
 the page for actions. The answer lands in the inbox of the task that asked. Approving queues the
