@@ -51,7 +51,7 @@ export async function readAttemptEvent(deps: GoogleDeps, args: JSONObject): Prom
       kind: 'response',
       response: {
         kind: 'refused_retryable',
-        reason: `GOOGLE_FAILED: ${read.reason}`,
+        reason: read.reason,
         ...(read.retryAfterMs === null ? {} : { retryAfterMs: read.retryAfterMs }),
       },
     };

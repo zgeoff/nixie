@@ -1,7 +1,11 @@
 import type { ConnectorContext } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { ConnectorFailure, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { buildItemID } from './build-item-id';
 import { callGmail } from './call-gmail';
 import { collectAddresses } from './collect-addresses';
@@ -94,18 +98,19 @@ export function buildGmailSearchTool(deps: GmailDeps): ToolDefinition {
     },
     declaration: gmailDeclarations.search,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGmailInput(deps.access),
-    run: async (call): Promise<ToolOutcome> => {
+    run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       if (context === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       return runSearch(deps, context, parsed.data);
@@ -146,13 +151,13 @@ async function runSearch(
   });
 
   if (listed.kind === 'error') {
-    return { status: 'error', message: `GMAIL_FAILED: ${listed.reason}` };
+    return buildFailureOutcome(buildGoogleFailure(listed));
   }
 
   const ids = readListedIDs(listed.body);
 
   if (ids === null) {
-    return { status: 'error', message: 'GMAIL_FAILED: Gmail answered with no list of messages' };
+    return buildFailureOutcome(buildUnreadableFailure('Gmail answered with no list of messages'));
   }
 
   const hits: SearchHit[] = [];
@@ -164,7 +169,7 @@ async function runSearch(
 
     for (const hit of batch) {
       if (hit.kind === 'failed') {
-        return { status: 'error', message: `GMAIL_FAILED: ${hit.reason}` };
+        return buildFailureOutcome(hit.failure);
       }
 
       if (hit.kind === 'hit') {
@@ -198,7 +203,7 @@ function readListedIDs(body: unknown): string[] | null {
 type HitRead =
   | { readonly kind: 'hit'; readonly hit: SearchHit }
   | { readonly kind: 'gone' }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'failed'; readonly reason: string; readonly failure: ConnectorFailure };
 
 // A message that vanished between the list and its read drops out of the page; any other failure
 // ends the search, so a provider error never reads as an empty mailbox.

@@ -1425,6 +1425,30 @@
       },
       "additionalProperties": false
     },
+    "tools": {
+      "type": "object",
+      "properties": {
+        "retry_attempts": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "retry_budget_ms": {
+          "default": 15000,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "error_detail_chars": {
+          "default": 1000,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
     "tasks": {
       "type": "object",
       "properties": {

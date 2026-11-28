@@ -1,9 +1,11 @@
 import type {
+  ConnectorFailure,
   ProviderFetch,
   SearchProvider,
   SearchReply,
   SearchRequest,
 } from '@heynixie/connectors';
+import { readRetryAfterMs } from '@heynixie/connectors';
 import { CredentialRefusalError } from '@heynixie/egress';
 import { parseJSONOrNull } from '@heynixie/wire';
 import type { KagiSearchRequest } from './kagi-search-request-schema';
@@ -20,7 +22,7 @@ export interface KagiSearchOptions {
 
 export function buildKagiSearch(options: KagiSearchOptions): SearchProvider {
   return {
-    readHits: (request) => readKagiReply(options, request),
+    readHits: (request, signal) => readKagiReply(options, request, signal),
   };
 }
 
@@ -30,13 +32,14 @@ const requestTimeoutMs = 15_000;
 async function readKagiReply(
   options: KagiSearchOptions,
   request: SearchRequest,
+  signal: AbortSignal | undefined,
 ): Promise<SearchReply> {
   const response = await options
     .fetch(`${options.apiURL}/search`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(buildKagiRequest(request)),
-      signal: AbortSignal.timeout(requestTimeoutMs),
+      signal: AbortSignal.any([AbortSignal.timeout(requestTimeoutMs), ...(signal ? [signal] : [])]),
     })
     .catch((error: unknown) => error);
 
@@ -45,12 +48,12 @@ async function readKagiReply(
   }
 
   if (!(response instanceof Response)) {
-    return { kind: 'failed', reason: `Kagi could not be reached: ${String(response)}` };
+    return { kind: 'failed', failure: { code: 'no_answer' } };
   }
 
   const text = await response.text();
 
-  return parseKagiResponse(response.status, text);
+  return parseKagiResponse(response, text);
 }
 
 function buildKagiRequest(request: SearchRequest): KagiSearchRequest {
@@ -67,8 +70,9 @@ function buildKagiRequest(request: SearchRequest): KagiSearchRequest {
   };
 }
 
-function parseKagiResponse(status: number, text: string): SearchReply {
+function parseKagiResponse(response: Response, text: string): SearchReply {
   const body = parseJSONOrNull(text);
+  const status = response.status;
 
   if (status !== 200) {
     const error = kagiErrorSchema.safeParse(body);
@@ -77,7 +81,7 @@ function parseKagiResponse(status: number, text: string): SearchReply {
       ? error.data.error.map((detail) => detail.message ?? detail.code).join('; ')
       : 'no error detail';
 
-    return { kind: 'failed', reason: `Kagi answered ${String(status)}: ${messages}` };
+    return { kind: 'failed', failure: buildKagiFailure(response, messages) };
   }
 
   const parsed = kagiSearchResponseSchema.safeParse(body);
@@ -95,5 +99,26 @@ function parseKagiResponse(status: number, text: string): SearchReply {
           date: result.time?.slice(0, 10) ?? null,
         })),
       }
-    : { kind: 'failed', reason: 'Kagi answered with results nixie cannot read' };
+    : {
+        kind: 'failed',
+        failure: { code: 'failed', detail: 'Kagi answered with results nixie cannot read' },
+      };
+}
+
+// A 429 is a rate limit, a 5xx can clear, and any other status is a refusal that a retry would not
+// change.
+function buildKagiFailure(response: Response, detail: string): ConnectorFailure {
+  const status = response.status;
+  const retryAfterMs = readRetryAfterMs(response.headers, Date.now());
+
+  if (status === 429) {
+    return {
+      code: 'rate_limited',
+      status,
+      ...(retryAfterMs === null ? {} : { retryAfterMs }),
+      detail,
+    };
+  }
+
+  return { code: status >= 500 ? 'failed' : 'refused', status, detail };
 }

@@ -34,8 +34,8 @@ Every call runs the same steps on the host:
 1. The endpoint checks the input against the input schema, and a failure returns an error without
    reaching policy.
 2. The tool asks the policy decision point.
-3. A denied call returns the rule and its sentence as an error, and an ask returns "pending approval
-   as <id>".
+3. A denied call returns the rule and its sentence as an error, and an ask returns "Waiting for
+   approval as `<shortID>`".
 4. An allowed `direct` call runs, and an allowed `queued` call joins the action queue.
 5. nixie writes the call, the decision and the result as records, with the source of content on
    every result field.
@@ -49,87 +49,30 @@ the
 found. Every field the model needs is therefore in the typed result, free text included, and the
 declaration lives in nixie's registry.
 
-| Outcome                | Result                                               | Error | Retried in the turn       | Text from            |
-| ---------------------- | ---------------------------------------------------- | ----- | ------------------------- | -------------------- |
-| Allowed, direct        | The tool's typed result                              | No    | No                        | Each field's source  |
-| Allowed, queued        | The action's outcome, or "queued as <id>" after 10 s | No    | No; the action queue does | Each field's source  |
-| Ask                    | "pending approval as <id>"                           | No    | No                        | nixie                |
-| Deny                   | The rule's ID and sentence                           | Yes   | No                        | nixie                |
-| Invalid input          | The schema errors                                    | Yes   | No                        | The model's input    |
-| Rate limited           | `rate_limited`, with the retry time                  | Yes   | Yes, when the wait fits   | The provider, capped |
-| Provider failure       | `failed`, with the status                            | Yes   | Yes, on a backoff         | The provider, capped |
-| Provider refusal       | `refused`, with the status                           | Yes   | No                        | The provider, capped |
-| No answer              | `no_answer`                                          | Yes   | Yes, on a backoff         | nixie                |
-| Fetcher refusal        | `fetch_refused`, with the reason                     | Yes   | No                        | nixie                |
-| Connection unavailable | `connection_unavailable`, with the status            | Yes   | No                        | nixie                |
+| Outcome                | Result                                               | Error | Retried in the turn       | Text from           |
+| ---------------------- | ---------------------------------------------------- | ----- | ------------------------- | ------------------- |
+| Allowed, direct        | The tool's typed result                              | No    | No                        | Each field's source |
+| Allowed, queued        | The action's outcome, or "queued as <id>" after 10 s | No    | No; the action queue does | Each field's source |
+| Ask                    | "Waiting for approval as `<shortID>`"                | No    | No                        | nixie               |
+| Deny                   | The rule's ID and sentence                           | Yes   | No                        | nixie               |
+| Invalid input          | The schema errors                                    | Yes   | No                        | The model's input   |
+| Connection unavailable | `connection_unavailable`, with the status            | Yes   | No                        | nixie               |
 
-[A failed direct call](#a-failed-direct-call) covers the last 6 rows. Text from nixie counts as your
+[A failed direct call](#a-failed-direct-call) covers the last row. Text from nixie counts as your
 own data, and the model's input and the provider's text count as untrusted, as the
 [source of content](../policy/decision-point.md#taint-in-the-first-build) sets.
 
 ### A failed direct call
 
-A direct call to a connector action fails in one of 4 places: the connection's
-[status](credentials.md#statuses) stops the call, the
-[credential fetcher](credentials.md#the-interface) refuses the request, the provider sends no
-answer, or the provider answers with an error. The connector maps the provider's answer to one of
-its [4 responses](connector.md#the-interface), and the endpoint, not the connector, decides whether
-to try again and what the model sees. **Why:** every connector then retries and reports in the same
-way, and no connector can send the provider's text to the model uncapped.
+[Tool calls](../../../architecture/connectors/tool-calls.md#a-failed-direct-call) describes how a
+failed direct call retries and what the model reads. Two parts are not built yet, and
+[GEO-2775](https://linear.app/zgeoff/issue/GEO-2775/nixie-connectors-build-or-cut-what-the-tools-design-still-lacks)
+tracks them: the connectors outside Google, search and images that still return their own error
+text, and the fields of `connection_unavailable` for a connection whose status stops its tools. To
+build either, start from that issue.
 
-The endpoint retries a failure that can clear, inside one time budget per call, which covers every
-attempt and every wait. The budget is 15 s and the attempts 3, both configurable, so a failed read
-holds the turn no longer than a slow web fetch does.
-
-- **Rate limited.** A `retry` that carries the provider's retry time, from `Retry-After` or from the
-  provider's own field. The endpoint waits that time and tries again when the time ends inside the
-  budget, and otherwise returns at once with the retry time.
-- **Provider failure.** A `retry` without a retry time, such as for a 5xx answer or for Gmail's 403
-  with `rateLimitExceeded`, which gives no time. The endpoint waits on a backoff of 1 s, then 2 s,
-  with jitter, inside the budget.
-- **No answer.** A dropped connection counts as a failure that can clear, because a direct call
-  reads and repeats nothing, so it waits on the same backoff. An attempt still open when the budget
-  ends stops there, and the call returns `no_answer`.
-- **Provider refusal.** A `refused` response cannot clear, so the endpoint returns it at once. A 401
-  is the fetcher's: it refreshes the credential and retries once, as
-  [refresh](credentials.md#refresh) sets.
-- **Fetcher refusal.** A host outside the credential's hosts and a non-public address never reach
-  the provider, so a retry could not change them.
-- **Connection unavailable.** A connection whose status stops its tools never reaches the provider,
-  and a retry inside the turn cannot change the status. This covers a `failing` connection, whose
-  tools stay listed, and a tool that a status change removed during the session.
-
-The endpoint picks the row from the connector's response, never from the status code, because
-providers differ in which codes can clear. The connector returns `retry` for every answer that can
-clear, a 403 rate limit included, and `refused` for the rest.
-
-Back-to-back retries with no wait only spend the provider's quota, so every retry waits. A retry
-time past the budget returns at once, because the model can tell you when to ask again, while a turn
-that waits a minute for one read holds your conversation.
-
-The model receives the failure as an error, one text block holding a JSON object that nixie writes:
-
-```json
-{
-  "origin": "provider",
-  "kind": "rate_limited",
-  "status": 429,
-  "retryAfter": "2026-03-02T09:14:05Z",
-  "detail": "Quota exceeded for quota metric 'Queries' per minute."
-}
-```
-
-`origin` is `provider` when the provider answered and `nixie` when it did not, which covers a
-fetcher refusal, an unavailable connection and no answer. The provider's text appears only in
-`detail`, as an escaped JSON string, so text that reads "nixie refused this request" stays inside
-`detail` and never sets `origin`. **Why:** a prefix in plain text would let the provider's text
-imitate it.
-
-`detail` holds the provider's error message, cut to 1,000 characters on a character boundary, and
-marked when cut. The limit is configurable. `detail` is outside content and never endorsed, while
-`status` and `retryAfter` are endorsed types, as the status code of a web fetch is. **Why:** the
-model needs the provider's message to tell you what went wrong, and the cap keeps an error body,
-which can quote outside text back, from filling the turn.
+Until the fields are built, a `connection_unavailable` error carries only `origin` and `kind`. The
+design below is what the issue builds.
 
 A `connection_unavailable` error carries 4 fields, with the values that the
 [status line](#what-the-model-learns-about-a-connection) holds for the connection:
@@ -142,12 +85,7 @@ A `connection_unavailable` error carries 4 fields, with the values that the
 **Why:** the model then knows from the error alone that its call was not wrong, and what you must
 do. A call to a tool of a connection that you forgot during the session returns
 `connection_unavailable` with none of these fields, so the error names neither the connection nor
-its status, as [the statuses](credentials.md#statuses) require of `forgotten`. `fetch_refused` keeps
-one meaning, a refused host or address. **Why:** `fetch_refused` reads as a web fetch, so a status
-under that kind would mix 2 causes.
-
-A failed direct call is an error, not a result, because it produced nothing that matches the tool's
-output schema. Web fetch keeps its own result, because a page with any status is a page.
+its status, as [the statuses](credentials.md#statuses) require of `forgotten`.
 
 ## One endpoint per task run
 

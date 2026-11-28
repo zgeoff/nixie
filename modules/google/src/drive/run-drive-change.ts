@@ -137,7 +137,7 @@ async function readFileOrEnd(
   if (read.kind === 'failed') {
     return {
       kind: 'refused_retryable',
-      reason: `GOOGLE_FAILED: ${read.reason}`,
+      reason: read.reason,
       ...(read.retryAfterMs === null ? {} : { retryAfterMs: read.retryAfterMs }),
     };
   }

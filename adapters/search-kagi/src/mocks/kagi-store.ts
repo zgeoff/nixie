@@ -26,7 +26,12 @@ const requests = new Collection({
   }),
 });
 
-const hooks: { onRequest: (() => Promise<void>) | null } = { onRequest: null };
+const hooks: {
+  onRequest: (() => Promise<void>) | null;
+
+  // the status that every request gets in place of a search answer; null answers as usual
+  failWith: number | null;
+} = { onRequest: null, failWith: null };
 
 export const kagiStore = {
   keys,
@@ -42,5 +47,6 @@ export const kagiStore = {
     }
 
     hooks.onRequest = null;
+    hooks.failWith = null;
   },
 };

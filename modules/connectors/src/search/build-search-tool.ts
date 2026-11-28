@@ -102,6 +102,7 @@ export function buildSearchTool(
       results: { hits: 'untrusted' },
     },
     execution: 'direct',
+    reachesProvider: true,
     paid: {
       priceMicros: options.priceMicros,
       callCap: {
@@ -135,10 +136,14 @@ export function buildSearchTool(
     run: async (call, context) => {
       const request: SearchRequest = searchArguments.parse(call.input);
 
-      const reply = await provider.readHits(request);
+      const reply = await provider.readHits(request, context.signal);
 
       if (reply.kind === 'failed') {
-        return { status: 'error', message: `the search failed: ${reply.reason}` };
+        return {
+          status: 'error',
+          message: reply.failure.detail ?? reply.failure.code,
+          failure: reply.failure,
+        };
       }
 
       const links = await writeHitLinks(

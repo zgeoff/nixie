@@ -112,7 +112,8 @@ test('it refuses a connection that is not live', async () => {
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'UNKNOWN_CONNECTION: no live connection has the ID gone',
+    message: '{"origin":"nixie","kind":"connection_unavailable"}',
+    failure: { code: 'connection_unavailable' },
   });
 });
 
@@ -176,6 +177,7 @@ test('it refuses a call when every pinned connection is forgotten', async () => 
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'NO_CONNECTION: no Google account is connected',
+    message: '{"origin":"nixie","kind":"connection_unavailable"}',
+    failure: { code: 'connection_unavailable' },
   });
 });

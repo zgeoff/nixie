@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { pickPinnedContexts } from '../call/pick-pinned-contexts';
 import { parseItemID } from './parse-item-id';
 import type { GmailAccess } from './types';
@@ -47,17 +48,16 @@ export function makeResolveGmailInput(
 
     if (wanted !== undefined) {
       return live.length === 0
-        ? {
-            status: 'error',
-            message: `UNKNOWN_CONNECTION: no live connection has the ID ${wanted}`,
-          }
+        ? forgottenOutcome
         : { status: 'ok', input: { ...input, connection: wanted } };
     }
 
     const [only] = live;
 
     if (only === undefined) {
-      return { status: 'error', message: 'NO_CONNECTION: no Google account is connected' };
+      return context.pinned === undefined
+        ? { status: 'error', message: 'NO_CONNECTION: no Google account is connected' }
+        : forgottenOutcome;
     }
 
     if (live.length > 1) {

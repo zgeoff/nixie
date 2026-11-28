@@ -67,7 +67,7 @@ test('it sends the text through the provider, and claims its message for the sen
   ]);
 });
 
-test('it refuses a send that the provider refuses, with the code SEND_FAILED', async () => {
+test('it refuses a send that the provider refuses, with its reason', async () => {
   const ctx = await setupTest();
 
   ctx.provider.failNextSend({ kind: 'refuse', reason: 'the number cannot take texts' });
@@ -76,7 +76,7 @@ test('it refuses a send that the provider refuses, with the code SEND_FAILED', a
 
   expect(response).toStrictEqual({
     kind: 'refused',
-    reason: 'SEND_FAILED: the number cannot take texts',
+    reason: 'the number cannot take texts',
   });
 });
 

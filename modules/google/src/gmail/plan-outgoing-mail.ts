@@ -174,7 +174,7 @@ function refuse(reason: string): OutgoingPlan {
 function failRead(reason: string): OutgoingPlan {
   return {
     kind: 'response',
-    response: { kind: 'refused_retryable', reason: `GMAIL_FAILED: ${reason}` },
+    response: { kind: 'refused_retryable', reason },
   };
 }
 

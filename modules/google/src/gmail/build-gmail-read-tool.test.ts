@@ -205,6 +205,7 @@ test('it ends with an error when the plain-text body of a mail fails to load', a
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'GMAIL_FAILED: Gmail answered backendError',
+    message: 'Gmail answered backendError',
+    failure: { code: 'failed', status: 500, detail: 'Gmail answered backendError' },
   });
 });

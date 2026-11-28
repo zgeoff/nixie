@@ -1,10 +1,13 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorFailure } from '@heynixie/tools';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import type { GoogleHosts } from '../types';
 import { callGmail } from './call-gmail';
 
 export type GmailRawRead =
   | { readonly kind: 'raw'; readonly text: string }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'failed'; readonly reason: string; readonly failure: ConnectorFailure };
 
 // Reads one message live in its raw form, as the base64url text that Gmail keeps.
 export async function readGmailRaw(
@@ -18,7 +21,7 @@ export async function readGmailRaw(
   });
 
   if (reply.kind === 'error') {
-    return { kind: 'failed', reason: reply.reason };
+    return { kind: 'failed', reason: reply.reason, failure: buildGoogleFailure(reply) };
   }
 
   const text =
@@ -28,5 +31,9 @@ export async function readGmailRaw(
 
   return typeof text === 'string'
     ? { kind: 'raw', text }
-    : { kind: 'failed', reason: 'Gmail answered with no raw message' };
+    : {
+        kind: 'failed',
+        reason: 'Gmail answered with no raw message',
+        failure: buildUnreadableFailure('Gmail answered with no raw message'),
+      };
 }

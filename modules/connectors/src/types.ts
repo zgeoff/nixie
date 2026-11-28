@@ -1,4 +1,7 @@
+import type { ConnectorFailure } from '@heynixie/tools';
 import type { ImageSize } from './image/image-size';
+
+export type { ConnectorFailure } from '@heynixie/tools';
 
 export type {
   ActionAttempt,
@@ -49,10 +52,11 @@ export interface SearchHit {
 
 export type SearchReply =
   | { readonly kind: 'hits'; readonly hits: readonly SearchHit[] }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'failed'; readonly failure: ConnectorFailure };
 
 export interface SearchProvider {
-  readonly readHits: (request: SearchRequest) => Promise<SearchReply>;
+  // `signal` aborts when the call's time budget ends
+  readonly readHits: (request: SearchRequest, signal?: AbortSignal) => Promise<SearchReply>;
 }
 
 export interface DrawImage {

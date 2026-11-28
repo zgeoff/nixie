@@ -24,6 +24,7 @@ import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
 import { remindersConfigSchema } from '@heynixie/reminders';
 import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
+import { toolsConfigSchema } from '@heynixie/tools';
 import { wakeRulesConfigSchema } from '@heynixie/triggers';
 import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
@@ -53,6 +54,7 @@ export const deploymentConfigSchema = z
     search: searchConfigSchema.optional(),
     images: imagesConfigSchema.nullable().default(null),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),
+    tools: toolsConfigSchema.default(toolsConfigSchema.parse({})),
     tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
     reminders: remindersConfigSchema.default(remindersConfigSchema.parse({})),
     actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),

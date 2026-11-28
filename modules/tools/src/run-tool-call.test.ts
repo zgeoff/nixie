@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import type { BudgetsContext } from '@heynixie/budgets';
 import { buildBuiltInBudgets, readBudgetLedger } from '@heynixie/budgets';
+import { CredentialRefusalError } from '@heynixie/egress';
 import { readRecordAttachments, readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
 import { buildActionHash, readPlaces, writePlaceAdded } from '@heynixie/policy';
@@ -12,9 +13,12 @@ import {
 import type { ProposalConfig } from '@heynixie/proposals';
 import { defaultProposalConfig } from '@heynixie/proposals';
 import { waitForCondition } from '@heynixie/testing';
+import type { CallToolResult } from '@modelcontextprotocol/server';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock, runClockUntil } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildToolRegistry } from './build-tool-registry';
-import type { ToolCallOptions } from './call-record/tool-call-options';
+import type { ToolCallOptions, ToolRetryOptions } from './call-record/tool-call-options';
 import { findToolDeclaration } from './policy-call/find-tool-declaration';
 import { runToolCall } from './run-tool-call';
 import { buildCountingCallCap } from './test-utils/build-counting-call-cap';
@@ -23,7 +27,7 @@ import { buildMockVariantToolDefinition } from './test-utils/build-mock-variant-
 import type { StubActionQueueOptions } from './test-utils/build-stub-action-queue';
 import { buildStubActionQueue } from './test-utils/build-stub-action-queue';
 import { setupTestLog } from './test-utils/setup-test-log';
-import type { ToolCall, ToolContext, ToolSource } from './types';
+import type { ToolCall, ToolContext, ToolOutcome, ToolSource } from './types';
 import { ToolResultRefusedError } from './types';
 
 interface SetupConfig {
@@ -42,10 +46,15 @@ interface SetupConfig {
   readonly ownValues?: () => readonly string[];
 
   readonly proposalConfig?: ProposalConfig;
+
+  // a clock the test moves, for a call that waits
+  readonly clock?: FakeClock;
+
+  readonly retry?: ToolRetryOptions;
 }
 
 async function setupTest(config: SetupConfig) {
-  const testLog = await setupTestLog();
+  const testLog = await setupTestLog({ clock: config.clock });
 
   const registry = buildToolRegistry(config.tools, config.sources);
   const queue = buildStubActionQueue(config.queue);
@@ -82,10 +91,28 @@ async function setupTest(config: SetupConfig) {
     queuedWaitMs: 10_000,
     proposalConfig: config.proposalConfig,
     budgets,
+    ...(config.retry === undefined ? {} : { retry: config.retry }),
     ...(config.ownValues === undefined ? {} : { readOwnValues: config.ownValues }),
   };
 
-  return { log: testLog.log, queue, options, budgets };
+  return {
+    log: testLog.log,
+    queue,
+    options,
+    budgets,
+    callNotesRead: () =>
+      runToolCall(
+        { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+        {
+          runID: 'run-1',
+          thread: 'task-1',
+          logThread: 'task-1',
+          tools: ['notes_read'],
+          model: { model: 'model-a', profile: 'chat-direct' },
+        },
+        options,
+      ),
+  };
 }
 
 test('it returns an allowed direct call the typed result as structured content alone', async () => {
@@ -4953,4 +4980,351 @@ test('it sets the last use of a known place whose permission a call that then as
     outcome: called?.record.decision?.outcome,
     lastUsedAt: place?.lastUsedAt,
   }).toStrictEqual({ outcome: 'ask', lastUsedAt: called?.record.recordedAt.getTime() });
+});
+
+test('it tries a failed call of a tool that reaches a provider again and returns the result of the attempt that works', async () => {
+  const clock = createFakeClock({ startMs: Date.parse('2026-03-02T09:14:00Z') });
+
+  const run = mock(() =>
+    Promise.resolve<ToolOutcome>({ status: 'ok', result: { text: 'a note' } }),
+  );
+
+  run.mockResolvedValueOnce({
+    status: 'error',
+    message: 'Provider answered 503',
+    failure: { code: 'failed', status: 503, detail: 'Provider answered 503' },
+  });
+
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes_read', reachesProvider: true, run })],
+    clock,
+    retry: { random: () => 0.5 },
+  });
+
+  const results: CallToolResult[] = [];
+
+  void (async () => {
+    const result = await runToolCall(
+      { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+      {
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['notes_read'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      ctx.options,
+    );
+
+    results.push(result);
+  })();
+
+  await runClockUntil(clock, () => results.length === 1, { maxMs: 3_600_000, stepMs: 500 });
+
+  expect(results).toStrictEqual([{ content: [], structuredContent: { text: 'a note' } }]);
+  expect(run).toHaveBeenCalledTimes(2);
+});
+
+test('it gives the model a failure that outlasts the attempts as one JSON error', async () => {
+  const clock = createFakeClock({ startMs: Date.parse('2026-03-02T09:14:00Z') });
+
+  const run = mock(() =>
+    Promise.resolve<ToolOutcome>({
+      status: 'error',
+      message: 'Provider answered 503',
+      failure: { code: 'failed', status: 503, detail: 'Provider answered 503' },
+    }),
+  );
+
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes_read', reachesProvider: true, run })],
+    clock,
+    retry: { random: () => 0.5 },
+  });
+
+  const results: CallToolResult[] = [];
+
+  void (async () => {
+    const result = await runToolCall(
+      { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+      {
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['notes_read'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      ctx.options,
+    );
+
+    results.push(result);
+  })();
+
+  await runClockUntil(clock, () => results.length === 1, { maxMs: 3_600_000, stepMs: 500 });
+
+  expect(results).toStrictEqual([
+    {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            origin: 'provider',
+            kind: 'failed',
+            status: 503,
+            detail: 'Provider answered 503',
+          }),
+        },
+      ],
+      isError: true,
+    },
+  ]);
+
+  expect(run).toHaveBeenCalledTimes(3);
+});
+
+test('it makes the attempts that the retry options set', async () => {
+  const clock = createFakeClock({ startMs: Date.parse('2026-03-02T09:14:00Z') });
+
+  const run = mock(() =>
+    Promise.resolve<ToolOutcome>({
+      status: 'error',
+      message: 'Provider answered 503',
+      failure: { code: 'failed', status: 503 },
+    }),
+  );
+
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes_read', reachesProvider: true, run })],
+    clock,
+    retry: { random: () => 0.5, maxAttempts: 2 },
+  });
+
+  const results: CallToolResult[] = [];
+
+  void (async () => {
+    const result = await runToolCall(
+      { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+      {
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['notes_read'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      ctx.options,
+    );
+
+    results.push(result);
+  })();
+
+  await runClockUntil(clock, () => results.length === 1, { maxMs: 3_600_000, stepMs: 500 });
+
+  expect(run).toHaveBeenCalledTimes(2);
+});
+
+test('it returns a refusal of a provider at once, with no second attempt', async () => {
+  const clock = createFakeClock({ startMs: Date.parse('2026-03-02T09:14:00Z') });
+
+  const run = mock(() =>
+    Promise.resolve<ToolOutcome>({
+      status: 'error',
+      message: 'Provider answered 403',
+      failure: { code: 'refused', status: 403, detail: 'Provider answered 403' },
+    }),
+  );
+
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes_read', reachesProvider: true, run })],
+    clock,
+    retry: { random: () => 0.5 },
+  });
+
+  const results: CallToolResult[] = [];
+
+  void (async () => {
+    const result = await runToolCall(
+      { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+      {
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['notes_read'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      ctx.options,
+    );
+
+    results.push(result);
+  })();
+
+  await runClockUntil(clock, () => results.length === 1, { maxMs: 3_600_000, stepMs: 500 });
+
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(clock.delays).toStrictEqual([15_000]);
+});
+
+test('it runs a tool that does not reach a provider once, and writes the message of its failure', async () => {
+  const run = mock(() =>
+    Promise.resolve<ToolOutcome>({
+      status: 'error',
+      message: 'Provider answered 503',
+      failure: { code: 'failed', status: 503 },
+    }),
+  );
+
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      { type: 'text', text: JSON.stringify({ origin: 'provider', kind: 'failed', status: 503 }) },
+    ],
+    isError: true,
+  });
+
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
+test('it ends a call as a failed fetch when the fetcher refuses the request of its prepare step', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        prepare: () =>
+          Promise.reject(new CredentialRefusalError('the host is not a credential host')),
+      }),
+    ],
+  });
+
+  const result = await ctx.callNotesRead();
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          origin: 'nixie',
+          kind: 'fetch_refused',
+          detail: 'the host is not a credential host',
+        }),
+      },
+    ],
+    isError: true,
+  });
+});
+
+test('it ends a call as a failed fetch when the fetcher refuses the request of its input step', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        resolveInput: () =>
+          Promise.reject(new CredentialRefusalError('the host is not a credential host')),
+      }),
+    ],
+  });
+
+  const result = await ctx.callNotesRead();
+
+  expect(result).toMatchObject({
+    content: [{ type: 'text', text: expect.stringContaining('"kind":"fetch_refused"') }],
+    isError: true,
+  });
+});
+
+test('it cuts the provider message of a failed prepare step to the configured length', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        prepare: () =>
+          Promise.resolve({
+            status: 'error' as const,
+            message: 'Provider answered 403',
+            failure: { code: 'refused' as const, status: 403, detail: 'abcdefghij' },
+          }),
+      }),
+    ],
+    retry: { detailChars: 4 },
+  });
+
+  const result = await ctx.callNotesRead();
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          origin: 'provider',
+          kind: 'refused',
+          status: 403,
+          detail: 'abcd… [cut]',
+        }),
+      },
+    ],
+    isError: true,
+  });
+});
+
+test('it cuts the provider message of a failed input step to the configured length', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        resolveInput: () =>
+          Promise.resolve({
+            status: 'error' as const,
+            message: 'Provider answered 403',
+            failure: { code: 'refused' as const, detail: 'abcdefghij' },
+          }),
+      }),
+    ],
+    retry: { detailChars: 4 },
+  });
+
+  const result = await ctx.callNotesRead();
+
+  expect(result).toMatchObject({
+    content: [{ type: 'text', text: expect.stringContaining('abcd… [cut]') }],
+    isError: true,
+  });
+});
+
+test('it cuts the provider message of a failed direct call to the configured length', async () => {
+  const clock = createFakeClock({ startMs: Date.parse('2026-03-02T09:14:00Z') });
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        reachesProvider: true,
+        run: () =>
+          Promise.resolve<ToolOutcome>({
+            status: 'error',
+            message: 'x',
+            failure: { code: 'refused', detail: 'abcdefghij' },
+          }),
+      }),
+    ],
+    clock,
+    retry: { detailChars: 4 },
+  });
+
+  const result = await ctx.callNotesRead();
+
+  expect(result).toMatchObject({
+    content: [{ type: 'text', text: expect.stringContaining('abcd… [cut]') }],
+    isError: true,
+  });
 });

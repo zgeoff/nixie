@@ -99,3 +99,17 @@ test('it records each request that reaches it, and runs the request hook before 
     requests: 1,
   });
 });
+
+test('it answers every request with the status that a test sets, even for a known key', async () => {
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  kagiStore.hooks.failWith = 503;
+
+  const response = await fetch(`${kagiAPIURL}/search`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer kagi-key-a', 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'tides', workflow: 'search', limit: 1 }),
+  });
+
+  expect(response.status).toBe(503);
+});

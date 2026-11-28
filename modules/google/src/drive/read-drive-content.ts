@@ -1,11 +1,13 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorFailure } from '@heynixie/tools';
+import { buildGoogleFailure } from '../call/build-google-failure';
 import { callGoogle } from '../call/call-google';
 import type { GoogleHosts } from '../types';
 import type { DriveContentRequest } from './pick-drive-content-request';
 
 export type DriveContentRead =
   | { readonly kind: 'bytes'; readonly bytes: Uint8Array }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'failed'; readonly reason: string; readonly failure: ConnectorFailure };
 
 interface ContentRequest {
   readonly id: string;
@@ -33,5 +35,5 @@ export async function readDriveContent(
 
   return reply.kind === 'ok'
     ? { kind: 'bytes', bytes: reply.bytes }
-    : { kind: 'failed', reason: reply.reason };
+    : { kind: 'failed', reason: reply.reason, failure: buildGoogleFailure(reply) };
 }

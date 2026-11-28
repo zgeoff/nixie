@@ -1,4 +1,7 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorFailure } from '@heynixie/tools';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import type { GoogleHosts } from '../types';
 import { callGmail } from './call-gmail';
 import { parseGmailMessage } from './parse-gmail-message';
@@ -7,7 +10,7 @@ import type { GmailMessage } from './types';
 export type GmailDraftRead =
   | { readonly kind: 'draft'; readonly message: GmailMessage }
   | { readonly kind: 'missing' }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'failed'; readonly reason: string; readonly failure: ConnectorFailure };
 
 // Reads one draft of the account live: the message it holds, with the Bcc header that a draft keeps.
 export async function readGmailDraft(
@@ -21,7 +24,9 @@ export async function readGmailDraft(
   });
 
   if (reply.kind === 'error') {
-    return reply.status === 404 ? { kind: 'missing' } : { kind: 'failed', reason: reply.reason };
+    return reply.status === 404
+      ? { kind: 'missing' }
+      : { kind: 'failed', reason: reply.reason, failure: buildGoogleFailure(reply) };
   }
 
   const message =
@@ -30,6 +35,10 @@ export async function readGmailDraft(
       : null;
 
   return message === null
-    ? { kind: 'failed', reason: 'Gmail answered with no draft' }
+    ? {
+        kind: 'failed',
+        reason: 'Gmail answered with no draft',
+        failure: buildUnreadableFailure('Gmail answered with no draft'),
+      }
     : { kind: 'draft', message };
 }

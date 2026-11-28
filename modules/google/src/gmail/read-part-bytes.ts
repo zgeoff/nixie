@@ -1,11 +1,14 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorFailure } from '@heynixie/tools';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import type { GoogleHosts } from '../types';
 import { callGmail } from './call-gmail';
 import type { GmailPart } from './types';
 
 export type PartBytes =
   | { readonly kind: 'bytes'; readonly bytes: Uint8Array<ArrayBuffer> }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'failed'; readonly reason: string; readonly failure: ConnectorFailure };
 
 interface PartRequest {
   readonly message: string;
@@ -33,7 +36,7 @@ export async function readPartBytes(
   });
 
   if (reply.kind === 'error') {
-    return { kind: 'failed', reason: reply.reason };
+    return { kind: 'failed', reason: reply.reason, failure: buildGoogleFailure(reply) };
   }
 
   const data =
@@ -43,5 +46,9 @@ export async function readPartBytes(
 
   return typeof data === 'string'
     ? { kind: 'bytes', bytes: new Uint8Array(Buffer.from(data, 'base64url')) }
-    : { kind: 'failed', reason: 'Gmail answered with no attachment data' };
+    : {
+        kind: 'failed',
+        reason: 'Gmail answered with no attachment data',
+        failure: buildUnreadableFailure('Gmail answered with no attachment data'),
+      };
 }

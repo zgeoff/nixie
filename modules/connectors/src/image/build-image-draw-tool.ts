@@ -1,5 +1,5 @@
 import { createShortID } from '@heynixie/db';
-import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
+import type { ConnectorFailure, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { ToolResultRefusedError } from '@heynixie/tools';
 import type { DrawReply, ImageProvider } from '../types';
 import { getPageSession } from '../utils/get-page-session';
@@ -207,7 +207,9 @@ async function runDraw(
   });
 
   if (reply.kind !== 'image') {
-    return { status: 'ok', ...refuseReply(options, sources, reply) };
+    const failed = failReply(reply);
+
+    return buildDrawFailure(failed.failure, failed.isBilled);
   }
 
   return writeDraw(options, sources, { ...call, reply });
@@ -248,44 +250,35 @@ async function callProvider(
   }
 }
 
-function refuseReply(
-  options: ImageToolOptions,
-  sources: Extract<DrawSources, { kind: 'ready' }>,
-  reply: Exclude<CalledReply, { kind: 'image' }>,
-) {
+// What a provider's reply that holds no image means for the call. The provider's own words reach
+// the model only as the failure's detail, and a charge the provider billed stands.
+function failReply(reply: Exclude<CalledReply, { kind: 'image' }>): {
+  readonly failure: ConnectorFailure;
+  readonly isBilled: boolean;
+} {
   if (reply.kind === 'refused') {
     return {
-      ...buildListedRefusal(
-        options.images,
-        refuseImage('IMAGE_REFUSED', reply.message, {
-          refused: { profile: sources.picked.key, reason: reply.reason },
-        }),
-      ),
-      ...(reply.isBilled ? { billed: true as const } : {}),
+      failure: { code: 'refused', detail: reply.message },
+      isBilled: reply.isBilled,
     };
   }
 
   if (reply.kind === 'failed') {
-    return {
-      ...buildListedRefusal(
-        options.images,
-        refuseImage('IMAGE_FAILED', `The provider failed: ${reply.reason}`),
-      ),
-      ...(reply.isBilled ? { billed: true as const } : {}),
-    };
+    return { failure: { code: 'failed', detail: reply.reason }, isBilled: reply.isBilled };
   }
 
   // The call may have drawn the image before the time ran out, or the reply threw after it was
   // billed, so the charge stands.
-  const refusal =
-    reply.kind === 'timeout'
-      ? refuseImage(
-          'IMAGE_TIMEOUT',
-          'The provider gave no reply in time. The image may exist at the provider, and the call was charged.',
-        )
-      : refuseImage('IMAGE_FAILED', 'The provider call failed, and the call was charged.');
+  return { failure: { code: 'no_answer' }, isBilled: true };
+}
 
-  return { ...buildListedRefusal(options.images, refusal), billed: true as const };
+function buildDrawFailure(failure: ConnectorFailure, isBilled: boolean): ToolOutcome {
+  return {
+    status: 'error',
+    message: failure.detail ?? failure.code,
+    failure,
+    ...(isBilled ? { billed: true as const } : {}),
+  };
 }
 
 interface StoredDraw extends DrawCall {
@@ -298,20 +291,19 @@ async function writeDraw(
   drawn: StoredDraw,
 ): Promise<ToolOutcome> {
   if (drawn.reply.bytes.byteLength > imageLimits.maxStoredBytes) {
-    return { status: 'ok', ...refuseOverSize(options), billed: true };
+    return buildDrawFailure(
+      { code: 'failed', detail: 'The reply is longer than the 8 MiB that nixie stores.' },
+      true,
+    );
   }
 
   const png = await convertToPng(drawn.reply.bytes, { longEdge: null });
 
   if (png.kind === 'unreadable') {
-    return {
-      status: 'ok',
-      ...buildListedRefusal(
-        options.images,
-        refuseImage('IMAGE_FAILED', `The reply is no picture that decodes: ${png.reason}`),
-      ),
-      billed: true,
-    };
+    return buildDrawFailure(
+      { code: 'failed', detail: `The reply is no picture that decodes: ${png.reason}` },
+      true,
+    );
   }
 
   const image = createShortID();
@@ -376,11 +368,4 @@ async function writeDraw(
       });
     },
   };
-}
-
-function refuseOverSize(options: ImageToolOptions) {
-  return buildListedRefusal(
-    options.images,
-    refuseImage('IMAGE_FAILED', 'The reply is longer than the 8 MiB that nixie stores.'),
-  );
 }

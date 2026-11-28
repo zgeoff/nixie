@@ -54,7 +54,10 @@ test('it resumes the retry schedule across a restart and fails the action on the
 
     const dueAt = Number(actions.find((action) => action.taskID === 'conversation')?.nextAttemptAt);
 
-    await ctx.nixie.harness.advance(dueAt - 1 - ctx.nixie.harness.now(), { settle: true });
+    await ctx.nixie.harness.advance(dueAt - 1 - ctx.nixie.harness.now(), {
+      settle: true,
+      settleTimeoutMs: 10_000,
+    });
 
     callsBeforeDue.push(ctx.nixie.provider.calls.length);
 

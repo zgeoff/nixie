@@ -1,6 +1,10 @@
 import type { ConnectorAction } from '@heynixie/connections';
 import { startTestLog } from '@heynixie/connectors/test-utils';
-import type { ToolContext } from '@heynixie/tools';
+import type { JSONObject } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
+import type { ToolCallOptions, ToolContext, ToolRetryOptions } from '@heynixie/tools';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { buildStubActionQueue } from '@heynixie/tools/test-utils';
 import type { TestTriggers } from '@heynixie/triggers/test-utils';
 import type { FetchReply } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
@@ -24,6 +28,9 @@ export interface GmailToolsOptions {
 
   // the fake account to reach, when a test also polls it
   readonly site?: FakeGmailSite;
+
+  // the retry settings of the tool endpoint that `callTool` runs through
+  readonly retry?: ToolRetryOptions;
 }
 
 export interface GmailTools {
@@ -41,6 +48,9 @@ export interface GmailTools {
 
   // the context of a call in a conversation session
   readonly buildContext: () => ToolContext;
+
+  // a call of a tool through the real tool endpoint, as the model sends it
+  readonly callTool: (name: string, input: JSONObject) => ReturnType<typeof runToolCall>;
 }
 
 // The Gmail, Calendar and Drive tools over a fake Google account on a loopback port, with a real log for the link IDs.
@@ -51,8 +61,8 @@ export async function startGmailTools(options: GmailToolsOptions = {}): Promise<
   invariant(site, 'the tools reach a fake account');
 
   const triggers = options.triggers;
-  const log = triggers === undefined ? await startTestLog() : triggers.context.log;
   const clock = triggers?.clock ?? createFakeClock({ startMs: Date.parse('2026-11-20T09:00:00Z') });
+  const log = triggers === undefined ? await startTestLog(clock) : triggers.context.log;
 
   const deps: GmailDeps = {
     toolkit: buildTestToolkit(),
@@ -74,10 +84,33 @@ export async function startGmailTools(options: GmailToolsOptions = {}): Promise<
   const actions = buildGmailActions(deps);
   const calendarActions = buildCalendarActions(deps);
   const driveActions = buildDriveActions(deps);
+  const tools = [...actions, ...calendarActions, ...driveActions].map((action) => action.tool);
+  const registry = buildToolRegistry(tools);
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    logThread: 'conversation',
+    tools: tools.map((tool) => tool.name),
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+  };
+
+  const toolOptions: ToolCallOptions = {
+    registry,
+    decide: buildAllowingDecisionPoint(),
+    log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    queue: buildStubActionQueue().queue,
+    queuedWaitMs: 1000,
+    ...(options.retry === undefined ? {} : { retry: options.retry }),
+  };
 
   return {
     site,
     deps,
+    callTool: (name, input) =>
+      runToolCall({ tool: name, input, toolUseID: null }, run, toolOptions),
     actions,
     calendarActions,
     driveActions,

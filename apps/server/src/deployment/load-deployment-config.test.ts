@@ -56,6 +56,7 @@ test('it reads every section, with the default of each setting the file leaves o
       url: 'http://127.0.0.1:7070',
       publicEgress: { hostAddresses: ['192.0.2.10/32'], egressDeny: [] },
     },
+    tools: { retry: { maxAttempts: 3, budgetMs: 15_000, detailChars: 1000 } },
     wake_rules: { window: 900_000, reply_expiry: 604_800_000 },
     definitions: {
       source: { kind: 'path', path: '/etc/nixie/definitions' },
@@ -109,6 +110,31 @@ test('it reads every section, with the default of each setting the file leaves o
     },
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },
+  });
+});
+
+test('it reads the retry settings of the tools section as the config sets them', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'tools: { retry_attempts: 2, retry_budget_ms: 4500, error_detail_chars: 40 }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.tools).toStrictEqual({
+    retry: { maxAttempts: 2, budgetMs: 4500, detailChars: 40 },
   });
 });
 

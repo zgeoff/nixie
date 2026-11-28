@@ -1,8 +1,16 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import { readRetryAfterMs } from '@heynixie/tools';
+import { parseJSONOrNull } from '@heynixie/wire';
+import { readGoogleError } from '../call/read-google-error';
 import type { GoogleHosts } from '../types';
 
 export type GmailCall =
-  | { readonly kind: 'ok'; readonly body: unknown }
+  | {
+      readonly kind: 'ok';
+
+      // null for an answer that does not parse
+      readonly body: unknown;
+    }
   | {
       readonly kind: 'error';
       readonly status: number;
@@ -53,40 +61,16 @@ export async function callGmail(
   const text = await response.text();
 
   if (response.ok) {
-    return { kind: 'ok', body: text === '' ? {} : parseJSON(text) };
+    return { kind: 'ok', body: parseJSONOrNull(text) };
   }
+
+  const error = readGoogleError(text, response.status, 'Gmail');
 
   return {
     kind: 'error',
     status: response.status,
-    reason: readReason(text, response.status),
-    isRateLimit:
-      response.status === 429 ||
-      (response.status === 403 && /(?:user)?rateLimitExceeded/iu.test(text)),
-    retryAfterMs: readRetryAfterMs(response.headers.get('retry-after')),
+    reason: error.reason,
+    isRateLimit: error.isRateLimit,
+    retryAfterMs: readRetryAfterMs(response.headers, Date.now()),
   };
-}
-
-function parseJSON(text: string): unknown {
-  try {
-    const value: unknown = JSON.parse(text);
-
-    return value;
-  } catch {
-    return {};
-  }
-}
-
-function readReason(text: string, status: number): string {
-  const [first] = [...text.matchAll(/"reason"\s*:\s*"(?<reason>[^"]+)"/gu)].map(
-    (match) => match.groups?.['reason'],
-  );
-
-  return first === undefined ? `Gmail answered ${String(status)}` : `Gmail answered ${first}`;
-}
-
-function readRetryAfterMs(header: string | null): number | null {
-  const seconds = header === null ? Number.NaN : Number(header);
-
-  return Number.isFinite(seconds) ? seconds * 1000 : null;
 }

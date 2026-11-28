@@ -604,7 +604,11 @@ test("it returns the provider's failure as an error the model reads", async () =
 
   const tool = buildSearchTool(
     {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'Kagi answered 503' }),
+      readHits: () =>
+        Promise.resolve<SearchReply>({
+          kind: 'failed',
+          failure: { code: 'failed', status: 503, detail: 'Kagi answered 503' },
+        }),
     },
     {
       log: ctx.log,
@@ -631,7 +635,8 @@ test("it returns the provider's failure as an error the model reads", async () =
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'the search failed: Kagi answered 503',
+    message: 'Kagi answered 503',
+    failure: { code: 'failed', status: 503, detail: 'Kagi answered 503' },
   });
 });
 
@@ -640,7 +645,7 @@ test('it declares the fetch effect and runs inside the turn', async () => {
 
   const tool = buildSearchTool(
     {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', failure: { code: 'failed' } }),
     },
     {
       log: ctx.log,
@@ -668,7 +673,7 @@ test('it marks every result field as outside content', async () => {
 
   const tool = buildSearchTool(
     {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', failure: { code: 'failed' } }),
     },
     {
       log: ctx.log,
@@ -687,7 +692,7 @@ test("it endorses only a hit's date, and gives the model no cost", async () => {
 
   const tool = buildSearchTool(
     {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', failure: { code: 'failed' } }),
     },
     {
       log: ctx.log,
@@ -722,7 +727,7 @@ test('it is a tool the registry accepts, whose output schema holds a dated hit',
 
   const tool = buildSearchTool(
     {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', failure: { code: 'failed' } }),
     },
     {
       log: ctx.log,
@@ -748,4 +753,50 @@ test('it is a tool the registry accepts, whose output schema holds a dated hit',
       ],
     }),
   ).toStrictEqual({ isValid: true });
+});
+
+test('it makes the endpoint retry a search, and hands the provider the signal of the call', async () => {
+  const ctx = await setupTest();
+
+  const stop = new AbortController();
+
+  const signals: (AbortSignal | undefined)[] = [];
+
+  const tool = buildSearchTool(
+    {
+      readHits: (_request, signal) => {
+        signals.push(signal);
+
+        return Promise.resolve<SearchReply>({ kind: 'hits', hits: [] });
+      },
+    },
+    {
+      log: ctx.log,
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
+      dailyCallCap: 200,
+      priceMicros: 12_000,
+      timeZone: 'Australia/Sydney',
+    },
+  );
+
+  await tool.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
+    {
+      callSequence: 1,
+      signal: stop.signal,
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: ['search'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  expect({ reachesProvider: tool.reachesProvider, signals }).toStrictEqual({
+    reachesProvider: true,
+    signals: [stop.signal],
+  });
 });

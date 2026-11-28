@@ -18,7 +18,18 @@ export type {
 } from './approved-call/run-approved-call';
 
 export { runApprovedCall } from './approved-call/run-approved-call';
-export type { ConnectionChoice, ToolCallOptions } from './call-record/tool-call-options';
+
+export type {
+  ConnectionChoice,
+  ToolCallOptions,
+  ToolRetryOptions,
+} from './call-record/tool-call-options';
+
+export type { ToolsConfig } from './config/tools-config-schema';
+export { toolsConfigSchema } from './config/tools-config-schema';
+export { defaultDetailChars } from './failure/constants';
+export { readRetryAfterMs } from './failure/read-retry-after-ms';
+export { renderFailureMessage } from './failure/render-failure-message';
 export type { ToolCallRequest } from './run-tool-call';
 export { runToolCall } from './run-tool-call';
 export type { ToolEndpointOptions } from './start-tool-endpoint';
@@ -33,6 +44,8 @@ export { findToolPins } from './connection/find-tool-pins';
 export { toSDKToolName } from './tool-name/to-sdk-tool-name';
 
 export type {
+  ConnectorErrorCode,
+  ConnectorFailure,
   ActionOutcome,
   ActionQueue,
   DirectResult,

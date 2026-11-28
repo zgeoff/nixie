@@ -1,5 +1,7 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { maxAttachmentBytes, readAttachmentContent } from '../call/read-attachment-content';
 import { buildItemID } from '../gmail/build-item-id';
@@ -90,6 +92,7 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
     },
     declaration: driveDeclarations.read,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGoogleInput(deps.access, ['file']),
     run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
@@ -98,24 +101,20 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       const item = parseItemID(parsed.data.file);
 
       if (context === null || item === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readDriveFile(deps.hosts, context, item.id);
 
       if (read.kind !== 'file') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_FILE: no file has the ID ${parsed.data.file}`
-              : `GOOGLE_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? { status: 'error', message: `UNKNOWN_FILE: no file has the ID ${parsed.data.file}` }
+          : buildFailureOutcome(read.failure);
       }
 
       const file = read.file;
@@ -162,16 +161,15 @@ export function buildDriveReadTool(deps: GoogleDeps): ToolDefinition {
       const content = await readDriveContent(deps.hosts, context, { id: file.id, request });
 
       if (content.kind === 'failed') {
-        return { status: 'error', message: `GOOGLE_FAILED: ${content.reason}` };
+        return buildFailureOutcome(content.failure);
       }
 
       const after = await readDriveFile(deps.hosts, context, file.id);
 
       if (after.kind !== 'file' || after.file.version !== file.version) {
-        return {
-          status: 'error',
-          message: after.kind === 'failed' ? `GOOGLE_FAILED: ${after.reason}` : fileChangedMessage,
-        };
+        return after.kind === 'failed'
+          ? buildFailureOutcome(after.failure)
+          : { status: 'error', message: fileChangedMessage };
       }
 
       const bytes = file.size ?? content.bytes.byteLength;

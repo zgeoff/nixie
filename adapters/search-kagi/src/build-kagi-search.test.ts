@@ -229,7 +229,10 @@ test("it fails with Kagi's error, which never quotes the key, when Kagi refuses 
     freshness: null,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'Kagi answered 401: Unauthorized' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    failure: { code: 'refused', status: 401, detail: 'Unauthorized' },
+  });
 });
 
 test('it fails with the status when Kagi answers with an error it does not describe', async () => {
@@ -246,7 +249,10 @@ test('it fails with the status when Kagi answers with an error it does not descr
     freshness: null,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'Kagi answered 503: no error detail' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    failure: { code: 'failed', status: 503, detail: 'no error detail' },
+  });
 });
 
 test('it fails when Kagi answers 200 with a body that holds no results', async () => {
@@ -263,7 +269,7 @@ test('it fails when Kagi answers 200 with a body that holds no results', async (
 
   expect(reply).toStrictEqual({
     kind: 'failed',
-    reason: 'Kagi answered with results nixie cannot read',
+    failure: { code: 'failed', detail: 'Kagi answered with results nixie cannot read' },
   });
 });
 
@@ -279,10 +285,104 @@ test('it fails when Kagi cannot be reached', async () => {
     freshness: null,
   });
 
+  expect(reply).toStrictEqual({ kind: 'failed', failure: { code: 'no_answer' } });
+});
+
+test('it fails as rate limited with the time Kagi gives when Kagi answers 429', async () => {
+  const ctx = setupTest();
+
+  network.use(
+    http.post(
+      `${kagiAPIURL}/search`,
+      () => new HttpResponse('slow down', { status: 429, headers: { 'retry-after': '7' } }),
+    ),
+  );
+
+  const reply = await ctx.provider.readHits({
+    query: 'tide times',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
   expect(reply).toStrictEqual({
     kind: 'failed',
-    reason: expect.toStartWith('Kagi could not be reached: '),
+    failure: { code: 'rate_limited', status: 429, retryAfterMs: 7000, detail: 'no error detail' },
   });
+});
+
+test('it reads a retry time that Kagi gives as an HTTP date from the date of its own answer', async () => {
+  const ctx = setupTest();
+
+  network.use(
+    http.post(
+      `${kagiAPIURL}/search`,
+      () =>
+        new HttpResponse('slow down', {
+          status: 429,
+          headers: {
+            date: 'Mon, 23 Nov 2026 09:00:00 GMT',
+            'retry-after': 'Mon, 23 Nov 2026 09:00:09 GMT',
+          },
+        }),
+    ),
+  );
+
+  const reply = await ctx.provider.readHits({
+    query: 'tide times',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    failure: { code: 'rate_limited', status: 429, retryAfterMs: 9000, detail: 'no error detail' },
+  });
+});
+
+test('it keeps a retry time that no date can hold within a day', async () => {
+  const ctx = setupTest();
+
+  network.use(
+    http.post(
+      `${kagiAPIURL}/search`,
+      () =>
+        new HttpResponse('slow down', { status: 429, headers: { 'retry-after': '9999999999999' } }),
+    ),
+  );
+
+  const reply = await ctx.provider.readHits({
+    query: 'tide times',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    failure: {
+      code: 'rate_limited',
+      status: 429,
+      retryAfterMs: 86_400_000,
+      detail: 'no error detail',
+    },
+  });
+});
+
+test('it aborts the request of Kagi when the call is aborted', async () => {
+  const ctx = setupTest();
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  const reply = ctx.provider.readHits(
+    { query: 'tide times', limit: 10, sites: [], freshness: null },
+    AbortSignal.abort(),
+  );
+
+  const settled = await reply;
+
+  expect(settled).toStrictEqual({ kind: 'failed', failure: { code: 'no_answer' } });
 });
 
 test('it throws a refusal of the fetcher, so the call fails with an error and no reply', () => {

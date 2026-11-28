@@ -34,12 +34,14 @@ Read each part's doc for the meaning of its settings. The sections cover:
 - the [search](../connectors/search.md) tool's daily call cap, its API URL and its key as a
   reference
 - the [images](../connectors/images.md) profiles: each provider, model, price for each size and key
-  as a reference, and `images.default`, the profile a draw uses when it names none, which is
-  `openai`. Every `image.draw` result names the profile and its `model`, and every refusal lists the
-  profiles
+  as a reference, and `images.default`, the profile a draw uses when it names none. The section
+  needs `images.default`, and the shipped configs set it to `openai`. Every `image.draw` result
+  names the profile and its `model`, and every refusal lists the profiles
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
   request, which `spendStop` names, and the model limits it sets: the turns of the day and of the
   month
+- the [retries of a failed connector call](../connectors/tool-calls.md#configuration): the attempts,
+  the time they share and the cap on the provider's message in the error the model reads
 - the shortest gap between two fires of a recurring [reminder](../core/reminders.md#tools)
 - the task and action [claim pool](../core/leases-and-restart-sweep.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often

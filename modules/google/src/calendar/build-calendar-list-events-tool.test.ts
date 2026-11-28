@@ -171,6 +171,69 @@ test('it refuses an answer from Google that is an error', async () => {
 
   expect(outcome).toMatchObject({
     status: 'error',
-    message: expect.stringContaining('GOOGLE_FAILED'),
+    failure: { code: 'failed', status: 500, detail: 'Google answered backendError' },
+  });
+});
+
+test('it fails a list that Google answers with text that is no JSON', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.calendar.failures.push({
+    line: 'GET /calendar/v3/calendars/primary/events',
+    status: 200,
+    body: '<html>oops',
+  });
+
+  const outcome = await ctx.runList(ctx.week);
+
+  expect(outcome).toMatchObject({ status: 'error', failure: { code: 'failed' } });
+});
+
+test('it reads the retry time of a rate limit that Google gives as an HTTP date', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.calendar.failures.push({
+    line: 'GET /calendar/v3/calendars/primary/events',
+    status: 403,
+    body: '{"error":{"errors":[{"reason":"userRateLimitExceeded"}]}}',
+    headers: {
+      date: 'Mon, 23 Nov 2026 09:00:00 GMT',
+      'retry-after': 'Mon, 23 Nov 2026 09:00:12 GMT',
+    },
+  });
+
+  const outcome = await ctx.runList(ctx.week);
+
+  expect(outcome).toMatchObject({
+    status: 'error',
+    failure: { code: 'rate_limited', status: 403, retryAfterMs: 12_000 },
+  });
+});
+
+test('it treats a refusal whose message names a rate limit as a refusal', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.calendar.failures.push({
+    line: 'GET /calendar/v3/calendars/primary/events',
+    status: 403,
+    body: '{"error":{"message":"userRateLimitExceeded","errors":[{"reason":"forbidden"}]}}',
+  });
+
+  const outcome = await ctx.runList(ctx.week);
+
+  expect(outcome).toMatchObject({ status: 'error', failure: { code: 'refused' } });
+});
+
+test('it ends a call that names a connection that is gone as connection_unavailable', async () => {
+  const ctx = await setupTest();
+
+  const resolved = await ctx
+    .findAction('calendar.list_events')
+    .tool.resolveInput?.({ ...ctx.week, connection: 'gone' }, ctx.buildContext());
+
+  expect(resolved).toStrictEqual({
+    status: 'error',
+    message: '{"origin":"nixie","kind":"connection_unavailable"}',
+    failure: { code: 'connection_unavailable' },
   });
 });

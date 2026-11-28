@@ -1,4 +1,7 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorFailure } from '@heynixie/tools';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import { callGoogle } from '../call/call-google';
 import type { GoogleHosts } from '../types';
 import { buildEventPath } from './build-event-path';
@@ -11,7 +14,12 @@ import type { CalendarEvent } from './types';
 export type CalendarEventRead =
   | { readonly kind: 'event'; readonly event: CalendarEvent }
   | { readonly kind: 'missing' }
-  | { readonly kind: 'failed'; readonly reason: string; readonly retryAfterMs: number | null };
+  | {
+      readonly kind: 'failed';
+      readonly reason: string;
+      readonly retryAfterMs: number | null;
+      readonly failure: ConnectorFailure;
+    };
 
 interface EventRequest {
   readonly calendar: string;
@@ -33,7 +41,12 @@ export async function readCalendarEvent(
   if (reply.kind === 'error') {
     return reply.status === 404 || reply.status === 410
       ? { kind: 'missing' }
-      : { kind: 'failed', reason: reply.reason, retryAfterMs: reply.retryAfterMs };
+      : {
+          kind: 'failed',
+          reason: reply.reason,
+          retryAfterMs: reply.retryAfterMs,
+          failure: buildGoogleFailure(reply),
+        };
   }
 
   const event = parseCalendarEvent(reply.body, {
@@ -42,7 +55,12 @@ export async function readCalendarEvent(
   });
 
   if (event === null) {
-    return { kind: 'failed', reason: 'Google answered with no event', retryAfterMs: null };
+    return {
+      kind: 'failed',
+      reason: 'Google answered with no event',
+      retryAfterMs: null,
+      failure: buildUnreadableFailure('Google answered with no event'),
+    };
   }
 
   const isCalendarOrganizer =

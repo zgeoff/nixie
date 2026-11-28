@@ -1,6 +1,8 @@
 import type { ConnectorContext } from '@heynixie/connections';
-import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
+import type { ConnectorFailure, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { buildItemID } from './build-item-id';
 import { collectAddresses } from './collect-addresses';
 import { collectMessageContent } from './collect-message-content';
@@ -84,6 +86,7 @@ export function buildGmailReadTool(deps: GmailDeps): ToolDefinition {
     },
     declaration: gmailDeclarations.read,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGmailInput(deps.access),
     run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
@@ -92,12 +95,12 @@ export function buildGmailReadTool(deps: GmailDeps): ToolDefinition {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       const item = parseItemID(parsed.data.message);
 
       if (context === null || item === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readGmailMessage(deps.hosts, context, { id: item.id, format: 'full' });
@@ -110,7 +113,7 @@ export function buildGmailReadTool(deps: GmailDeps): ToolDefinition {
       }
 
       if (read.kind === 'failed') {
-        return { status: 'error', message: `GMAIL_FAILED: ${read.reason}` };
+        return buildFailureOutcome(read.failure);
       }
 
       return readMessageResult(deps, context, toolContext.run, {
@@ -142,7 +145,7 @@ async function readMessageResult(
   }
 
   if (body.kind === 'failed') {
-    return { status: 'error', message: `GMAIL_FAILED: ${body.reason}` };
+    return buildFailureOutcome(body.failure);
   }
 
   const parts =
@@ -214,7 +217,7 @@ async function readMessageResult(
 
 type Body =
   | { readonly kind: 'text'; readonly linked: LinkedText }
-  | { readonly kind: 'failed'; readonly reason: string }
+  | { readonly kind: 'failed'; readonly reason: string; readonly failure: ConnectorFailure }
   | { readonly kind: 'unsupported' }
   | { readonly kind: 'ended' };
 

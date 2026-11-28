@@ -1,5 +1,7 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { readCallContext } from '../gmail/read-call-context';
 import type { GoogleDeps } from '../types';
@@ -38,32 +40,29 @@ export function buildCalendarReadEventTool(deps: GoogleDeps): ToolDefinition {
     },
     declaration: calendarDeclarations.readEvent,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGoogleInput(deps.access, ['event']),
-    run: async (call): Promise<ToolOutcome> => {
+    run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       const ref = parseEventRef(parsed.data.event);
 
       if (context === null || ref === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readCalendarEvent(deps.hosts, context, ref);
 
       if (read.kind !== 'event') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_EVENT: no event has the ID ${parsed.data.event}`
-              : `GOOGLE_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? { status: 'error', message: `UNKNOWN_EVENT: no event has the ID ${parsed.data.event}` }
+          : buildFailureOutcome(read.failure);
       }
 
       const description = read.event.description.slice(0, deps.textBytes);

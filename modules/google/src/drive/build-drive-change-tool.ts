@@ -1,5 +1,7 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureRefusal } from '../call/build-failure-refusal';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { buildCardAttachment } from '../gmail/gmail-card';
 import { parseItemID } from '../gmail/parse-item-id';
@@ -54,19 +56,15 @@ export function buildDriveChangeTool(deps: GoogleDeps): ToolDefinition {
       const item = parseItemID(parsed.data.file);
 
       if (context === null || item === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readDriveFile(deps.hosts, context, item.id);
 
       if (read.kind !== 'file') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_FILE: no file has the ID ${parsed.data.file}`
-              : `GOOGLE_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? { status: 'error', message: `UNKNOWN_FILE: no file has the ID ${parsed.data.file}` }
+          : buildFailureRefusal(read.failure);
       }
 
       const refusal = pickDriveChangeRefusal(read.file);

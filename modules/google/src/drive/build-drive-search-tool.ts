@@ -1,6 +1,10 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import { callGoogle } from '../call/call-google';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { buildItemID } from '../gmail/build-item-id';
 import { fenceOutsideText } from '../gmail/fence-outside-text';
@@ -76,18 +80,19 @@ export function buildDriveSearchTool(deps: GoogleDeps): ToolDefinition {
     },
     declaration: driveDeclarations.search,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGoogleInput(deps.access, ['after']),
-    run: async (call): Promise<ToolOutcome> => {
+    run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
-      const context = await readCallContext(deps.access, call.input);
+      const context = await readCallContext(deps.access, call.input, toolContext.signal);
 
       if (context === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const page = parseItemID(parsed.data.after ?? '')?.id;
@@ -103,11 +108,12 @@ export function buildDriveSearchTool(deps: GoogleDeps): ToolDefinition {
 
       const listed = reply.kind === 'ok' ? driveListSchema.safeParse(reply.body) : null;
 
-      if (reply.kind === 'error' || listed === null || !listed.success) {
-        return {
-          status: 'error',
-          message: `GOOGLE_FAILED: ${reply.kind === 'error' ? reply.reason : 'Google answered with no list of files'}`,
-        };
+      if (reply.kind === 'error') {
+        return buildFailureOutcome(buildGoogleFailure(reply));
+      }
+
+      if (listed === null || !listed.success) {
+        return buildFailureOutcome(buildUnreadableFailure('Google answered with no list of files'));
       }
 
       const files = (listed.data.files ?? []).flatMap((item) => {

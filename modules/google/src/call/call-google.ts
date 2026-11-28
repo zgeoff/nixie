@@ -1,12 +1,16 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import { readRetryAfterMs } from '@heynixie/tools';
+import { parseJSONOrNull } from '@heynixie/wire';
 import type { GoogleHosts } from '../types';
+import { readGoogleError } from './read-google-error';
 
 export type GoogleCall =
   | {
       readonly kind: 'ok';
       readonly status: number;
 
-      // the JSON the call answered with; an empty object for an answer that is no JSON
+      // the JSON the call answered with; an empty object for an empty answer, and null for an
+      // answer that is no JSON or does not parse
       readonly body: unknown;
       readonly bytes: Uint8Array;
       readonly type: string;
@@ -69,7 +73,7 @@ export async function callGoogle(
     return {
       kind: 'ok',
       status: response.status,
-      body: type.includes('json') ? parseJSON(new TextDecoder().decode(bytes)) : {},
+      body: readBody(bytes, type),
       bytes,
       type,
     };
@@ -77,37 +81,21 @@ export async function callGoogle(
 
   const text = new TextDecoder().decode(bytes);
 
+  const error = readGoogleError(text, response.status, 'Google');
+
   return {
     kind: 'error',
     status: response.status,
-    reason: readReason(text, response.status),
-    isRateLimit:
-      response.status === 429 ||
-      (response.status === 403 && /(?:user)?rateLimitExceeded/iu.test(text)),
-    retryAfterMs: readRetryAfterMs(response.headers.get('retry-after')),
+    reason: error.reason,
+    isRateLimit: error.isRateLimit,
+    retryAfterMs: readRetryAfterMs(response.headers, Date.now()),
   };
 }
 
-function parseJSON(text: string): unknown {
-  try {
-    const value: unknown = JSON.parse(text);
-
-    return value;
-  } catch {
+function readBody(bytes: Uint8Array, type: string): unknown {
+  if (bytes.length === 0) {
     return {};
   }
-}
 
-function readReason(text: string, status: number): string {
-  const [first] = [...text.matchAll(/"reason"\s*:\s*"(?<reason>[^"]+)"/gu)].map(
-    (match) => match.groups?.['reason'],
-  );
-
-  return first === undefined ? `Google answered ${String(status)}` : `Google answered ${first}`;
-}
-
-function readRetryAfterMs(header: string | null): number | null {
-  const seconds = header === null ? Number.NaN : Number(header);
-
-  return Number.isFinite(seconds) ? seconds * 1000 : null;
+  return type.includes('json') ? parseJSONOrNull(new TextDecoder().decode(bytes)) : null;
 }

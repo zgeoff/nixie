@@ -42,6 +42,10 @@ export interface ToolContext extends ToolResolveContext {
   // The allow rules that matched the call and list the tool by its exact name, present only when
   // a rule allowed the call and one such rule matched.
   readonly namingRules?: readonly NamingRule[];
+
+  // Set on a call of a tool that has `reachesProvider`. It aborts when the call's time budget ends,
+  // so the tool passes it to each request it sends.
+  readonly signal?: AbortSignal;
 }
 
 export type MemoryWriteVerdict =
@@ -52,11 +56,36 @@ export type MemoryWriteVerdict =
     }
   | { readonly kind: 'gate' };
 
+// The one set of codes a connector's failed call reports. The first 3 come from the provider's
+// answer, and the last 3 from nixie, because the provider never answered.
+export type ConnectorErrorCode =
+  | 'rate_limited'
+  | 'failed'
+  | 'refused'
+  | 'no_answer'
+  | 'fetch_refused'
+  | 'connection_unavailable';
+
+// What a connector tells the endpoint about a call that failed. `detail` is the provider's own
+// message for a provider code, and nixie's reason for `fetch_refused`.
+export interface ConnectorFailure {
+  readonly code: ConnectorErrorCode;
+  readonly status?: number;
+
+  // when the provider names a time to try again
+  readonly retryAfterMs?: number;
+  readonly detail?: string;
+}
+
 export type ToolOutcome =
   | ({ readonly status: 'ok' } & DirectResult)
   | {
       readonly status: 'error';
       readonly message: string;
+
+      // Set by a tool that has `reachesProvider`. The endpoint retries a failure that can clear and
+      // writes the model's message from it, so `message` only stands for a log reader.
+      readonly failure?: ConnectorFailure;
 
       // What the server records and the model never reads. Only the tool puts a value here. A tool
       // never puts text here that a forget of another record must erase.
@@ -142,6 +171,11 @@ export interface ToolDefinition {
   // The tool's errors and the reasons of its failed actions carry what an outside service said, so
   // they reach the model fenced as untrusted text.
   readonly outsideErrors?: true;
+
+  // A direct tool that calls a provider. The endpoint holds each of its calls to one time budget,
+  // retries a failure that can clear, turns a throw into a failure, and reports it as a connector
+  // error code.
+  readonly reachesProvider?: true;
 
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
@@ -235,6 +269,9 @@ export interface Prepared {
 export interface PrepareRefusal {
   readonly status: 'error';
   readonly message: string;
+
+  // A connector failure. The endpoint writes the message the model reads from it.
+  readonly failure?: ConnectorFailure;
 }
 
 export interface PaidTool {
@@ -295,7 +332,13 @@ export type PolicyFactsResolution =
 
 export type InputResolution =
   | { readonly status: 'ok'; readonly input: JSONObject }
-  | { readonly status: 'error'; readonly message: string };
+  | {
+      readonly status: 'error';
+      readonly message: string;
+
+      // A connector failure. The endpoint writes the message the model reads from it.
+      readonly failure?: ConnectorFailure;
+    };
 
 export type DeadlineResolution =
   | { readonly status: 'ok'; readonly deadlineAt: number | null }

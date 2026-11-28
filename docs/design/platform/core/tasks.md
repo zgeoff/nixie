@@ -92,7 +92,7 @@ a step makes checks the generation, so a runner whose lease expired cannot commi
 ## Waits
 
 - **Proposals.** A tool that needs approval commits the proposal in its own transaction, so you see
-  it at once, and returns "pending approval as `<id>`" to the model under
+  it at once, and returns "Waiting for approval as `<shortID>`" to the model under
   [0002](../../../decisions/0002-approvals.md). An approval that arrives before the step commits is
   already in the inbox, so the commit leaves the task `ready`.
 - **Lapses.** A proposal lapses after 72 hours by default, settable per effect, and the lapse record

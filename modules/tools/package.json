@@ -12,11 +12,13 @@
   },
   "dependencies": {
     "@heynixie/budgets": "workspace:*",
+    "@heynixie/clock": "workspace:*",
     "@heynixie/egress": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/proposals": "workspace:*",
+    "@heynixie/retry": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@faker-js/faker": "catalog:",
     "@heynixie/testing": "workspace:*",
-    "@modelcontextprotocol/client": "catalog:"
+    "@modelcontextprotocol/client": "catalog:",
+    "@zgeoff/testing": "catalog:"
   }
 }
