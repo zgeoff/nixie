@@ -32,12 +32,12 @@ every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
    published or failed. A forget record is `erasure.finished`, which ends a memory item, note or
-   moment forget, or the end record of a message forget or a reset of the conversations, each of
-   which deletes its keys before it writes that record. The end records of a message forget and a
-   reset predate `erasure.finished`: each erasable's descriptor in the log module lists them as a
-   record kind and an optional field match, and the server passes them to the backup module, so the
-   module imports no store. nixie's pass withdraws a set that staged before `erasure.finished` and
-   stages a new one, because a stale set holds the deleted keys. The same transaction that writes
+   moment forget, or the end record of a message forget of an earlier release, each of which deletes
+   its keys before it writes that record. The end records of a message forget predate
+   `erasure.finished`: each erasable's descriptor in the log module lists them as a record kind and
+   an optional field match, and the server passes them to the backup module, so the module imports
+   no store. nixie's pass withdraws a set that staged before `erasure.finished` and stages a new
+   one, because a stale set holds the deleted keys. The same transaction that writes
    `erasure.finished` writes `floor.json` into the staging folder, naming the highest set that
    exists then, and the job ships no set at or below it. The job reads `floor.json` again once a
    set's key snapshot is in the key repo, and again once its data snapshot is in the data repo,

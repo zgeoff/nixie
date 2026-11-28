@@ -265,35 +265,39 @@ sequence that names a record outside the list, a record on another thread, and a
 thread, such as a session label. It answers `ACTION_NOT_FINISHED` for the record that queued an
 action that has neither run nor been cancelled, because the action reads its arguments from that
 record. The refusal writes nothing, so the same client action ID succeeds once the action has run or
-a stop cancelled it. It runs as a durable operation in 2 parts, as a
-[memory forget](../memory/store.md#forgetting) does:
+a stop cancelled it. It runs through the [erasure runner](../memory/store.md#forgetting), as a
+memory forget does, and writes only `erasure.started` and `erasure.finished` of the kind `record`:
 
-1. In the transaction that keeps the action's result, the API commits a `record.forget_started`
-   record on the record's thread, which names the record by its sequence, and a
-   `memory.evidence_purge_started` record that lists the memory items to purge, when any item quotes
-   the record. A second forget of the same record answers with the first forget's time and commits
-   no second start.
-2. The cleanup deletes the record's key and checkpoints the key store, runs the conversation's
+1. In the transaction that keeps the action's result, the API commits `erasure.started` on the
+   record's thread. It names the record by its sequence, and holds the record's key, the keys of the
+   `task.start` calls that hold a brief, the call sequences whose code sandboxes hold the text, and
+   the purge set of the memory items that quote the record. A second forget of the same record
+   answers with the first forget's time and commits no second start.
+2. The runner deletes the keys and checkpoints the key store, runs the conversation's
    [session cleanup](../memory/context.md#forgetting-and-the-live-session), which also purges the
    [evidence](../memory/store.md#the-evidence-purge) of each listed item, and commits
-   `record.forgotten`.
+   `erasure.finished`.
+
+A record that holds images forgets each image first, as a child erasure of the kind `image`, so the
+image's bytes and its row go before the record's key does. The runner revokes any grant before it
+destroys a code sandbox, and destroys every sandbox before any key goes.
 
 The key goes before the session cleanup, so the session the next turn rebuilds reads the record as a
-gap. Every step of the cleanup is safe to run twice. The API listens before the conversation starts,
-so a forget that arrives first stops after the key deletion, as does one that a crash cuts short.
-The server's start hands the API the session cleanup and then finishes every such forget, before any
-runner claims work, so no turn resumes a session that holds the text. A retry of the action runs the
-cleanup again too, so a cleanup that failed finishes on the retry.
+gap. Every step is safe to run twice. A forget that a crash cuts short stays open, and the server's
+start finishes it before any runner claims work, so no turn resumes a session that holds the text. A
+retry of the action finishes it too. A forget that an earlier release began, with a
+`record.forget_started` and no `record.forgotten`, gets an `erasure.started` at that start and
+finishes the same way.
 
 The answer carries `forgottenAt` and `backup`, the key backup state that a
 [memory forget](../memory/store.md#forgetting) reports. The API reads it fresh on every answer, a
 replay of the client action included:
 
-- `deleting`, while no `record.forgotten` names the record. The state reads pending, or off when
+- `deleting`, while no `erasure.finished` names the record. The state reads pending, or off when
   nixie stages no backup.
 - `forgotten` with no sequence, when neither the record nor a brief's start call held a key. No
   backup set can hold a key that never existed, so the state reads complete.
-- `forgotten` at the sequence of `record.forgotten`, otherwise. The backup job's report for that
+- `forgotten` at the sequence of `erasure.finished`, otherwise. The backup job's report for that
   sequence gives the state.
 
 ### The log.forget tool

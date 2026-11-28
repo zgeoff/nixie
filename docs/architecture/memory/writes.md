@@ -119,12 +119,13 @@ records the event IDs of the messages that backed it, and a quote found only in 
 becomes a proposal with the reason `forgotten_evidence`.
 
 A record forget is a separate operation: it removes one message, or another record, from the event
-log for good, and first commits a `record.forget_started` record that holds the sequence of the
-record it removes ([forgetting a record](../channels/api.md#forgetting-a-record)). From then on, a
-write that cites that message fails with `QuotedRecordForgettingError`, whether the gate found the
-message for a quote or an intent quote, or the write passed its event ID. The write transaction
-checks again, so a write that found its quote before the forget began fails too. nixie tells the
-model, in the tool error, to write the fact again with no quote and no event ID, as a proposal.
+log for good, and first commits an `erasure.started` record of the kind `record` that holds the
+sequence of the record it removes ([forgetting a record](../channels/api.md#forgetting-a-record)).
+From then on, a write that cites that message fails with `QuotedRecordForgettingError`, whether the
+gate found the message for a quote or an intent quote, or the write passed its event ID. The write
+transaction checks again, so a write that found its quote before the forget began fails too. nixie
+tells the model, in the tool error, to write the fact again with no quote and no event ID, as a
+proposal.
 
 ### The token check
 
