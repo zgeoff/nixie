@@ -1,13 +1,11 @@
-import type { ConnectorAction } from '../connector/types';
 import type { AttentionStatus } from './types';
 
-// The tools that calls through a connection can no longer reach. A connection that needs consent or
-// is disconnected stops every call. A failing or expiring one still serves its calls.
+// The tools that calls through a connection can no longer reach, of those its granted scopes cover.
+// A connection that needs consent or is disconnected stops every call. A failing or expiring one
+// still serves its calls.
 export function collectRemovedToolNames(
   status: AttentionStatus,
-  actions: readonly ConnectorAction[],
+  coveredTools: readonly string[],
 ): string[] {
-  return status === 'needs_consent' || status === 'disconnected'
-    ? actions.map((action) => action.tool.name)
-    : [];
+  return status === 'needs_consent' || status === 'disconnected' ? [...coveredTools] : [];
 }

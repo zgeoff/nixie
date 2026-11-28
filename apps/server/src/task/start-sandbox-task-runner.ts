@@ -5,7 +5,7 @@ import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
 import { joinListedSkills } from '@heynixie/skills';
 import { makeInStepActions } from '../action/make-in-step-actions';
-import { readJobConnectionStatus } from '../connection/read-job-connection-status';
+import { runJobConnectionStatus } from '../connection/run-job-connection-status';
 import type { CallsPart } from '../part/start-calls-part';
 import { toImageNames } from '../sandbox/to-image-names';
 import { readSkillCatalog } from '../skill/read-skill-catalog';
@@ -40,7 +40,7 @@ export async function startSandboxTaskRunner(
       ? {}
       : {
           readConnectionStatus: (pinned, timeZone) =>
-            readJobConnectionStatus(connections, pinned, timeZone),
+            runJobConnectionStatus(connections, pinned, timeZone),
         }),
     messaging: buildTaskMessaging(parts.config),
     turnInputs: parts.turnInputs,

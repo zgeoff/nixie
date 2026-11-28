@@ -7,6 +7,7 @@ import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
 import { eraseConnectionMailbox, readConnectionWakeRecords } from '@heynixie/triggers';
 import type { ServerParts } from '../types';
+import { pickWatchIntervalMs } from './pick-watch-interval-ms';
 import type { GoogleToolsPart } from './start-google-tools-part';
 
 const sweepIntervalMs = 60 * 60 * 1000;
@@ -26,6 +27,7 @@ export async function startConnectionsPart(
   const definitions = parts.context.definitions;
   const now = () => parts.context.clock.now();
   const store = parts.credentials.store;
+  const breakNoticeMs = parts.config.google?.break_notice ?? defaultBreakNoticeMs;
 
   const connections = startConnections({
     log,
@@ -34,7 +36,7 @@ export async function startConnectionsPart(
     backend,
     erasure,
     now,
-    breakNoticeMs: parts.config.google?.break_notice ?? defaultBreakNoticeMs,
+    breakNoticeMs,
     connector: buildGoogleConnector(createGoogleProvider(google.hosts), [...google.actions]),
     eraseDependents: (connectionID) =>
       eraseConnectionMailbox(
@@ -84,7 +86,7 @@ export async function startConnectionsPart(
 
   const watch = startSweep({
     clock: parts.context.clock,
-    intervalMs: sweepIntervalMs,
+    intervalMs: pickWatchIntervalMs(breakNoticeMs),
     run: async () => {
       await connections.runStatusWatch();
     },

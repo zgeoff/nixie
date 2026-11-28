@@ -14,11 +14,9 @@ export interface ChatToolOptions {
 
   // what task.define pins a definition's connector tools to; without it, a definition pins nothing
   readonly connections?: {
-    // the short IDs of the connections the conversation may use now
-    readonly readUsable: () => Promise<readonly string[]>;
-
-    // the names of the tools that need a connection
-    readonly connectorTools: readonly string[];
+    // for each tool that needs a connection, by name, the short IDs of the connections that hold
+    // its scopes now
+    readonly readUsable: () => Promise<Readonly<Record<string, readonly string[]>>>;
   };
 }
 

@@ -2,13 +2,16 @@ import type { StatusEvent } from '@heynixie/connections';
 import { formatEventTime } from '@heynixie/sessions';
 import { connectionStatusText } from './connection-status-text';
 import { fillStatusText } from './fill-status-text';
+import { renderConnectionAccount } from './render-connection-account';
+import { renderLastSuccess } from './render-last-success';
+import { renderRemovedTools } from './render-removed-tools';
 
 // One line of the events block about a connection.
 export function renderConnectionEvent(event: StatusEvent, timeZone: string): string {
   const named = {
     connector: event.who.connector,
     label: event.who.label,
-    account: event.who.account,
+    account: renderConnectionAccount(event.who.account),
     at: formatEventTime(event.atMs, timeZone),
   };
 
@@ -17,6 +20,9 @@ export function renderConnectionEvent(event: StatusEvent, timeZone: string): str
       ...named,
       status: connectionStatusText.statusNames[event.status],
       reason: event.reason === null ? '' : ` (${event.reason})`,
+      lastSuccess: renderLastSuccess(event.lastSuccessAtMs, timeZone),
+      removed: renderRemovedTools(event.removedTools),
+      place: connectionStatusText.reconnectPlace,
     });
   }
 
@@ -24,6 +30,7 @@ export function renderConnectionEvent(event: StatusEvent, timeZone: string): str
     return fillStatusText(connectionStatusText.returnedLine, {
       ...named,
       failed: renderFailedCalls(event.failedCalls),
+      runs: renderRunsWithout(event.skippedRuns),
     });
   }
 
@@ -41,4 +48,14 @@ function renderFailedCalls(count: number): string {
   return count === 1
     ? connectionStatusText.oneCallFailed
     : fillStatusText(connectionStatusText.manyCallsFailed, { count: String(count) });
+}
+
+function renderRunsWithout(count: number): string {
+  if (count === 0) {
+    return '';
+  }
+
+  return count === 1
+    ? connectionStatusText.oneRunWithout
+    : fillStatusText(connectionStatusText.manyRunsWithout, { count: String(count) });
 }

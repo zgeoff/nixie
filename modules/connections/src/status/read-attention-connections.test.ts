@@ -91,7 +91,7 @@ test('it lists a connection whose grant ends within 3 days as expiring, from the
 
   const endsAtMs = ctx.clock.now() + 2 * 24 * 60 * 60 * 1000;
 
-  await seedGrantEnd(ctx, row.connection_id, endsAtMs);
+  await seedGrantEnd(ctx, row, 'code-work', 2 * 24 * 60 * 60 * 1000);
 
   const [listed] = await ctx.connections.readAttention();
 
@@ -106,9 +106,11 @@ test('it lists a connection past the end of its grant as needing consent from th
   const ctx = await setupTest();
   const row = await ctx.connectAccount('code-work');
 
-  const endsAtMs = ctx.clock.now() - 60_000;
+  const endsAtMs = ctx.clock.now() + 60_000;
 
-  await seedGrantEnd(ctx, row.connection_id, endsAtMs);
+  await seedGrantEnd(ctx, row, 'code-work', 60_000);
+
+  ctx.clock.advance(120_000);
 
   const [listed] = await ctx.connections.readAttention();
 
@@ -139,4 +141,52 @@ test('it lists only the pinned connections when it is given a scope', async () =
   const attention = await ctx.connections.readAttention(new Set([home.short_id]));
 
   expect(attention.map((entry) => entry.connection)).toStrictEqual([home.short_id]);
+});
+
+test('it lists a connection whose account holds no address, under the connector as its label', async () => {
+  const ctx = await setupTest();
+
+  ctx.google.accounts.set('code-bare', { sub: 'sub-bare', scopes: [], hasRefreshToken: true });
+
+  const row = await ctx.connectAccount('code-bare');
+
+  await seedConnectionStatus(ctx, row.connection_id, { status: 'failing', reason: 'no_answer' });
+
+  const attention = await ctx.connections.readAttention();
+
+  expect(attention.map((entry) => [entry.connection, entry.label, entry.account])).toStrictEqual([
+    [row.short_id, 'google', ''],
+  ]);
+});
+
+test('it names as removed only the tools that its granted scopes cover', async () => {
+  const actions: ConnectorAction[] = [
+    { name: 'stub.read_mail', scopes: ['gmail.modify'] },
+    { name: 'stub.read_file', scopes: ['drive.file'] },
+  ].map((spec) => ({
+    tool: buildMockToolDefinition({ name: spec.name }),
+    scopes: spec.scopes,
+    reconcile: { kind: 'none' },
+  }));
+
+  const ctx = await startGoogleConnections({ actions });
+
+  ctx.google.apiAnswers.set('/drive/v3/files', {
+    status: 403,
+    body: '{"error":{"errors":[{"reason":"accessNotConfigured"}]}}',
+  });
+
+  const connected = await ctx.connect('code-work');
+
+  invariant(connected.kind === 'finished', 'the consent finishes');
+
+  const [row] = await ctx.readRows();
+
+  invariant(row, 'the connection is stored');
+
+  await seedConnectionStatus(ctx, row.connection_id, { status: 'needs_consent' });
+
+  const [listed] = await ctx.connections.readAttention();
+
+  expect(listed?.removedTools).toStrictEqual(['stub.read_mail']);
 });

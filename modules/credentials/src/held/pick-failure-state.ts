@@ -9,7 +9,8 @@ const failuresBeforeFailing = 3;
 const retryBackoff = { firstMs: 30_000, maxMs: 300_000 } as const;
 
 // The state after a refresh that gave no token. A refusal for good needs the owner. Three failures
-// in a row mark the credential failing, and every failure pushes the next timed refresh back.
+// in a row mark the credential failing, and every failure pushes the next timed refresh back. A
+// failure of a credential that already fails keeps the time its status began.
 export function pickFailureState(
   previous: HeldState,
   kind: RefreshFailureKind,
@@ -33,7 +34,7 @@ export function pickFailureState(
       ...previous,
       status: 'failing',
       reason: kind,
-      sinceMs: nowMs,
+      sinceMs: previous.status === 'failing' ? previous.sinceMs : nowMs,
       failures,
       retryAtMs,
     };

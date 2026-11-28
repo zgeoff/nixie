@@ -44,6 +44,9 @@ export async function readRowContext(
 
   const values = opened.get(row.connection_id);
 
+  // A tool call holds one context, and notes one failure however many requests it sends.
+  let hasNoted = false;
+
   // A call registers the binding itself, so a context a tool holds across a consent that renewed the
   // connection reads the counter of its own time.
   const readResponse: ConnectionContext['fetch'] = async (input, init) => {
@@ -65,14 +68,22 @@ export async function readRowContext(
     // before the request leaves.
     const wasBroken = await probeConnectionBroken(context, row.connection_id);
 
+    const noteOnce = async (): Promise<void> => {
+      if (wasBroken && !hasNoted) {
+        hasNoted = true;
+
+        await writeCallFailed(context, row.connection_id);
+      }
+    };
+
     const response = await send(input, init).catch(async (error: unknown) => {
-      await noteFailure(context, row.connection_id, wasBroken);
+      await noteOnce();
 
       throw error;
     });
 
     if (!response.ok) {
-      await noteFailure(context, row.connection_id, wasBroken);
+      await noteOnce();
     }
 
     return response;
@@ -84,14 +95,4 @@ export async function readRowContext(
     account: values?.account?.email ?? '',
     fetch: readResponse,
   };
-}
-
-async function noteFailure(
-  context: ServiceContext,
-  connectionID: string,
-  wasBroken: boolean,
-): Promise<void> {
-  if (wasBroken) {
-    await writeCallFailed(context, connectionID);
-  }
 }

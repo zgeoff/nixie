@@ -80,6 +80,15 @@ test("it gives a worker the caller's pins for the tools it holds, and no others"
   });
 });
 
+test('it gives a worker the pins that a definition keyed by the SDK tool name', () => {
+  const planned = planWorkerRun(setupTest({}, null, { mcp__nixie__notes_read: ['k3x9m2p7qa'] }));
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { caller: { connectionPins: { notes_read: ['k3x9m2p7qa'] } } },
+  });
+});
+
 test('it gives a worker of a caller with no pins none', () => {
   const planned = planWorkerRun(setupTest());
 

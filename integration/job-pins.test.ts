@@ -1,11 +1,15 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { seedConnectionStatus, startGoogleConnections } from '@heynixie/connections/test-utils';
 import { buildTaskDefineTool, readDefinitionVersion } from '@heynixie/definitions';
-import { startTestDefinitions } from '@heynixie/definitions/test-utils';
+import { buildTestDefineInput, startTestDefinitions } from '@heynixie/definitions/test-utils';
+import { startGmailTools } from '@heynixie/google/test-utils';
 import { parseJSONObject, readRecords } from '@heynixie/log';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
-import { createConversationTask } from '@heynixie/tasks';
+import { createConversationTask, planSandboxStart } from '@heynixie/tasks';
+import { buildMockTaskStartBounds } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import type { ConnectionChoice, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import {
   buildMockToolCall,
@@ -17,6 +21,14 @@ import { buildScheduleSource, deliverTriggerBatch } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
+interface DefineChoice extends Omit<
+  NonNullable<Parameters<typeof buildTestDefineInput>[0]>,
+  'connections'
+> {
+  // the short IDs that task.define takes, which it turns into pins
+  readonly connections?: readonly string[];
+}
+
 async function setupTest() {
   const ctx = await startTestDefinitions();
 
@@ -24,17 +36,46 @@ async function setupTest() {
 
   const zone = { readZone: () => Promise.resolve('UTC') };
 
+  const gmail = await startGmailTools();
+
+  gmail.site.addConnection('p8d2v6n4rc', { isPolled: false });
+
+  // The accounts that the job's endpoint and the connections of the conversation see, as the server
+  // reads them: a connection added or forgotten here is added or forgotten on the fake account too.
+  const accounts: ConnectionChoice[] = [
+    { connection: 'k3x9m2p7qa', label: 'Work', account: 'work@example.test' },
+    { connection: 'p8d2v6n4rc', label: 'Home', account: 'home@example.test' },
+  ];
+
+  const readUsable = () =>
+    Promise.resolve({
+      'time.now': accounts.map((entry) => entry.connection),
+      'gmail.search': accounts.map((entry) => entry.connection),
+    });
+
   const define = buildTaskDefineTool({
     readDefinitions: () => ctx.context,
-    connections: {
-      readUsable: () => Promise.resolve(['k3x9m2p7qa', 'p8d2v6n4rc']),
-      connectorTools: ['time.now'],
-    },
+    connections: { readUsable },
     ...zone,
   });
 
-  const registry = buildToolRegistry(
-    ['tasks.list', 'task.message', 'task.report', 'time.now'].map((name) =>
+  const standIn: ToolDefinition = buildMockToolDefinition({
+    name: 'time.now',
+    execution: 'direct',
+    input: { properties: { connection: { type: 'string' } } },
+    declaration: {
+      effects: ['read'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: { text: 'owner_data' },
+    },
+  });
+
+  const search = gmail.findAction('gmail.search').tool;
+
+  const registry = buildToolRegistry([
+    ...['tasks.list', 'task.message', 'task.report'].map((name) =>
       buildMockToolDefinition({
         name,
         execution: 'direct',
@@ -47,7 +88,9 @@ async function setupTest() {
         },
       }),
     ),
-  );
+    standIn,
+    search,
+  ]);
 
   const endpoint = await startToolEndpoint({
     logger: () => {},
@@ -57,7 +100,7 @@ async function setupTest() {
       (tool) => registry.findTool(tool)?.definition.declaration ?? null,
     ),
     log: ctx.log,
-    readLiveConnections: () => Promise.resolve(new Set(['p8d2v6n4rc'])),
+    readLiveConnections: () => Promise.resolve([...accounts]),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     queue: {
       enqueue: () => Promise.resolve({ status: 'queued', actionID: 'action-1' }),
@@ -71,24 +114,38 @@ async function setupTest() {
 
   return {
     ...ctx,
+    accounts,
     startConversation: () => createConversationTask(ctx.tasks),
-    runDefine: (input: object) => {
+
+    // The conversation connects a third account while it waits for an approval, or after the job
+    // was defined.
+    addAccount: (connection: string) => {
+      accounts.push({ connection, label: 'New', account: 'new@example.test' });
+      gmail.site.addConnection(connection, { isPolled: false });
+    },
+    forgetAccount: (connection: string) => {
+      accounts.splice(
+        accounts.findIndex((entry) => entry.connection === connection),
+        1,
+      );
+
+      gmail.site.forget(`${connection}-id`);
+    },
+
+    // what the model passes task.define, after the endpoint resolved it for the decision point
+    resolveDefine: (input: DefineChoice) => {
+      const given = { ...buildTestDefineInput({ tools: ['time.now'] }), ...input };
+
+      return define.resolveInput?.(parseJSONObject(JSON.stringify(given)), {
+        run: buildMockToolContext().run,
+      });
+    },
+    runDefine: (input: DefineChoice) => {
+      const given = { ...buildTestDefineInput({ tools: ['time.now'] }), ...input };
+
       const call = buildMockToolCall({
         tool: 'task.define',
-        input: parseJSONObject(
-          JSON.stringify({
-            name: 'Check the tide times',
-            brief: 'Read the tide table and report the next high tide.',
-            trigger: {
-              schedule: {
-                repeat: { frequency: 'weekly', byDay: ['fri'], at: ['08:00'] },
-                zone: 'owner',
-              },
-            },
-            tools: ['time.now'],
-            ...input,
-          }),
-        ),
+        input: parseJSONObject(JSON.stringify(given)),
       });
 
       return define.run(call, buildMockToolContext());
@@ -103,12 +160,13 @@ async function setupTest() {
 
     // The sandbox runner starts a definition's task run endpoint on the version's tools and pins,
     // and the guest offers the model what the endpoint lists.
-    readRunTools: async (
+    withRun: async <Result>(
       tools: readonly string[],
       connectionPins: Readonly<Record<string, readonly string[]>>,
+      use: (client: Parameters<Parameters<typeof withTestToolClient>[1]>[0]) => Promise<Result>,
     ) => {
       const run = await endpoint.startRun({
-        runID: 'run-fire',
+        runID: `run-${String(crypto.randomUUID())}`,
         toolUseMetaKey: null,
         thread: 'run-fire',
         logThread: 'run-fire',
@@ -119,11 +177,7 @@ async function setupTest() {
 
       const step = run.startStep('step-fire');
 
-      return withTestToolClient({ target: run.target, token: step.token }, async (client) => {
-        const listed = await client.listTools();
-
-        return listed.tools.map((tool) => tool.name);
-      });
+      return withTestToolClient({ target: run.target, token: step.token }, use);
     },
     runFireAt: async (instant: string) => {
       const controller = new AbortController();
@@ -174,17 +228,40 @@ test('it pins each connector tool of a definition from chat to every connection 
   expect(version?.connections).toStrictEqual({ 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] });
 });
 
-test('it pins a definition from chat to the connections the call names, and never to a later one', async () => {
+test('it pins a definition from chat to the connections the call named, and never to a later one', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
   await ctx.startConversation();
   await ctx.runDefine({ connections: ['k3x9m2p7qa'] });
+
+  ctx.addAccount('z1z1z1z1z1');
+
   await ctx.runFireAt('2027-03-12T08:01:00Z');
 
   const version = await ctx.readFiredVersion();
 
   expect(version?.connections).toStrictEqual({ 'time.now': ['k3x9m2p7qa'] });
+});
+
+test('it never pins a job to an account that connects while the approval card is open', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+  await ctx.startConversation();
+
+  const resolved = await ctx.resolveDefine({});
+
+  ctx.addAccount('z1z1z1z1z1');
+
+  const approved = resolved?.status === 'ok' ? resolved.input : {};
+
+  await ctx.runDefine(approved);
+  await ctx.runFireAt('2027-03-12T08:01:00Z');
+
+  const version = await ctx.readFiredVersion();
+
+  expect(version?.connections).toStrictEqual({ 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] });
 });
 
 test('it refuses a definition from chat that names a connection the conversation may not use, and stores none', async () => {
@@ -212,7 +289,48 @@ test('it refuses a definition from chat that names a connection the conversation
   ]);
 });
 
-test('it lists a pinned task run no connector tool once every connection its version pins is forgotten', async () => {
+test('it lists a pinned job run the pinned connections of its tool, with their labels, and never an account added later', async () => {
+  const ctx = await setupTest();
+
+  ctx.addAccount('z1z1z1z1z1');
+
+  const listed = await ctx.withRun(
+    ['time.now'],
+    { 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] },
+    async (client) => {
+      const found = await client.listTools();
+
+      return found.tools[0]?.inputSchema.properties?.['connection'];
+    },
+  );
+
+  expect(listed).toStrictEqual({
+    oneOf: [
+      { const: 'k3x9m2p7qa', description: 'Work: work@example.test' },
+      { const: 'p8d2v6n4rc', description: 'Home: home@example.test' },
+    ],
+  });
+});
+
+test('it lists a pinned job run its tool without the connection argument once only one pinned connection lives', async () => {
+  const ctx = await setupTest();
+
+  ctx.forgetAccount('p8d2v6n4rc');
+
+  const listed = await ctx.withRun(
+    ['time.now'],
+    { 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] },
+    async (client) => {
+      const found = await client.listTools();
+
+      return Object.keys(found.tools[0]?.inputSchema.properties ?? {});
+    },
+  );
+
+  expect(listed).not.toContain('connection');
+});
+
+test('it lists a pinned job run no connector tool once every connection its version pins is forgotten', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
@@ -224,24 +342,145 @@ test('it lists a pinned task run no connector tool once every connection its ver
 
   invariant(version, 'the fired version is stored');
 
-  const offered = await ctx.readRunTools(version.tools, version.connections);
+  ctx.forgetAccount('k3x9m2p7qa');
+
+  const offered = await ctx.withRun(version.tools, version.connections, async (client) => {
+    const found = await client.listTools();
+
+    return found.tools.map((tool) => tool.name);
+  });
 
   expect(offered).toStrictEqual(['tasks.list', 'task.message', 'task.report']);
 });
 
-test('it lists a pinned task run its connector tool while a connection its version pins lives', async () => {
+test('it fails a Google call of a pinned job run to a connection outside its pins, even for an account added after the job was defined', async () => {
+  const ctx = await setupTest();
+
+  ctx.addAccount('z1z1z1z1z1');
+
+  const calls = await ctx.withRun(
+    ['gmail.search'],
+    { 'gmail.search': ['k3x9m2p7qa', 'p8d2v6n4rc'] },
+    async (client) => {
+      const outside = await client.callTool({
+        name: 'gmail.search',
+        arguments: { query: 'tide', connection: 'z1z1z1z1z1' },
+      });
+
+      const inside = await client.callTool({
+        name: 'gmail.search',
+        arguments: { query: 'tide', connection: 'p8d2v6n4rc' },
+      });
+
+      return [outside, inside] as const;
+    },
+  );
+
+  const [outside, inside] = calls;
+
+  expect([outside.isError, JSON.stringify(outside.content), inside.isError === true]).toStrictEqual(
+    [true, expect.stringContaining('NOT_PINNED'), false],
+  );
+});
+
+test('it keeps the pins of a job run that began before its definition was edited to a wider set', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
   await ctx.startConversation();
-  await ctx.runDefine({ connections: ['k3x9m2p7qa', 'p8d2v6n4rc'] });
+  await ctx.runDefine({ connections: ['k3x9m2p7qa'], tools: ['time.now'] });
   await ctx.runFireAt('2027-03-12T08:01:00Z');
 
-  const version = await ctx.readFiredVersion();
+  const first = await ctx.readFiredVersion();
 
-  invariant(version, 'the fired version is stored');
+  invariant(first, 'the fired version is stored');
 
-  const offered = await ctx.readRunTools(version.tools, version.connections);
+  ctx.addAccount('z1z1z1z1z1');
 
-  expect(offered).toStrictEqual(['tasks.list', 'task.message', 'task.report', 'time.now']);
+  await ctx.runDefine({
+    definitionID: 'water-the-tomatoes',
+    connections: ['k3x9m2p7qa', 'z1z1z1z1z1'],
+  });
+
+  const outside = await ctx.withRun(
+    ['gmail.search'],
+    { 'gmail.search': first.connections['time.now'] ?? [] },
+    (client) =>
+      client.callTool({
+        name: 'gmail.search',
+        arguments: { query: 'tide', connection: 'z1z1z1z1z1' },
+      }),
+  );
+
+  expect(outside.isError).toBe(true);
+});
+
+test('it refuses a child task of a pinned job an account outside the pins of the job', async () => {
+  const ctx = await setupTest();
+
+  const plan = planSandboxStart(
+    { name: 'Tide check', brief: 'Check the tides.', tools: ['gmail.search'] },
+    {
+      tools: ['tasks.list', 'task.message', 'time.now', 'gmail.search'],
+      memory: 'none',
+      persona: 'default',
+      log: 'own',
+      connectionPins: { 'gmail.search': ['k3x9m2p7qa'] },
+    },
+    buildMockTaskStartBounds(),
+  );
+
+  invariant(plan.status === 'planned', 'the start is planned');
+
+  const options = plan.options;
+
+  const outside = await ctx.withRun(options.tools, options.connectionPins ?? {}, (client) =>
+    client.callTool({
+      name: 'gmail.search',
+      arguments: { query: 'tide', connection: 'p8d2v6n4rc' },
+    }),
+  );
+
+  expect([outside.isError, JSON.stringify(outside.content)]).toStrictEqual([
+    true,
+    expect.stringContaining('NOT_PINNED'),
+  ]);
+});
+
+test('it lists the same tools, byte for byte, whatever status a pinned connection holds', async () => {
+  const ctx = await setupTest();
+
+  const connected = await startGoogleConnections({
+    sharedLog: { log: ctx.log, dataDir: ctx.writer.dataDir },
+  });
+
+  const first = await connected.connect('code-work');
+
+  invariant(first.kind === 'finished', 'the consent finishes');
+
+  const [row] = await connected.readRows();
+
+  invariant(row, 'the connection is stored');
+
+  const readList = () =>
+    ctx.withRun(['time.now'], { 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] }, async (client) => {
+      const listed = await client.listTools();
+
+      return JSON.stringify(listed);
+    });
+
+  const working = await readList();
+
+  await seedConnectionStatus(connected, row.connection_id, { status: 'needs_consent' });
+
+  const consent = await readList();
+
+  await seedConnectionStatus(connected, row.connection_id, {
+    status: 'failing',
+    reason: 'no_answer',
+  });
+
+  const failing = await readList();
+
+  expect([consent, failing]).toStrictEqual([working, working]);
 });

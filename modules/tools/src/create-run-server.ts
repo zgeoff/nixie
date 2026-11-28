@@ -1,9 +1,9 @@
-import type { JSONObject } from '@heynixie/log';
 import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
 import { Server } from '@modelcontextprotocol/server';
 import type { ToolCallOptions } from './call-record/tool-call-options';
+import { buildListedInput } from './connection/build-listed-input';
+import { collectReachableConnections } from './connection/collect-reachable-connections';
 import { collectReachableTools } from './connection/collect-reachable-tools';
-import { findSoleConnection } from './connection/find-sole-connection';
 import { findToolPins } from './connection/find-tool-pins';
 import { runToolCall } from './run-tool-call';
 import type { GuestToolRun } from './types';
@@ -28,11 +28,14 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
 
     const connections = liveConnections ?? null;
 
+    const liveIDs =
+      connections === null ? null : new Set(connections.map((choice) => choice.connection));
+
     return {
       names: collectReachableTools(
         run.tools.filter((name) => !heldBack.has(name)),
         run.connectionPins,
-        connections,
+        liveIDs,
       ),
       connections,
     };
@@ -48,18 +51,21 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
         return [];
       }
 
-      const sole = findSoleConnection(findToolPins(run.connectionPins, name), live.connections);
+      const pinned = findToolPins(run.connectionPins, name);
+
+      const input =
+        pinned === undefined || live.connections === null
+          ? registered.definition.input
+          : buildListedInput(
+              registered.definition.input,
+              collectReachableConnections(pinned, live.connections),
+            );
 
       return [
         {
           name,
           description: registered.definition.description,
-          inputSchema: {
-            ...(sole === null
-              ? registered.definition.input
-              : omitConnectionArgument(registered.definition.input)),
-            type: 'object' as const,
-          },
+          inputSchema: { ...input, type: 'object' as const },
         },
       ];
     });
@@ -85,27 +91,6 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
   });
 
   return server;
-}
-
-// A tool pinned to one connection lists no connection argument, because the call binds to that one.
-function omitConnectionArgument(input: JSONObject): JSONObject {
-  const { properties, required, ...rest } = input;
-
-  if (typeof properties !== 'object' || properties === null || Array.isArray(properties)) {
-    return input;
-  }
-
-  const kept = Object.fromEntries(
-    Object.entries(properties).filter(([name]) => name !== 'connection'),
-  );
-
-  return {
-    ...rest,
-    properties: kept,
-    ...(Array.isArray(required)
-      ? { required: required.filter((name) => name !== 'connection') }
-      : {}),
-  };
 }
 
 // The guest sends the model's tool-use ID on every tools/call, so the call's record joins its turn.

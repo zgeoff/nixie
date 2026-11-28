@@ -16,14 +16,24 @@ import { buildTaskDefineTool } from './build-task-define-tool';
 async function setupTest() {
   const ctx = await startTestDefinitions();
 
+  const usable: { now: Record<string, string[]> } = { now: { 'time.now': ['k3x9m2p7qa'] } };
+
   const tool = buildTaskDefineTool({
     readDefinitions: () => ctx.context,
     readZone: () => Promise.resolve('Europe/Paris'),
+    connections: {
+      readUsable: () => Promise.resolve(usable.now),
+    },
   });
 
   return {
     ...ctx,
+    usable,
     tool,
+    resolve: (input: object) =>
+      tool.resolveInput?.(parseJSONObject(JSON.stringify(input)), {
+        run: buildMockToolContext().run,
+      }),
     define: (input: object) => {
       const call = buildMockToolCall({
         tool: 'task.define',
@@ -355,4 +365,65 @@ test('it returns an error for an input that breaks the schema', async () => {
   const outcome = await ctx.define({ name: 'Water the tomatoes' });
 
   expect(outcome.status).toBe('error');
+});
+
+test('it resolves the omitted connections before approval, so an account that connects later never joins the job', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const input = buildTestDefineInput({ tools: ['time.now'] });
+
+  const resolved = await ctx.resolve(input);
+
+  ctx.usable.now = { 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] };
+
+  const approved = resolved?.status === 'ok' ? resolved.input : {};
+
+  await ctx.define(approved);
+
+  const hashes = await ctx.readHashes();
+  const version = await readDefinitionVersion(ctx.writer.db, hashes[0] ?? '');
+
+  expect([resolved, version?.connections]).toStrictEqual([
+    {
+      status: 'ok',
+      input: parseJSONObject(JSON.stringify({ ...input, connections: ['k3x9m2p7qa'] })),
+    },
+    { 'time.now': ['k3x9m2p7qa'] },
+  ]);
+});
+
+test('it pins a tool to no account of a definition that was approved when none was connected', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  ctx.usable.now = { 'time.now': [] };
+
+  const resolved = await ctx.resolve(buildTestDefineInput({ tools: ['time.now'] }));
+
+  ctx.usable.now = { 'time.now': ['k3x9m2p7qa'] };
+
+  const approved = resolved?.status === 'ok' ? resolved.input : {};
+
+  await ctx.define(approved);
+
+  const hashes = await ctx.readHashes();
+  const version = await readDefinitionVersion(ctx.writer.db, hashes[0] ?? '');
+
+  expect(version?.connections).toStrictEqual({ 'time.now': [] });
+});
+
+test('it leaves the input of a call that lists no connector tool as it is', async () => {
+  const ctx = await setupTest();
+
+  const input = buildTestDefineInput({ tools: ['tasks.list'] });
+
+  const resolved = await ctx.resolve(input);
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    input: parseJSONObject(JSON.stringify(input)),
+  });
 });

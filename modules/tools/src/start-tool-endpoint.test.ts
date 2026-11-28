@@ -33,7 +33,14 @@ async function setupTest(config: SetupConfig) {
     },
     socketDir: join(testLog.dataDir, 'tools'),
     readHeldBackTools: () => Promise.resolve(heldBack.names),
-    readLiveConnections: () => Promise.resolve(new Set(config.liveConnections)),
+    readLiveConnections: () =>
+      Promise.resolve(
+        (config.liveConnections ?? []).map((connection, index) => ({
+          connection,
+          label: `Label ${index + 1}`,
+          account: `account${index + 1}@example.org`,
+        })),
+      ),
     registry,
     decide: readStarterDecisionPoint(
       (tool) => registry.findTool(tool)?.definition.declaration ?? null,
@@ -224,7 +231,7 @@ test('it lists a tool pinned to one live connection without the connection argum
   expect(Object.keys(listed.tools[0]?.inputSchema.properties ?? {})).toStrictEqual(['query']);
 });
 
-test('it keeps the connection argument of a tool pinned to two live connections', async () => {
+test('it lists the pinned connections with their labels and requires the argument of a tool pinned to two', async () => {
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
@@ -248,10 +255,17 @@ test('it keeps the connection argument of a tool pinned to two live connections'
   const client = await startRunClient(run);
   const listed = await client.listTools();
 
-  expect(Object.keys(listed.tools[0]?.inputSchema.properties ?? {})).toStrictEqual([
-    'query',
-    'connection',
-  ]);
+  expect(listed.tools[0]?.inputSchema).toMatchObject({
+    properties: {
+      connection: {
+        oneOf: [
+          { const: 'k3x9m2p7qa', description: 'Label 1: account1@example.org' },
+          { const: 'p8d2v6n4rc', description: 'Label 2: account2@example.org' },
+        ],
+      },
+    },
+    required: expect.arrayContaining(['connection']),
+  });
 });
 
 test('it gives a tool the connections its run pins it to when the call resolves its input', async () => {

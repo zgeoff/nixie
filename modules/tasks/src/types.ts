@@ -220,6 +220,11 @@ export interface TaskRunOptions {
 
   // the report shape that the start declared, which a task run pins at its claim
   readonly reportShape?: ReportShape;
+
+  // The short IDs of the connections each tool of the list may use, copied from the run that started
+  // the task, so a task never reaches a connection its starter could not. A tool the map leaves
+  // out reaches every live connection.
+  readonly connectionPins?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface TaskModelChoice {

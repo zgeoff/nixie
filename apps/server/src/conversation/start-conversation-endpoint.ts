@@ -59,6 +59,7 @@ import {
 } from '@heynixie/tasks';
 import type {
   ActionQueue,
+  ConnectionChoice,
   ToolDefinition,
   ToolEndpoint,
   ToolRegistry,
@@ -152,8 +153,12 @@ export interface ConversationEndpointTools {
   // the tools that a run leaves out of its list; none before the connections start
   readonly readHeldBackTools: () => Promise<readonly string[]>;
 
-  // the short IDs of the connections that are not forgotten; none before the connections start
-  readonly readLiveConnections: () => Promise<ReadonlySet<string>>;
+  // the connections that are not forgotten; none before the connections start
+  readonly readLiveConnections: () => Promise<readonly ConnectionChoice[]>;
+
+  // the short IDs of the connections that hold every scope of each connector tool, by tool name;
+  // none before the connections start
+  readonly readToolConnections: () => Promise<Readonly<Record<string, readonly string[]>>>;
 
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
@@ -267,10 +272,7 @@ export async function startConversationEndpoint(
   const definitionToolOptions = {
     relatedMemory,
     readDefinitions: tools.readDefinitions,
-    connections: {
-      readUsable: async () => [...(await tools.readLiveConnections())],
-      connectorTools: tools.google.map((tool) => tool.name),
-    },
+    connections: { readUsable: tools.readToolConnections },
     readZone: makeReadZone(
       options.context.log.writer,
       options.context.log.writer.db,

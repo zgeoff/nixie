@@ -64,6 +64,14 @@ test('it flags only the Google features for a change under adapters/connector-go
   ]);
 });
 
+test('it flags the chat turn and the task pages for a change to the connection status renderer', async () => {
+  const ctx = await setupTest();
+
+  expect(
+    ctx.collectFlagged('apps/server/src/connection/render-connection-status.ts'),
+  ).toStrictEqual(expect.arrayContaining(['chat-turn', 'task-control', 'google-connections']));
+});
+
 test('it flags the calls features, and no coding feature, for a change under modules/calls', async () => {
   const ctx = await setupTest();
 

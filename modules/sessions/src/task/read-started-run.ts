@@ -260,7 +260,7 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     hasSelfNoteGrant: false,
     selfNoteOnlyTools: [],
     skills: [],
-    pinned: {},
+    pinned: pickPinned(options.connectionPins ?? {}),
     sinceSequence: null,
   });
 }

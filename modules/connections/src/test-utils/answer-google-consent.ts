@@ -4,13 +4,19 @@ import type { FakeOAuthProvider } from '@heynixie/credentials/test-utils';
 export interface FakeGoogleAccount {
   // the account's ID at Google, and its address
   readonly sub: string;
-  readonly email: string;
+
+  // none answers an ID token that holds no address
+  readonly email?: string;
 
   // the scopes Google says it granted, in short names; identity scopes are added
   readonly scopes: readonly string[];
 
   // false answers the code with no refresh token, as Google does for a grant the owner made before
   readonly hasRefreshToken: boolean;
+
+  // how long the grant lasts, in seconds, as a grant of limited time does; none for a grant that
+  // never ends
+  readonly refreshExpiresInSeconds?: number;
 }
 
 export interface FakeGoogle {
@@ -72,6 +78,9 @@ export function answerGoogleConsent(
       access_token: `google-access-${String(issued)}`,
       expires_in: 3600,
       ...(account.hasRefreshToken ? { refresh_token: `google-refresh-${String(issued)}` } : {}),
+      ...(account.refreshExpiresInSeconds === undefined
+        ? {}
+        : { refresh_token_expires_in: account.refreshExpiresInSeconds }),
       scope: [
         'openid',
         'email',
@@ -82,7 +91,7 @@ export function answerGoogleConsent(
         aud: options.clientID,
         exp: options.nowMs() / 1000 + 3600,
         sub: account.sub,
-        email: account.email,
+        ...(account.email === undefined ? {} : { email: account.email }),
       }),
     });
   });

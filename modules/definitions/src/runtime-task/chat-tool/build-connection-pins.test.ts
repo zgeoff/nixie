@@ -1,84 +1,78 @@
 import { expect, test } from 'bun:test';
-import { buildConnectionPins } from './build-connection-pins';
+import { buildConnectionPins, collectUsableConnections } from './build-connection-pins';
 
 interface PinFacts {
   readonly tools: readonly string[];
   readonly named: readonly string[] | null;
-  readonly usable: readonly string[];
 }
 
 function setupTest() {
+  const usable = {
+    'gmail.search': ['k3x9m2p7qa'],
+    'drive.search': ['k3x9m2p7qa', 'p8d2v6n4rc'],
+    'calendar.list_events': ['k3x9m2p7qa', 'p8d2v6n4rc'],
+  };
+
   return {
+    usable,
     pin: (facts: PinFacts) =>
-      buildConnectionPins({
-        tools: facts.tools,
-        named: facts.named ?? undefined,
-        usable: facts.usable,
-        connectorTools: ['gmail.search', 'calendar.list_events'],
-      }),
+      buildConnectionPins({ tools: facts.tools, named: facts.named ?? undefined, usable }),
   };
 }
 
-test('it pins each listed connector tool to the connections the call named', () => {
+test('it pins each listed connector tool to the named connections that hold its scopes', () => {
   const ctx = setupTest();
 
   const pins = ctx.pin({
-    tools: ['gmail.search', 'time.now'],
-    named: ['k3x9m2p7qa'],
-    usable: ['k3x9m2p7qa', 'p8d2v6n4rc'],
+    tools: ['gmail.search', 'drive.search', 'time.now'],
+    named: ['k3x9m2p7qa', 'p8d2v6n4rc'],
   });
 
   expect(pins).toStrictEqual({
     status: 'pinned',
-    pins: { 'gmail.search': ['k3x9m2p7qa'] },
+    pins: { 'gmail.search': ['k3x9m2p7qa'], 'drive.search': ['k3x9m2p7qa', 'p8d2v6n4rc'] },
   });
 });
 
-test('it pins every usable connection when the call names none', () => {
+test('it never pins a tool to an account that lacks its scope', () => {
   const ctx = setupTest();
-
-  const pins = ctx.pin({
-    tools: ['gmail.search', 'calendar.list_events'],
-    named: null,
-    usable: ['k3x9m2p7qa', 'p8d2v6n4rc'],
-  });
+  const pins = ctx.pin({ tools: ['gmail.search', 'drive.search'], named: null });
 
   expect(pins).toStrictEqual({
     status: 'pinned',
-    pins: {
-      'gmail.search': ['k3x9m2p7qa', 'p8d2v6n4rc'],
-      'calendar.list_events': ['k3x9m2p7qa', 'p8d2v6n4rc'],
-    },
+    pins: { 'gmail.search': ['k3x9m2p7qa'], 'drive.search': ['k3x9m2p7qa', 'p8d2v6n4rc'] },
   });
 });
 
 test('it reads a tool listed by the name the model sees', () => {
   const ctx = setupTest();
-
-  const pins = ctx.pin({
-    tools: ['mcp__nixie__gmail_search'],
-    named: null,
-    usable: ['k3x9m2p7qa'],
-  });
+  const pins = ctx.pin({ tools: ['mcp__nixie__gmail_search'], named: null });
 
   expect(pins).toStrictEqual({ status: 'pinned', pins: { 'gmail.search': ['k3x9m2p7qa'] } });
 });
 
-test('it refuses a connection the caller may not use', () => {
+test('it refuses a connection that no listed tool can use', () => {
   const ctx = setupTest();
+  const pins = ctx.pin({ tools: ['gmail.search'], named: ['p8d2v6n4rc'] });
 
-  const pins = ctx.pin({
-    tools: ['gmail.search'],
-    named: ['zzzzzzzzzz'],
-    usable: ['k3x9m2p7qa'],
-  });
-
-  expect(pins).toStrictEqual({ status: 'refused', unusable: ['zzzzzzzzzz'] });
+  expect(pins).toStrictEqual({ status: 'refused', unusable: ['p8d2v6n4rc'] });
 });
 
 test('it pins nothing when the list holds no connector tool', () => {
   const ctx = setupTest();
-  const pins = ctx.pin({ tools: ['time.now'], named: null, usable: ['k3x9m2p7qa'] });
+  const pins = ctx.pin({ tools: ['time.now'], named: null });
 
   expect(pins).toStrictEqual({ status: 'pinned', pins: {} });
+});
+
+test('it collects the connections that hold the scopes of any listed connector tool', () => {
+  const ctx = setupTest();
+
+  expect(collectUsableConnections(['gmail.search'], ctx.usable)).toStrictEqual(['k3x9m2p7qa']);
+});
+
+test('it collects nothing when the list holds no connector tool', () => {
+  const ctx = setupTest();
+
+  expect(collectUsableConnections(['time.now'], ctx.usable)).toBeNull();
 });

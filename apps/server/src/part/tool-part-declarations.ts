@@ -277,9 +277,24 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           readHeldBackTools: () =>
             parts.find('connections')?.readHeldBackTools() ?? Promise.resolve([]),
           readLiveConnections: async () => {
-            const states = await parts.find('connections')?.readStates();
+            const listed = await parts.find('connections')?.list();
 
-            return new Set((states ?? []).map((state) => state.connection));
+            return (listed ?? []).flatMap((entry) =>
+              entry.status === 'forgotten'
+                ? []
+                : [
+                    {
+                      connection: entry.connection,
+                      label: entry.label ?? entry.connector,
+                      account: entry.account ?? '',
+                    },
+                  ],
+            );
+          },
+          readToolConnections: async () => {
+            const found = await parts.find('connections')?.readToolConnections();
+
+            return found ?? {};
           },
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),

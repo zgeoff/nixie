@@ -31,7 +31,15 @@ export interface ToolCallOptions {
   // that changes it.
   readonly readHeldBackTools?: () => Promise<readonly string[]>;
 
-  // The short IDs of the connections that are not forgotten. A run lists no tool whose pins all name
-  // other connections. Without it, a pin never hides a tool.
-  readonly readLiveConnections?: () => Promise<ReadonlySet<string>>;
+  // The connections that are not forgotten. A run lists no tool whose pins all name other
+  // connections. Without it, a pin never hides a tool.
+  readonly readLiveConnections?: () => Promise<readonly ConnectionChoice[]>;
+}
+
+export interface ConnectionChoice {
+  // the short ID
+  readonly connection: string;
+
+  readonly label: string;
+  readonly account: string;
 }

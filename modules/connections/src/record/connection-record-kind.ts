@@ -7,7 +7,8 @@ export type ConnectionRecordKind =
   | 'connection.consent_discarded'
   | 'connection.call_failed'
   | 'connection.status_reached'
-  | 'connection.break_lasted';
+  | 'connection.break_lasted'
+  | 'connection.run_without';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

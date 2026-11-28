@@ -2,7 +2,7 @@ import type { WorkerRunLimits } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import { taskReportToolName } from '@heynixie/tasks';
 import type { ToolRun } from '@heynixie/tools';
-import { toSDKToolName } from '@heynixie/tools';
+import { findToolPins, toSDKToolName } from '@heynixie/tools';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
 import type { WorkerPlan, WorkerTargets } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
@@ -189,5 +189,11 @@ function pickWorkerPins(
   pins: Readonly<Record<string, readonly string[]>>,
   tools: readonly string[],
 ): Readonly<Record<string, readonly string[]>> {
-  return Object.fromEntries(Object.entries(pins).filter(([tool]) => tools.includes(tool)));
+  return Object.fromEntries(
+    tools.flatMap((tool) => {
+      const found = findToolPins(pins, tool);
+
+      return found === undefined ? [] : [[tool, found] as const];
+    }),
+  );
 }

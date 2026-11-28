@@ -1,4 +1,11 @@
-import type { ConnectionIdentity, FailingReason, StatusEvent, StatusEventRange } from './types';
+import { collectRemovedToolNames } from './collect-removed-tool-names';
+import type {
+  ConnectionFacts,
+  ConnectionIdentity,
+  FailingReason,
+  StatusEvent,
+  StatusEventRange,
+} from './types';
 
 // One step of a connection's status, as a record of the log tells it.
 export interface StatusStep {
@@ -10,77 +17,80 @@ export interface StatusStep {
   readonly step:
     | { readonly kind: 'active' }
     | { readonly kind: 'needs_consent' }
+    | { readonly kind: 'disconnected' }
     | { readonly kind: 'expiring' }
     | { readonly kind: 'failing'; readonly reason: FailingReason | null }
     | { readonly kind: 'lasted'; readonly sinceMs: number };
 }
 
-export interface FailedCall {
+// A record that a call failed, or a job run started, while a connection was broken.
+export interface BreakNote {
   readonly sequence: number;
   readonly connection: string;
 }
 
 interface StatusFacts {
-  // every step through the end of the range, oldest first
+  // every step, oldest first, with those after the range too, so a later break bounds an earlier one
   readonly steps: readonly StatusStep[];
-  readonly failedCalls: readonly FailedCall[];
+  readonly failedCalls: readonly BreakNote[];
+  readonly skippedRuns: readonly BreakNote[];
 
   // the connections that live, by ID; a connection with no entry has no event
-  readonly identities: ReadonlyMap<string, ConnectionIdentity>;
+  readonly facts: ReadonlyMap<string, ConnectionFacts>;
 }
 
-// The events of the range: a line for each change into `needs_consent`, `failing` or `expiring`, each
-// return to `active` after a break, and each break that passed the notice time. A return counts the
-// calls that failed since its break began.
+// The events of the range: a line for each change into a status the model hears of, each return to
+// `active` from one of them, and each break that passed the notice time. A return counts the calls
+// that failed and the job runs that ran without the connection, in its break only.
 export function collectStatusEvents(facts: StatusFacts, range: StatusEventRange): StatusEvent[] {
-  const breakStarts = new Map<string, number>();
+  const away = new Set<string>();
 
   const events: StatusEvent[] = [];
 
   for (const step of facts.steps) {
-    const who = facts.identities.get(step.connection);
-    const breakStart = breakStarts.get(step.connection);
+    const found = facts.facts.get(step.connection);
+    const who = found === undefined ? undefined : toIdentity(found);
     const base = { sequence: step.sequence, atMs: step.atMs };
-
-    if (step.step.kind === 'failing' || step.step.kind === 'needs_consent') {
-      breakStarts.set(step.connection, breakStart ?? step.sequence);
-    }
-
-    if (step.step.kind === 'active') {
-      breakStarts.delete(step.connection);
-    }
-
+    const change = step.step;
     const isInRange = step.sequence > range.after && step.sequence <= range.through;
+
+    if (change.kind === 'active') {
+      const wasAway = away.delete(step.connection);
+
+      if (isInRange && who !== undefined && wasAway) {
+        const noted = pickBreakBounds(facts.steps, step);
+
+        events.push({
+          ...base,
+          who,
+          kind: 'returned',
+          failedCalls: countNotes(facts.failedCalls, step.connection, noted),
+          skippedRuns: countNotes(facts.skippedRuns, step.connection, noted),
+        });
+      }
+
+      continue;
+    }
+
+    if (change.kind !== 'lasted') {
+      away.add(step.connection);
+    }
 
     if (!isInRange || who === undefined) {
       continue;
     }
 
-    const found = step.step;
-
-    if (found.kind === 'lasted') {
-      events.push({ ...base, who, kind: 'lasted', sinceMs: found.sinceMs });
-    } else if (found.kind === 'active') {
-      if (breakStart !== undefined) {
-        events.push({
-          ...base,
-          who,
-          kind: 'returned',
-          failedCalls: facts.failedCalls.filter(
-            (call) =>
-              call.connection === step.connection &&
-              call.sequence > breakStart &&
-              call.sequence < getNextBreakStart(facts.steps, step),
-          ).length,
-        });
-      }
+    if (change.kind === 'lasted') {
+      events.push({ ...base, who, kind: 'lasted', sinceMs: change.sinceMs });
     } else {
       events.push({
         ...base,
         who,
         kind: 'changed',
-        status: found.kind,
-        reason: found.kind === 'failing' ? found.reason : null,
+        status: change.kind,
+        reason: change.kind === 'failing' ? change.reason : null,
+        lastSuccessAtMs: found?.lastSuccessAtMs ?? null,
+        removedTools: collectRemovedToolNames(change.kind, found?.toolNames ?? []),
       });
     }
   }
@@ -88,13 +98,50 @@ export function collectStatusEvents(facts: StatusFacts, range: StatusEventRange)
   return events;
 }
 
-function getNextBreakStart(steps: readonly StatusStep[], returned: StatusStep): number {
-  const next = steps.find(
-    (step) =>
-      step.connection === returned.connection &&
-      step.sequence > returned.sequence &&
-      (step.step.kind === 'failing' || step.step.kind === 'needs_consent'),
-  );
+function toIdentity(found: ConnectionFacts): ConnectionIdentity {
+  return {
+    connection: found.connection,
+    connector: found.connector,
+    label: found.label,
+    account: found.account,
+  };
+}
 
-  return next?.sequence ?? Number.MAX_SAFE_INTEGER;
+interface BreakBounds {
+  // the sequence the break began at, or null when the connection only expired
+  readonly after: number | null;
+
+  // the sequence the next break began at
+  readonly before: number;
+}
+
+// The records that belong to the break a return ends: those after its first failing or consent step
+// and before the next break's.
+function pickBreakBounds(steps: readonly StatusStep[], returned: StatusStep): BreakBounds {
+  const own = steps.filter((step) => step.connection === returned.connection);
+  const earlier = own.filter((step) => step.sequence < returned.sequence);
+  const lastActive = earlier.findLastIndex((step) => step.step.kind === 'active');
+  const first = earlier.slice(lastActive + 1).find((step) => isBreakStep(step));
+  const next = own.find((step) => step.sequence > returned.sequence && isBreakStep(step));
+
+  return { after: first?.sequence ?? null, before: next?.sequence ?? Number.MAX_SAFE_INTEGER };
+}
+
+function isBreakStep(step: StatusStep): boolean {
+  return (
+    step.step.kind === 'failing' ||
+    step.step.kind === 'needs_consent' ||
+    step.step.kind === 'disconnected'
+  );
+}
+
+function countNotes(notes: readonly BreakNote[], connection: string, bounds: BreakBounds): number {
+  const after = bounds.after;
+
+  return after === null
+    ? 0
+    : notes.filter(
+        (note) =>
+          note.connection === connection && note.sequence > after && note.sequence < bounds.before,
+      ).length;
 }

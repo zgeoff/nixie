@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant';
 import { seedGrantEnd } from './seed-grant-end';
 import { startGoogleConnections } from './start-google-connections';
 
-test('it sets the time the grant of a connection ends', async () => {
+test('it gives a connection a grant that ends the given time from now, through a consent', async () => {
   const ctx = await startGoogleConnections();
   const connected = await ctx.connect('code-work');
 
@@ -13,9 +13,9 @@ test('it sets the time the grant of a connection ends', async () => {
 
   invariant(row, 'the connection is stored');
 
-  await seedGrantEnd(ctx, row.connection_id, 1_800_000_000_000);
+  await seedGrantEnd(ctx, row, 'code-work', 3_600_000);
 
   const [changed] = await ctx.readRows();
 
-  expect(changed?.refresh_expires_at).toBe(1_800_000_000_000);
+  expect(changed?.refresh_expires_at).toBe(ctx.clock.now() + 3_600_000);
 });

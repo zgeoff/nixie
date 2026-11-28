@@ -12,4 +12,5 @@ export const connectionRecordTopics = {
   'connection.call_failed': [],
   'connection.status_reached': [],
   'connection.break_lasted': [],
+  'connection.run_without': [],
 } as const satisfies Record<ConnectionRecordKind, readonly LiveTopic[]>;

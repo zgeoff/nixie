@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
-import { buildConnectionPins } from './build-connection-pins';
+import { buildConnectionPins, collectUsableConnections } from './build-connection-pins';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
 import { taskDefineInputSchema } from './task-define-input-schema';
@@ -63,6 +63,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       },
     },
     execution: 'direct',
+    resolveInput: (input) => resolveDefineConnections(options, input),
     prepare: (input) => Promise.resolve(prepareDefine(input)),
     run: async (call) => {
       const parsed = taskDefineInputSchema.safeParse(call.input);
@@ -103,8 +104,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       const pinned = buildConnectionPins({
         tools: rest.tools,
         named,
-        usable: usable ?? [],
-        connectorTools: options.connections?.connectorTools ?? [],
+        usable: usable ?? {},
       });
 
       if (pinned.status === 'refused') {
@@ -162,6 +162,26 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         { callID: call.callID, text: `${given.name}\n${given.brief}` },
       );
     },
+  };
+}
+
+// A call that names no connections gets the ones its caller may use now, before the decision point
+// reads it, so the approval covers exactly the accounts the saved job is pinned to. An account that
+// connects while the approval waits never joins the job.
+async function resolveDefineConnections(options: ChatToolOptions, input: JSONObject) {
+  const parsed = taskDefineInputSchema.safeParse(input);
+
+  if (!parsed.success || parsed.data.connections !== undefined) {
+    return { status: 'ok' as const, input };
+  }
+
+  const usable = await options.connections?.readUsable();
+
+  const connections = collectUsableConnections(parsed.data.tools, usable ?? {});
+
+  return {
+    status: 'ok' as const,
+    input: connections === null ? input : { ...input, connections },
   };
 }
 

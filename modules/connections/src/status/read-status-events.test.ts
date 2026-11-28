@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { seedConnectionStatus } from '../test-utils/seed-connection-status';
+import { seedGrantEnd } from '../test-utils/seed-grant-end';
 import { startGoogleConnections } from '../test-utils/start-google-connections';
 
 async function setupTest() {
@@ -65,6 +66,8 @@ test('it reads a change into failing as an event that names the connection by it
       },
       status: 'failing',
       reason: 'no_answer',
+      lastSuccessAtMs: null,
+      removedTools: [],
     },
   ]);
 });
@@ -122,4 +125,84 @@ test('it reads no event of a forgotten connection', async () => {
   });
 
   expect(events).toStrictEqual([]);
+});
+
+test('it reads a reconnect after a break as a return to active', async () => {
+  const ctx = await setupTest();
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, { status: 'needs_consent' });
+
+  const afterChange = await ctx.readHead();
+
+  await ctx.connect('code-work', ctx.row.short_id);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(events.map((event) => event.kind)).toStrictEqual(['returned']);
+});
+
+test('it reads a reconnect that renews an expiring grant as a return to active', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * 24 * 60 * 60 * 1000);
+
+  await ctx.connections.runStatusWatch();
+
+  const afterChange = await ctx.readHead();
+
+  await ctx.connect('code-work', ctx.row.short_id);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(events.map((event) => event.kind)).toStrictEqual(['returned']);
+});
+
+test('it counts a failed call once, however many requests the call sent', async () => {
+  const ctx = await setupTest();
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, { status: 'failing' });
+
+  const afterChange = await ctx.readHead();
+  const [live] = await ctx.connections.readLiveContexts();
+
+  invariant(live, 'the connection lives');
+
+  await live.fetch(`${ctx.provider.apiOrigin}/gmail/v1/users/me/profile`);
+  await live.fetch(`${ctx.provider.apiOrigin}/gmail/v1/users/me/labels`);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(
+    events.map((event) => (event.kind === 'returned' ? event.failedCalls : null)),
+  ).toStrictEqual([1]);
+});
+
+test('it counts the job runs that started while the connection was broken', async () => {
+  const ctx = await setupTest();
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, { status: 'failing' });
+
+  const afterChange = await ctx.readHead();
+
+  await ctx.connections.writeRunsWithout(new Set([ctx.row.short_id]));
+  await ctx.connections.writeRunsWithout(new Set(['zzzzzzzzzz']));
+  await ctx.callGmail();
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(
+    events.map((event) => (event.kind === 'returned' ? event.skippedRuns : null)),
+  ).toStrictEqual([1]);
 });

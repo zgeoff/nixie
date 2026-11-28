@@ -63,7 +63,7 @@ test('it writes a record after the time that the setting names', async () => {
 test('it writes one record when the clock takes a connection into expiring', async () => {
   const ctx = await setupTest();
 
-  await seedGrantEnd(ctx, ctx.row.connection_id, ctx.clock.now() + 2 * ctx.day);
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * ctx.day);
 
   const first = await ctx.connections.runStatusWatch();
   const second = await ctx.connections.runStatusWatch();
@@ -94,4 +94,73 @@ test('it lets the events block read a break that passed 2 days as one event', as
   const events = await ctx.connections.readStatusEvents({ after: 0, through: 1_000_000 });
 
   expect(events.map((event) => event.kind)).toStrictEqual(['changed', 'lasted']);
+});
+
+test('it writes no second record for a break whose retries moved the time of its status', async () => {
+  const ctx = await setupTest();
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, { status: 'failing' });
+
+  ctx.clock.advance(2 * ctx.day + 1000);
+
+  await ctx.connections.runStatusWatch();
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, {
+    status: 'failing',
+    sinceMs: ctx.clock.now(),
+  });
+
+  ctx.clock.advance(ctx.day);
+
+  const written = await ctx.connections.runStatusWatch();
+
+  expect(written).toBe(0);
+});
+
+test('it counts a break from its first failure, though a retry moved the time of its status', async () => {
+  const ctx = await setupTest();
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, { status: 'failing' });
+
+  ctx.clock.advance(ctx.day + 1000);
+
+  await seedConnectionStatus(ctx, ctx.row.connection_id, {
+    status: 'failing',
+    sinceMs: ctx.clock.now(),
+  });
+
+  ctx.clock.advance(ctx.day + 1000);
+
+  const written = await ctx.connections.runStatusWatch();
+
+  expect(written).toBe(1);
+});
+
+test('it writes a record when the grant of a failing connection ends', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 60_000);
+  await seedConnectionStatus(ctx, ctx.row.connection_id, { status: 'failing' });
+
+  ctx.clock.advance(120_000);
+
+  await ctx.connections.runStatusWatch();
+
+  const payloads = await ctx.readRecordPayloads('connection.status_reached');
+
+  expect(payloads.map((payload) => payload['status'])).toStrictEqual(['needs_consent']);
+});
+
+test('it writes a record again for an expiry that a reconnect renewed', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * ctx.day);
+
+  await ctx.connections.runStatusWatch();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * ctx.day);
+
+  const written = await ctx.connections.runStatusWatch();
+
+  expect(written).toBe(1);
 });

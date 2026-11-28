@@ -14,6 +14,7 @@ import { getTaskName } from '@heynixie/tasks';
 import { makeInStepActions } from '../action/make-in-step-actions';
 import { makeSkillCatalogLoader } from '../cli/make-skill-catalog-loader';
 import { buildConnectionStatus } from '../connection/build-connection-status';
+import { pickModelCredentialExpiry } from '../connection/pick-model-credential-expiry';
 import { toImageNames } from '../sandbox/to-image-names';
 import { makeTurnNoteReader } from '../turn/make-turn-note-reader';
 import type { ServerParts } from '../types';
@@ -85,6 +86,10 @@ export async function startConversationImp(
 
           return attention ?? [];
         },
+        readModelCredential: () =>
+          Promise.resolve(
+            pickModelCredentialExpiry(parts.config.model_credential, parts.context.clock.now()),
+          ),
       }),
     ]),
     memory,

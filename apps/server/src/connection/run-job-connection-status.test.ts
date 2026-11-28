@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { AttentionConnection } from '@heynixie/connections';
-import { readJobConnectionStatus } from './read-job-connection-status';
+import { runJobConnectionStatus } from './run-job-connection-status';
 
 function setupTest() {
   const failing: AttentionConnection = {
@@ -16,13 +16,20 @@ function setupTest() {
   };
 
   const asked: (ReadonlySet<string> | undefined)[] = [];
+  const noted: ReadonlySet<string>[] = [];
 
   return {
     failing,
     asked,
+    noted,
     read: (connections: readonly AttentionConnection[], pinned: readonly string[]) =>
-      readJobConnectionStatus(
+      runJobConnectionStatus(
         {
+          writeRunsWithout: (written) => {
+            noted.push(written);
+
+            return Promise.resolve(0);
+          },
           readAttention: (scope) => {
             asked.push(scope);
 
@@ -57,5 +64,13 @@ test('it lists a pinned connection that fails, with no model credential', async 
   const text = await ctx.read([ctx.failing], ['k3x9m2p7qa']);
 
   expect(text).toInclude('google connection "Work" (sam@example.com): failing (no_answer)');
-  expect(text).not.toInclude('model credential');
+  expect(text).not.toInclude('- The model credential:');
+});
+
+test('it notes a run that opens with the pinned connections', async () => {
+  const ctx = setupTest();
+
+  await ctx.read([ctx.failing], ['k3x9m2p7qa']);
+
+  expect(ctx.noted).toStrictEqual([new Set(['k3x9m2p7qa'])]);
 });

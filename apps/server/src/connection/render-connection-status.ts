@@ -2,6 +2,9 @@ import type { AttentionConnection } from '@heynixie/connections';
 import { formatEventTime } from '@heynixie/sessions';
 import { connectionStatusText } from './connection-status-text';
 import { fillStatusText } from './fill-status-text';
+import { renderConnectionAccount } from './render-connection-account';
+import { renderLastSuccess } from './render-last-success';
+import { renderRemovedTools } from './render-removed-tools';
 
 export interface ModelCredentialExpiry {
   readonly expiresAtMs: number;
@@ -41,30 +44,12 @@ function renderStatusLine(connection: AttentionConnection, timeZone: string): st
   return fillStatusText(connectionStatusText.statusLine, {
     connector: connection.connector,
     label: connection.label,
-    account: connection.account,
+    account: renderConnectionAccount(connection.account),
     status: connectionStatusText.statusNames[connection.status],
     reason: connection.reason === null ? '' : ` (${connection.reason})`,
     since: formatEventTime(connection.sinceMs, timeZone),
-    lastSuccess:
-      connection.lastSuccessAtMs === null
-        ? connectionStatusText.noSuccess
-        : formatEventTime(connection.lastSuccessAtMs, timeZone),
+    lastSuccess: renderLastSuccess(connection.lastSuccessAtMs, timeZone),
     removed: renderRemovedTools(connection.removedTools),
     place: connectionStatusText.reconnectPlace,
   });
-}
-
-const shownToolCount = 5;
-
-function renderRemovedTools(tools: readonly string[]): string {
-  if (tools.length === 0) {
-    return '';
-  }
-
-  const shown = tools.slice(0, shownToolCount).join(', ');
-  const rest = tools.length - shownToolCount;
-
-  return rest > 0
-    ? fillStatusText(connectionStatusText.removedToolsMore, { tools: shown, count: String(rest) })
-    : fillStatusText(connectionStatusText.removedTools, { tools: shown });
 }

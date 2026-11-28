@@ -13,4 +13,5 @@ export const taskRunOptionsSchema = z.object({
   report: z.enum(['wake', 'next_turn', 'none']),
   limits: taskLimitsSchema,
   reportShape: reportShapeSchema.exactOptional(),
+  connectionPins: z.record(z.string(), z.string().array()).exactOptional(),
 }) satisfies z.ZodType<TaskRunOptions>;
