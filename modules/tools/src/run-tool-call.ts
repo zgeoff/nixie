@@ -29,6 +29,7 @@ import { readAskedRepeat } from './policy-call/read-asked-repeat';
 import { resolveCallDeadline } from './policy-call/resolve-call-deadline';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
+import { buildDeclinedMessage } from './settle/build-declined-message';
 import { buildMessage } from './settle/build-message';
 import { buildTypedResult } from './settle/build-typed-result';
 import { readQueuedResult } from './settle/read-queued-result';
@@ -267,6 +268,7 @@ export async function runToolCall(
         run,
         callSequence: written.sequence,
         shortID: written.shortID,
+        declinedBy: written.declinedBy,
         repeatOf: written.repeatOf,
         destinations,
         deadlineAt,
@@ -387,6 +389,7 @@ interface DecidedCall {
   readonly run: ToolRun;
   readonly callSequence: number;
   readonly shortID: string | null;
+  readonly declinedBy: string | null;
   readonly repeatOf: OpenRepeat | null;
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
@@ -396,7 +399,7 @@ interface DecidedCall {
 }
 
 function runDecidedCall(decided: DecidedCall): Promise<Settled> {
-  const { policy, stored, registered, shortID, repeatOf, ...rest } = decided;
+  const { policy, stored, registered, shortID, declinedBy, repeatOf, ...rest } = decided;
 
   if (policy.decision.outcome === 'ask' && !isMemoryRuleAsk(policy)) {
     if (repeatOf !== null && registered !== null) {
@@ -406,6 +409,10 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
         timeoutMs: repeatOf.runsInStep ? 0 : rest.options.queuedWaitMs,
         reserveImages: rest.run.session?.reserveImages,
       });
+    }
+
+    if (declinedBy !== null) {
+      return Promise.resolve(buildDeclinedMessage(declinedBy));
     }
 
     return Promise.resolve(buildAskMessage(shortID));
@@ -575,6 +582,10 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
 
   if (enqueued.status === 'asked') {
     return buildAskMessage(enqueued.shortID);
+  }
+
+  if (enqueued.status === 'declined') {
+    return buildDeclinedMessage(enqueued.shortID);
   }
 
   return readQueuedResult(allowed.registered, allowed.options.queue, {

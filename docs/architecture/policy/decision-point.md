@@ -149,6 +149,9 @@ A call that asks again while its proposal is open, or while its approval is unus
 proposal. The model reads "Waiting for approval as `<shortID>`" with the open proposal's short ID,
 or the status of the approved action.
 
+A call for an action that the user declined earlier in the same task run gets that decline and asks
+nothing, as [Approvals](approvals.md#one-lifecycle) says.
+
 ## Faults
 
 The tool endpoint races the decision against a deadline and against a throw. Either denies the call,

@@ -10,12 +10,14 @@ import {
   writeStepCommit,
   writeTaskControl,
 } from '@heynixie/tasks';
+import { seedDefinitionTask, seedOpenDefinitionRun } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildMockLiftedCall } from '../test-utils/build-mock-lifted-call';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
 import { queueTestAction } from '../test-utils/queue-test-action';
+import { seedDeclinedProposal } from '../test-utils/seed-declined-proposal';
 import { startTestBudgetedActions } from '../test-utils/start-test-budgeted-actions';
 import type { ActionsTables } from '../types';
 import { buildActionHash } from './build-action-hash';
@@ -453,6 +455,74 @@ test('it answers a retry of a call the budget refused with the question already 
 
   expect(retried).toStrictEqual({ shortID: asked.shortID });
   expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
+
+test('it answers a retry of a call the owner declined in this run with that decline, and asks nothing', async () => {
+  const ctx = await setupTest();
+  const spender = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(spender, 6_000_000));
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const step = await seedOpenDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const overBudget = buildMockLiftedCall(step, 6_000_000);
+
+  const asked = await createAllowedAction(ctx.context, overBudget);
+
+  invariant('shortID' in asked);
+
+  await seedDeclinedProposal(ctx.context, asked.shortID);
+
+  const retried = await createAllowedAction(ctx.context, overBudget);
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(retried).toStrictEqual({ declinedBy: asked.shortID });
+  expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
+
+test('it asks again for a call the owner declined in an earlier run of the task', async () => {
+  const ctx = await setupTest();
+  const spender = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(spender, 6_000_000));
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'weekly-shop',
+    definitionHash: 'hash-1',
+  });
+
+  const seed = { taskID, definitionID: 'weekly-shop', definitionHash: 'hash-1' };
+
+  const first = await seedOpenDefinitionRun(ctx.context, seed);
+  const asked = await createAllowedAction(ctx.context, buildMockLiftedCall(first, 6_000_000));
+
+  invariant('shortID' in asked);
+
+  await seedDeclinedProposal(ctx.context, asked.shortID);
+
+  await writeStepCommit(ctx.context, first, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'Done.' } },
+  });
+
+  const second = await seedOpenDefinitionRun(ctx.context, seed);
+  const askedAgain = await createAllowedAction(ctx.context, buildMockLiftedCall(second, 6_000_000));
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(askedAgain).toStrictEqual({ shortID: expect.any(String) });
+  expect(askedAgain).not.toStrictEqual({ shortID: asked.shortID });
+  expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(2);
 });
 
 test('it credits the charge of an action that failed', async () => {

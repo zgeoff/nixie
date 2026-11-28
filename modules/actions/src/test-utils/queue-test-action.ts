@@ -11,7 +11,10 @@ export async function queueTestAction(
 ): Promise<QueuedAction> {
   const queued = await createAllowedAction(context, call);
 
-  invariant(!('shortID' in queued), 'a call without a lift queues an action');
+  invariant(
+    !('shortID' in queued) && !('declinedBy' in queued),
+    'a call without a lift queues an action',
+  );
 
   return queued;
 }

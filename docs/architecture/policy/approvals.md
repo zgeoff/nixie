@@ -62,6 +62,13 @@ the seed that withdraws the pending rule changes it applies, and the purge of a 
 lapses its pending proposals. A proposal that nixie makes on its own, such as a suggested rule, has
 no proposer, so its settlement has no thread.
 
+A task never asks again for an action that the user declined in the same task run. A call whose
+action hash matches a proposal of that task, declined after the task run opened, gets that decline
+back, as a denied result that names the declined proposal's short ID, and writes no proposal. The
+same holds for a call that a rule's lift allowed but a budget refused, on the task's step. A new
+task run starts clear, so it can ask again. A call with no open task run, such as one in a
+conversation, never matches a decline.
+
 A proposal's short ID comes from `createShortID` with a check against every earlier row, for every
 family. A call by short ID finds the newest row that holds it, and a call by proposal ID finds that
 row, so the approval card, which sends the proposal ID, still answers an older row that shares a

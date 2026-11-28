@@ -1,22 +1,25 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
+import { buildActionHash as buildPolicyActionHash } from '@heynixie/policy';
 import type { StepInput } from '@heynixie/tasks';
-import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
+import { buildStepRunID, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
+import { seedOpenDefinitionRun } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
-import { startTestActions } from '../test-utils/start-test-actions';
+import { seedDeclinedBuy } from '../test-utils/seed-declined-buy';
+import { startTestBudgetedActions } from '../test-utils/start-test-budgeted-actions';
 import type { ActionsTables } from '../types';
 import { buildActionQueue } from './build-action-queue';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
 
 async function setupTest() {
-  const actions = await startTestActions();
+  const actions = await startTestBudgetedActions();
 
   return {
-    context: actions.context,
+    ...actions,
     db: actions.writer.db.$extendTables<ActionsTables>(),
   };
 }
@@ -566,4 +569,71 @@ test('it reports an approved action that no run has settled to the transaction t
     kind: 'action',
     repeat: { actionID: queued.action_id, runsInStep: false },
   });
+});
+
+test('it reports the decline of the same action earlier in the task run to the transaction that would write a proposal', async () => {
+  const ctx = await setupTest();
+  const declined = await seedDeclinedBuy(ctx);
+
+  const queue = buildActionQueue(ctx.context);
+
+  const open = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    queue.queue.readOpenAsk(tx, {
+      run: {
+        runID: declined.taskID,
+        thread: declined.taskID,
+        logThread: declined.taskID,
+        tools: ['test.buy'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      tool: 'test.buy',
+      input: { amount: 6 },
+      actionHash: buildPolicyActionHash({
+        tool: 'test.buy',
+        input: { amount: 6 },
+        destinations: [],
+        deadlineAt: null,
+      }),
+    }),
+  );
+
+  expect(open).toStrictEqual({ kind: 'declined', shortID: declined.shortID });
+});
+
+test('it reports no decline once a new run of the task has opened', async () => {
+  const ctx = await setupTest();
+  const declined = await seedDeclinedBuy(ctx);
+
+  const queue = buildActionQueue(ctx.context);
+
+  await writeStepCommit(ctx.context, declined.step, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'Done.' } },
+  });
+
+  await seedOpenDefinitionRun(ctx.context, declined.run);
+
+  const open = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    queue.queue.readOpenAsk(tx, {
+      run: {
+        runID: declined.taskID,
+        thread: declined.taskID,
+        logThread: declined.taskID,
+        tools: ['test.buy'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      tool: 'test.buy',
+      input: { amount: 6 },
+      actionHash: buildPolicyActionHash({
+        tool: 'test.buy',
+        input: { amount: 6 },
+        destinations: [],
+        deadlineAt: null,
+      }),
+    }),
+  );
+
+  expect(open).toBeNull();
 });

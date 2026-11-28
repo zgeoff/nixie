@@ -13,11 +13,14 @@ export interface TestActionsContextDeps {
   readonly log: Log;
   readonly clock: ReturnType<typeof createFakeClock>;
   readonly definitions: () => Definitions;
+
+  // the store that the test seeds definition tasks into; a fresh one when absent
+  readonly definitionStore?: ReturnType<typeof buildTestDefinitionStore>;
 }
 
 // The tasks context that the action queue and the action runner take, over a log the test started.
 export function buildTestActionsContext(deps: TestActionsContextDeps): TasksContext {
-  const definitionStore = buildTestDefinitionStore();
+  const definitionStore = deps.definitionStore ?? buildTestDefinitionStore();
 
   return {
     log: deps.log,

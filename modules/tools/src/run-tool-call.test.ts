@@ -3289,6 +3289,52 @@ test('it writes no second proposal for a call whose question the owner has not a
   expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
 });
 
+test('it returns the earlier decline for a call whose action the owner declined in this run, and writes no proposal', async () => {
+  const actionHash = buildActionHash({
+    tool: 'notes_wipe',
+    input: { query: 'old' },
+    destinations: [],
+    deadlineAt: null,
+  });
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_wipe',
+        execution: 'direct',
+        declaration: { effects: ['export'] },
+      }),
+    ],
+    queue: { declinedProposals: [{ thread: 'task-1', actionHash, shortID: 'k3v8n2p6wd' }] },
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_wipe', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_wipe'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'denied: the user declined this same action earlier in this run (`k3v8n2p6wd`), so it asks nothing more. Do not propose it again.',
+      },
+    ],
+    isError: true,
+  });
+
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
+});
+
 test('it asks about a call under its variant name, so a rule on one variant leaves the other alone', async () => {
   const ctx = await setupTest({
     tools: [buildMockVariantToolDefinition()],

@@ -45,6 +45,9 @@ export interface StubActionQueueOptions {
   // the proposals that still wait for the owner
   readonly openProposals?: readonly OpenProposal[];
 
+  // the proposals the owner declined earlier in the task run
+  readonly declinedProposals?: readonly OpenProposal[];
+
   // the tools whose approved actions the task's step runs
   readonly stepTools?: readonly string[];
 
@@ -113,6 +116,14 @@ export function buildStubActionQueue(options: StubActionQueueOptions = {}): Stub
 
       if (repeat !== null) {
         return Promise.resolve({ kind: 'action', repeat });
+      }
+
+      const declined = options.declinedProposals?.find(
+        (earlier) => earlier.thread === query.run.thread && earlier.actionHash === query.actionHash,
+      );
+
+      if (declined !== undefined) {
+        return Promise.resolve({ kind: 'declined', shortID: declined.shortID });
       }
 
       const proposal = options.openProposals?.find(

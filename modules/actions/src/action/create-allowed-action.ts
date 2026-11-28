@@ -11,6 +11,7 @@ import invariant from 'tiny-invariant';
 import type { ActionRow, ActionStatus, ActionsTables, AllowedCall } from '../types';
 import { buildActionHash } from './build-action-hash';
 import { buildCancelledCheck } from './build-cancelled-check';
+import { readRunDecline } from './read-run-decline';
 
 export interface QueuedAction {
   readonly actionID: string;
@@ -23,13 +24,18 @@ export interface AskedAction {
   readonly shortID: string;
 }
 
+// The owner declined this same action earlier in the task run, so nothing is queued or asked.
+export interface DeclinedAction {
+  readonly declinedBy: string;
+}
+
 // An allowed call queues an action. A call that a rule's lift allowed charges the lift's budget in
 // the same transaction, and when the charge does not land it queues nothing and asks the owner.
 export async function createAllowedAction(
   context: TasksContext,
   call: AllowedCall,
   proposalConfig?: ProposalConfig,
-): Promise<QueuedAction | AskedAction> {
+): Promise<QueuedAction | AskedAction | DeclinedAction> {
   if (call.decision.outcome !== 'allow') {
     throw new Error(`a call the decision point answered ${call.decision.outcome} queues nothing`);
   }
@@ -47,6 +53,17 @@ export async function createAllowedAction(
 
     if (earlier !== undefined) {
       return { actionID: earlier.action_id, status: earlier.status, isRepeat: true };
+    }
+
+    if (call.decision.lift !== undefined) {
+      const declined = await readRunDecline(tx, {
+        taskID,
+        actionHash: buildLiftActionHash(call),
+      });
+
+      if (declined !== null) {
+        return { declinedBy: declined };
+      }
     }
 
     const actionID = crypto.randomUUID();
@@ -83,7 +100,7 @@ export async function createAllowedAction(
     return { actionID, status: 'pending' as const, isRepeat: false };
   });
 
-  if ('shortID' in queued) {
+  if ('shortID' in queued || 'declinedBy' in queued) {
     return queued;
   }
 
@@ -117,6 +134,16 @@ function readRepeat(
       .limit(1)
       .executeTakeFirst()
   );
+}
+
+// The hash that a budget ask for the call carries.
+function buildLiftActionHash(call: AllowedCall): string {
+  return buildPolicyActionHash({
+    tool: call.tool,
+    input: call.arguments,
+    destinations: (call.destinations ?? []).map((destination) => destination.value),
+    deadlineAt: call.deadlineAt ?? null,
+  });
 }
 
 // The sentence that says the lift's budget could not take the purchase, or null once it did.
@@ -163,13 +190,7 @@ async function writeBudgetAsk(
   invariant(call.callSequence !== undefined, 'a call that a lift allowed has its call record');
 
   const context = writer.context;
-
-  const actionHash = buildPolicyActionHash({
-    tool: call.tool,
-    input: call.arguments,
-    destinations: (call.destinations ?? []).map((destination) => destination.value),
-    deadlineAt: call.deadlineAt ?? null,
-  });
+  const actionHash = buildLiftActionHash(call);
 
   const open = await readOpenProposals(tx, context.clock.now());
 
