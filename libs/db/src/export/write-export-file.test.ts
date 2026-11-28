@@ -123,19 +123,14 @@ test('it writes to an unused path beside a partial file an earlier export left',
   expect(names.toSorted()).toStrictEqual(['out.db', 'out.db.partial']);
 });
 
-test('it leaves no file at the path when the directory cannot be synced', async () => {
+test('it keeps the finished file when the directory refuses a sync', async () => {
   const ctx = await setupTest();
 
   await chmod(ctx.directory, 0o300);
 
-  const write = ctx.write(ctx.path, ctx.rows);
-
-  await Promise.allSettled([write]);
-
-  await chmod(ctx.directory, 0o700);
-
+  const count = await ctx.write(ctx.path, ctx.rows).finally(() => chmod(ctx.directory, 0o700));
   const names = await readdir(ctx.directory);
 
-  expect(write).rejects.toMatchObject({ code: 'EACCES' });
-  expect(names).toStrictEqual([]);
+  expect(count).toBe(2);
+  expect(names).toStrictEqual(['out.db']);
 });

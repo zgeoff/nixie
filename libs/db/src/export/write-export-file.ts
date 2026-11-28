@@ -46,11 +46,14 @@ export async function writeExportFile(path: string, options: ExportFileOptions):
 
     const count = await fillExportFile(partialPath, options);
 
+    // the file syncs before it gets its name, so a failure here leaves nothing at the path
+    await syncPath(partialPath);
+
     await link(partialPath, path).catch((error: unknown) => {
       throw isErrorWithCode(error, 'EEXIST') ? new ExportPathExistsError(path) : error;
     });
 
-    await syncLinkedFile(path);
+    await syncDirectory(dirname(path));
 
     return count;
   } finally {
@@ -117,18 +120,6 @@ function quote(name: string): string {
   return `"${name.replaceAll('"', '""')}"`;
 }
 
-// A failed sync leaves no file at the path, so an error never hides a file that holds the log.
-async function syncLinkedFile(path: string): Promise<void> {
-  try {
-    await syncPath(path);
-    await syncPath(dirname(path));
-  } catch (error) {
-    await rm(path, { force: true });
-
-    throw error;
-  }
-}
-
 async function syncPath(path: string): Promise<void> {
   const handle = await open(path, 'r');
 
@@ -136,5 +127,15 @@ async function syncPath(path: string): Promise<void> {
     await handle.sync();
   } finally {
     await handle.close();
+  }
+}
+
+// The directory sync only makes the new name durable, and a directory that its owner writes but
+// cannot read refuses it, so a refusal leaves the finished file in place.
+async function syncDirectory(path: string): Promise<void> {
+  try {
+    await syncPath(path);
+  } catch {
+    // the file is complete and linked; losing the name to a crash is the only cost
   }
 }
