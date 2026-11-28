@@ -174,6 +174,34 @@ test('it forgets a photo imported from a record while the forget of the record c
   expect(entry.kind).toBe('forgotten');
 });
 
+test('it forgets a photo imported from a record while the forget of the record removes turn inputs', async () => {
+  const ctx = await setupTest();
+  const sequence = await ctx.writeOwnerMessage('The shed key sits under the blue pot.');
+  const png = await encodeTestImage({ width: 4, height: 3 }, 'png');
+
+  let isImported = false;
+
+  ctx.setTurnInputRemoval(async () => {
+    if (!isImported) {
+      isImported = true;
+
+      await seedImage(ctx.context.log, {
+        image: 'k3x9m2p7qa',
+        source: 'photo',
+        sourceSequence: sequence,
+        bytes: new Uint8Array(png),
+      });
+    }
+  });
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence });
+
+  const entry = await readImageEntry(ctx.context.log, 'k3x9m2p7qa');
+
+  expect(isImported).toBe(true);
+  expect(entry.kind).toBe('forgotten');
+});
+
 test("it cleans the starter's sessions for an unanswered start call, before the brief's own", async () => {
   const ctx = await setupTest();
 
