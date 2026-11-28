@@ -1,4 +1,4 @@
-import { featurePaths } from './feature-paths';
+import { featureFiles } from './feature-files';
 
 // The features that use a device, a second client, the assistant's own mailbox or Gmail, which the
 // registry lists after the others.
@@ -6,86 +6,86 @@ export const lastFeatures = [
   {
     name: 'job-skills',
     summary: 'Give a job its skills',
-    paths: featurePaths['job-skills'],
+    ...featureFiles['job-skills'],
   },
   {
     name: 'calls-off',
     summary: 'Turn calls off',
-    paths: featurePaths['calls-off'],
+    ...featureFiles['calls-off'],
   },
   {
     name: 'devices-off',
     summary: 'Turn devices off',
-    paths: featurePaths['devices-off'],
+    ...featureFiles['devices-off'],
   },
   {
     name: 'search-images-off',
     summary: 'Turn search and images off',
-    paths: featurePaths['search-images-off'],
+    ...featureFiles['search-images-off'],
   },
   {
     name: 'spend-routes',
     summary: "Read each route's counts",
-    paths: featurePaths['spend-routes'],
+    ...featureFiles['spend-routes'],
   },
   {
     name: 'device-in-browser',
     summary: "Open the browser's own device full screen",
-    paths: featurePaths['device-in-browser'],
+    ...featureFiles['device-in-browser'],
   },
   {
     name: 'device-view',
     summary: "Open the browser's own device",
-    paths: featurePaths['device-view'],
+    ...featureFiles['device-view'],
   },
   {
     name: 'device-screen',
     summary: 'Enrol a device and see a picture on it',
-    paths: featurePaths['device-screen'],
+    ...featureFiles['device-screen'],
   },
   {
     name: 'device-layout',
     summary: 'Lay out a screen in regions, and change them',
-    paths: featurePaths['device-layout'],
+    ...featureFiles['device-layout'],
   },
   {
     name: 'live-updates',
     summary: 'Pause from the host, see it on the page',
-    paths: featurePaths['live-updates'],
+    ...featureFiles['live-updates'],
   },
   {
     name: 'mail-wake',
     summary: 'Mail wakes the chat',
-    paths: featurePaths['mail-wake'],
+    ...featureFiles['mail-wake'],
   },
   {
     name: 'phone-text',
     summary: 'A text wakes the chat',
-    paths: featurePaths['phone-text'],
+    ...featureFiles['phone-text'],
   },
   {
     name: 'gmail-tools',
     summary: 'Search and read a mail, and approve a reply',
-    paths: featurePaths['gmail-tools'],
+    ...featureFiles['gmail-tools'],
   },
   {
     name: 'gmail-wake',
     summary: 'A matching Gmail mail wakes the chat',
-    paths: featurePaths['gmail-wake'],
+    ...featureFiles['gmail-wake'],
   },
   {
     name: 'calendar-tools',
     summary: 'Read the calendar, and approve an invitation',
-    paths: featurePaths['calendar-tools'],
+    ...featureFiles['calendar-tools'],
   },
   {
     name: 'drive-tools',
     summary: 'Search the files, and create a text file',
-    paths: featurePaths['drive-tools'],
+    ...featureFiles['drive-tools'],
   },
   {
     name: 'conversation-reset',
     summary: 'Reset the conversation from the host',
-    paths: featurePaths['conversation-reset'],
+    ...featureFiles['conversation-reset'],
   },
 ] as const;

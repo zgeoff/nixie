@@ -17,7 +17,7 @@ import { conversationRecordSchema } from './collect-conversation-records';
 import { computerFeatures } from './computer-features';
 import { prodReadPaths, refusalHint, taskListSchema } from './constants';
 import { driveFilesCommand } from './drive-files-command';
-import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
+import { featureFiles, ignoredPaths, sharedPaths } from './feature-files';
 import { gmailRequestsCommand } from './gmail-requests-command';
 import { gmailSentCommand } from './gmail-sent-command';
 import { controlRoutes } from './harness/control-routes';
@@ -481,12 +481,12 @@ export function createVerifyRegistry(): Wringer {
       {
         name: 'task-control',
         summary: 'Pause and resume a task',
-        paths: featurePaths['task-control'],
+        ...featureFiles['task-control'],
       },
       {
         name: 'coding-session',
         summary: 'Start a coding session from chat',
-        paths: featurePaths['coding-session'],
+        ...featureFiles['coding-session'],
       },
       ...codingFeatures,
       ...callFeatures,

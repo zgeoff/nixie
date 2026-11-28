@@ -1,40 +1,40 @@
-import { featurePaths } from './feature-paths';
+import { featureFiles } from './feature-files';
 
 // The features that use the assistant's computer, which the registry lists after the notebook.
 export const computerFeatures = [
   {
     name: 'computer-shell',
     summary: 'Write and read back a shell file',
-    paths: featurePaths['computer-shell'],
+    ...featureFiles['computer-shell'],
   },
   {
     name: 'computer-browser',
     summary: "Open a page in the assistant's browser",
-    paths: featurePaths['computer-browser'],
+    ...featureFiles['computer-browser'],
   },
   {
     name: 'computer-screen',
     summary: "Click a point of the assistant's desktop",
-    paths: featurePaths['computer-screen'],
+    ...featureFiles['computer-screen'],
   },
   {
     name: 'computer-watch',
     summary: "Watch the assistant's desktop",
-    paths: featurePaths['computer-watch'],
+    ...featureFiles['computer-watch'],
   },
   {
     name: 'computer-off',
     summary: 'Turn the computer off',
-    paths: featurePaths['computer-off'],
+    ...featureFiles['computer-off'],
   },
   {
     name: 'trusted-places',
     summary: 'Trust a site once',
-    paths: featurePaths['trusted-places'],
+    ...featureFiles['trusted-places'],
   },
   {
     name: 'place-trust-card',
     summary: 'Trust a place from a card',
-    paths: featurePaths['place-trust-card'],
+    ...featureFiles['place-trust-card'],
   },
 ] as const;
