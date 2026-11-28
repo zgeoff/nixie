@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.128.0](https://github.com/zgeoff/nixie/compare/v0.127.0...v0.128.0) (2026-11-28)
+
+
+### Features
+
+* **mcp:** expose a signed-in server's tools and ask only for calls ([#1573](https://github.com/zgeoff/nixie/issues/1573)) ([d3d74da](https://github.com/zgeoff/nixie/commit/d3d74da7f4fbc02a4ff0821e9fa27dd5c12e2af3))
+
+
+### Bug Fixes
+
+* **erasure:** keep late place acts of a forgotten record unreadable ([#1572](https://github.com/zgeoff/nixie/issues/1572)) ([aa83ec5](https://github.com/zgeoff/nixie/commit/aa83ec580d14d44e86fed219ac067db339780507))
+
 ## [0.127.0](https://github.com/zgeoff/nixie/compare/v0.126.0...v0.127.0) (2026-11-28)
 
 
