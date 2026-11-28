@@ -226,7 +226,7 @@ test('it keeps the good disk when a newer release follows a failed copy that lef
   expect(disk).toStrictEqual([['/home/stub/files/note.txt', 'tide times']]);
 });
 
-test('it copies again over a new sandbox that a failed copy left behind', async () => {
+test('it copies into a fresh sandbox and removes the half copy that a failed copy left behind', async () => {
   const ctx = await setupTest();
 
   const old = await ctx.seed.desktopDisk({
@@ -244,14 +244,18 @@ test('it copies again over a new sandbox that a failed copy left behind', async 
 
   await ctx.computer.settleMove();
 
-  const created = ctx.adapter.created.at(-1);
+  const survivors = await ctx.adapter.list(computerOwner);
 
-  invariant(created);
+  const disks = await Promise.all(
+    survivors.map(async (sandbox) => ({
+      isOld: sandbox.id === old.id,
+      files: await readDiskFiles(ctx.root, sandbox.id),
+    })),
+  );
 
-  const disk = await readDiskFiles(ctx.root, created.id);
-
-  expect(disk).toStrictEqual([['/home/stub/files/note.txt', 'tide times']]);
-  expect(ctx.adapter.destroyed).toStrictEqual([old.id]);
+  expect(disks).toStrictEqual([
+    { isOld: false, files: [['/home/stub/files/note.txt', 'tide times']] },
+  ]);
 });
 
 test('it moves the good disk to a newer release after a failed copy over a replacement that once passed', async () => {
@@ -329,14 +333,38 @@ test('it replaces a lone desktop of the current image whose copy never finished'
 
   await writeCopyState(unfinished, {}, 'started');
 
-  await ctx.computer.settleMove();
-
+  const gate = await ctx.computer.settleMove();
   const survivors = await ctx.adapter.list(computerOwner);
 
   const created = ctx.adapter.created.at(-1);
 
   invariant(created);
 
+  expect(gate).toBe('ready');
   expect(survivors.map((sandbox) => sandbox.id)).toStrictEqual([created.id]);
   expect(created.id).not.toBe(unfinished.id);
+});
+
+test('it replaces 2 desktops of the current image whose copies never finished', async () => {
+  const ctx = await setupTest();
+
+  const first = await ctx.seed.desktopDisk({
+    image: 'computer-new',
+    files: { '/home/stub/files/note.txt': 'tide ti' },
+  });
+
+  const second = await ctx.seed.desktopDisk({ image: 'computer-new', files: {} });
+
+  await writeCopyState(first, {}, 'started');
+  await writeCopyState(second, {}, 'started');
+
+  const gate = await ctx.computer.settleMove();
+  const survivors = await ctx.adapter.list(computerOwner);
+
+  const created = ctx.adapter.created.at(-1);
+
+  invariant(created);
+
+  expect(gate).toBe('ready');
+  expect(survivors.map((sandbox) => sandbox.id)).toStrictEqual([created.id]);
 });

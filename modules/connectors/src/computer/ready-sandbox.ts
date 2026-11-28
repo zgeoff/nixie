@@ -8,8 +8,8 @@ import type { ComputerContext, DesktopState } from './types';
 import { writeCopyState } from './write-copy-state';
 import { writeDiskUsedMarker } from './write-disk-used-marker';
 
-// The computer's sandbox: the kept one that holds today's spec, or a new one that replaces older
-// ones once every copy passed its check. It is null after a failed copy, with the old ones kept.
+// The computer's sandbox: a lone one of today's spec whose copy finished, or a new one that replaces
+// every other once each copy passed its check. It is null after a failed copy, with the old ones kept.
 export async function readySandbox(context: ComputerContext): Promise<Sandbox | null> {
   const state = context.state;
 
@@ -39,22 +39,11 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox | 
     }
   }
 
-  // A sandbox of today's spec that stands beside older ones is a replacement whose move never
-  // finished, so a copy fills it again. Alone with an unfinished copy, it holds no trusted disk.
-  const kept = existing.length > 1 ? found : undefined;
-  const others = existing.filter((sandbox) => sandbox.id !== kept?.id);
-
-  const created = await resolveReplacement(context, kept, spec);
-
-  const isReplaced = await replaceOld(context, others, {
-    sandbox: created,
-    isNew: kept === undefined,
-  });
+  const created = await context.options.adapter.create(spec);
+  const isReplaced = await replaceOld(context, existing, created);
 
   if (!isReplaced) {
-    if (kept === undefined) {
-      await removeCreated(context, created);
-    }
+    await removeCreated(context, created);
 
     return null;
   }
@@ -90,39 +79,19 @@ async function probeCopyDone(context: ComputerContext, sandbox: Sandbox): Promis
   return !(await probeCopyIncomplete(sandbox, context.options.homeEnv ?? {}));
 }
 
-function resolveReplacement(
-  context: ComputerContext,
-  kept: Sandbox | undefined,
-  spec: ReturnType<typeof buildComputerSpec>,
-): Promise<Sandbox> {
-  if (kept !== undefined) {
-    return Promise.resolve(kept);
-  }
-
-  return context.options.adapter.create(spec);
-}
-
-interface ReplacementTarget {
-  readonly sandbox: Sandbox;
-  readonly isNew: boolean;
-}
-
-// A new disk counts as started from its first step, so a failure that leaves it behind never makes
-// it a source.
+// The new disk counts as started from its first step, so a failure that leaves it behind never
+// makes it a source.
 async function replaceOld(
   context: ComputerContext,
   old: readonly Sandbox[],
-  target: ReplacementTarget,
+  created: Sandbox,
 ): Promise<boolean> {
   const homeEnv = context.options.homeEnv ?? {};
-  const created = target.sandbox;
   const sources: Sandbox[] = [];
   const unverified: Sandbox[] = [];
 
   try {
-    if (target.isNew) {
-      await writeCopyState(created, homeEnv, 'started');
-    }
+    await writeCopyState(created, homeEnv, 'started');
 
     for (const sandbox of old) {
       await wakeOld(sandbox);
@@ -132,27 +101,23 @@ async function replaceOld(
       (isIncomplete ? unverified : sources).push(sandbox);
     }
 
-    if (sources.length > 0) {
-      await writeCopyState(created, homeEnv, 'started');
-
-      for (const sandbox of sources) {
-        for (const folder of computerFolders) {
-          await copyComputerFolder({
-            from: sandbox,
-            fromEnv: homeEnv,
-            to: created,
-            toEnv: homeEnv,
-            folder,
-          });
-        }
+    for (const sandbox of sources) {
+      for (const folder of computerFolders) {
+        await copyComputerFolder({
+          from: sandbox,
+          fromEnv: homeEnv,
+          to: created,
+          toEnv: homeEnv,
+          folder,
+        });
       }
+    }
 
+    if (sources.length > 0) {
       await writeDiskUsedMarker(created, homeEnv);
     }
 
-    if (target.isNew || sources.length > 0) {
-      await writeCopyState(created, homeEnv, 'finished');
-    }
+    await writeCopyState(created, homeEnv, 'finished');
   } catch (error) {
     context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
 
