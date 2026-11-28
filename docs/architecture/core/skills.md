@@ -2,9 +2,10 @@
 
 A skill is a procedure from the user's [definitions](./definitions.md) in the Agent Skills format: a
 folder with a `SKILL.md` and the files it refers to. A task keeps the skill versions it started
-with, a run that has skills sees a catalog of them in its system prompt, and a skill grants nothing,
-so every action it describes still passes [the decision point](../policy/decision-point.md) as an
-ordinary tool call. `modules/skills` owns the pins, the catalog and the skill tools.
+with, a conversation, job run or worker run that has skills sees a catalog of them in its system
+prompt, and a skill grants nothing, so every action it describes still passes
+[the decision point](../policy/decision-point.md) as an ordinary tool call. `modules/skills` owns
+the pins, the catalog and the skill tools.
 
 [The definitions](./definitions.md#skills) covers the checks [the seed](./definitions.md#seeding)
 runs on each skill and how each version is kept. Each skill version lives under its skill hash, the
@@ -13,22 +14,22 @@ of the newest seed.
 
 ## Skill lists
 
-Each run has a skill list beside its tool list, and `ToolRun.skills` carries it for every run but
-the conversation's:
+The conversation, each job run and each worker run has a skill list beside its tool list, and
+`ToolRun.skills` carries it for every one but the conversation:
 
 - **The conversation.** The `skills` field of the
   [definitions manifest](./definitions.md#the-definitions-format), or every skill when the field is
   unset.
 - **A job run.** The `skills` key of its [definition](./definitions.md#task-definitions), from the
-  version that the run pinned. A definition with no `skills` key gives its runs an empty list, and
-  the same holds for every other started task.
-- **A worker run.** The names its call passes in `skills`. Each name must be on the calling run's
-  list, so a worker never holds more than its caller, and the call fails with an error that names
-  the skills outside the list. A worker holds `skill_read` for its skills and no other skill tool:
-  it shares its caller's thread and so its pin, and a reload from the worker would move the caller's
+  version that the job run pinned. A definition with no `skills` key gives its job runs an empty
+  list, and the same holds for every other started task.
+- **A worker run.** The names its call passes in `skills`. Each name must be on the caller's list,
+  so a worker never holds more than its caller, and the call fails with an error that names the
+  skills outside the list. A worker holds `skill_read` for its skills and no other skill tool: it
+  shares its caller's thread and so its pin, and a reload from the worker would move the caller's
   pin.
 
-A skill off a run's list stays out of its catalog, and `skill_read`, both reload tools and the code
+A skill off the list stays out of the catalog, and `skill_read`, both reload tools and the code
 tool's `skills` argument refuse it. The tools take their list from one reader in the server,
 `readRunSkillList`, so a tool and a catalog never disagree.
 
@@ -41,11 +42,11 @@ pin on the thread, so a seed that changes a skill leaves a running task on the v
 skill version stays in the database after a seed replaces it, so a pinned version stays readable.
 Before the first seed, a task has no skills and records no pin.
 
-A job's task keeps one pin across its runs, on the task's thread, and a run sees the pinned skills
-that are on its own list. When a definition version starts its endpoint, each skill on its list that
-the pin lacks joins the pin at the version in force, and a skill that left the list leaves the run.
-A skill the pin already holds keeps its version until `skill_reload` or `skill_reload_all` moves it.
-A worker run reads the pin of the thread it shares with its caller.
+A job's task keeps one pin across its job runs, on the task's thread, and each job run sees the
+pinned skills that are on its list. When a definition version starts its endpoint, each skill on its
+list that the pin lacks joins the pin at the version in force, and a skill that left the list drops
+out of the job run. A skill the pin already holds keeps its version until `skill_reload` or
+`skill_reload_all` moves it. A worker run reads the pin of the thread it shares with its caller.
 
 The conversation is one long task, so its pin holds until a reload tool moves it on, as
 [the skill tools](#the-skill-tools) describes. Each conversation [step](./tasks.md#steps) reads the
@@ -61,9 +62,8 @@ prompt holds it after the worker's instructions. The catalog opens with a short 
 skill, then gives one line per listed skill with its name and description, in name order. A run with
 no skills gets no catalog.
 
-The catalog has a cap in tokens. The harness of the run's
-[model profile](./model-profiles.md#harnesses) reports the context window, and the cap is a share of
-that window, which the `skills` section of the
+The catalog has a cap in tokens. The harness of the [model profile](./model-profiles.md#harnesses)
+reports the context window, and the cap is a share of that window, which the `skills` section of the
 [deployment configuration](../deployment/configuration.md) sets. Past the cap, the server lists the
 remaining skills by name alone, so the model still knows each one exists. The server never drops a
 name, so a names-only catalog that is longer than the cap stays whole and goes past it. A larger
@@ -80,12 +80,12 @@ The conversation's tool endpoint serves four skill tools: `skill_read`, `skill_r
 `skill_reload_all` and `skill_write`. It serves a fifth, `skill_vendor`, when the deployment exports
 to a definitions repo, as [the export](./definitions.md#the-export-to-the-definitions-repo)
 describes. `skill_read`, `skill_reload` and `skill_reload_all` act only on a skill that the calling
-run's list and pin hold.
+caller's list and pin hold.
 
 A job run whose definition lists skills also holds `skill_read`, `skill_reload`, `skill_reload_all`
 and the code tool, which mounts a listed skill under `/skills/<name>/`. A definition that lists none
-gives its runs none of them. A job run never holds `skill_write` or `skill_vendor`, which stay with
-the conversation. A worker holds `skill_read` alone, and only when its call names a skill.
+gives its job runs none of them. A job run never holds `skill_write` or `skill_vendor`, which stay
+with the conversation. A worker holds `skill_read` alone, and only when its call names a skill.
 
 The Effect column gives the effect each tool declares, which rules match on, as
 [effects and declarations](../policy/decision-point.md#effects-and-declarations) describes.

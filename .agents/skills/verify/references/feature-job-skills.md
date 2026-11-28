@@ -6,11 +6,11 @@ A job definition may list skills in its `task.yaml`. The job's task pins the lis
 thread with a `skills.pinned` record, and leaves out a skill that the definitions hold and the
 definition does not list. The job run gets the skill tools and the skill catalog for the pinned
 skills only. The pin records are written before the model's turn, so they show nothing of the tools
-or the catalog. This journey has the job run call `skill_read` for a skill on the list and one off
-it, then checks the outcome of each call and the catalog in the system prompt.
+or the catalog. In this journey, the job run calls `skill_read` for a skill on the list and one off
+it, and you check the outcome of each call and the catalog in the system prompt.
 
 Run this journey on `local` only. It needs a start with `NIXIE_VERIFY_JOB_SKILLS=1`, which puts the
-skills `tide-tables` and `bird-log` in the definitions, and a job named "Water the tomatoes" that
+skills `tide-tables` and `bird-log` and a job named "Water the tomatoes" in the definitions. The job
 lists `tide-tables` and fires every 5 minutes. The journey opens no browser page.
 
 Before you start, run `NIXIE_VERIFY_JOB_SKILLS=1 bun verify up --restart` and `bun verify doctor`.
@@ -41,8 +41,8 @@ Before you start, run `NIXIE_VERIFY_JOB_SKILLS=1 bun verify up --restart` and `b
    bun verify task --name 'Water the tomatoes' --state waiting --record task.run_ended
    ```
 
-   Expect: exit 0. On exit 1, the run can still be in its turn. Run the same command again, up to 5
-   runs in all. After the fifth failed run, skip `done`, and report the entry from `data.tasks`.
+   Expect: exit 0. On exit 1, the job run can still be in its turn. Run the same command again, up
+   to 5 times in all. After the fifth failure, skip `done`, and report the entry from `data.tasks`.
 
 4. Count the pins that name each skill:
 

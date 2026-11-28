@@ -290,13 +290,12 @@ the definition:
 | `maxCalls`     | a map from a listed tool name to a whole-number cap of 1 or more                  | `{}`    |
 | `skills`       | a list of skill names, each a skill that the definitions hold                     | none    |
 
-A definition that lists `skills` gives each of its job runs the
-[skill tools](./skills.md#the-skill-tools) that read and reload, the skill catalog and the code
-tool's `/skills/<name>/`, limited to that list. A definition with no `skills` key gives its job runs
-no skills. The seed refuses a name that no skill in the definitions carries with `bad_definition`,
-as the manifest's `skills` list does, and the parsed `task.yaml` omits the key when the file leaves
-it out, so a definition that never listed skills keeps its hash. The parse stores the list sorted,
-with no repeats.
+List `skills` to give each job run of the definition the [skill tools](./skills.md#the-skill-tools)
+that read and reload, the skill catalog and the code tool's `/skills/<name>/`, limited to that list.
+Leave the key out to give its job runs no skills. The seed refuses a name that no skill in the
+definitions carries with `bad_definition`, as the manifest's `skills` list does. The parse stores
+the list sorted, with no repeats, and omits the key when the file leaves it out, so a definition
+that never listed skills keeps its hash.
 
 The parser takes the decoded texts of the files and never reads the source. For each folder, it
 checks in this order:
