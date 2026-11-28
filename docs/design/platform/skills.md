@@ -78,6 +78,9 @@ You vendor a skill by hand in a checkout of the definitions repo:
 
 nixie requires no publisher signature. The pin and your review of the pull request stand in for one.
 
+The `skill_vendor` tool does steps 1 to 3 for the model and opens the pull request, as the
+[architecture](../../architecture/core/skills.md#vendored-skills) describes.
+
 ### The checks at the seed
 
 The seed refuses a snapshot when any skill fails one of these checks, run in code:
@@ -202,8 +205,6 @@ shows the conflict in the client to resolve.
 ## What the first build leaves out
 
 - Binary assets in a skill, such as templates and images.
-- A tool that vendors a skill: nixie fetches a skill at a pinned commit and opens a pull request on
-  the definitions repo with the lock entry and a review report.
 - Skills in coding sessions: a coding adapter owns its harness, and atc manages its own skills.
 - Per-job-run taint from a skill's provenance, which waits for a later stage in
   [the decision point](policy/decision-point.md#taint-in-the-first-build).
