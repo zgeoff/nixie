@@ -1659,6 +1659,18 @@
             "note": {
               "default": true,
               "type": "boolean"
+            },
+            "memory": {
+              "default": true,
+              "type": "boolean"
+            },
+            "moment": {
+              "default": true,
+              "type": "boolean"
+            },
+            "message": {
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false

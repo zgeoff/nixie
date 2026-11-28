@@ -34,9 +34,9 @@ Read each part's doc for the meaning of its settings. The sections cover:
 - the [search](../connectors/search.md) tool's daily call cap, its API URL and its key as a
   reference
 - the [images](../connectors/images.md) profiles: each provider, model, price for each size and key
-  as a reference, and `images.default`, the profile a draw uses when it names none. The section
-  needs `images.default`, and the shipped configs set it to `openai`. Every `image.draw` result
-  names the profile and its `model`, and every refusal lists the profiles
+  as a reference, and `images.default`, the profile a draw uses when it names none. Set it: the
+  shipped configs use `openai`. Every `image.draw` result names the profile and its `model`, and
+  every refusal lists the profiles
 - the [model gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway) that counts every model
   request, which `spendStop` names, and the model limits it sets: the turns of the day and of the
   month
@@ -49,8 +49,8 @@ Read each part's doc for the meaning of its settings. The sections cover:
 - the limits of the [notebook](../memory/notebook.md#the-indexes): the characters of a body, the
   active notes, and how many links must repeat a reason before the check reports it
 - `forget_notices`, which turns the line that the events block shows for each kind of forget on or
-  off: `forget_notices: false` turns every kind off, and the `note` key turns the line for a note
-  that the user forgot off
+  off: `forget_notices: false` turns every kind off, and each of the keys `note`, `memory`, `moment`
+  and `message` turns the line for that kind of forget off. Each key is on by default
 - `model_credential`, which names when the model token that the deployment holds expires
   (`expires_at`), and how long before it the session's status tells the model once (`warn_before`, 3
   days by default). A token from `claude setup-token` never refreshes, so nixie cannot read its end
@@ -60,9 +60,9 @@ Read each part's doc for the meaning of its settings. The sections cover:
   and a helper's working notes grow before nixie removes their text (365 by default; see
   [the event log](../core/event-log.md#expiry))
 
-The model profiles and the definitions source have no defaults, so the file always sets them. The
-imp section is required when the sandbox adapter is imp, which a release build always runs. Every
-other setting the file leaves out takes the default its part names.
+The model profiles, the definitions source and `images.default` have no defaults, so the file always
+sets them. The imp section is required when the sandbox adapter is imp, which a release build always
+runs. Every other setting the file leaves out takes the default its part names.
 
 ## The schema
 

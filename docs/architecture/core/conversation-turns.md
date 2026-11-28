@@ -539,6 +539,14 @@ records it reads.
   "Sam forgot note n4w8k2c6rd", with the user's name, or with the default name that the session
   prompt uses when none is set. A record that the assistant made adds no line. The server registers
   the [notebook's](../memory/notebook.md) entry only when `forget_notices.note` is on.
+- **A forget of a memory item, a moment or a message** reads each `erasure.finished` record of a
+  forget that the user began, at the time it finished, as a line such as "Sam forgot memory
+  b7kq2m9xza", "Sam forgot moment m3c8v1k5wy" or "Sam forgot message 48213". The line holds the kind
+  and the ID that the model sees, which is the short ID of an item or a moment and the log sequence
+  of a message, and nothing the forget erased. A forget that the assistant or nixie began adds no
+  line, and neither does a forget that another forget started, such as the messages that a forgotten
+  image or a reset reaches. Memory owns the entry. The server registers it for each kind whose
+  `forget_notices` key is on, and every key is on by default.
 - **A memory change** and a merge into one of the conversation's proposals are memory's own kinds. A
   memory change is an item that anything but the conversation itself wrote, such as an edit in the
   memory view. Each item lists once, at its latest version in the block's range, with its current

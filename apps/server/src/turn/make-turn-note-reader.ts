@@ -4,6 +4,7 @@ import type { StatusEvent, StatusEventRange } from '@heynixie/connections';
 import type { Log } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import {
+  buildForgottenKind,
   buildMemoryChangeKind,
   buildMomentKeptKind,
   buildProposalMergeKind,
@@ -18,6 +19,7 @@ import {
 } from '@heynixie/sessions';
 import { buildSkillReloadKind } from '@heynixie/skills';
 import { conversationTaskID } from '@heynixie/tasks';
+import type { ForgetNoticesConfig } from '../config/forget-notices-config-schema';
 import { buildConnectionStatusKind } from '../connection/build-connection-status-kind';
 import { buildPromptProposalAnswerKind } from '../prompt/build-prompt-proposal-answer-kind';
 import { buildMandateEndedKind } from './build-mandate-ended-kind';
@@ -40,7 +42,7 @@ export interface TurnNoteReaderOptions {
   readonly getTaskName: (taskID: string) => string;
 
   // which kinds of forget the events block lists
-  readonly forgetNotices: { readonly note: boolean };
+  readonly forgetNotices: ForgetNoticesConfig;
 
   // reads the status events of the connections in a range of the log; without it the block lists
   // none
@@ -75,11 +77,18 @@ export function makeTurnNoteReader(
     ? [...kinds, ...buildEventRegistry([buildNoteForgottenKind(options.log)])]
     : kinds;
 
+  const isForgottenOn =
+    options.forgetNotices.memory || options.forgetNotices.moment || options.forgetNotices.message;
+
+  const forgotten = isForgottenOn
+    ? [...noted, ...buildEventRegistry([buildForgottenKind(options.log, options.forgetNotices)])]
+    : noted;
+
   const events =
     options.readConnectionEvents === undefined
-      ? noted
+      ? forgotten
       : [
-          ...noted,
+          ...forgotten,
           ...buildEventRegistry([buildConnectionStatusKind(options.readConnectionEvents)]),
         ];
 

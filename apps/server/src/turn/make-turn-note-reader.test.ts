@@ -17,6 +17,7 @@ import {
   readRunningStep,
 } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import type { ForgetNoticesConfig } from '../config/forget-notices-config-schema';
 import { startConversation } from '../conversation/start-conversation';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
 import { buildTestErasureRunner } from '../test-utils/build-test-erasure-runner';
@@ -52,7 +53,11 @@ async function setupTest() {
     model_credentials: { anthropic: 'not-a-real-key' },
   });
 
-  const startRunner = (image: string, isNoteNoticeOn = true) =>
+  const startRunner = (
+    image: string,
+    isNoteNoticeOn = true,
+    forgetNotices?: Partial<Omit<ForgetNoticesConfig, 'note'>>,
+  ) =>
     startConversation({
       context: server.context,
       models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1' }),
@@ -74,7 +79,13 @@ async function setupTest() {
           ownerName: null,
           defaultZone: 'UTC',
           compaction: { threshold: 0.8, headsUp: 0.7 },
-          forgetNotices: { note: isNoteNoticeOn },
+          forgetNotices: {
+            memory: true,
+            moment: true,
+            message: true,
+            ...forgetNotices,
+            note: isNoteNoticeOn,
+          },
           getTaskName: (taskID) =>
             getTaskName(
               {
@@ -756,6 +767,69 @@ test("it leaves a finished note forget out of the next turn's events when the no
   const turn = await conversation.send('And tomorrow?');
 
   expect(turn.input[0]?.text).not.toInclude(written.shortID);
+});
+
+test("it lists a finished memory forget in the next turn's events by its ID alone, even when the message matches the item's text", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  const item = await createMemoryItem(ctx.memory, { text: 'The thermostat is faulty' });
+
+  await ctx.memory.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const turn = await conversation.send('The thermostat is faulty');
+
+  const events = turn.input[0]?.text.replaceAll(/<owner-message[\s\S]*?<\/owner-message>/gu, '');
+
+  expect(events).toMatch(/the owner forgot memory \w+/u);
+  expect(events).not.toInclude('thermostat');
+});
+
+test("it leaves a finished memory forget out of the next turn's events when the memory notice is off", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab', true, { memory: false }),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  const item = await createMemoryItem(ctx.memory, { text: 'The thermostat is faulty' });
+
+  await ctx.memory.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).not.toInclude('forgot memory');
 });
 
 test("it adds no note text, title or ID to a turn's context, even when the message is a note's title word for word", async () => {
