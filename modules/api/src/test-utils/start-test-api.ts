@@ -97,6 +97,10 @@ interface TestAPI {
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
 
+  // what the runner's turn-input removal also does, which a test sets to write a record at the
+  // moment that a forget reaches it
+  readonly setTurnInputRemoval: (removal: () => Promise<void>) => void;
+
   // the computer that a watch opens, which a running nixie sets once its computer starts
   readonly setWatch: (open: ReturnType<ComputerWatchPort['readWatch']>) => void;
 
@@ -189,6 +193,7 @@ export async function startTestAPI(
 
   const definitionStore = buildTestDefinitionStore();
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
+  const turnInputs: { removal: (() => Promise<void>) | null } = { removal: null };
   const notebook: { store: ViewNotebookStore | null } = { store: null };
   const erasure: { port: ErasureStuckPort | null } = { port: null };
   const connections: { port: ConnectionsPort | null } = { port: null };
@@ -248,6 +253,10 @@ export async function startTestAPI(
         }
       },
       destroySandboxes: (callIDs) => sandboxes.destroy(callIDs),
+      removeTurnInputs: async (scope) => {
+        await effects.effects.removeTurnInputs(scope);
+        await turnInputs.removal?.();
+      },
     },
   });
 
@@ -290,6 +299,9 @@ export async function startTestAPI(
     },
     setSessionCleanup: (cleanup) => {
       sessions.cleanup = cleanup;
+    },
+    setTurnInputRemoval: (removal) => {
+      turnInputs.removal = removal;
     },
     setWatch: (open) => {
       watching.open = open;

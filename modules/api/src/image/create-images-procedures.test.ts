@@ -731,7 +731,35 @@ test('#images.forget answers the time of the first forget for an image that is a
     image: 'k3x9m2p7qa',
   });
 
-  expect(again.forgottenAt).toStrictEqual(first.forgottenAt);
+  expect(again).toStrictEqual(first);
+});
+
+test('#images.forget starts no erasure for an image that is already forgotten', async () => {
+  const ctx = await setupTest();
+
+  await seedImage(ctx.context.log, { image: 'k3x9m2p7qa', source: 'draw', bytes: ctx.png });
+
+  await ctx.client.images.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    image: 'k3x9m2p7qa',
+  });
+
+  const before = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  await ctx.client.images.forget({
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    image: 'k3x9m2p7qa',
+  });
+
+  const after = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['erasure.started', 'erasure.finished'],
+  });
+
+  expect(after.length).toBe(before.length);
 });
 
 test('#images.forget answers CLIENT_ACTION_ID_REUSED when the ID belongs to another image', async () => {

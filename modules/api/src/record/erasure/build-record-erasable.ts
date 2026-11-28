@@ -1,4 +1,4 @@
-import { readRecordImageUUIDs } from '@heynixie/connectors';
+import { readImportedImageKeyIDs, readRecordImageUUIDs } from '@heynixie/connectors';
 import type { Erasable } from '@heynixie/log';
 import type { APIContext } from '../../types';
 import { buildTransactionContext } from '../../utils/build-transaction-context';
@@ -28,10 +28,16 @@ export function buildRecordErasable(context: APIContext): Erasable<RecordErasure
 
       return images.map((image) => ({ kind: 'image', targetID: image, version: null }));
     },
-    readLateKeyIDs: (tx, _target, capture) =>
-      capture.placeID === undefined
-        ? Promise.resolve([])
-        : readPlaceKeyIDs(buildTransactionContext(context, tx).log, capture.placeID),
+    readLateKeyIDs: async (tx, target, capture) => {
+      const placeKeyIDs =
+        capture.placeID === undefined
+          ? []
+          : await readPlaceKeyIDs(buildTransactionContext(context, tx).log, capture.placeID);
+
+      const importedKeyIDs = await readImportedImageKeyIDs(tx, Number(target.targetID));
+
+      return [...new Set([...placeKeyIDs, ...importedKeyIDs])];
+    },
     toRequest: (target) => ({ sequence: Number(target.targetID), thread: null }),
     cleanIndexes: () => Promise.resolve(),
     readLegacyOpen: () => readLegacyOpenRecordForgets(context),

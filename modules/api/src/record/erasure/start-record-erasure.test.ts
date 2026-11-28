@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { readImageEntry } from '@heynixie/connectors';
 import { encodeTestImage, seedImage } from '@heynixie/connectors/test-utils';
 import type { ErasureFaultPoint } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
@@ -143,6 +144,34 @@ test('it forgets the images that a record holds before the record itself', async
     ['erasure.finished', 'image'],
     ['erasure.finished', 'record'],
   ]);
+});
+
+test('it forgets a photo imported from a record while the forget of the record cleans up', async () => {
+  const ctx = await setupTest();
+  const sequence = await ctx.writeOwnerMessage('The shed key sits under the blue pot.');
+  const png = await encodeTestImage({ width: 4, height: 3 }, 'png');
+
+  let isImported = false;
+
+  ctx.setSessionCleanup(async () => {
+    if (!isImported) {
+      isImported = true;
+
+      await seedImage(ctx.context.log, {
+        image: 'k3x9m2p7qa',
+        source: 'photo',
+        sourceSequence: sequence,
+        bytes: new Uint8Array(png),
+      });
+    }
+  });
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence });
+
+  const entry = await readImageEntry(ctx.context.log, 'k3x9m2p7qa');
+
+  expect(isImported).toBe(true);
+  expect(entry.kind).toBe('forgotten');
 });
 
 test("it cleans the starter's sessions for an unanswered start call, before the brief's own", async () => {

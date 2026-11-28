@@ -140,6 +140,31 @@ test('it hides an image from the gallery and the image reader once its forget ha
   });
 });
 
+test('it answers a repeat forget of a forgotten image with the sequence of the first finish', async () => {
+  const ctx = await setupTest();
+  const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
+
+  const image = readImageID(drawn);
+
+  const first = await writeImageForget(ctx.context, ctx.laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    image,
+  });
+
+  const repeat = await writeImageForget(ctx.context, ctx.laptop.caller, {
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    image,
+  });
+
+  expect(first).toStrictEqual({
+    status: 'forgotten',
+    forgottenAt: expect.toBeNumber(),
+    progress: { stage: 'forgotten', sequence: expect.toBeNumber() },
+  });
+
+  expect(repeat).toStrictEqual(first);
+});
+
 test('it answers a retry of a forget that an earlier release finished with the time and the backup progress that it kept', async () => {
   const ctx = await setupTest();
   const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
