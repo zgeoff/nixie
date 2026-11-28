@@ -7,11 +7,15 @@ test.each([
   [{ 'retry-after': '9999999999999' }, 86_400_000],
   [{ 'retry-after': 'Mon, 23 Nov 2026 09:00:07 GMT', date: 'Mon, 23 Nov 2026 09:00:00 GMT' }, 7000],
   [{ 'retry-after': 'Mon, 23 Nov 2026 08:59:00 GMT', date: 'Mon, 23 Nov 2026 09:00:00 GMT' }, 0],
-  [{ 'retry-after': 'Mon, 23 Nov 2026 09:00:07 GMT' }, null],
+  [{ 'retry-after': 'Mon, 23 Nov 2026 09:00:07 GMT' }, 7000],
+  [{ 'retry-after': 'Mon, 23 Nov 2026 09:00:07 GMT', date: 'not a date' }, 7000],
+  [{ 'retry-after': 'Mon, 23 Nov 2026 08:00:00 GMT' }, 0],
   [{ 'retry-after': 'soon', date: 'Mon, 23 Nov 2026 09:00:00 GMT' }, null],
   [{ 'retry-after': '-5', date: 'Mon, 23 Nov 2026 09:00:00 GMT' }, null],
   [{ 'retry-after': '' }, null],
   [{}, null],
 ])('#readRetryAfterMs reads %j as %p', (headers, expected) => {
-  expect(readRetryAfterMs(new Headers(headers))).toBe(expected);
+  expect(readRetryAfterMs(new Headers(headers), Date.parse('Mon, 23 Nov 2026 09:00:00 GMT'))).toBe(
+    expected,
+  );
 });

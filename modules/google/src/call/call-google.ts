@@ -88,7 +88,7 @@ export async function callGoogle(
     status: response.status,
     reason: error.reason,
     isRateLimit: error.isRateLimit,
-    retryAfterMs: readRetryAfterMs(response.headers),
+    retryAfterMs: readRetryAfterMs(response.headers, Date.now()),
   };
 }
 

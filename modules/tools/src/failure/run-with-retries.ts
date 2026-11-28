@@ -15,7 +15,7 @@ type Failed = Extract<ToolOutcome, { readonly status: 'error' }>;
 
 // Runs a call of a tool that reaches a provider, and tries again after a failure that can clear.
 // Every attempt and every wait counts against one time budget. An attempt still open when it ends
-// is aborted and reports no answer, and a wait that ends after it starts no attempt.
+// is aborted, and the call waits for it to settle. A wait that ends after it starts no attempt.
 export async function runWithRetries(
   attempt: (signal: AbortSignal) => Promise<ToolOutcome>,
   dependencies: RetryDependencies,
@@ -63,30 +63,22 @@ async function runWithinBudget(
   const stopTimer = new AbortController();
   const stopAttempt = new AbortController();
 
-  const timedOut = (async (): Promise<ToolOutcome> => {
+  void (async () => {
     await clock.sleep(remainingMs, stopTimer.signal);
 
     // a sleep that the call's own end cancels resolves too, and that is no timeout
     if (!stopTimer.signal.aborted) {
       stopAttempt.abort();
     }
-
-    return buildFailed({ code: 'no_answer' });
   })();
 
-  const answered = (async (): Promise<ToolOutcome> => {
-    try {
-      return await attempt(stopAttempt.signal);
-    } catch (error) {
-      return buildFailed(readThrownFailure(error));
-    }
-  })();
-
-  const outcome = await Promise.race([answered, timedOut]);
-
-  stopTimer.abort();
-
-  return outcome;
+  try {
+    return await attempt(stopAttempt.signal);
+  } catch (error) {
+    return buildFailed(readThrownFailure(error));
+  } finally {
+    stopTimer.abort();
+  }
 }
 
 function buildFailed(failure: ConnectorFailure): Failed {

@@ -61,7 +61,7 @@ export async function callGmail(
   const text = await response.text();
 
   if (response.ok) {
-    return { kind: 'ok', body: text === '' ? {} : parseJSONOrNull(text) };
+    return { kind: 'ok', body: parseJSONOrNull(text) };
   }
 
   const error = readGoogleError(text, response.status, 'Gmail');
@@ -71,6 +71,6 @@ export async function callGmail(
     status: response.status,
     reason: error.reason,
     isRateLimit: error.isRateLimit,
-    retryAfterMs: readRetryAfterMs(response.headers),
+    retryAfterMs: readRetryAfterMs(response.headers, Date.now()),
   };
 }

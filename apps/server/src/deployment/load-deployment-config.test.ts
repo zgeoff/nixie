@@ -113,6 +113,31 @@ test('it reads every section, with the default of each setting the file leaves o
   });
 });
 
+test('it reads the retry settings of the tools section as the config sets them', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'tools: { retry_attempts: 2, retry_budget_ms: 4500, error_detail_chars: 40 }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.tools).toStrictEqual({
+    retry: { maxAttempts: 2, budgetMs: 4500, detailChars: 40 },
+  });
+});
+
 test('it reads a model profile, with the default of each setting it leaves out', async () => {
   const ctx = await setupTest();
 

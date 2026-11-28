@@ -109,7 +109,7 @@ function parseKagiResponse(response: Response, text: string): SearchReply {
 // change.
 function buildKagiFailure(response: Response, detail: string): ConnectorFailure {
   const status = response.status;
-  const retryAfterMs = readRetryAfterMs(response.headers);
+  const retryAfterMs = readRetryAfterMs(response.headers, Date.now());
 
   if (status === 429) {
     return {

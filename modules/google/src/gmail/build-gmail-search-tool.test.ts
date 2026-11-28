@@ -257,6 +257,20 @@ test('it ends the search with a failure when Gmail answers 200 with text that is
   });
 });
 
+test('it ends the search with a failure when Gmail answers 200 with an empty body', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.gmail.failures.push({ line: 'GET /messages?', status: 200, body: '' });
+
+  const outcome = await ctx.runSearch({ query: 'figures' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'Gmail answered with no list of messages',
+    failure: { code: 'failed', detail: 'Gmail answered with no list of messages' },
+  });
+});
+
 test('it sends no request once the call is aborted', async () => {
   const ctx = await setupTest();
 

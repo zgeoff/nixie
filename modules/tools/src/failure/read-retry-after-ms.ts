@@ -3,8 +3,9 @@
 const longestRetryMs = 86_400_000;
 
 // Reads a `Retry-After` header: a count of seconds, or an HTTP date, which counts from the date the
-// provider's own answer carries. Returns null for a header that is absent or holds neither.
-export function readRetryAfterMs(headers: Headers): number | null {
+// provider's own answer carries, or from `nowMs` when the answer carries none. Returns null for a
+// header that is absent or holds neither.
+export function readRetryAfterMs(headers: Headers, nowMs: number): number | null {
   const value = headers.get('retry-after')?.trim();
 
   if (value === undefined || value === '') {
@@ -16,9 +17,10 @@ export function readRetryAfterMs(headers: Headers): number | null {
   }
 
   const atMs = /[a-z]/iu.test(value) ? Date.parse(value) : Number.NaN;
-  const sentAtMs = Date.parse(headers.get('date') ?? '');
+  const providerSentAtMs = Date.parse(headers.get('date') ?? '');
+  const sentAtMs = Number.isNaN(providerSentAtMs) ? nowMs : providerSentAtMs;
 
-  if (Number.isNaN(atMs) || Number.isNaN(sentAtMs)) {
+  if (Number.isNaN(atMs)) {
     return null;
   }
 

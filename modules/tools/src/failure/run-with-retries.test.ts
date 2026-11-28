@@ -30,7 +30,11 @@ function setupTest(steps: readonly Step[], overrides: { maxAttempts?: number } =
     calls.count += 1;
 
     if (step === 'never') {
-      return Promise.withResolvers<ToolOutcome>().promise;
+      const open = Promise.withResolvers<ToolOutcome>();
+
+      signal.addEventListener('abort', () => open.reject(new Error('aborted')), { once: true });
+
+      return open.promise;
     }
 
     return step instanceof Error ? Promise.reject(step) : Promise.resolve(step);
@@ -275,6 +279,45 @@ test('#runWithRetries aborts an attempt that is still open when the budget ends'
   await ctx.run();
 
   expect(ctx.signals.map((signal) => signal.aborted)).toStrictEqual([true]);
+});
+
+test('#runWithRetries waits for an aborted attempt to settle before it returns', async () => {
+  const clock = createFakeClock({ startMs: Date.parse('2026-03-02T09:14:00Z') });
+  const open = Promise.withResolvers<ToolOutcome>();
+  const finished: ToolOutcome[] = [];
+  const signals: AbortSignal[] = [];
+
+  void (async () => {
+    const outcome = await runWithRetries(
+      (signal) => {
+        signals.push(signal);
+
+        return open.promise;
+      },
+      {
+        clock,
+        config: { maxAttempts: 3, budgetMs: 15_000, detailChars: 1000 },
+        random: () => 0.5,
+      },
+    );
+
+    finished.push(outcome);
+  })();
+
+  await waitFor(() => clock.countPending() === 1);
+
+  clock.advance(16_000);
+
+  await waitFor(() => signals[0]?.aborted === true);
+
+  const finishedWhileOpen = finished.length;
+
+  open.resolve({ status: 'ok', result: { text: 'a note' } });
+
+  await waitFor(() => finished.length === 1);
+
+  expect(finishedWhileOpen).toBe(0);
+  expect(finished).toStrictEqual([{ status: 'ok', result: { text: 'a note' } }]);
 });
 
 test('#runWithRetries leaves the signal of an attempt that answered unaborted', async () => {

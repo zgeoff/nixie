@@ -1057,6 +1057,59 @@ test('it makes the one attempt that the deployment allows at a search that Kagi 
   });
 });
 
+test('it tries a search again after a server error, up to the attempts that the deployment allows', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  credential: deployment:search',
+      `  api_url: ${kagiAPIURL}`,
+      'tools:',
+      '  retry_attempts: 2',
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  kagiStore.hooks.failWith = 503;
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Failed.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Failed.');
+
+  expect(kagiStore.requests.findMany()).toHaveLength(2);
+});
+
+test('it stops trying a search again when the wait would pass the time budget that the deployment sets', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  credential: deployment:search',
+      `  api_url: ${kagiAPIURL}`,
+      'tools:',
+      '  retry_attempts: 3',
+      '  retry_budget_ms: 500',
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  kagiStore.hooks.failWith = 503;
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Failed.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Failed.');
+
+  expect(kagiStore.requests.findMany()).toHaveLength(1);
+});
+
 test("it cuts Kagi's message to the length that the deployment sets", async () => {
   const nixie = await startInProcessNixie({
     extraConfig: [

@@ -56,7 +56,9 @@ export function makeResolveGoogleInput(
     const [only] = live;
 
     if (only === undefined) {
-      return { status: 'error', message: 'NO_CONNECTION: no Google account is connected' };
+      return context.pinned === undefined
+        ? { status: 'error', message: 'NO_CONNECTION: no Google account is connected' }
+        : forgottenOutcome;
     }
 
     if (live.length > 1) {
