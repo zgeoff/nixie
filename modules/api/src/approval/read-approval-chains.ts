@@ -1,9 +1,10 @@
-import { readSessionShortIDs } from '@heynixie/coding';
-import type { TasksTables } from '@heynixie/tasks';
-import { readTaskNames } from '@heynixie/tasks';
+import { writeTaskSessionNames } from '@heynixie/coding';
+import type { TasksTables, WakeCause } from '@heynixie/tasks';
+import { readStepWakeCause, readTaskNames } from '@heynixie/tasks';
 import type { APIContext } from '../types';
 import type { TaskLink } from './collect-approval-chain';
 import { collectApprovalChain } from './collect-approval-chain';
+import { formatStartingMessage } from './format-starting-message';
 
 export interface ApprovalChainStep {
   readonly kind: 'message' | 'task' | 'coding';
@@ -11,46 +12,69 @@ export interface ApprovalChainStep {
   readonly name: string;
 }
 
-// The chain of each asking task: the conversation that started the work, each task and coding
-// session after it, and the asking task last. Each step carries its short ID and a name, never a
-// UUID. A task that nothing started, and an ID with no row, make a chain of that one step.
+export interface ApprovalAsk {
+  readonly proposalID: string;
+  readonly taskID: string;
+
+  // the sequence of the record that made the proposal
+  readonly createdSequence: number;
+}
+
+// The chain of each proposal, by proposal ID: the message that started the work, each task and
+// coding session after it, and the asking task last. Each step carries its short ID and a name,
+// never a UUID. A task that nothing started, and an ID with no row, make a chain of that one step.
 export async function readApprovalChains(
   context: APIContext,
-  askingTaskIDs: readonly string[],
+  asks: readonly ApprovalAsk[],
 ): Promise<ReadonlyMap<string, ApprovalChainStep[]>> {
-  if (askingTaskIDs.length === 0) {
+  if (asks.length === 0) {
     return new Map();
   }
 
-  const links = await readTaskLinks(context, askingTaskIDs);
-
-  const chains = new Map(
-    [...new Set(askingTaskIDs)].map((taskID) => [taskID, collectApprovalChain(links, taskID)]),
+  const links = await readTaskLinks(
+    context,
+    asks.map((ask) => ask.taskID),
   );
 
-  const stepIDs = [...new Set([...chains.values()].flat())];
+  const chains = asks.map((ask) => ({ ask, ids: collectApprovalChain(links, ask.taskID) }));
 
-  const sessions = await readSessionShortIDs(context.log.writer.db, stepIDs);
+  const sessions = await writeTaskSessionNames(
+    context,
+    chains.flatMap((chain) => chain.ids),
+  );
 
   const directory = new Map(context.settings.taskDirectory.map((task) => [task.taskID, task.name]));
 
   const started = await readTaskNames(context);
 
-  return new Map(
-    [...chains].map(([taskID, ids]) => [
-      taskID,
-      ids.map((id): ApprovalChainStep => {
-        const name = directory.get(id) ?? started.get(id) ?? id;
-        const session = sessions.get(id);
+  const steps = await Promise.all(
+    chains.map(async (chain) => {
+      const cause = await readStartingCause(context, links, chain.ask, chain.ids);
 
-        if (session !== undefined) {
-          return { kind: 'coding', id: session, name };
-        }
+      return [
+        chain.ask.proposalID,
+        chain.ids.map((id): ApprovalChainStep => {
+          const session = sessions.get(id);
 
-        return { kind: links.get(id)?.isConversation === true ? 'message' : 'task', id, name };
-      }),
-    ]),
+          if (session !== undefined) {
+            return {
+              kind: 'coding',
+              id: session,
+              name: directory.get(id) ?? started.get(id) ?? id,
+            };
+          }
+
+          if (links.get(id)?.isConversation === true) {
+            return { kind: 'message', id, name: formatStartingMessage(cause) };
+          }
+
+          return { kind: 'task', id, name: directory.get(id) ?? started.get(id) ?? id };
+        }),
+      ] as const;
+    }),
   );
+
+  return new Map(steps);
 }
 
 async function readTaskLinks(
@@ -66,7 +90,7 @@ async function readTaskLinks(
   while (pending.length > 0) {
     const rows = await db
       .selectFrom('tasks')
-      .select(['task_id', 'is_conversation', 'started_by'])
+      .select(['task_id', 'is_conversation', 'started_by', 'created_sequence'])
       .where('task_id', 'in', pending)
       .execute();
 
@@ -74,6 +98,7 @@ async function readTaskLinks(
       links.set(row.task_id, {
         isConversation: row.is_conversation === 1,
         startedBy: row.started_by,
+        createdSequence: row.created_sequence,
       });
     }
 
@@ -87,4 +112,26 @@ async function readTaskLinks(
 
 function collectUnread(ids: readonly string[], links: ReadonlyMap<string, TaskLink>): string[] {
   return [...new Set(ids)].filter((id) => !links.has(id));
+}
+
+// What woke the conversation step that started the work, when the chain starts at the conversation.
+// A task the conversation started was started by the step that ran just before it was created.
+function readStartingCause(
+  context: APIContext,
+  links: ReadonlyMap<string, TaskLink>,
+  ask: ApprovalAsk,
+  ids: readonly string[],
+): Promise<WakeCause | null> {
+  const [root, next] = ids;
+
+  if (root === undefined || links.get(root)?.isConversation !== true) {
+    return Promise.resolve(null);
+  }
+
+  const beforeSequence =
+    next === undefined
+      ? ask.createdSequence
+      : (links.get(next)?.createdSequence ?? ask.createdSequence);
+
+  return readStepWakeCause(context, root, beforeSequence);
 }

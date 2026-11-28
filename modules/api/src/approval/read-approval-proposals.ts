@@ -39,7 +39,13 @@ export async function readApprovalProposals(
 
   const chains = await readApprovalChains(
     context,
-    rows.flatMap((row) => row.taskID ?? row.thread ?? []),
+    rows.flatMap((row) => {
+      const taskID = row.taskID ?? row.thread;
+
+      return taskID === null
+        ? []
+        : [{ proposalID: row.id, taskID, createdSequence: row.createdSequence }];
+    }),
   );
 
   return {
@@ -58,7 +64,7 @@ export async function readApprovalProposals(
           proposal: toApprovalRow(row),
           body,
           task: taskID === null ? null : { id: taskID, name: directory.get(taskID) ?? taskID },
-          chain: taskID === null ? [] : (chains.get(taskID) ?? []),
+          chain: taskID === null ? [] : (chains.get(row.id) ?? []),
           choices: isOpen ? [...pickProposalChoices(row)] : [],
           passkeyChoices: isOpen ? [...pickPasskeyChoices(row)] : [],
           answeredOn: row.answeredBy === null ? null : (labels.get(row.answeredBy) ?? null),

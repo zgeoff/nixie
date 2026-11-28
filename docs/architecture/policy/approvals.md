@@ -135,19 +135,21 @@ none, and the host reads its `thread` in the same place. Each item of `approvals
 row of `approvals.readProposals` carries a `chain`: the steps from the work's start down to the
 asking task, which is the last step. The host builds it from the asking task and `tasks.started_by`,
 which names the thread that started each task. The walk stops at a conversation, at a task that
-nothing started, at an ID with no row, and on an ID it has already seen, and it takes at most 20
-steps.
+nothing started, at an ID with no row, and on an ID it has already seen.
 
 Each step has a `kind`, an `id` and a `name`, and never a UUID:
 
 - A `message` step is the conversation, so the chain starts at the thread that the owner's messages
-  reach. Its `id` is `conversation`.
-- A `coding` step is a task that binds a coding session. Its `id` is the session's short ID.
+  reach. Its `id` is `conversation`, and its `name` says what woke the conversation step that
+  started the work: your message, outside content, a timer, a message from a task, or an earlier
+  message. A step that recorded no cause is named `Conversation`.
+- A `coding` step is a task that binds a coding session. Its `id` is the session's short ID, which
+  the read gives to a session that no listing has named yet.
 - A `task` step is any other task. Its `id` is the task ID, which is a short ID for a started task.
 
 A step's `name` is its entry in the task directory, or else the name its `task.created` record
-holds, or else its `id`. The card lists the steps when the chain has more than one, so you see when
-a message or outside content set off a chain of tasks before the call.
+holds, or else its `id`. The card lists the steps when the chain has more than one or starts at a
+message, so you see when a message or outside content set off a chain of tasks before the call.
 
 ## The answer
 

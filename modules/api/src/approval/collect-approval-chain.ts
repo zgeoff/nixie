@@ -1,11 +1,10 @@
 export interface TaskLink {
   readonly isConversation: boolean;
+  readonly createdSequence: number;
 
   // the thread that started the task, or null for the conversation and a definition's task
   readonly startedBy: string | null;
 }
-
-const maxChainLength = 20;
 
 // The task IDs from the one that started the work down to the asking task, following each task to
 // the thread that started it. The walk stops at a conversation, at a task that nothing started, at
@@ -18,7 +17,7 @@ export function collectApprovalChain(
   let link = links.get(askingTaskID);
 
   while (link !== undefined && !link.isConversation && link.startedBy !== null) {
-    if (chain.includes(link.startedBy) || chain.length >= maxChainLength) {
+    if (chain.includes(link.startedBy)) {
       break;
     }
 

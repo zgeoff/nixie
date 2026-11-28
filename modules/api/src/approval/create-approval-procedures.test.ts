@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ApprovedCall } from '@heynixie/actions';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
+import { seedJoinedSession } from '@heynixie/coding/test-utils';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { encodeTestImage, seedImage } from '@heynixie/connectors/test-utils';
 import { checkPromptProposal, createPathSource, runSeed } from '@heynixie/definitions';
@@ -44,7 +45,7 @@ interface PasskeyTarget {
 }
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestAPI(undefined, { isCodingOn: true });
 
   const root = join(api.dataDir, 'definitions');
 
@@ -155,9 +156,32 @@ async function setupTest() {
     });
   };
 
+  const proposeMailSend = (thread: string) =>
+    withWriteTransaction(api.context.log.writer, (tx) =>
+      writeActionProposal(
+        tx,
+        {
+          log: api.context.log,
+          clock: api.context.clock,
+          definitions: api.context.definitions,
+        },
+        {
+          definitions: api.context.definitions(),
+          thread,
+          callSequence: 1,
+          tool: 'mail.send',
+          effects: ['send'],
+          cause: 'no_rule',
+          input: { to: 'harbour@example.org' },
+          destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+        },
+      ),
+    );
+
   return {
     laptop,
     exports,
+    proposeMailSend,
     proposePrompt,
     answerWithPasskey,
     api,
@@ -1322,27 +1346,7 @@ test('#approvals.readProposals and #approvals.listItems give the chain from the 
     brief: 'Check who sent it.',
   });
 
-  const shortID = await withWriteTransaction(ctx.api.context.log.writer, (tx) =>
-    writeActionProposal(
-      tx,
-      {
-        log: ctx.api.context.log,
-        clock: ctx.api.context.clock,
-        definitions: ctx.api.context.definitions,
-      },
-      {
-        definitions: ctx.api.context.definitions(),
-        thread: askingID,
-        callSequence: 1,
-        tool: 'mail.send',
-        effects: ['send'],
-        cause: 'no_rule',
-        input: { to: 'harbour@example.org' },
-        destinations: [{ value: 'harbour@example.org', replyTarget: false }],
-      },
-    ),
-  );
-
+  const shortID = await ctx.proposeMailSend(askingID);
   const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
@@ -1354,7 +1358,7 @@ test('#approvals.readProposals and #approvals.listItems give the chain from the 
   });
 
   const expected = [
-    { kind: 'message' as const, id: 'conversation', name: 'Conversation' },
+    { kind: 'message' as const, id: 'conversation', name: 'Your message' },
     { kind: 'task' as const, id: parentID, name: 'Read the inbox' },
     { kind: 'task' as const, id: askingID, name: 'Check the sender' },
   ];
@@ -1363,4 +1367,42 @@ test('#approvals.readProposals and #approvals.listItems give the chain from the 
     listed: expected,
     read: expected,
   });
+});
+
+test('#approvals.listItems gives the starting message alone for a call that the conversation made itself', async () => {
+  const ctx = await setupTest();
+
+  const seeder = buildTaskSeeder({ context: ctx.api.context });
+
+  await seeder.conversationStep();
+
+  const shortID = await ctx.proposeMailSend('conversation');
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+
+  invariant(item);
+
+  expect(item.chain).toStrictEqual([{ kind: 'message', id: 'conversation', name: 'Your message' }]);
+});
+
+test('#approvals.listItems names the coding session that a task in the chain binds by its short ID', async () => {
+  const ctx = await setupTest();
+
+  invariant(ctx.api.coding, 'the test turns coding on');
+
+  const codingTaskID = await seedJoinedSession(ctx.api.coding, ctx.api.context, {
+    id: 'cloud.3f9a1c2e.00000001',
+    name: 'login fix',
+    state: 'idle',
+  });
+
+  const shortID = await ctx.proposeMailSend(codingTaskID);
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+
+  invariant(item);
+
+  expect(item.chain.map((step) => step.kind)).toStrictEqual(['message', 'coding']);
 });

@@ -78,10 +78,22 @@ test('it lists each step from the starting message to the asking task by its sho
   ]);
 });
 
-test('it lists no chain for a card that one thread asked', () => {
+test('it lists the starting message of a card that the conversation asked itself', () => {
   const ctx = setupTest();
 
-  ctx.show({ chain: [{ kind: 'message', id: 'conversation', name: 'Conversation' }] });
+  ctx.show({ chain: [{ kind: 'message', id: 'conversation', name: 'Your message' }] });
+
+  expect(
+    within(screen.getByRole('list', { name: 'How this came about' }))
+      .getAllByRole('listitem')
+      .map((item) => item.textContent),
+  ).toStrictEqual(['Message conversation: Your message']);
+});
+
+test('it lists no chain for a card that a task with no starter asked', () => {
+  const ctx = setupTest();
+
+  ctx.show({ chain: [{ kind: 'task', id: 'p4k8v2m6xa', name: 'Read the inbox' }] });
 
   expect(screen.queryByRole('list', { name: 'How this came about' })).toBeNull();
 });

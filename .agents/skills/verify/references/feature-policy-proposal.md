@@ -98,20 +98,24 @@ Before you start:
    ```
 
    Expect: the "Routine" list holds one collapsed item, which reads "Run memory.export (export).",
-   with no buttons. The conversation made the call itself, so the card lists no chain of tasks.
+   with no buttons.
 
-6. Expand the item, then approve the call. Take the `ref` from the snapshot of step 5, and take no
-   other snapshot before the first click: each snapshot gives every element a new `ref`. In that
-   snapshot, find the line that holds "Run memory.export (export)." and `[cursor=pointer]`. Pass
-   that line's `ref`, such as `f3e11`, as `<item_ref>`. The approve button is named "Run
-   memory.export".
+6. Expand the item, check the chain that the card lists, then approve the call. Take the `ref` from
+   the snapshot of step 5, and take no other snapshot before the first click: each snapshot gives
+   every element a new `ref`. In that snapshot, find the line that holds "Run memory.export
+   (export)." and `[cursor=pointer]`. Pass that line's `ref`, such as `f3e11`, as `<item_ref>`. The
+   approve button is named "Run memory.export".
 
    ```bash
    bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
    bun verify browser click --role button --name 'Run memory.export'
    ```
 
-   Expect: both clicks exit 0.
+   Expect: both clicks exit 0. The snapshot of the expanded item holds the list "How this came
+   about" with one entry, "Message conversation: Your message": the conversation made the call
+   itself, in the turn that your message woke, so the chain is that message alone. The list has no
+   entry for a task.
 
 7. Check the answer. `proposals --waiting none` checks once, with no wait, and exits 0 when nixie
    holds no call of the tool.

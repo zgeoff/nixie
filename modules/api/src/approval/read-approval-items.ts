@@ -47,7 +47,17 @@ export async function readApprovalItems(
 
   const chains = await readApprovalChains(
     context,
-    items.flatMap((item) => (item.taskID === null ? [] : [item.taskID])),
+    items.flatMap((item) =>
+      item.taskID === null
+        ? []
+        : [
+            {
+              proposalID: item.proposal.id,
+              taskID: item.taskID,
+              createdSequence: item.proposal.createdSequence,
+            },
+          ],
+    ),
   );
 
   const messageZone = await readMessageTimeZone(context.log);
@@ -65,7 +75,7 @@ export async function readApprovalItems(
       proposal: toApprovalRow(item.proposal),
       body: item.body,
       task: item.taskID === null ? null : { id: item.taskID, name: item.taskName ?? item.taskID },
-      chain: item.taskID === null ? [] : (chains.get(item.taskID) ?? []),
+      chain: item.taskID === null ? [] : (chains.get(item.proposal.id) ?? []),
       choices: [...pickProposalChoices(item.proposal)],
       passkeyChoices: [...pickPasskeyChoices(item.proposal)],
     })),

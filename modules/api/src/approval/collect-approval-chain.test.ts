@@ -8,7 +8,7 @@ function setupTest() {
         new Map(
           links.map(([id, startedBy]) => [
             id,
-            { isConversation: id === 'conversation', startedBy },
+            { isConversation: id === 'conversation', createdSequence: 1, startedBy },
           ]),
         ),
         asking,
@@ -62,6 +62,21 @@ test.each<{
     ],
     asking: 'task-a',
     chain: ['task-b', 'task-a'],
+  },
+  {
+    title: 'a chain of 25 tasks, from the conversation down',
+    links: [
+      ['conversation', null],
+      ...Array.from({ length: 25 }, (_, index): [string, string] => [
+        `task-${String(index + 1)}`,
+        index === 0 ? 'conversation' : `task-${String(index)}`,
+      ]),
+    ],
+    asking: 'task-25',
+    chain: [
+      'conversation',
+      ...Array.from({ length: 25 }, (_, index) => `task-${String(index + 1)}`),
+    ],
   },
 ])('#collectApprovalChain lists $title', (row) => {
   const ctx = setupTest();

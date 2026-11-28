@@ -153,7 +153,7 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
         </>
       )}
       {item.task === null ? null : <p className={meta}>Task: {item.task.name}</p>}
-      {item.chain.length < 2 ? null : (
+      {item.chain.length < 2 && item.chain[0]?.kind !== 'message' ? null : (
         <div className={meta}>
           <p>How this came about</p>
           <ol aria-label="How this came about">
