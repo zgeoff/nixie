@@ -147,7 +147,7 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 
       const usage = await readRunUsage(deps.context, taskRun);
 
-      const leftDollars = readLeftDollars(limits.dollars, usage.used.dollars);
+      const leftDollars = buildLeftDollars(limits.dollars, usage.used.dollars);
 
       if (leftDollars <= 0) {
         return { kind: 'limit', used: usage.used };
@@ -208,7 +208,7 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 }
 
 // A task run with no dollar limit has all the dollars left, which Infinity states.
-function readLeftDollars(limit: number | null, usedDollars: number): number {
+function buildLeftDollars(limit: number | null, usedDollars: number): number {
   return limit === null ? Number.POSITIVE_INFINITY : limit - usedDollars;
 }
 
@@ -269,7 +269,7 @@ function createRecordsStepMeter(
 
       await write(reason, baseMicros);
 
-      const leftDollars = readLeftDollars(taskRun.opened.limits.dollars, facts.used.dollars);
+      const leftDollars = buildLeftDollars(taskRun.opened.limits.dollars, facts.used.dollars);
 
       if (leftDollars <= 0) {
         return { kind: 'limit', used: facts.used };

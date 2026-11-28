@@ -83,7 +83,7 @@ export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
           dollars: { type: 'number', exclusiveMinimum: 0 },
         },
         additionalProperties: false,
-        description: describeLimits(limits),
+        description: formatLimits(limits),
       },
     },
     required: ['name', 'brief'],
@@ -91,7 +91,7 @@ export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
   };
 }
 
-function describeLimits(limits: TaskStartBounds['limits']): string {
+function formatLimits(limits: TaskStartBounds['limits']): string {
   const defaults = [
     limits.default.turns === null ? null : `${String(limits.default.turns)} turns`,
     limits.default.dollars === null ? null : `$${String(limits.default.dollars)}`,
