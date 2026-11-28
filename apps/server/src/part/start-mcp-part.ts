@@ -32,6 +32,7 @@ export async function startMcpPart(
 ): Promise<Mcp> {
   const mcp = startMcp({
     log: parts.context.log,
+    logger: parts.log,
     definitions: parts.context.definitions,
     now: () => parts.context.clock.now(),
     store: parts.credentials.store,

@@ -1,6 +1,7 @@
 import type { CredentialStore } from '@heynixie/credentials';
 import { createHeldTestStore } from '@heynixie/credentials/test-utils';
 import type { HeldTestStore } from '@heynixie/credentials/test-utils';
+import type { Logger } from '@heynixie/logger';
 import type { McpOverrides } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
 import { readServerRows } from '../rows/read-server-rows';
@@ -22,6 +23,7 @@ export interface StandInMcpOptions {
   readonly listingTimeoutSeconds?: number;
   readonly advertisesIssuer?: boolean;
   readonly onPinMoved?: OnPinMoved;
+  readonly logger?: Logger;
   readonly extraProjections?: TestMcpOptions['extraProjections'];
 
   // awaited by each read of the override files, so a test can hold a refresh in flight
@@ -99,6 +101,7 @@ export async function startStandInMcp(options: StandInMcpOptions = {}): Promise<
   const makeMcp = (changed: Partial<ServerFacts> = {}, store = held.store): Mcp =>
     startMcp({
       log: test.log,
+      logger: options.logger ?? (() => {}),
       definitions: test.context.definitions,
       now: test.context.now,
       store,

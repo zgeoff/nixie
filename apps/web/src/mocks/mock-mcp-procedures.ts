@@ -25,6 +25,12 @@ export const mockMcpProcedures = {
       throw options.errors.SERVER_NOT_ADDED();
     }
 
+    const reason = mcpStore.discoveryFailures.get(found.server);
+
+    if (reason !== undefined) {
+      throw options.errors.DISCOVERY_FAILED({ data: { reason } });
+    }
+
     mcpStore.connects.push({ server: found.server, origin: options.input.origin });
 
     return { authorizeURL: `/mock-mcp/authorize?server=${found.server}` };

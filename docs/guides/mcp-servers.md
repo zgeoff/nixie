@@ -71,6 +71,10 @@ turn.
 When the server stops accepting its refresh token, the card shows "Needs sign-in" and a Sign in
 again button. Select it and sign in again.
 
+When the sign-in does not start, read the reason under Connect. When the server's host name resolves
+to a private address, nixie's egress check refuses it, and the reason gives that address. Set the
+server's `privateRange` to the range that holds the address to allow it.
+
 ## Let a tool's calls run
 
 You approve no tool. Each tool the server lists is available at its first listing, and each call of

@@ -2,6 +2,7 @@ import { mcpSignInStatePrefix } from '@heynixie/contract';
 import type { CredentialStore, HeldBackend } from '@heynixie/credentials';
 import { TokenRequestError } from '@heynixie/credentials';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import { mcpServerChangedCodec } from '../record/mcp-server-changed-codec';
 import { readServerRow } from '../rows/read-server-rows';
 import { toCredentialFields } from '../rows/to-credential-fields';
@@ -11,6 +12,7 @@ import type { McpContext } from '../types';
 import { buildPKCE } from './build-pkce';
 import { readBindings, toBinding } from './read-bindings';
 import type { BindingsRuntime, ServerBindings } from './read-bindings';
+import { toLoggedReason } from './to-logged-reason';
 
 export type ConnectResult =
   | { readonly status: 'ok'; readonly authorizeURL: string }
@@ -43,6 +45,7 @@ export interface SignInOptions {
   readonly store: CredentialStore;
   readonly backend: Pick<HeldBackend, 'writeClient'>;
   readonly runtime: BindingsRuntime;
+  readonly logger: Logger;
 
   // runs once the grant is saved, so the proxy lists the server's tools
   readonly onSignedIn: (serverID: string) => Promise<void>;
@@ -94,6 +97,12 @@ export function createSignIn(options: SignInOptions): SignIn {
       const bound = await readBindings(options.runtime, server);
 
       if (bound.kind === 'failed') {
+        options.logger(
+          'mcp.sign_in_discovery_failed',
+          { serverID, reason: toLoggedReason(bound.reason) },
+          'warn',
+        );
+
         return { status: 'discovery_failed', reason: bound.reason };
       }
 
