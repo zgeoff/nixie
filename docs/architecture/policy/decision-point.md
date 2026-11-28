@@ -135,8 +135,8 @@ the model reads "Waiting for approval as `<shortID>`". The model keeps working. 
 gives an ask the cause `outside_steering`, `always_ask`, `ask_rule`, `no_rule` or `condition_error`.
 The last is a call that asks because a deny rule's condition errored, as
 [rule conditions](rule-conditions.md#evaluating-a-condition) describes. The record codecs also read
-`direct_request` and `repeat` as a cause, because older records hold them there, but the decision
-point never writes either as a cause.
+`direct_request` and `repeat` as a cause, because older records hold them there. The decision point
+never writes either as a cause.
 
 Answer an ask with `nixie proposals approve <shortID>` or `nixie proposals reject <shortID>`, or on
 the page for actions. The answer lands in the inbox of the task that asked. Approving queues the

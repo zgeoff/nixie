@@ -8,18 +8,18 @@ notice. A device screen opens the same procedure in its own form, which carries 
 A change that writes no record, or that no write makes, still reaches the tab through a topic. A
 backup notice marks its topic in the transaction that writes it, and the spend watcher publishes
 `spend` when the gateway's stop differs from its last read. A task that comes due and a forget that
-turns stuck reach the tab on a timer instead, as the next paragraph explains.
+turns stuck reach the tab on a timer instead.
+
+Nothing publishes a topic when either change happens. A task that comes due changes the task list,
+so the tab reads the list at the `changesAt` time the list returns, as well as on the `tasks`
+topic's `changed`. A forget turns stuck with no topic at all, so the tab reads the stuck forgets on
+a timer alone. Roots such as `sessions`, `devices` and `erasure` have no topic either. See
+[Topics](#topics) for each.
 
 On a topic's `changed` event, the tab runs that topic's queries again. When a stream opens, the tab
 runs the queries of every topic again, because `changed` has no event ID and a closed stream misses
 it. A stream that replaces one that is still open skips that step, because the old stream carried
 every change until the new one opened.
-
-Neither timed change comes from a write. A task that comes due changes the task list, so the tab
-reads the list at the `changesAt` time the list returns, as well as on the `tasks` topic's
-`changed`. A forget turns stuck with no topic at all, so the tab reads the stuck forgets on a timer
-alone. Roots such as `sessions`, `devices` and `erasure` have no topic either. See [Topics](#topics)
-for each.
 
 ```mermaid
 flowchart LR
@@ -153,9 +153,10 @@ and the devices module holds the open device streams, so the two facts stay apar
 - Presence comes only from `sessions.shown` beats. An open stream never counts as present, because a
   background tab holds a stream open. The push notifier reads `presence.isPresent(withinMs)`.
 - A device is online while one or more of its device-form streams are open, and for a grace time
-  after, as [the devices doc](./devices.md#the-streams) explains. A device-form stream of a device
-  session keeps its session's last seen time fresh. A page stream never does, and neither does the
-  device-form stream of a full session, so an idle tab's session lapses on schedule.
+  after the last one closes, as [the devices doc](./devices.md#the-streams) explains. A device-form
+  stream of a device session keeps its session's last seen time fresh. A page stream never does, and
+  neither does the device-form stream of a full session, so an idle tab's session lapses on
+  schedule.
 
 When a client goes away, the server ends its stream within 2 keepalive intervals and drops a
 device-form stream from the device streams in the same step.

@@ -193,10 +193,10 @@ and the secrets.
   host, not impd's API, not another sandbox. The deployment's operator lists the host's own
   addresses and the deployment's private address ranges in nixie's config, under
   `imp.host_addresses` and `imp.egress_deny`, as the
-  [Compose config](../../../deploy/compose/config.yaml) shows, and gives impd the same lists in its
-  own settings. The adapter refuses public egress when the list of host addresses is empty, or when
-  impd cannot enforce public egress, because a public imp can reach any host address the list leaves
-  out.
+  [Compose config](../../../deploy/compose/config.yaml) shows. The operator gives impd the same
+  lists in its own settings. The adapter refuses public egress when the list of host addresses is
+  empty, or when impd cannot enforce public egress, because a public imp can reach any host address
+  the list leaves out.
 - **Closed egress.** A sandbox with no egress, a worker's included, has no internet route except its
   broker. The broker adds the model grant from the host side, so code in the sandbox that holds a
   key of its own gets no answer from the model API's host when it connects directly. A worker reads
