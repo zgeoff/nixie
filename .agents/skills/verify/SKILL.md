@@ -40,47 +40,48 @@ feature with no verdict in its description.
 
 <!-- wringer:features -->
 
-| Feature            | Summary                                            | File                                                                                 |
-| ------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| sign-in-enrol      | Sign a browser in with an enrol code               | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)           |
-| chat-turn          | Send a message, and see the reply after it         | [references/feature-chat-turn.md](references/feature-chat-turn.md)                   |
-| memory-approval    | Approve a proposed memory                          | [references/feature-memory-approval.md](references/feature-memory-approval.md)       |
-| policy-proposal    | Approve a call an ask rule held                    | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
-| rule-condition     | Approve a conditional rule, and see it match       | [references/feature-rule-condition.md](references/feature-rule-condition.md)         |
-| task-control       | Pause and resume a task                            | [references/feature-task-control.md](references/feature-task-control.md)             |
-| coding-session     | Start a coding session from chat                   | [references/feature-coding-session.md](references/feature-coding-session.md)         |
-| coding-supervision | Supervise a coding session from the live view      | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |
-| call-hand-off      | Hand a question off in a call, and hear the answer | [references/feature-call-hand-off.md](references/feature-call-hand-off.md)           |
-| call-screen        | Start a call, see its proposal card, and hang up   | [references/feature-call-screen.md](references/feature-call-screen.md)               |
-| call-device-show   | Show an answer on the call's device                | [references/feature-call-device-show.md](references/feature-call-device-show.md)     |
-| drawing            | Draw a picture, edit it, and list both             | [references/feature-drawing.md](references/feature-drawing.md)                       |
-| images-page        | Browse and forget images                           | [references/feature-images-page.md](references/feature-images-page.md)               |
-| notebook-pages     | Browse notes, open a private one, forget one       | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |
-| google-connections | Connect a Google account and forget it             | [references/feature-google-connections.md](references/feature-google-connections.md) |
-| google-off         | Turn Google off                                    | [references/feature-google-off.md](references/feature-google-off.md)                 |
-| mcp-servers        | Connect an MCP server, and approve a tool          | [references/feature-mcp-servers.md](references/feature-mcp-servers.md)               |
-| computer-shell     | Write and read back a shell file                   | [references/feature-computer-shell.md](references/feature-computer-shell.md)         |
-| computer-browser   | Open a page in the assistant's browser             | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
-| computer-screen    | Click a point of the assistant's desktop           | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
-| computer-watch     | Watch the assistant's desktop                      | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
-| computer-off       | Turn the computer off                              | [references/feature-computer-off.md](references/feature-computer-off.md)             |
-| trusted-places     | Trust a site once                                  | [references/feature-trusted-places.md](references/feature-trusted-places.md)         |
-| place-trust-card   | Trust a place from a card                          | [references/feature-place-trust-card.md](references/feature-place-trust-card.md)     |
-| calls-off          | Turn calls off                                     | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
-| devices-off        | Turn devices off                                   | [references/feature-devices-off.md](references/feature-devices-off.md)               |
-| search-images-off  | Turn search and images off                         | [references/feature-search-images-off.md](references/feature-search-images-off.md)   |
-| spend-routes       | Read each route's counts                           | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
-| device-in-browser  | Open the browser's own device full screen          | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
-| device-view        | Open the browser's own device                      | [references/feature-device-view.md](references/feature-device-view.md)               |
-| device-screen      | Enrol a device and see a picture on it             | [references/feature-device-screen.md](references/feature-device-screen.md)           |
-| device-layout      | Lay out a screen in regions, and change them       | [references/feature-device-layout.md](references/feature-device-layout.md)           |
-| live-updates       | Pause from the host, see it on the page            | [references/feature-live-updates.md](references/feature-live-updates.md)             |
-| mail-wake          | Mail wakes the chat                                | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
-| phone-text         | A text wakes the chat                              | [references/feature-phone-text.md](references/feature-phone-text.md)                 |
-| gmail-tools        | Search and read a mail, and approve a reply        | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
-| gmail-wake         | A matching Gmail mail wakes the chat               | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
-| calendar-tools     | Read the calendar, and approve an invitation       | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
-| drive-tools        | Search the files, and create a text file           | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
+| Feature            | Summary                                          | File                                                                                 |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| sign-in-enrol      | Sign a browser in with an enrol code             | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)           |
+| chat-turn          | Send a message, and see the reply after it       | [references/feature-chat-turn.md](references/feature-chat-turn.md)                   |
+| memory-approval    | Approve a proposed memory                        | [references/feature-memory-approval.md](references/feature-memory-approval.md)       |
+| policy-proposal    | Approve a call an ask rule held                  | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)       |
+| rule-condition     | Approve a conditional rule, and see it match     | [references/feature-rule-condition.md](references/feature-rule-condition.md)         |
+| task-control       | Pause and resume a task                          | [references/feature-task-control.md](references/feature-task-control.md)             |
+| coding-session     | Start a coding session from chat                 | [references/feature-coding-session.md](references/feature-coding-session.md)         |
+| coding-supervision | Supervise a coding session                       | [references/feature-coding-supervision.md](references/feature-coding-supervision.md) |
+| call-hand-off      | Hand a question off in a call                    | [references/feature-call-hand-off.md](references/feature-call-hand-off.md)           |
+| call-screen        | Start a call, see its proposal card, and hang up | [references/feature-call-screen.md](references/feature-call-screen.md)               |
+| call-device-show   | Show an answer on the call's device              | [references/feature-call-device-show.md](references/feature-call-device-show.md)     |
+| drawing            | Draw a picture, edit it, and list both           | [references/feature-drawing.md](references/feature-drawing.md)                       |
+| images-page        | Browse and forget images                         | [references/feature-images-page.md](references/feature-images-page.md)               |
+| notebook-pages     | Browse notes, open a private one, forget one     | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)         |
+| google-connections | Connect a Google account and forget it           | [references/feature-google-connections.md](references/feature-google-connections.md) |
+| google-off         | Turn Google off                                  | [references/feature-google-off.md](references/feature-google-off.md)                 |
+| mcp-servers        | Connect an MCP server, and approve a tool        | [references/feature-mcp-servers.md](references/feature-mcp-servers.md)               |
+| computer-shell     | Write and read back a shell file                 | [references/feature-computer-shell.md](references/feature-computer-shell.md)         |
+| computer-browser   | Open a page in the assistant's browser           | [references/feature-computer-browser.md](references/feature-computer-browser.md)     |
+| computer-screen    | Click a point of the assistant's desktop         | [references/feature-computer-screen.md](references/feature-computer-screen.md)       |
+| computer-watch     | Watch the assistant's desktop                    | [references/feature-computer-watch.md](references/feature-computer-watch.md)         |
+| computer-off       | Turn the computer off                            | [references/feature-computer-off.md](references/feature-computer-off.md)             |
+| trusted-places     | Trust a site once                                | [references/feature-trusted-places.md](references/feature-trusted-places.md)         |
+| place-trust-card   | Trust a place from a card                        | [references/feature-place-trust-card.md](references/feature-place-trust-card.md)     |
+| job-skills         | Give a job its skills                            | [references/feature-job-skills.md](references/feature-job-skills.md)                 |
+| calls-off          | Turn calls off                                   | [references/feature-calls-off.md](references/feature-calls-off.md)                   |
+| devices-off        | Turn devices off                                 | [references/feature-devices-off.md](references/feature-devices-off.md)               |
+| search-images-off  | Turn search and images off                       | [references/feature-search-images-off.md](references/feature-search-images-off.md)   |
+| spend-routes       | Read each route's counts                         | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
+| device-in-browser  | Open the browser's own device full screen        | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
+| device-view        | Open the browser's own device                    | [references/feature-device-view.md](references/feature-device-view.md)               |
+| device-screen      | Enrol a device and see a picture on it           | [references/feature-device-screen.md](references/feature-device-screen.md)           |
+| device-layout      | Lay out a screen in regions, and change them     | [references/feature-device-layout.md](references/feature-device-layout.md)           |
+| live-updates       | Pause from the host, see it on the page          | [references/feature-live-updates.md](references/feature-live-updates.md)             |
+| mail-wake          | Mail wakes the chat                              | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
+| phone-text         | A text wakes the chat                            | [references/feature-phone-text.md](references/feature-phone-text.md)                 |
+| gmail-tools        | Search and read a mail, and approve a reply      | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |
+| gmail-wake         | A matching Gmail mail wakes the chat             | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
+| calendar-tools     | Read the calendar, and approve an invitation     | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
+| drive-tools        | Search the files, and create a text file         | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
 
 <!-- /wringer:features -->
 
