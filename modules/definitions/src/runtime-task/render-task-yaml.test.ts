@@ -68,10 +68,14 @@ function setupTest() {
     parseJSONText: (input: TaskDefineInput, id: string) => {
       const folder = { id, files: new Map([['task.yaml', JSON.stringify(input)]]) };
 
-      return parseTaskFolder(folder, {
-        toolNames: seed.toolNames,
-        checkTaskStart: (start) => seed.checkTaskStart(start, 'conversation'),
-      });
+      return parseTaskFolder(
+        folder,
+        {
+          toolNames: seed.toolNames,
+          checkTaskStart: (start) => seed.checkTaskStart(start, 'conversation'),
+        },
+        [],
+      );
     },
   };
 }

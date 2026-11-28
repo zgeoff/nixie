@@ -77,6 +77,9 @@ export interface DefinitionVersion {
   readonly memory: TaskMemory;
   readonly log: TaskLog;
   readonly tools: readonly string[];
+
+  // the skills a run of the version may use: none when the file lists none
+  readonly skills: readonly string[];
   readonly context: 'fresh' | 'continuing';
   readonly wakeable: boolean;
 

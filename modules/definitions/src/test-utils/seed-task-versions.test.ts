@@ -33,6 +33,7 @@ test('it stores a version that reads back with its name, brief and defaults', as
     memory: 'none',
     log: 'own',
     tools: startedTaskDefaultTools,
+    skills: [],
     context: 'fresh',
     wakeable: false,
     trigger: null,

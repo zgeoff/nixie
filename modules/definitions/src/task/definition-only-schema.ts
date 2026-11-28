@@ -9,6 +9,7 @@ export const definitionOnlyKeys = [
   'step',
   'destinations',
   'maxCalls',
+  'skills',
 ] as const;
 
 export const definitionOnlySchema = z.object({
@@ -23,6 +24,7 @@ export const definitionOnlySchema = z.object({
     .nullable()
     .default(null),
   destinations: z.array(destinationPatternSchema).default([]),
+  skills: z.array(z.string()).optional(),
 });
 
 export const maxCallsSchema = z.record(z.string(), z.number()).default({});

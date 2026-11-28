@@ -122,6 +122,9 @@
                 "frame": {
                   "type": "string"
                 },
+                "skillCatalog": {
+                  "type": "string"
+                },
                 "inputs": {
                   "type": "string"
                 },

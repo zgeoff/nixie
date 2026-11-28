@@ -6,8 +6,11 @@ import type { TaskDefinitions, TaskSeedContext } from './types';
 export function parseTaskDefinitions(
   texts: ReadonlyMap<string, string>,
   context: TaskSeedContext,
+  skillNames: readonly string[],
 ): TaskDefinitions {
-  const outcomes = collectTaskFolders(texts).map((folder) => parseTaskFolder(folder, context));
+  const outcomes = collectTaskFolders(texts).map((folder) =>
+    parseTaskFolder(folder, context, skillNames),
+  );
 
   const definitions = outcomes.flatMap((outcome) =>
     outcome.definition === null ? [] : [outcome.definition],

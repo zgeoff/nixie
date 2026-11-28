@@ -58,6 +58,7 @@ export function buildDefineVersion(
       toolNames: context.toolNames,
       checkTaskStart: (start) => context.checkTaskStart(start, 'conversation'),
     },
+    [],
   );
 
   const reasons = [

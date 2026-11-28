@@ -28,7 +28,11 @@ export interface FolderOutcome {
 
 // The order is the folder's faults, then the YAML, then the unknown fields that skip the definition,
 // then every other fault, so a skipped definition is never refused for a fault in its known keys.
-export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): FolderOutcome {
+export function parseTaskFolder(
+  folder: TaskFolder,
+  context: TaskSeedContext,
+  skillNames: readonly string[],
+): FolderOutcome {
   const root = `tasks/${folder.id}`;
   const yaml = folder.files.get('task.yaml');
 
@@ -137,7 +141,10 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
   }
 
   if (only.success) {
-    faults.push(...collectStepFaults(root, folder, only.data.step));
+    faults.push(
+      ...collectStepFaults(root, folder, only.data.step),
+      ...collectSkillFaults(yamlPath, only.data.skills, skillNames),
+    );
   }
 
   const instructions = folder.files.get('instructions.md');
@@ -179,6 +186,9 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
       ...start.data,
       ...(dropped.tools === undefined ? {} : { tools }),
       ...only.data,
+      ...(only.data.skills === undefined
+        ? {}
+        : { skills: [...new Set(only.data.skills)].toSorted() }),
       trigger: trigger.trigger,
       maxCalls: maxCalls.data,
     }),
@@ -241,6 +251,26 @@ function collectStepFaults(
     }));
 
   return [...missing, ...unnamed];
+}
+
+function collectSkillFaults(
+  path: string,
+  listed: readonly string[] | undefined,
+  skillNames: readonly string[],
+): SeedFault[] {
+  const known = new Set(skillNames);
+
+  const unknown = [...new Set(listed)].filter((name) => !known.has(name));
+
+  return unknown.length === 0
+    ? []
+    : [
+        {
+          path,
+          fault: 'bad_definition',
+          reasons: unknown.map((name) => `skills: no skill is named ${name}`),
+        },
+      ];
 }
 
 function isSlotsAccepted(text: string): boolean {
