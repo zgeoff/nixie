@@ -33,6 +33,32 @@ export async function readPlaceIDOfRecord(
   return target === undefined ? null : findTargetPlaceID(target.record);
 }
 
+// The place of a forget that stored none, such as one an earlier release began: the record's own
+// place while it still reads, else the place of an open record that the forget captured by key.
+export async function readPlaceIDOfForget(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  recordSequence: number,
+  keyIDs: readonly string[],
+): Promise<string | null> {
+  const own = await readPlaceIDOfRecord(log, recordSequence);
+
+  if (own !== null || keyIDs.length === 0) {
+    return own;
+  }
+
+  const rows = await log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select(placeIDOf.as('place_id'))
+    .where('kind', 'in', openKinds)
+    .where('key_id', 'in', keyIDs.slice(0, 500))
+    .execute();
+
+  const found = rows.map((row) => z.string().nullable().parse(row.place_id));
+
+  return found.find((id) => id !== null) ?? null;
+}
+
 // The key of each record of a place, as the place's records read now. An address place's removal
 // or act joins the place only while its own fields are readable.
 export async function readPlaceKeyIDs(

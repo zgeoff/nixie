@@ -286,8 +286,11 @@ code sandbox, and destroys every sandbox before any key goes.
 A forget of a record of a trusted place also removes the keys of the place's other records, and a
 forget removes the keys of each photo imported from the record. A record of either kind can land
 while the cleanup runs. So the runner scans again after the cleanup, and once more in the
-transaction that commits `erasure.finished`, and removes each key it finds. No such record stays
-readable once the forget finishes.
+transaction that commits `erasure.finished`, and removes each key it finds. A place act that lands
+after the forget finished removes its own key as it is written, because the forget's scans are over.
+A forget that stored no place ID, such as one an earlier release began, finds the place from the
+record or from the open place records it captured, and scans for the place's records in the same
+way. No such record stays readable once the forget finishes.
 
 The key goes before the session cleanup, so the session the next turn rebuilds reads the record as a
 gap. Every step is safe to run twice. A forget that a crash cuts short stays open, and the server's

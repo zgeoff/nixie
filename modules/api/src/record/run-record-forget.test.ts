@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecords, writeRecords } from '@heynixie/log';
+import { erasureStartedCodec, readRecords, writeRecords } from '@heynixie/log';
 import { readRecordForgetPreview } from '@heynixie/memory';
 import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
 import {
@@ -664,5 +664,115 @@ test('it shreds an act of a place written while the forget of the place act remo
   const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
 
   expect(isWritten).toBe(true);
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
+});
+
+test('it shreds an act of a place that lands after the forget of the place act finished', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: first.record.sequence });
+  await writePlaceActed(places, { ...act, callID: 'call-2' });
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
+});
+
+test('it rescans the acts of a place for a forget that stored no place ID', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'erasure.started',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: erasureStartedCodec.encode({
+        erasureID: crypto.randomUUID(),
+        kind: 'record',
+        targetID: String(first.record.sequence),
+        shortID: null,
+        version: null,
+        parentID: null,
+        by: 'user',
+        capture: {
+          keys: { ids: [] },
+          cleanupKeys: [],
+          sandboxCallIDs: [],
+          purges: [],
+          sessionCause: { recordSequence: first.record.sequence },
+          turnInputs: { threads: [], cleaned: true, floor: first.record.sequence },
+        },
+        keyCount: 0,
+      }),
+    },
+  ]);
+
+  await writePlaceActed(places, { ...act, callID: 'call-2' });
+  await finishRecordForget(ctx.context, first.record.sequence);
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
   expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
 });
