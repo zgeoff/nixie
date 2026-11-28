@@ -35,7 +35,8 @@ export interface ErasureTarget {
   readonly version: number | null;
 }
 
-export type ErasureBy = 'user' | 'assistant';
+// `system` is an erasure that nixie starts itself, such as an expiry.
+export type ErasureBy = 'user' | 'assistant' | 'system';
 
 // What a store's start returns after it checked the target and read what the erasure must delete.
 export interface ErasureStart {
@@ -80,6 +81,14 @@ export interface Erasable<Request> {
   readonly readLateKeyIDs?: (
     tx: WriteTransaction,
     target: ErasureTarget,
+    capture: ErasureCapture,
+  ) => Promise<readonly string[]>;
+
+  // Optional. Runs in the transaction that holds the writer while the keys of the capture go: the
+  // keys among them that stay, because a write after the start, such as a kept moment, now needs
+  // them. No write commits between this read and the delete.
+  readonly readSparedKeyIDs?: (
+    tx: WriteTransaction,
     capture: ErasureCapture,
   ) => Promise<readonly string[]>;
 
@@ -143,6 +152,10 @@ export interface ErasureEntry {
   readonly readLateKeyIDs: (
     tx: WriteTransaction,
     target: ErasureTarget,
+    capture: ErasureCapture,
+  ) => Promise<readonly string[]>;
+  readonly readSparedKeyIDs?: (
+    tx: WriteTransaction,
     capture: ErasureCapture,
   ) => Promise<readonly string[]>;
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;

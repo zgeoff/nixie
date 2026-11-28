@@ -11,6 +11,7 @@ test('it starts a store over a log that folds the memory projections, with no re
 
   expect(ctx.log.projections.map((projection) => projection.table)).toStrictEqual([
     'threads',
+    'expired_keys',
     'nixie_pause',
     'pause_exemptions',
     'recoveries',

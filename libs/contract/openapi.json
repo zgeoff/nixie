@@ -224,6 +224,22 @@
                               "sequence"
                             ]
                           },
+                          "expiry": {
+                            "type": "object",
+                            "properties": {
+                              "sequences": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              }
+                            },
+                            "required": [
+                              "sequences"
+                            ]
+                          },
                           "context": {
                             "type": "object",
                             "properties": {
@@ -331,6 +347,9 @@
                                 "type": "string"
                               }
                             }
+                          },
+                          "isExpired": {
+                            "const": true
                           },
                           "isRemoved": {
                             "const": true
@@ -1113,6 +1132,22 @@
                                 "sequence"
                               ]
                             },
+                            "expiry": {
+                              "type": "object",
+                              "properties": {
+                                "sequences": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                }
+                              },
+                              "required": [
+                                "sequences"
+                              ]
+                            },
                             "context": {
                               "type": "object",
                               "properties": {
@@ -1220,6 +1255,9 @@
                                   "type": "string"
                                 }
                               }
+                            },
+                            "isExpired": {
+                              "const": true
                             },
                             "isRemoved": {
                               "const": true
@@ -42477,6 +42515,22 @@
                                         "sequence"
                                       ]
                                     },
+                                    "expiry": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sequences": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "sequences"
+                                      ]
+                                    },
                                     "context": {
                                       "type": "object",
                                       "properties": {
@@ -42584,6 +42638,9 @@
                                           "type": "string"
                                         }
                                       }
+                                    },
+                                    "isExpired": {
+                                      "const": true
                                     },
                                     "isRemoved": {
                                       "const": true

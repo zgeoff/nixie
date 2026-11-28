@@ -2,6 +2,7 @@ import { startMemory } from '../cli/start-memory';
 import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { startErasureRunner } from '../erasure/start-erasure-runner';
 import { startErasureWatch } from '../erasure/start-erasure-watch';
+import { startExpirySweep } from '../erasure/start-expiry-sweep';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { startTurnInputWork } from '../turn/start-turn-input-work';
 import type { AnyPartDeclaration } from '../types';
@@ -111,5 +112,11 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     name: 'erasure_watch',
     needs: ['server_parts', 'erasure', 'erasure_catch_up'],
     start: (reader) => startErasureWatch(reader.get('server_parts'), reader.get('erasure')),
+  },
+  {
+    // An expiry waits for the catch-up, so it never begins beside a forget that a crash cut short.
+    name: 'expiry_sweep',
+    needs: ['server_parts', 'erasure', 'erasure_catch_up'],
+    start: (reader) => startExpirySweep(reader.get('server_parts'), reader.get('erasure')),
   },
 ];

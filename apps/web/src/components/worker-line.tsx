@@ -74,6 +74,7 @@ export function WorkerLine(props: WorkerLineProps): ReactNode {
             <ol>
               {worker.turns.map((turn) => {
                 const shown = whole.payloads.get(turn.record.sequence)?.worker?.text ?? turn.text;
+                const gone = turn.isExpired ? 'Expired.' : 'Forgotten.';
 
                 return (
                   <li key={turn.turn}>
@@ -81,9 +82,7 @@ export function WorkerLine(props: WorkerLineProps): ReactNode {
                       Turn {turn.turn} · {turn.tokens.toLocaleString('en')} tokens · $
                       {turn.dollars.toFixed(2)}
                     </span>
-                    <p className={shown === undefined ? forgotten : text}>
-                      {shown ?? 'Forgotten.'}
-                    </p>
+                    <p className={shown === undefined ? forgotten : text}>{shown ?? gone}</p>
                   </li>
                 );
               })}
@@ -112,6 +111,10 @@ function pickQuestion(call: ToolActivity, loaded: ReadablePayload | undefined): 
 const answerSchema = z.object({ result: z.object({ answer: z.string() }) });
 
 function pickAnswer(call: ToolActivity, loaded: ReadablePayload | undefined): PartText {
+  if (call.isExpired === true) {
+    return { isForgotten: true, text: 'Expired.' };
+  }
+
   if (call.outcome === undefined) {
     return { isForgotten: false, text: 'No answer yet.' };
   }

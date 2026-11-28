@@ -408,6 +408,11 @@ interface RecoveryRow {
   readonly started_sequence: number;
 }
 
+interface ExpiredKeyRow {
+  readonly key_id: string;
+  readonly started_sequence: number;
+}
+
 interface RecordAttachmentRow {
   readonly sequence: number;
   readonly position: number;
@@ -435,6 +440,7 @@ export type LogTables = CheckedTables<
     spend_provider_stops: SpendProviderStopRow;
     spend_provider_holds: SpendProviderHoldRow;
     recoveries: RecoveryRow;
+    expired_keys: ExpiredKeyRow;
   }>
 >;
 

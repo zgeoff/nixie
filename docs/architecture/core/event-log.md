@@ -83,9 +83,9 @@ the projections that fold before it, never the clock, which is why a rebuild giv
 
 A read returns the records after a sequence, oldest first, each with its decrypted erasable fields
 and the projection rows it changed. A reader that applies a record and its rows together, then moves
-its cursor, stays consistent at every step. A record whose key is gone reads as shredded, and one
-whose key or ciphertext fails to decrypt reads as unreadable, both with the envelope intact, so
-neither stops a reader at its sequence.
+its cursor, stays consistent at every step. A record whose key is gone reads as shredded, or as
+expired when an [expiry](#expiry) removed it, and one whose key or ciphertext fails to decrypt reads
+as unreadable, each with the envelope intact, so none stops a reader at its sequence.
 
 A subscription yields the same entries, then waits for the next commit. The writer holds a commit
 bus, an event target in its own process that fires after each write transaction commits, so a reader
@@ -121,10 +121,10 @@ The file holds one table, `records`, with a row per record:
 | `text_status`                                                                       | `readable`, `none`, `shredded`, `expired` or `unreadable`                   |
 
 A record whose key is gone, or whose text fails to decrypt, keeps its envelope and payload and gets
-a null `text` with the reason in `text_status`. The reason is `shredded` when an erasure that began
-named the key, its family or its thread, and `expired` for a key that left without one. The export
-counts these gaps and finishes. The file holds no attachment: an image or another binary stays in
-the database.
+a null `text` with the reason in `text_status`. The reason is `shredded` when a forget that began
+named the key, its family or its thread, and `expired` for a key that left by [expiry](#expiry) or
+without any erasure. The export counts these gaps and finishes. The file holds no attachment: an
+image or another binary stays in the database.
 
 The export is a plain copy of every conversation, so it carries the declared effect `export`, under
 the tool name `log.export`, and passes the [decision point](../policy/decision-point.md) like any
@@ -223,3 +223,45 @@ a rebuild after a forget: every summary on the thread is shredded, and the recen
 newest `log_reset` record, so the model reads no line of the old conversation. A crash before stage
 5 leaves the erasure open with no `log_reset` record, and the next start finishes it and writes the
 `log_reset` record.
+
+## Expiry
+
+The text that nobody rereads expires once it is old enough: the result of a tool call, the result
+that a connector returned for an action, and the working notes of a helper. The record stays as a
+stub, with its envelope and payload, so a reader sees that the call happened and that its text is
+gone. The age is the `erasure.expire_after_days` setting, and its default is in
+[the configuration](../deployment/configuration.md).
+
+An expiry is an erasure of the kind `expiry`, which the
+[erasure runner](../memory/store.md#forgetting) runs, so expired text becomes a gap the way a
+forgotten one does:
+
+1. At the start, after the catch-up of open erasures, and then every hour, the server's expiry sweep
+   asks for one erasure at a time.
+2. The start transaction reads the records of those kinds that are older than the age, whose key no
+   expiry has named, and that no kept moment covers. A moment covers the records on its thread from
+   its first sequence to its last while it is active or retired. It keeps the keys that the key
+   store still holds, up to 500 of them, and writes `erasure.started` with them and the actor
+   `system`. It names no session, sandbox, turn input or memory purge, because none holds a payload
+   that old.
+3. The runner deletes the keys, writes `erasure.finished` and the backup floor, so the expiry makes
+   a backup due as a forget does. The sweep then starts the next batch after the last record the
+   previous one read, until a start finds nothing to expire.
+
+A moment kept after the start still holds its records: the runner reads which captured keys a kept
+moment now covers and deletes the rest, in one write transaction, so no keep commits in between. A
+spared key stays in `expired_keys`, so a later batch never names it again.
+
+A crash after the start leaves the erasure open, and the next start finishes it before the sweep
+runs again. The `expired_keys` projection holds each key that an expiry named, so `log.read` tells
+an expired record from a forgotten one, and a rebuild of the projections gives the same rows.
+`log.read` shows an expired entry with a null `text` and `isExpired` true, and never as an error.
+The export reads no projection: it calls a record whose key is gone `expired` when no forget covers
+that key, its family or its thread, and `shredded` when one does. A forget still wins over expiry:
+it names its own keys, and the key of a record that a forget removed is not an expiry's to name.
+
+A page on screen learns of an expiry from the stream of its thread. The stream sends the start of an
+expiry as a record with an `expiry` field that lists the records of that thread whose text it
+removes. The page drops the text of each and shows it as expired, never as forgotten. A record that
+a page loads after the expiry carries `isExpired` in place of `isRemoved`. A `log.read` cursor that
+an expiry outlives gets the same gap, with a null `text` and `isExpired` true, in place of an error.

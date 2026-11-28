@@ -240,6 +240,10 @@ export interface NixieTables {
     readonly identity_id: string | null;
     readonly scope: string;
   };
+  readonly expired_keys: {
+    readonly key_id: string;
+    readonly started_sequence: number;
+  };
   readonly identities: {
     readonly identity_id: string;
     readonly channel: string;

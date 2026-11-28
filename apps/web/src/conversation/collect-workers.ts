@@ -58,6 +58,7 @@ function collectRunParts(records: readonly LiveRecord[]): RunParts {
         dollars: worker.dollars,
         isCut: isCutField(record, 'worker.text'),
         isForgotten: record.isRemoved === true,
+        ...(record.isExpired === true ? { isExpired: true as const } : {}),
         record: { sequence: record.sequence, thread: record.thread },
         ...(worker.text === undefined ? {} : { text: worker.text }),
         tokens: worker.tokens,
@@ -86,6 +87,8 @@ function collectRunParts(records: readonly LiveRecord[]): RunParts {
 
 function isCutField(record: LiveRecord, field: string): boolean {
   return (
-    record.isRemoved !== true && (record.clipped?.some((clip) => clip.field === field) ?? false)
+    record.isRemoved !== true &&
+    record.isExpired !== true &&
+    (record.clipped?.some((clip) => clip.field === field) ?? false)
   );
 }

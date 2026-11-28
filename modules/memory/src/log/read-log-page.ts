@@ -6,7 +6,7 @@ import type {
   RecordKind,
   RecordWithChanges,
 } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import { readExpiredSequences, readRecords } from '@heynixie/log';
 import { readVoidedReplies } from '@heynixie/models';
 import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { match } from 'ts-pattern';
@@ -40,6 +40,9 @@ export interface LogEntry {
   readonly recordedAt: number;
   readonly text: string | null;
   readonly isCut: boolean;
+
+  // the entry's text went because it grew old, not because it was forgotten
+  readonly isExpired?: true;
 
   // the sequence of the tool call that a tool result answers
   readonly callSequence?: number;
@@ -122,8 +125,9 @@ export async function readLogEntry(
   }
 
   const lookup = await readToolShortIDs(log, [read.record]);
+  const expired = await readExpiredShredded(log, [read.record]);
 
-  return buildScannedEntry(read.record, lookup, taskNames).entry;
+  return markExpired(buildScannedEntry(read.record, lookup, taskNames).entry, expired);
 }
 
 const entryKinds: readonly RecordKind[] = [
@@ -213,10 +217,15 @@ async function readPageEntries(
         .map((read) => read.record.sequence),
     );
 
+    const expired = await readExpiredShredded(
+      log,
+      batch.map((read) => read.record),
+    );
+
     scan =
       batch.length === 0
         ? { ...scan, after: bounds.through }
-        : buildNextScan(scan, batch, { query, words, lookup, taskNames, voided });
+        : buildNextScan(scan, batch, { query, words, lookup, taskNames, voided, expired });
   }
 
   return scan;
@@ -244,6 +253,9 @@ interface EntryFilter {
 
   // the replies of an attempt that kept none, which no page shows
   readonly voided: ReadonlyMap<number, unknown>;
+
+  // the shredded records whose key left by expiry
+  readonly expired: ReadonlySet<number>;
 }
 
 function buildNextScan(
@@ -278,13 +290,30 @@ function buildNextScan(
     }
 
     const item = buildScannedEntry(read.record, filter.lookup, filter.taskNames);
+    const entry = markExpired(item.entry, filter.expired);
 
-    if (isInRange(item.entry, filter.query) && hasEveryWord(item.plain, filter.words)) {
-      next.entries.push(toShownEntry(item.entry));
+    if (isInRange(entry, filter.query) && hasEveryWord(item.plain, filter.words)) {
+      next.entries.push(toShownEntry(entry));
     }
   }
 
   return next;
+}
+
+function readExpiredShredded(
+  log: Pick<Log, 'writer'>,
+  records: readonly LogRecord[],
+): Promise<ReadonlySet<number>> {
+  return readExpiredSequences(
+    log,
+    records
+      .filter((record) => record.erasable.status === 'shredded')
+      .map((record) => record.sequence),
+  );
+}
+
+function markExpired(entry: LogEntry, expired: ReadonlySet<number>): LogEntry {
+  return expired.has(entry.sequence) ? { ...entry, isExpired: true } : entry;
 }
 
 interface ScannedEntry {

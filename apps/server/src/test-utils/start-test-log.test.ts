@@ -20,6 +20,7 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
 
   expect(log.projections.map((projection) => projection.table)).toStrictEqual([
     'threads',
+    'expired_keys',
     'nixie_pause',
     'pause_exemptions',
     'recoveries',

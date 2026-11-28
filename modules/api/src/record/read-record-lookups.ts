@@ -6,6 +6,7 @@ import {
 import type { DefinitionNotice } from '@heynixie/contract';
 import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
+import { readExpiredSequences } from '@heynixie/log';
 import { modelReplyCodec, readVoidedReplies } from '@heynixie/models';
 import {
   formatPlaceKey,
@@ -73,6 +74,13 @@ export async function readRecordLookups(
   const removedSequences = await (known.removedSequences ??
     readRemovedRecordSequences(context, records));
 
+  const expiredSequences = await readExpiredSequences(
+    context.log,
+    records
+      .filter((record) => record.erasable.status === 'shredded')
+      .map((record) => record.sequence),
+  );
+
   const reminders = await readReminders(context, records);
 
   return {
@@ -87,6 +95,7 @@ export async function readRecordLookups(
     ),
     reminders,
     removedSequences,
+    expiredSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: [...named.directory, ...unlisted],
     voidedReplies: await readVoidedReplies(

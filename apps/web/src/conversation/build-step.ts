@@ -100,7 +100,10 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
 
     if (toolCall !== undefined) {
       const earlier = calls.get(toolCall.callID);
-      const clips = record.isRemoved === true ? [] : (record.clipped ?? []);
+
+      const clips =
+        record.isRemoved === true || record.isExpired === true ? [] : (record.clipped ?? []);
+
       const isInputCut = clips.some((clip) => clip.field === 'toolCall.input');
       const isContentCut = clips.some((clip) => clip.field === 'toolCall.content');
 
@@ -108,6 +111,7 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
         ...earlier,
         callID: toolCall.callID,
         ...(record.isRemoved === true ? { isRemoved: true } : {}),
+        ...(record.isExpired === true ? { isExpired: true } : {}),
         ...(toolCall.runID === undefined ? {} : { runID: toolCall.runID }),
         ...(isInputCut
           ? { called: { sequence: record.sequence, thread: record.thread }, isInputCut: true }

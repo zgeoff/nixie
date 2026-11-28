@@ -21,6 +21,8 @@ export function mergeRecords(
     kept.flatMap((record) => (record.forget ? [record.forget.sequence] : [])),
   );
 
+  const expired = new Set(kept.flatMap((record) => record.expiry?.sequences ?? []));
+
   const voided = new Map(
     kept.flatMap((record) =>
       record.voidedReply ? [[record.voidedReply.sequence, record.voidedReply.reason] as const] : [],
@@ -31,7 +33,11 @@ export function mergeRecords(
     records: toReadableSummaries(
       kept.map((record) => {
         if (forgotten.has(record.sequence)) {
-          return toForgottenRecord(record);
+          return toRemovedRecord(record, { isRemoved: true });
+        }
+
+        if (expired.has(record.sequence)) {
+          return toRemovedRecord(record, { isExpired: true });
         }
 
         const reason = voided.get(record.sequence);
@@ -81,7 +87,10 @@ function toErasedSummary(record: LiveRecord): LiveRecord {
 }
 
 // The tool's name and outcome stay, so the call still reads as a call that ran.
-function toForgottenRecord(record: LiveRecord): LiveRecord {
+function toRemovedRecord(
+  record: LiveRecord,
+  mark: { readonly isRemoved: true } | { readonly isExpired: true },
+): LiveRecord {
   const { message: _message, toolCall, task, worker, ...rest } = record;
   const withWorker = worker === undefined ? rest : { ...rest, worker: toWorkerWithoutText(worker) };
 
@@ -89,12 +98,12 @@ function toForgottenRecord(record: LiveRecord): LiveRecord {
     task === undefined ? withWorker : { ...withWorker, task: toTaskWithoutError(task) };
 
   if (toolCall === undefined) {
-    return { ...withTask, isRemoved: true };
+    return { ...withTask, ...mark };
   }
 
   const { input: _input, content: _content, ...kept } = toolCall;
 
-  return { ...withTask, toolCall: kept, isRemoved: true };
+  return { ...withTask, toolCall: kept, ...mark };
 }
 
 function toWorkerWithoutText(

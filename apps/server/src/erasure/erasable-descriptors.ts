@@ -5,7 +5,11 @@ import {
 } from '@heynixie/api';
 import { connectionErasableDescriptor } from '@heynixie/connections';
 import type { ErasableDescriptor } from '@heynixie/log';
-import { memoryItemErasableDescriptor, momentErasableDescriptor } from '@heynixie/memory';
+import {
+  expiryErasableDescriptor,
+  memoryItemErasableDescriptor,
+  momentErasableDescriptor,
+} from '@heynixie/memory';
 import { noteErasableDescriptor } from '@heynixie/notebook';
 import { phoneTextErasableDescriptor } from '@heynixie/phone';
 
@@ -20,4 +24,5 @@ export const erasableDescriptors: readonly ErasableDescriptor[] = [
   conversationErasableDescriptor,
   connectionErasableDescriptor,
   phoneTextErasableDescriptor,
+  expiryErasableDescriptor,
 ];

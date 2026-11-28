@@ -36,6 +36,7 @@ import {
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import { z } from 'zod';
 import { forgetToolName } from '../proposal/read-forget-body-fields';
+import { toGap } from './to-gap';
 import { toPlaceActed } from './to-place-acted';
 import { toPlaceNarrowed } from './to-place-narrowed';
 import { toWorkerView } from './to-worker-view';
@@ -63,6 +64,9 @@ export interface RecordLookups {
   // the name and the note of each reminder fire, keyed by its record's sequence
   readonly reminders: ReadonlyMap<number, { readonly name: string | null; readonly note: string }>;
   readonly removedSequences: ReadonlySet<number>;
+
+  // the shredded records whose key left by expiry
+  readonly expiredSequences: ReadonlySet<number>;
   readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
   readonly taskDirectory: readonly TaskProfile[];
 
@@ -79,6 +83,7 @@ const noLookups: RecordLookups = {
   proposals: new Map(),
   reminders: new Map(),
   removedSequences: new Set(),
+  expiredSequences: new Set(),
   stopCancelledActions: new Map(),
   taskDirectory: [],
   voidedReplies: new Map(),
@@ -602,11 +607,4 @@ function toVoidedReply(record: LogRecord): Pick<ContractRecord, 'voidedReply'> {
   return voided?.replySequence === undefined || voided.reason === undefined
     ? {}
     : { voidedReply: { sequence: voided.replySequence, reason: voided.reason } };
-}
-
-function toGap(record: LogRecord, lookups: RecordLookups): Pick<ContractRecord, 'isRemoved'> {
-  const isRemoved =
-    record.erasable.status === 'shredded' && lookups.removedSequences.has(record.sequence);
-
-  return isRemoved ? { isRemoved: true } : {};
 }

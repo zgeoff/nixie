@@ -1,4 +1,5 @@
 import type { Projection } from '../types';
+import { expiredKeysProjection } from './expired-keys-projection';
 import { nixiePauseProjection } from './nixie-pause-projection';
 import { pauseExemptionsProjection } from './pause-exemptions-projection';
 import { recoveriesProjection } from './recoveries-projection';
@@ -11,6 +12,7 @@ import { threadsProjection } from './threads-projection';
 
 export const logProjections: readonly Projection[] = [
   threadsProjection,
+  expiredKeysProjection,
   nixiePauseProjection,
   pauseExemptionsProjection,
   recoveriesProjection,

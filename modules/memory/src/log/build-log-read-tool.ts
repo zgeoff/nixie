@@ -74,7 +74,12 @@ const logReadOutput = {
           },
           text: {
             type: ['string', 'null'],
-            description: 'null once the owner forgot it',
+            description: 'null once the entry was forgotten or has expired',
+          },
+          isExpired: {
+            type: 'boolean',
+            description:
+              'present and true when the entry is old enough that its text was removed, which is no error',
           },
           isCut: {
             type: 'boolean',
@@ -253,8 +258,16 @@ async function readWholeEntry(
     return { status: 'error', message: 'no such entry' };
   }
 
+  if (entry.text === null) {
+    return {
+      status: 'ok',
+      result: { entries: [toEntryJSON(entry)], next: null },
+      record: { eventIDs: [String(entry.sequence)], next: null },
+    };
+  }
+
   const offset = input.after === undefined ? 0 : Number(input.after);
-  const text = entry.text ?? '';
+  const text = entry.text;
 
   if (offset > text.length) {
     return { status: 'error', message: 'after is past the end of the entry' };
@@ -274,7 +287,7 @@ async function readWholeEntry(
       entries: [
         toEntryJSON({
           ...entry,
-          text: entry.text === null ? null : page.text,
+          text: page.text,
           isCut: page.next !== null,
         }),
       ],
@@ -282,6 +295,24 @@ async function readWholeEntry(
     },
     record: { eventIDs: [String(entry.sequence)], next },
   };
+}
+
+function toEntryJSON(entry: LogEntry): JSONObject {
+  return {
+    eventID: String(entry.sequence),
+    ...(entry.callSequence === undefined ? {} : { callEventID: String(entry.callSequence) }),
+    role: entry.role,
+    recordedAt: formatRecordedAt(entry.recordedAt),
+    text: entry.text,
+    isCut: entry.isCut,
+    ...(entry.isExpired === true ? { isExpired: true } : {}),
+  };
+}
+
+function formatRecordedAt(time: number): string {
+  const iso = new Date(time).toISOString();
+
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
 function isInsideSurrogatePair(text: string, offset: number): boolean {
@@ -296,23 +327,6 @@ function measureEntryEnvelope(entry: LogEntry): number {
   };
 
   return Buffer.byteLength(JSON.stringify(shell));
-}
-
-function toEntryJSON(entry: LogEntry): JSONObject {
-  return {
-    eventID: String(entry.sequence),
-    ...(entry.callSequence === undefined ? {} : { callEventID: String(entry.callSequence) }),
-    role: entry.role,
-    recordedAt: formatRecordedAt(entry.recordedAt),
-    text: entry.text,
-    isCut: entry.isCut,
-  };
-}
-
-function formatRecordedAt(time: number): string {
-  const iso = new Date(time).toISOString();
-
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
 interface FittedPage {

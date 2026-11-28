@@ -66,6 +66,7 @@ export interface ServerPartValues {
   readonly google_tools: GoogleToolsPart;
   readonly erasure_catch_up: void;
   readonly erasure_watch: void;
+  readonly expiry_sweep: void;
   readonly turn_input_work: void;
   readonly memory: StartedMemoryStore;
   readonly notebook: NotebookStore;
