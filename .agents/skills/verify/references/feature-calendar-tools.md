@@ -100,7 +100,8 @@ Before you start:
 
    Expect: the card shows the fields `title` "Lunch with Lee", `start` and `end` in the user's zone,
    `guests` `lee@example.org (no permission)`, `connection` and `calendar` `primary`. The approve
-   button reads "Send invitations", beside "Defer" and "Decline". Both clicks exit 0.
+   button reads "Send invitations", beside "Trust this place to read", "Trust this place to act",
+   "Defer" and "Decline", because the one guest is one place. Both clicks exit 0.
 
 7. Check that the invitation went out once, with the email to its guest:
 
