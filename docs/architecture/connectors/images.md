@@ -82,9 +82,9 @@ it checks the input. The call runs in this order:
    frees the hold when it reserves its picture, and when it ends without running.
 2. The call charges `image.draw-day` ($2) and `image.draw-month` ($20) in the transaction that
    writes its `tool_called` record, then runs.
-3. A refusal or a failure credits the charge, in the transaction that writes its `tool_result`
-   record, unless the provider billed the call. An unbilled refusal is credited; a billed one
-   stands.
+3. A refusal or a failure other than a timeout credits the charge, in the transaction that writes
+   its `tool_result` record, unless the provider billed the call. An unbilled refusal is credited; a
+   billed one stands.
 4. A timeout keeps the charge, because the image may exist at the provider.
 
 Image calls bypass the model gateway, so the [spending stop](../policy/model-gateway.md) never
