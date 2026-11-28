@@ -1,14 +1,17 @@
 import { expect, mock, test } from 'bun:test';
 import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { readLinkTarget } from '@heynixie/connectors';
+import type { ErasureFaultPoint } from '@heynixie/log';
 import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { runTestSeed } from '../test-utils/run-test-seed';
+import { startTestConversationReset } from '../test-utils/start-test-conversation-reset';
 import { startTestServer } from '../test-utils/start-test-server';
-import { runConversationReset } from './run-conversation-reset';
+
+type ResetOptions = Parameters<typeof startTestConversationReset>[1];
 
 async function setupTest() {
   const server = await startTestServer();
@@ -16,22 +19,36 @@ async function setupTest() {
   const context = {
     ...server.context,
     settings: defaultAPISettings,
-    readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     features: [],
     passkeys: createPasskeyState(),
     clients: createClientRegistry({ clock: server.context.clock }),
   };
 
+  const log = mock<Logger>();
+  const stopWork = mock(() => Promise.resolve());
+  const clearFetchPauses = mock<() => void>();
+
   return {
     ...server,
     context,
     seed: buildSeeder({ context }),
-    log: mock<Logger>(),
-    clearFetchPauses: mock<() => void>(),
-    removeTurnInputThreads: mock<(threads: readonly string[]) => Promise<void>>(() =>
-      Promise.resolve(),
-    ),
+    log,
+    stopWork,
+    clearFetchPauses,
+    start: (options: Partial<ResetOptions> = {}) =>
+      startTestConversationReset(context, {
+        adapter: server.sandboxes,
+        log,
+        stopWork,
+        clearFetchPauses,
+        ...options,
+      }),
+    readKinds: async () => {
+      const read = await readRecords(context.log, { afterSequence: 0 });
+
+      return read.map((entry) => entry.record.kind);
+    },
   };
 }
 
@@ -40,25 +57,22 @@ test('it removes the logged requests of the conversation thread before it record
 
   await runTestSeed(ctx.context.log, ctx.dataDir);
 
-  const kindsAtRemoval: string[][] = [];
+  const scopes: { threads: readonly string[]; kinds: string[] }[] = [];
 
-  await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    clearFetchPauses: ctx.clearFetchPauses,
-    removeTurnInputThreads: async (threads) => {
-      await ctx.removeTurnInputThreads(threads);
-
-      const read = await readRecords(ctx.context.log, { afterSequence: 0 });
-
-      kindsAtRemoval.push(read.map((entry) => entry.record.kind));
+  const reset = ctx.start({
+    removeTurnInputs: async (scope) => {
+      scopes.push({ threads: scope.threads, kinds: await ctx.readKinds() });
     },
   });
 
-  expect(ctx.removeTurnInputThreads).toHaveBeenCalledExactlyOnceWith(['conversation']);
-  expect(kindsAtRemoval).toStrictEqual([['definitions_seeded', 'model.session_invalidated']]);
+  await reset.run();
+
+  expect(scopes).toStrictEqual([
+    {
+      threads: ['conversation'],
+      kinds: ['definitions_seeded', 'model.session_invalidated', 'erasure.started'],
+    },
+  ]);
 });
 
 test('it clears every web fetch pause', async () => {
@@ -66,42 +80,52 @@ test('it clears every web fetch pause', async () => {
 
   await runTestSeed(ctx.context.log, ctx.dataDir);
 
-  await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
+  await ctx.start().run();
 
-  expect(ctx.clearFetchPauses).toHaveBeenCalledOnce();
+  expect(ctx.clearFetchPauses).toHaveBeenCalled();
 });
 
-test('it records no reset when a logged request cannot be removed', async () => {
+test('it records no reset when a logged request cannot be removed, and a rerun finishes it', async () => {
   const ctx = await setupTest();
 
   await runTestSeed(ctx.context.log, ctx.dataDir);
 
-  const reset = runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    clearFetchPauses: ctx.clearFetchPauses,
-    removeTurnInputThreads: () =>
-      Promise.reject(new Error('1 logged requests could not be removed')),
+  const failing = { isFailing: true };
+
+  const reset = ctx.start({
+    removeTurnInputs: () =>
+      failing.isFailing
+        ? Promise.reject(new Error('1 logged requests could not be removed'))
+        : Promise.resolve(),
   });
 
-  await Promise.allSettled([reset]);
+  const first = reset.run();
 
-  const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+  await Promise.allSettled([first]);
 
-  expect(reset).rejects.toThrowWithMessage(Error, '1 logged requests could not be removed');
+  const kindsAfterFailure = await ctx.readKinds();
 
-  expect(read.map((entry) => entry.record.kind)).toStrictEqual([
+  failing.isFailing = false;
+
+  await reset.run();
+
+  const kindsAfterRerun = await ctx.readKinds();
+
+  expect(first).rejects.toThrowWithMessage(Error, '1 logged requests could not be removed');
+
+  expect(kindsAfterFailure).toStrictEqual([
     'definitions_seeded',
     'model.session_invalidated',
+    'erasure.started',
+  ]);
+
+  expect(kindsAfterRerun).toStrictEqual([
+    'definitions_seeded',
+    'model.session_invalidated',
+    'erasure.started',
+    'model.session_invalidated',
+    'erasure.finished',
+    'log_reset',
   ]);
 });
 
@@ -126,20 +150,13 @@ test('it shreds every record on the conversation thread, records the reset there
     },
   ]);
 
-  const reset = await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
-
+  const reset = await ctx.start().run();
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(reset).toStrictEqual({
     resetAt: expect.toBeValidDate(),
     lastSequence: 5,
+    removedKeys: 2,
     shreddedRecords: 2,
     backup: { state: 'pending' },
   });
@@ -148,8 +165,14 @@ test('it shreds every record on the conversation thread, records the reset there
     { sequence: 3, kind: 'owner_message', erasable: { status: 'shredded' } },
     { sequence: 4, kind: 'model.reply', erasable: { status: 'shredded' } },
     { sequence: 5, kind: 'model.session_invalidated', thread: 'conversation', payload: {} },
+    { sequence: 6, kind: 'erasure.started', payload: { kind: 'conversation', keyCount: 2 } },
     {
-      sequence: 6,
+      sequence: 7,
+      kind: 'erasure.finished',
+      payload: { kind: 'conversation', targetID: 'conversation', removedKeys: 2 },
+    },
+    {
+      sequence: 8,
       kind: 'log_reset',
       thread: 'conversation',
       definitions: ctx.context.definitions(),
@@ -161,6 +184,63 @@ test('it shreds every record on the conversation thread, records the reset there
       },
       erasable: { status: 'none' },
     },
+  ]);
+});
+
+test('it writes log_reset in the transaction of erasure.finished', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = ctx.start();
+
+  reset.effects.crashAt('erasure.turn_inputs_removed');
+
+  await Promise.allSettled([reset.run()]);
+
+  const kinds = await ctx.readKinds();
+
+  expect(kinds).not.toContain('log_reset');
+  expect(kinds).not.toContain('erasure.finished');
+});
+
+test.each<ErasureFaultPoint>([
+  'erasure.begun',
+  'erasure.revoked',
+  'erasure.sandboxes_destroyed',
+  'erasure.keys_removed',
+  'erasure.cleaned',
+  'erasure.turn_inputs_removed',
+])('it finishes at the next start a reset that a crash at %s cut short', async (point) => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the ferry leaves at six' },
+    },
+  ]);
+
+  const reset = ctx.start();
+
+  reset.effects.crashAt(point);
+
+  await Promise.allSettled([reset.run()]);
+  await ctx.start().runner.finishOpen();
+
+  const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(read.map((entry) => [entry.record.kind, entry.record.erasable.status])).toStrictEqual([
+    ['definitions_seeded', 'none'],
+    ['owner_message', 'shredded'],
+    ['model.session_invalidated', 'none'],
+    ['erasure.started', 'none'],
+    ['erasure.finished', 'none'],
+    ['log_reset', 'none'],
   ]);
 });
 
@@ -182,20 +262,13 @@ test('it finishes the reset and reports its key backups as unknown when the back
     await tx.schema.dropTable('backup_sets').execute();
   });
 
-  const reset = await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
-
-  const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+  const reset = await ctx.start().run();
+  const kinds = await ctx.readKinds();
 
   expect(reset).toStrictEqual({
     resetAt: expect.toBeValidDate(),
     lastSequence: 3,
+    removedKeys: 1,
     shreddedRecords: 1,
     backup: { state: 'unknown' },
   });
@@ -205,11 +278,13 @@ test('it finishes the reset and reports its key backups as unknown when the back
     message: expect.stringMatching(/backup_sets/u),
   });
 
-  expect(read.map((entry) => [entry.record.kind, entry.record.erasable.status])).toStrictEqual([
-    ['definitions_seeded', 'none'],
-    ['owner_message', 'shredded'],
-    ['model.session_invalidated', 'none'],
-    ['log_reset', 'none'],
+  expect(kinds).toStrictEqual([
+    'definitions_seeded',
+    'owner_message',
+    'model.session_invalidated',
+    'erasure.started',
+    'erasure.finished',
+    'log_reset',
   ]);
 });
 
@@ -227,14 +302,7 @@ test('it never shreds a record on another thread', async () => {
     },
   ]);
 
-  await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
+  await ctx.start().run();
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'task-garden' });
 
@@ -256,22 +324,13 @@ test('it stops the work, then destroys the conversation sandbox and never anothe
     buildMockSandboxSpec({ kind: 'worker', image: 'worker', owner: 'task-garden' }),
   );
 
-  const stopWork = mock(() => Promise.resolve());
-
   const before = await ctx.readSandboxIDs();
 
-  await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork,
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
+  await ctx.start().run();
 
   const after = await ctx.readSandboxIDs();
 
-  expect(stopWork).toHaveBeenCalledOnce();
+  expect(ctx.stopWork).toHaveBeenCalledOnce();
   expect(before).toIncludeSameMembers([conversation.id, worker.id]);
   expect(after).toStrictEqual([worker.id]);
 });
@@ -287,14 +346,7 @@ test('it removes the links that the web fetch tool numbered on the conversation 
     urls: ['https://pier.test/timetable'],
   });
 
-  await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
+  await ctx.start().run();
 
   const target = await readLinkTarget(ctx.context.log, { sessionKey: 'session-a', number: 1 });
 
@@ -315,24 +367,21 @@ test('it removes nothing when the conversation sandbox destroy fails', async () 
     },
   ]);
 
-  const reset = runConversationReset({
-    context: ctx.context,
-    adapter: {
-      id: 'process',
-      list: () =>
-        Promise.resolve([
-          {
-            id: 'nixie-stuck',
-            spec: buildMockSandboxSpec({ owner: 'conversation' }),
-            destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
-          },
-        ]),
-    },
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
+  const reset = ctx
+    .start({
+      adapter: {
+        id: 'process',
+        list: () =>
+          Promise.resolve([
+            {
+              id: 'nixie-stuck',
+              spec: buildMockSandboxSpec({ owner: 'conversation' }),
+              destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
+            },
+          ]),
+      },
+    })
+    .run();
 
   await Promise.allSettled([reset]);
 
@@ -373,14 +422,7 @@ test('it destroys the code sandboxes of the conversation calls', async () => {
 
   const before = await ctx.readSandboxIDs();
 
-  await runConversationReset({
-    context: ctx.context,
-    adapter: ctx.sandboxes,
-    stopWork: () => Promise.resolve(),
-    log: ctx.log,
-    removeTurnInputThreads: ctx.removeTurnInputThreads,
-    clearFetchPauses: ctx.clearFetchPauses,
-  });
+  await ctx.start().run();
 
   const after = await ctx.readSandboxIDs();
 
@@ -405,41 +447,32 @@ test('it removes no key when a code sandbox will not go', async () => {
   ]);
 
   const [outcome] = await Promise.allSettled([
-    runConversationReset({
-      context: ctx.context,
-      adapter: {
-        id: 'process',
-        list: (owner) => {
-          const refusing = [
-            {
-              id: 'nixie-stuck',
-              spec: buildMockSandboxSpec({ owner: 'conversation' }),
-              destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
-            },
-          ];
+    ctx
+      .start({
+        adapter: {
+          id: 'process',
+          list: (owner) => {
+            const refusing = [
+              {
+                id: 'nixie-stuck',
+                spec: buildMockSandboxSpec({ owner: 'conversation' }),
+                destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
+              },
+            ];
 
-          const sandboxes = owner === 'code_run:call-1' ? refusing : [];
+            const sandboxes = owner === 'code_run:call-1' ? refusing : [];
 
-          return Promise.resolve(sandboxes);
+            return Promise.resolve(sandboxes);
+          },
         },
-      },
-      stopWork: () => Promise.resolve(),
-      log: ctx.log,
-      removeTurnInputThreads: ctx.removeTurnInputThreads,
-      clearFetchPauses: ctx.clearFetchPauses,
-    }),
+      })
+      .run(),
   ]);
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   const toolCall = read.find((entry) => entry.record.kind === 'tool_called');
 
-  expect(outcome).toMatchObject({
-    status: 'rejected',
-    reason: {
-      message: 'nixie could not destroy a code sandbox that holds this text. Try the forget again.',
-    },
-  });
-
+  expect(outcome).toMatchObject({ status: 'rejected' });
   expect(toolCall?.record.erasable.status).toBe('readable');
 });

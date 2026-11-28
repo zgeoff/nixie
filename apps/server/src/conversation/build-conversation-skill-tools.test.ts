@@ -31,7 +31,7 @@ async function setupTest() {
 
   const root = join(dataDir, 'definitions');
 
-  const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
+  const context = await createServerContext(log.writer, log.deploymentKey, {
     runSettings: buildTestRunSettings(),
     taskRunLimits: { turns: 25, dollars: 2 },
     defaultZone: 'Europe/Lisbon',

@@ -40,7 +40,6 @@ export { verifySessionToken } from './session/verify-session-token';
 export type { BodyFieldReader } from './utils/body-field-readers';
 export { bodyFieldReaders } from './utils/body-field-readers';
 export { runMandateProposalAnswer } from './proposal/run-mandate-proposal-answer';
-export { runPendingRecordForgets } from './record/run-pending-record-forgets';
 export { updateSessionLabel } from './session/update-session-label';
 export { writeKeptSessions } from './kept/write-kept-sessions';
 
@@ -51,6 +50,7 @@ export type {
   CleanupRecordSessions,
   ComputerWatchPort,
   ErasureStuckPort,
+  RecordForgets,
   ForgetBackupState,
   HostBackups,
   HostRouterOptions,
@@ -66,6 +66,10 @@ export { buildApprovalsProposalConfig } from './proposal/build-approvals-proposa
 export { runProposalStartChecks } from './proposal/run-proposal-start-checks';
 export { buildProposalCoreDeps } from './proposal/build-proposal-core-deps';
 export { proposalsProjection } from './proposal/proposals-projection';
+export type { RecordErasureRequest } from './record/erasure/build-record-erasable';
+export { buildRecordErasable } from './record/erasure/build-record-erasable';
+export type { ImageErasureRequest } from './image/erasure/build-image-erasable';
+export { buildImageErasable } from './image/erasure/build-image-erasable';
 export { conversationErasableDescriptor } from './erasable/conversation-erasable-descriptor';
 export { imageErasableDescriptor } from './erasable/image-erasable-descriptor';
 export { recordErasableDescriptor } from './erasable/record-erasable-descriptor';

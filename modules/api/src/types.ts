@@ -4,7 +4,7 @@ import type { ComputerTakeover, WatchConnection, WatchSocket } from '@heynixie/c
 import type { DefinitionNotice, FeatureID, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
-import type { RecordKind } from '@heynixie/log';
+import type { ErasureHandle, RecordKind } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { McpPort } from '@heynixie/mcp';
 import type {
@@ -24,8 +24,10 @@ import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { Kysely } from 'kysely';
 import type { WatchTickets } from './computer/create-watch-tickets';
+import type { ImageErasureRequest } from './image/erasure/build-image-erasable';
 import type { ClientRegistry } from './live/create-client-registry';
 import type { PasskeyState } from './passkey/passkey-state';
+import type { RecordErasureRequest } from './record/erasure/build-record-erasable';
 import type { FeatureProcedures } from './session/feature-procedures';
 
 export interface APISettings {
@@ -81,8 +83,7 @@ interface ForgottenRecord {
   readonly recordSequence: number;
 }
 
-// The start sequence runs the cleanup again for a forget that a crash cut short, so the cleanup must
-// be safe to rerun.
+// The session cleanup that a test gives the runner for each forgotten record.
 export type CleanupRecordSessions = (cause: ForgottenRecord) => Promise<void>;
 
 // What the API needs to let a browser watch the computer's desktop.
@@ -121,6 +122,13 @@ export interface PickedFile {
   readonly isVisible: boolean;
 }
 
+// The runner's handles for the two kinds that the API begins: a record, and an image that its
+// records hold.
+export interface RecordForgets {
+  readonly record: ErasureHandle<RecordErasureRequest>;
+  readonly image: ErasureHandle<ImageErasureRequest>;
+}
+
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
 
@@ -143,8 +151,6 @@ export interface APIContext extends TasksContext {
   // resolves 'owner' to the zone of the newest message, or to the configured default
   readonly readZone: ReadZone;
 
-  readonly readSessionCleanup: () => CleanupRecordSessions | null;
-
   // The procedures of each feature that is on, which the router mounts in place of the answers of a
   // feature that is off. The server reads it as the API starts, after the features start.
   readonly readFeatureProcedures?: () => FeatureProcedures;
@@ -155,6 +161,10 @@ export interface APIContext extends TasksContext {
   // The erasure runner's stuck forgets, which start after the API context. Null before they start,
   // and absent where the server holds none.
   readonly readErasure?: () => ErasureStuckPort | null;
+
+  // The erasure runner's handles for a record and an image, which start after the API context. Null
+  // before they start, and absent where the server holds none.
+  readonly readForgets?: () => RecordForgets | null;
 
   // The Google connections, which start after the API context. Null before they start, and absent
   // where the server holds none.
@@ -181,11 +191,6 @@ export interface APIContext extends TasksContext {
     db: Kysely<unknown>,
     changeIDs: readonly string[],
   ) => Promise<ReadonlyMap<string, DefinitionNotice>>;
-
-  // Destroys the code sandboxes of the tool calls that the records name, and throws when one will
-  // not go. A forget runs it before it deletes any key. Null, or absent, means the server holds no
-  // code tool.
-  readonly readCodeCleanup?: () => ((sequences: readonly number[]) => Promise<void>) | null;
 }
 
 export type HostTurnInputs = Pick<TurnInputs, 'list' | 'open' | 'set'>;
@@ -289,6 +294,7 @@ export type ForgetProgress =
 interface HostConversationReset {
   readonly resetAt: Date;
   readonly lastSequence: number;
+  readonly removedKeys: number;
   readonly shreddedRecords: number;
   readonly backup: ForgetBackupState;
 }

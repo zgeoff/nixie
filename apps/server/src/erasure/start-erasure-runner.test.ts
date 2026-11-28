@@ -1,5 +1,10 @@
 import { expect, mock, test } from 'bun:test';
-import { proposalsProjection } from '@heynixie/api';
+import {
+  createClientRegistry,
+  createPasskeyState,
+  defaultAPISettings,
+  proposalsProjection,
+} from '@heynixie/api';
 import { logProjections } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { createMemoryItem, startTestMemoryStore } from '@heynixie/memory/test-utils';
@@ -42,6 +47,7 @@ async function setupTest() {
     sandbox_runner: { cleanupSessions: mock(() => Promise.resolve()) },
     memory: { finishEvidencePurges: mock(() => Promise.resolve()) },
     phone: { bindForget: mock(() => {}) },
+    api_gate: { close: mock(() => Promise.resolve()) },
   };
 
   const reader: PartReader<ErasureRunnerValues> = {
@@ -53,8 +59,20 @@ async function setupTest() {
   const runner = startErasureRunner(
     {
       context,
+      apiContext: {
+        ...context,
+        settings: defaultAPISettings,
+        readZone: () => Promise.resolve('UTC'),
+        features: [],
+        passkeys: createPasskeyState(),
+        clients: createClientRegistry({ clock: inputs.clock }),
+      },
       turnInputs: inputs.turnInputs,
-      tools: { adapter: { list: () => Promise.resolve([]) } },
+      cleanup: { stop: () => Promise.resolve() },
+      tools: {
+        adapter: { id: 'stub', list: () => Promise.resolve([]) },
+        webFetch: { clearPauses: () => {} },
+      },
       config: { backup: { isEnabled: false } },
     },
     reader,

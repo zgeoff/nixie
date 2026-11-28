@@ -42,6 +42,9 @@ export interface ErasureStart {
   readonly target: ErasureTarget;
   readonly shortID: string | null;
   readonly capture: ErasureCapture;
+
+  // the thread that shows the start, such as the thread of a forgotten record
+  readonly thread?: string | null;
 }
 
 // The methods a store attaches to its descriptor when it moves onto the runner. `Request` is what a

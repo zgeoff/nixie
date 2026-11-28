@@ -691,7 +691,8 @@ test('#conversation.forget forgets a message, which the thread then shows with n
 
   expect(page.records.filter((record) => record.sequence >= sent.sequence)).toMatchObject([
     { kind: 'owner_message', sequence: sent.sequence, isRemoved: true },
-    { kind: 'record.forget_started', forget: { sequence: sent.sequence } },
+    { kind: 'erasure.started', forget: { sequence: sent.sequence } },
+    { kind: 'erasure.finished', forget: { sequence: sent.sequence } },
   ]);
 
   expect(page.records.find((record) => record.sequence === sent.sequence)?.message).toBeUndefined();

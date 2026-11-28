@@ -13,8 +13,8 @@ test('it returns the record alone when it has no start call', () => {
   expect(collectCleanedCauses({ recordSequence: 9 })).toStrictEqual([{ recordSequence: 9 }]);
 });
 
-test('it returns no cause for the reset of a thread', () => {
-  expect(collectCleanedCauses({ thread: 'conversation' })).toStrictEqual([]);
+test('it returns no cause for a forget with no sessions', () => {
+  expect(collectCleanedCauses({ sessions: 'none' })).toStrictEqual([]);
 });
 
 test('it returns a note cause as it is', () => {

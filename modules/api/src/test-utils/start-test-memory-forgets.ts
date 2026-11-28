@@ -2,8 +2,9 @@ import { onTestFinished } from 'bun:test';
 import type { ErasureRunnerControl } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
-import type { APIContext, CleanupRecordSessions } from '../types';
+import type { APIContext } from '../types';
 import { buildTestErasureRunner } from './build-test-erasure-runner';
+import { registerTestRecordForgets } from './register-test-record-forgets';
 
 export interface TestMemoryForgets {
   readonly memory: StartedMemoryStore;
@@ -11,7 +12,7 @@ export interface TestMemoryForgets {
   // the runner the items register on, whose catch-up finishes a forget that an earlier release left
   readonly runner: ErasureRunnerControl;
 
-  // the API's context with the session cleanup of a running nixie: it finishes the evidence
+  // the API's context with the handles of a running nixie, whose runner finishes the evidence
   // purges of the forgotten record
   readonly forgetContext: APIContext;
 }
@@ -21,7 +22,11 @@ export interface TestMemoryForgets {
 export async function startTestMemoryForgets(
   context: APIContext & { readonly clock: Parameters<typeof startMemoryStore>[0]['gate']['clock'] },
 ): Promise<TestMemoryForgets> {
-  const runner = buildTestErasureRunner(context.log);
+  const purging: { memory: StartedMemoryStore | null } = { memory: null };
+
+  const runner = buildTestErasureRunner(context.log, undefined, async (recordSequence) => {
+    await purging.memory?.finishEvidencePurges({ recordSequence });
+  });
 
   const memory = await startMemoryStore({
     log: context.log,
@@ -44,14 +49,18 @@ export async function startTestMemoryForgets(
     },
   });
 
+  purging.memory = memory;
+
   onTestFinished(() => memory.stop());
 
-  const cleanupSessions: CleanupRecordSessions = (cause) =>
-    memory.finishEvidencePurges({ recordSequence: cause.recordSequence });
+  const forgets = registerTestRecordForgets(context, runner);
 
   return {
     memory,
     runner,
-    forgetContext: { ...context, readSessionCleanup: () => cleanupSessions },
+    forgetContext: {
+      ...context,
+      readForgets: () => forgets,
+    },
   };
 }

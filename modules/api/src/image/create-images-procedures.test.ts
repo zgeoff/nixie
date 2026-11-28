@@ -399,7 +399,7 @@ test('#images.forget finishes the cleanup of a retry with the same client action
 
   const forgotten = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['record.forgotten'],
+    kinds: ['erasure.finished'],
     limit: 100,
   });
 
@@ -415,7 +415,8 @@ test('#images.forget finishes the cleanup of a retry with the same client action
       .join(' ')
       .match(/harbour|dusk/gu),
     forgotten: forgotten
-      .map((found) => Number(found.record.payload['recordSequence']))
+      .filter((found) => found.record.payload['kind'] === 'record')
+      .map((found) => Number(found.record.payload['targetID']))
       .toSorted((left, right) => left - right),
   }).toStrictEqual({
     leftReadable: true,
@@ -698,13 +699,15 @@ test('#images.forget rebuilds the session of a list result whose key went before
 
   const forgotten = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['record.forgotten'],
+    kinds: ['erasure.finished'],
     limit: 100,
   });
 
   expect({
     rebuilt,
-    forgotten: forgotten.map((found) => found.record.payload['recordSequence']),
+    forgotten: forgotten
+      .filter((found) => found.record.payload['kind'] === 'record')
+      .map((found) => Number(found.record.payload['targetID'])),
   }).toStrictEqual({
     rebuilt: expect.arrayContaining([listSequence]),
     forgotten: expect.arrayContaining([listSequence]),

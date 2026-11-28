@@ -44,7 +44,7 @@ async function setupTest() {
   await writeFile(join(root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(root, 'persona.md'), '# Persona\n');
 
-  const context = await createServerContext(started.writer, started.deploymentKey, () => null, {
+  const context = await createServerContext(started.writer, started.deploymentKey, {
     runSettings: buildTestRunSettings(),
     taskRunLimits: { turns: 25, dollars: 2 },
     defaultZone: 'Europe/Lisbon',

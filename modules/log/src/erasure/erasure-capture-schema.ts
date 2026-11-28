@@ -16,9 +16,9 @@ const recordCause = z.strictObject({
   callSequences: z.array(z.int()).exactOptional(),
 });
 
-// The conversation reset names its thread. Its session ends before the start, so the cleanup has
-// nothing left to do.
-const threadCause = z.strictObject({ thread: z.string() });
+// A forget with no session to clean: the reset ends its conversation's session before the start,
+// and an image's records each clean their own.
+const noSessionsCause = z.strictObject({ sessions: z.literal('none') });
 
 // `wakeSequences` lists the records of the wakes that show the connection's mail, whose sessions
 // the forget cleans
@@ -37,7 +37,7 @@ const sessionCauseSchema = z.union([
   recordCause,
   connectionCause,
   textCause,
-  threadCause,
+  noSessionsCause,
 ]);
 
 const purgeSchema = z.strictObject({ recordSequence: z.int(), itemIDs: z.array(z.string()) });

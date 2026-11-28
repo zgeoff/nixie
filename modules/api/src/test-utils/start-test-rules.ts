@@ -106,7 +106,6 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     passkeys: createPasskeyState(),
     clients: createClientRegistry({ clock }),
     readZone: () => Promise.resolve('Australia/Sydney'),
-    readSessionCleanup: () => null,
   };
 
   await createConversationTask(context);

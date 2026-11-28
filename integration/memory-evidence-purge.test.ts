@@ -59,7 +59,7 @@ async function setupTest(setup: PurgeSetup) {
             'memory.evidence_purge_closed',
             'memory.labelled',
             'memory.evidence_purged',
-            'record.forgotten',
+            'erasure.finished',
           ].includes(kind),
         ),
     readState: () => readPurgeState(nixie),
@@ -72,7 +72,7 @@ async function setupTest(setup: PurgeSetup) {
   };
 }
 
-test('it finishes a begun purge at the start: the lapse, the closing record, the labels, then the last mark, then record.forgotten', async () => {
+test('it finishes a begun purge at the start: the lapse, the closing record, the labels, then the last mark, then erasure.finished', async () => {
   const ctx = await setupTest({ isOwned: true });
   const records = await ctx.stop();
 
@@ -81,7 +81,7 @@ test('it finishes a begun purge at the start: the lapse, the closing record, the
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',
-    'record.forgotten',
+    'erasure.finished',
   ]);
 });
 
@@ -96,7 +96,7 @@ test('it writes the bridge version of a shared-key item before the closing recor
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',
-    'record.forgotten',
+    'erasure.finished',
   ]);
 });
 

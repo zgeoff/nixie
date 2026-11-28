@@ -136,6 +136,8 @@ export { ErasureRefusedError } from './erasure/erasure-refused-error';
 export { erasureStartedCodec } from './erasure/erasure-started-codec';
 export type { OpenErasure } from './erasure/read-open-erasures';
 export { readOpenErasures } from './erasure/read-open-erasures';
+export type { TargetErasure } from './erasure/read-erasures';
+export { readErasures } from './erasure/read-erasures';
 export { readErasureFinishedSequence } from './erasure/read-erasure-finished-sequence';
 export { removeErasureKeys } from './erasure/remove-erasure-keys';
 
@@ -147,6 +149,7 @@ export type {
   ErasureHandle,
   ErasureRegistry,
   ErasureStart,
+  ErasureFinishedFacts,
   ErasureStartOptions,
   ErasureTarget,
   LegacyEnd,

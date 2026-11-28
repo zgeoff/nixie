@@ -32,7 +32,6 @@ async function setupTest() {
   const context = {
     ...server.context,
     settings: defaultAPISettings,
-    readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     features: [],
     passkeys: createPasskeyState(),
@@ -246,7 +245,6 @@ test('it refuses a reset before any definitions are in force, and stops no work'
     context: {
       ...server.context,
       settings: defaultAPISettings,
-      readSessionCleanup: () => null,
       readZone: () => Promise.resolve('UTC'),
       features: [],
       passkeys: createPasskeyState(),

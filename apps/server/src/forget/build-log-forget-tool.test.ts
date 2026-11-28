@@ -15,11 +15,7 @@ import { buildLogForgetTool } from './build-log-forget-tool';
 async function setupTest() {
   const api = await startTestAPI();
 
-  const forget = buildLogForgetTool({
-    ...api.context,
-    readSessionCleanup: () => () => Promise.resolve(),
-  });
-
+  const forget = buildLogForgetTool(api.context);
   const registry = buildToolRegistry([forget.tool]);
   const definitions = { snapshotHash: 'sha256:test' };
 
@@ -299,10 +295,7 @@ test('it answers not found to a check after a forget that started and failed in 
   const step = await ctx.seed.conversationStep();
   const action = await ctx.seed.action({ step: step.claim });
 
-  const failing = buildLogForgetTool({
-    ...ctx.context,
-    readSessionCleanup: () => () => Promise.reject(new Error('cleanup failed')),
-  });
+  ctx.setSessionCleanup(() => Promise.reject(new Error('cleanup failed')));
 
   const attempt = {
     actionID: action.action_id,
@@ -316,8 +309,10 @@ test('it answers not found to a check after a forget that started and failed in 
     deadlineAt: null,
   };
 
-  const failed = await failing.connector.run(attempt).catch((error: unknown) => error);
+  const failed = await ctx.forget.connector.run(attempt).catch((error: unknown) => error);
   const afterFailure = await ctx.forget.connector.check?.(attempt);
+
+  ctx.setSessionCleanup(() => Promise.resolve());
 
   await ctx.forget.connector.run(attempt);
 

@@ -32,6 +32,7 @@ export function writeErasureFinished(
       {
         kind: 'erasure.finished',
         definitions: context.definitions(),
+        ...(erasure.thread === null ? {} : { thread: erasure.thread }),
         payload: erasureFinishedCodec.encode({
           erasureID: started.erasureID,
           kind: started.kind,

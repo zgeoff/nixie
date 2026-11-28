@@ -41,6 +41,7 @@ export async function writeErasureStarted<Request>(
         {
           kind: 'erasure.started',
           definitions: context.definitions(),
+          ...(start.thread === undefined || start.thread === null ? {} : { thread: start.thread }),
           payload: erasureStartedCodec.encode({
             erasureID,
             kind: start.target.kind,

@@ -23,7 +23,6 @@ async function setupTest() {
     ...buildTestDefinitionReaders(),
     runners: buildTestTaskRunners(),
     settings: defaultAPISettings,
-    readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     features: [],
     passkeys: createPasskeyState(),

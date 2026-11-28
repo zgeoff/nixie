@@ -152,7 +152,7 @@ test("it forgets a reply of the conversation's model", async () => {
   expect(forgotten?.erasable).toStrictEqual({ status: 'shredded' });
 });
 
-test('it runs the session cleanup for the forgotten record, then commits record.forgotten', async () => {
+test('it runs the session cleanup for the forgotten record, then commits erasure.finished', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -161,49 +161,7 @@ test('it runs the session cleanup for the forgotten record, then commits record.
 
   const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
-    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
-    thread: 'conversation',
-    text: 'The locker code is 2291.',
-    spans: [],
-  });
-
-  invariant(sent.status === 'written');
-
-  await writeRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    laptop.caller,
-    {
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-      thread: 'conversation',
-      sequence: sent.sequence,
-    },
-  );
-
-  const records = await ctx.readRecordsAfter(sent.sequence + 1);
-
-  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: sent.sequence });
-
-  expect(records).toMatchObject([
-    {
-      kind: 'record.forget_started',
-      thread: 'conversation',
-      payload: { recordSequence: sent.sequence },
-    },
-    {
-      kind: 'record.forgotten',
-      thread: 'conversation',
-      payload: { recordSequence: sent.sequence },
-    },
-  ]);
-});
-
-test('it leaves the forget begun with the key gone while no session cleanup is in place', async () => {
-  const ctx = await setupTest();
-
-  await createConversationTask(ctx.context);
-
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  ctx.setSessionCleanup(cleanupSessions);
 
   const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
@@ -220,20 +178,22 @@ test('it leaves the forget begun with the key gone while no session cleanup is i
     sequence: sent.sequence,
   });
 
-  const [message, ...after] = await ctx.readRecordsAfter(sent.sequence);
+  const records = await ctx.readRecordsAfter(sent.sequence + 1);
 
-  expect(message?.erasable).toStrictEqual({ status: 'shredded' });
-  expect(after.map((record) => record.kind)).toStrictEqual(['record.forget_started']);
+  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: sent.sequence });
+
+  expect(records).toMatchObject([
+    { kind: 'erasure.started', payload: { kind: 'record', targetID: String(sent.sequence) } },
+    { kind: 'erasure.finished', payload: { kind: 'record', targetID: String(sent.sequence) } },
+  ]);
 });
 
-test('it finishes a begun forget on a retry once the session cleanup is in place', async () => {
+test('it leaves the forget begun with the key gone when the cleanup after the keys fails', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
 
   const laptop = await createDeviceSession(ctx.context, 'laptop');
-
-  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
   const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
@@ -244,30 +204,68 @@ test('it finishes a begun forget on a retry once the session cleanup is in place
 
   invariant(sent.status === 'written');
 
-  const first = await writeRecordForget(ctx.context, laptop.caller, {
+  ctx.effects.crashAt('erasure.keys_removed');
+
+  const failed = writeRecordForget(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     thread: 'conversation',
     sequence: sent.sequence,
   });
 
-  const retry = await writeRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    laptop.caller,
-    {
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-      thread: 'conversation',
-      sequence: sent.sequence,
-    },
-  );
+  await Promise.allSettled([failed]);
+
+  expect(failed).rejects.toThrow('crash at erasure.keys_removed');
+
+  const [message, ...after] = await ctx.readRecordsAfter(sent.sequence);
+
+  expect(message?.erasable).toStrictEqual({ status: 'shredded' });
+  expect(after.map((record) => record.kind)).toStrictEqual(['erasure.started']);
+});
+
+test('it finishes a begun forget on a retry with the same client action ID', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  ctx.setSessionCleanup(cleanupSessions);
+
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The locker code is 2291.',
+    spans: [],
+  });
+
+  invariant(sent.status === 'written');
+
+  ctx.effects.crashAt('erasure.keys_removed');
+
+  const failed = writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  });
+
+  await Promise.allSettled([failed]);
+
+  const retry = await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  });
 
   const records = await ctx.readRecordsAfter(sent.sequence + 1);
 
-  expect(retry).toStrictEqual(first);
+  expect(retry).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
   expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: sent.sequence });
 
   expect(records.map((record) => record.kind)).toStrictEqual([
-    'record.forget_started',
-    'record.forgotten',
+    'erasure.started',
+    'erasure.finished',
   ]);
 });
 
@@ -302,7 +300,11 @@ test('it answers a forget of a record already forgetting with the first time and
   const records = await ctx.readRecordsAfter(sent.sequence + 1);
 
   expect(second).toStrictEqual(first);
-  expect(records.map((record) => record.kind)).toStrictEqual(['record.forget_started']);
+
+  expect(records.map((record) => record.kind)).toStrictEqual([
+    'erasure.started',
+    'erasure.finished',
+  ]);
 });
 
 test('it refuses a client action ID that came before for another record', async () => {
@@ -496,6 +498,7 @@ test("it forgets a tool result inside a moment's span, and refuses the moment's 
     [moment.sequence, 'readable'],
     [flag.sequence, 'readable'],
     [expect.any(Number), 'none'],
+    [expect.any(Number), 'none'],
   ]);
 });
 
@@ -567,7 +570,7 @@ test('it refuses the forget of a queued action that has not run, and accepts the
   const accepted = await writeRecordForget(ctx.context, laptop.caller, input);
 
   expect(refused).toStrictEqual({ status: 'action_not_finished' });
-  expect(recordsAfterRefusal.map((record) => record.kind)).not.toContain('record.forget_started');
+  expect(recordsAfterRefusal.map((record) => record.kind)).not.toContain('erasure.started');
   expect(accepted).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
 });
 
@@ -618,15 +621,13 @@ test.each(['task.start', 'coding.start'])(
 
     const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-    const result = await writeRecordForget(
-      { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-      laptop.caller,
-      {
-        clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-        thread: started.taskID,
-        sequence: started.briefSequence,
-      },
-    );
+    ctx.setSessionCleanup(cleanupSessions);
+
+    const result = await writeRecordForget(ctx.context, laptop.caller, {
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      thread: started.taskID,
+      sequence: started.briefSequence,
+    });
 
     const entries = await readRecords(ctx.context.log, {
       afterSequence: 0,
@@ -668,15 +669,11 @@ test("it leaves the text of another started task's call readable when it forgets
 
   invariant(other);
 
-  await writeRecordForget(
-    { ...ctx.context, readSessionCleanup: () => () => Promise.resolve() },
-    laptop.caller,
-    {
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-      thread: first.taskID,
-      sequence: first.briefSequence,
-    },
-  );
+  await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: first.taskID,
+    sequence: first.briefSequence,
+  });
 
   const [kept] = await readRecords(ctx.context.log, {
     afterSequence: 0,
@@ -725,15 +722,13 @@ test('it forgets a task message that is no brief with no call of the starter', a
 
   const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  await writeRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    laptop.caller,
-    {
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-      thread: 'conversation',
-      sequence: report.sequence,
-    },
-  );
+  ctx.setSessionCleanup(cleanupSessions);
+
+  await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: report.sequence,
+  });
 
   const [call] = await readRecords(ctx.context.log, {
     afterSequence: 0,
@@ -828,15 +823,13 @@ test('it forgets the request and the end of a report with its delivered message,
 
   const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  await writeRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    laptop.caller,
-    {
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-      thread: 'conversation',
-      sequence: delivered.sequence,
-    },
-  );
+  ctx.setSessionCleanup(cleanupSessions);
+
+  await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: delivered.sequence,
+  });
 
   const entries = await readRecords(ctx.context.log, {
     afterSequence: 0,
@@ -878,24 +871,14 @@ test('it fails the forget with the destroy sentence when a code sandbox will not
     sequence: sent.sequence,
   };
 
-  const failing = {
-    ...ctx.context,
-    readSessionCleanup: () => () => Promise.resolve(),
-    readCodeCleanup: () => () => Promise.reject(new CodeSandboxDestroyError()),
-  };
+  ctx.setSandboxDestroy(() => Promise.reject(new CodeSandboxDestroyError()));
 
-  const [failed] = await Promise.allSettled([writeRecordForget(failing, laptop.caller, input)]);
+  const [failed] = await Promise.allSettled([writeRecordForget(ctx.context, laptop.caller, input)]);
+  const keysAfterFailure = await ctx.readRecordsAfter(sent.sequence);
 
-  const retried = await writeRecordForget(
-    {
-      ...ctx.context,
-      readSessionCleanup: () => () => Promise.resolve(),
-      readCodeCleanup: () => () => Promise.resolve(),
-    },
-    laptop.caller,
-    input,
-  );
+  ctx.setSandboxDestroy(() => Promise.resolve());
 
+  const retried = await writeRecordForget(ctx.context, laptop.caller, input);
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   const gap = page?.records.find((record) => record.sequence === sent.sequence);
@@ -907,6 +890,7 @@ test('it fails the forget with the destroy sentence when a code sandbox will not
     },
   });
 
+  expect(keysAfterFailure[0]?.erasable.status).toBe('readable');
   expect(retried.status).toBe('forgotten');
   expect(gap).toMatchObject({ isRemoved: true });
 });

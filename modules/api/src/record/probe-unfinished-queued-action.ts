@@ -3,7 +3,8 @@ import type { Kysely } from 'kysely';
 import type { APITables } from '../types';
 
 interface RecordTarget {
-  readonly thread: string;
+  // null reads the record on any thread
+  readonly thread: string | null;
   readonly sequence: number;
 }
 
@@ -18,7 +19,7 @@ export async function probeUnfinishedQueuedAction(
     .selectFrom('records')
     .select('sequence')
     .where('sequence', '=', target.sequence)
-    .where('thread', '=', target.thread)
+    .$if(target.thread !== null, (query) => query.where('thread', '=', target.thread))
     .where('kind', '=', 'action.queued')
     .executeTakeFirst();
 

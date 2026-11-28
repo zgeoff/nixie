@@ -31,7 +31,7 @@ export function writeImageName(
       return entry;
     }
 
-    const isForgetStarted = await probeForgetStarted(tx, entry.row.sequence);
+    const isForgetStarted = await probeForgetStarted(tx, entry.row);
 
     if (isForgetStarted) {
       return { kind: 'forgotten', row: entry.row };
@@ -51,11 +51,18 @@ export function writeImageName(
   });
 }
 
-// The kind is the memory module's record.forget_started, which this module cannot import.
-async function probeForgetStarted(tx: Transaction<unknown>, sequence: number): Promise<boolean> {
+interface ForgetProbe {
+  readonly sequence: number;
+  readonly uuid: string;
+}
+
+// The kinds are the memory module's record.forget_started and the erasure.started of a record or of
+// this image, which this module cannot import.
+async function probeForgetStarted(tx: Transaction<unknown>, image: ForgetProbe): Promise<boolean> {
   const result = await sql`
     select 1 as found from records
-    where kind = 'record.forget_started' and json_extract(payload, '$.recordSequence') = ${sequence}
+    where (kind = 'record.forget_started' and json_extract(payload, '$.recordSequence') = ${image.sequence})
+      or (kind = 'erasure.started' and json_extract(payload, '$.targetID') in (${String(image.sequence)}, ${image.uuid}))
     limit 1
   `.execute(tx);
 

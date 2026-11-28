@@ -246,6 +246,7 @@ test('it prints what a reset of the conversations shredded, that the server rest
         Promise.resolve({
           resetAt: new Date('2026-10-20T07:45:00.000Z'),
           lastSequence: 88,
+          removedKeys: 14,
           shreddedRecords: 14,
           backup: { state: 'pending' },
         }),
@@ -265,7 +266,7 @@ test('it prints what a reset of the conversations shredded, that the server rest
   expect(ctx.io.print.mock.calls).toStrictEqual([
     [
       [
-        'nixie shredded 14 records of the conversation up to sequence 88 at 2026-10-20T07:45:00.000Z.',
+        'nixie removed 14 keys of the conversation up to sequence 88 at 2026-10-20T07:45:00.000Z.',
         'The server restarts now, and its next turn starts with no history.',
         'Key backups: pending. The next backup job run removes the old keys from the key backups, within the backup interval.',
       ].join('\n'),

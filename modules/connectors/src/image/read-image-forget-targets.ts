@@ -12,6 +12,7 @@ export interface ImageForgetTarget {
 export interface ImageForgetTargets {
   // the short ID of the image
   readonly image: string;
+  readonly uuid: string;
   readonly targets: readonly ImageForgetTarget[];
 }
 
@@ -64,6 +65,7 @@ export async function readImageForgetTargets(
 
   return {
     image: row.image_id,
+    uuid: row.uuid,
     targets: [...bySequence.values()].toSorted((left, right) => left.sequence - right.sequence),
   };
 }

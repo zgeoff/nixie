@@ -11,8 +11,8 @@ export type ErasureFaultPoint =
 
 export type ErasureSessionCause = ErasureCapture['sessionCause'];
 
-// A cause that names a session to clean, which the reset's thread cause never does.
-export type ErasureCleanupCause = Exclude<ErasureSessionCause, { readonly thread: string }>;
+// A cause that names a session to clean, which a forget with no sessions never does.
+export type ErasureCleanupCause = Exclude<ErasureSessionCause, { readonly sessions: 'none' }>;
 
 export interface ErasureTurnInputScope {
   // every request on these threads goes

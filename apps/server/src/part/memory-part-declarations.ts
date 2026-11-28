@@ -1,10 +1,8 @@
-import { runPendingRecordForgets } from '@heynixie/api';
 import { startMemory } from '../cli/start-memory';
 import { buildProposalConfig } from '../deployment/build-proposal-config';
 import { startErasureRunner } from '../erasure/start-erasure-runner';
 import { startErasureWatch } from '../erasure/start-erasure-watch';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
-import { runTurnInputForget } from '../turn/run-turn-input-forget';
 import { startTurnInputWork } from '../turn/start-turn-input-work';
 import type { AnyPartDeclaration } from '../types';
 import { buildSeedingConnections } from './build-seeding-connections';
@@ -24,7 +22,7 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   },
   {
     name: 'erasure',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
+    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'api_gate'],
     uses: ['memory', 'phone'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
@@ -93,30 +91,10 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     ),
   },
   {
-    name: 'session_cleanup',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'memory'],
-    start: (reader) => {
-      const parts = reader.get('server_parts');
-      const conversation = reader.get('conversation_imp');
-      const tasks = reader.get('sandbox_runner');
-      const memory = reader.get('memory');
-
-      return Promise.resolve(async (cause) => {
-        await conversation.cleanupSessions(cause);
-        await tasks.cleanupSessions(cause);
-
-        await runTurnInputForget(parts, cause);
-
-        // The sessions rebuild first, so no turn still holds a value that a purge deletes.
-        await memory.finishEvidencePurges({ recordSequence: cause.recordSequence });
-      });
-    },
-  },
-  {
     // A forget that a crash cut short finishes before any claim pool or turn-input work can reach
     // what it deletes.
     name: 'erasure_catch_up',
-    needs: ['server_parts', 'session_cleanup', 'memory', 'notebook', 'erasure'],
+    needs: ['server_parts', 'memory', 'notebook', 'erasure'],
     uses: ['connections'],
     start: makeRetriedStart('erasure_catch_up', (_parts, reader) =>
       reader.get('erasure').finishOpen(),
@@ -133,10 +111,5 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     name: 'erasure_watch',
     needs: ['server_parts', 'erasure', 'erasure_catch_up'],
     start: (reader) => startErasureWatch(reader.get('server_parts'), reader.get('erasure')),
-  },
-  {
-    name: 'record_forgets',
-    needs: ['server_parts', 'session_cleanup'],
-    start: makeRetriedStart('record_forgets', (parts) => runPendingRecordForgets(parts.apiContext)),
   },
 ];

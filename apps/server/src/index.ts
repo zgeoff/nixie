@@ -8,7 +8,7 @@ export { fillComputerLists } from './computer/fill-computer-lists';
 export { fillBodyFieldReaders } from './feature/fill-body-field-readers';
 export { fillCallsLists } from './call/fill-calls-lists';
 export { fillInboxKinds } from './feature/fill-inbox-kinds';
-export { runConversationReset } from './utils/run-conversation-reset';
+export { runConversationReset } from './erasure/run-conversation-reset';
 export type { ConversationOptions } from './conversation/start-conversation';
 export { startConversation } from './conversation/start-conversation';
 export { makeTurnNoteReader } from './turn/make-turn-note-reader';

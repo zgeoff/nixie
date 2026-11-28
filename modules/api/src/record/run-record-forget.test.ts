@@ -55,7 +55,7 @@ async function setupTest() {
 
       return entries.map((entry) => entry.record.kind);
     },
-    readSequences: async (kind: 'memory.evidence_purged' | 'record.forgotten') => {
+    readSequences: async (kind: 'memory.evidence_purged' | 'erasure.finished') => {
       const entries = await readRecords(api.context.log, { afterSequence: 0, kinds: [kind] });
 
       return entries.map((entry) => entry.record.sequence);
@@ -69,10 +69,9 @@ test('it forgets a record with no caller check and runs the session cleanup once
 
   const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  const forgotten = await runRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    { thread: 'conversation', sequence },
-  );
+  ctx.setSessionCleanup(cleanupSessions);
+
+  const forgotten = await runRecordForget(ctx.context, { thread: 'conversation', sequence });
 
   expect(forgotten).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
   expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: sequence });
@@ -82,8 +81,8 @@ test('it forgets a record with no caller check and runs the session cleanup once
   expect(kinds).toStrictEqual([
     'task.created',
     'owner_message',
-    'record.forget_started',
-    'record.forgotten',
+    'erasure.started',
+    'erasure.finished',
   ]);
 });
 
@@ -91,12 +90,10 @@ test('it answers forgotten and writes nothing more when the record is already fo
   const ctx = await setupTest();
   const sequence = await ctx.writeOwnerMessage('The shed key sits under the blue pot.');
 
-  const context = { ...ctx.context, readSessionCleanup: () => () => Promise.resolve() };
-
-  await runRecordForget(context, { thread: 'conversation', sequence });
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence });
 
   const before = await ctx.readKinds();
-  const again = await runRecordForget(context, { thread: 'conversation', sequence });
+  const again = await runRecordForget(ctx.context, { thread: 'conversation', sequence });
   const after = await ctx.readKinds();
 
   expect(again).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
@@ -201,7 +198,7 @@ test('it lists in the purge set the items that the preview lists, and purges exa
   expect(unrelated?.versions).toMatchObject([{ version: 1, status: 'readable', isRemoved: false }]);
 });
 
-test('it writes the purge set in the forget start, before any purge step runs', async () => {
+test('it writes the purge set in the start transaction, before any purge step runs', async () => {
   const ctx = await setupTest();
   const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
 
@@ -210,7 +207,11 @@ test('it writes the purge set in the forget start, before any purge step runs', 
   const kinds = await ctx.readKinds();
   const rows = await readPurgeRows(ctx.context.log.writer.db);
 
-  expect(kinds.slice(-2)).toStrictEqual(['record.forget_started', 'memory.evidence_purge_started']);
+  expect(kinds.slice(-3)).toStrictEqual([
+    'memory.evidence_purge_started',
+    'erasure.started',
+    'erasure.finished',
+  ]);
 
   expect(rows).toStrictEqual([
     {
@@ -222,14 +223,14 @@ test('it writes the purge set in the forget start, before any purge step runs', 
   ]);
 });
 
-test('it writes record.forgotten after the last mark of every item of the set', async () => {
+test('it writes erasure.finished after the last mark of every item of the set', async () => {
   const ctx = await setupTest();
   const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
 
   await runRecordForget(ctx.forgetContext, { thread: 'conversation', sequence: seeded.sequence });
 
   const purged = await ctx.readSequences('memory.evidence_purged');
-  const [forgotten] = await ctx.readSequences('record.forgotten');
+  const [forgotten] = await ctx.readSequences('erasure.finished');
 
   invariant(forgotten !== undefined);
 

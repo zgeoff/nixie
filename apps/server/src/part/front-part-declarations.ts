@@ -1,11 +1,11 @@
 import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
 import { createCallsProcedures } from '@heynixie/calls';
 import { readOwnerAddress } from '@heynixie/connections';
-import { makeCodeRunCleanup } from '@heynixie/connectors';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { buildDevicesFeatureProcedures } from '@heynixie/devices';
 import { writeChatChannels } from '@heynixie/policy';
 import { buildRunSettings } from '@heynixie/sessions';
+import invariant from 'tiny-invariant';
 import { buildServerCoding } from '../coding/build-server-coding';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { buildProposalConfig } from '../deployment/build-proposal-config';
@@ -38,15 +38,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: [
-      'session_cleanup',
-      'sandbox_adapter',
-      'notebook',
-      'computer',
-      'erasure',
-      'connections',
-      'mcp',
-    ],
+    uses: ['sandbox_adapter', 'notebook', 'computer', 'erasure', 'connections', 'mcp'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -59,63 +51,58 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         testGatewayURL: NIXIE_TEST_BUILD ? (options.harness?.atcURL ?? null) : null,
       });
 
-      const context = await createServerContext(
-        options.writer,
-        options.secrets.deploymentKey,
-        () => parts.find('session_cleanup'),
-        {
-          runSettings: buildRunSettings({
-            models: options.config.models,
-            credentials: options.credentials,
-            hopLimit: options.config.tasks.messaging.hopLimit,
-            ...(options.spend === null ? {} : { gateway: options.spend.gateway }),
-            logger: options.log,
-          }),
-          runners: buildServerTaskRunners({
-            coding: coding?.runner.definition ?? null,
-            isCallsOn: options.config.voice !== undefined,
-          }),
-          taskRunLimits: options.config.models.limits.taskRun.default,
-          defaultZone: options.config.time.default_zone,
-          features: listFeaturesOn(options.config),
-          ...(options.spend === null
-            ? {}
-            : {
-                spend: {
-                  gateway: options.spend.gateway,
-                  planLogins: options.spend.planLogins,
-                  display: options.spend.display,
-                  limits: {
-                    dayTurns: options.config.models.limits.day.turns,
-                    dayTurnCap: options.config.models.limits.day.turnCap,
-                    monthTurns: options.config.models.limits.month.turns,
-                  },
+      const context = await createServerContext(options.writer, options.secrets.deploymentKey, {
+        runSettings: buildRunSettings({
+          models: options.config.models,
+          credentials: options.credentials,
+          hopLimit: options.config.tasks.messaging.hopLimit,
+          ...(options.spend === null ? {} : { gateway: options.spend.gateway }),
+          logger: options.log,
+        }),
+        runners: buildServerTaskRunners({
+          coding: coding?.runner.definition ?? null,
+          isCallsOn: options.config.voice !== undefined,
+        }),
+        taskRunLimits: options.config.models.limits.taskRun.default,
+        defaultZone: options.config.time.default_zone,
+        features: listFeaturesOn(options.config),
+        ...(options.spend === null
+          ? {}
+          : {
+              spend: {
+                gateway: options.spend.gateway,
+                planLogins: options.spend.planLogins,
+                display: options.spend.display,
+                limits: {
+                  dayTurns: options.config.models.limits.day.turns,
+                  dayTurnCap: options.config.models.limits.day.turnCap,
+                  monthTurns: options.config.models.limits.month.turns,
                 },
-              }),
-          settings: {
-            ...defaultAPISettings,
-            isBackupEnabled: options.config.backup.isEnabled,
-            readOnlyTokenHashes: options.config.api.readOnlyTokenHashes,
-            passkeyWindowMs: options.config.approvals.passkey_window_minutes * 60_000,
-            taskDirectory: buildTaskMessaging(options.config).directory,
-            approvals: {
-              defaultMinutes: options.config.approvals.defer.default_minutes,
-              eveningAt: options.config.approvals.defer.evening_at,
-              morningAt: options.config.approvals.defer.morning_at,
-              quietHours: options.config.quiet_hours ?? null,
-              defaultZone: options.config.time.default_zone,
-              lapseDays: buildProposalConfig(options.config).lapseDays,
-            },
-            ...(options.config.mail === undefined
-              ? {}
-              : { mail: { replyExpiryMs: options.config.wake_rules.reply_expiry } }),
-            policy: {
-              proposedRules: options.config.policy.proposedRules,
-              mandates: options.config.policy.mandates,
-            },
+              },
+            }),
+        settings: {
+          ...defaultAPISettings,
+          isBackupEnabled: options.config.backup.isEnabled,
+          readOnlyTokenHashes: options.config.api.readOnlyTokenHashes,
+          passkeyWindowMs: options.config.approvals.passkey_window_minutes * 60_000,
+          taskDirectory: buildTaskMessaging(options.config).directory,
+          approvals: {
+            defaultMinutes: options.config.approvals.defer.default_minutes,
+            eveningAt: options.config.approvals.defer.evening_at,
+            morningAt: options.config.approvals.defer.morning_at,
+            quietHours: options.config.quiet_hours ?? null,
+            defaultZone: options.config.time.default_zone,
+            lapseDays: buildProposalConfig(options.config).lapseDays,
+          },
+          ...(options.config.mail === undefined
+            ? {}
+            : { mail: { replyExpiryMs: options.config.wake_rules.reply_expiry } }),
+          policy: {
+            proposedRules: options.config.policy.proposedRules,
+            mandates: options.config.policy.mandates,
           },
         },
-      );
+      });
 
       coding?.bindTasks(context.apiContext);
 
@@ -133,15 +120,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           ...context.apiContext,
           logger: options.log,
 
-          // Built from the adapter, so a forget destroys the code sandboxes that remain while the code
-          // tool is off.
-          readCodeCleanup: () => {
-            const adapter = parts.find('sandbox_adapter');
-
-            return adapter === null
-              ? null
-              : makeCodeRunCleanup(context.apiContext.log, adapter).destroyForRecords;
-          },
+          readForgets: () => parts.find('erasure')?.forgets ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
           readConnections: () => parts.find('connections') ?? null,
           readPickedFiles: (connection, files) =>
@@ -258,7 +237,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'reset',
     needs: ['inputs', 'context', 'tools', 'api_gate', 'turn_inputs'],
-    uses: ['ready'],
+    uses: ['ready', 'erasure'],
     start: (parts) => {
       const inputs = parts.get('inputs');
 
@@ -268,8 +247,13 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           adapter: parts.get('tools').adapter,
           work: inputs.work,
           runTurnInputsReset: parts.get('turn_inputs').runReset,
-          removeTurnInputThreads: parts.get('turn_inputs').removeThreads,
-          clearFetchPauses: parts.get('tools').webFetch.clearPauses,
+          readConversationForget: () => {
+            const erasure = parts.find('erasure');
+
+            invariant(erasure, 'the erasure runner is started when the reset runs');
+
+            return erasure.forgetConversation;
+          },
           closeAPI: parts.get('api_gate').close,
           readStart: async () => {
             await parts.waitFor('ready');

@@ -3,6 +3,7 @@ import { handoverAskedFieldsSchema } from '@heynixie/connectors';
 import type { LogRecord as ContractRecord, DefinitionNotice } from '@heynixie/contract';
 import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
+import { erasureFinishedCodec, erasureStartedCodec } from '@heynixie/log';
 import { momentKeptCodec, recordForgetStartedCodec, recordForgottenCodec } from '@heynixie/memory';
 import {
   modelCompactedCodec,
@@ -565,13 +566,31 @@ function toCompactionFailure(record: LogRecord): CompactionFailure | undefined {
   return failures === undefined ? undefined : { failures };
 }
 
-const forgetCodecs = [recordForgetStartedCodec, recordForgottenCodec];
-
 function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
-  const codec = forgetCodecs.find((candidate) => candidate.kind === record.kind);
-  const sequence = codec?.tryDecodePartial(record.payload)?.recordSequence;
+  const sequence = findForgottenSequence(record);
 
   return sequence === undefined ? {} : { forget: { sequence } };
+}
+
+const forgetCodecs = [recordForgetStartedCodec, recordForgottenCodec];
+
+// An erasure of a record names it by its sequence as text; an earlier release named it in its own
+// start record.
+function findForgottenSequence(record: LogRecord): number | undefined {
+  if (record.kind === erasureStartedCodec.kind || record.kind === erasureFinishedCodec.kind) {
+    const codec =
+      record.kind === erasureStartedCodec.kind ? erasureStartedCodec : erasureFinishedCodec;
+
+    const erasure = codec.tryDecodePartial(record.payload);
+
+    return erasure?.kind === 'record' && erasure.targetID !== undefined
+      ? Number(erasure.targetID)
+      : undefined;
+  }
+
+  const codec = forgetCodecs.find((candidate) => candidate.kind === record.kind);
+
+  return codec?.tryDecodePartial(record.payload)?.recordSequence;
 }
 
 function toVoidedReply(record: LogRecord): Pick<ContractRecord, 'voidedReply'> {

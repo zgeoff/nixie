@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { runTestSeed } from '../test-utils/run-test-seed';
+import { startTestConversationReset } from '../test-utils/start-test-conversation-reset';
 import { startTestServer } from '../test-utils/start-test-server';
 import { buildCleanup } from './build-cleanup';
 import { buildServerReset } from './build-server-reset';
@@ -13,7 +14,6 @@ async function setupTest() {
     context: {
       ...server.context,
       settings: defaultAPISettings,
-      readSessionCleanup: () => null,
       readZone: () => Promise.resolve('UTC'),
       features: [],
       passkeys: createPasskeyState(),
@@ -37,8 +37,9 @@ test('it ends the start and stops its work before it resets', async () => {
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -67,8 +68,9 @@ test('it logs the reset and resolves done once the reset finishes', async () => 
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
@@ -97,8 +99,9 @@ test('it logs a reset of the conversations and resolves done once it finishes', 
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
@@ -111,7 +114,7 @@ test('it logs a reset of the conversations and resolves done once it finishes', 
 
   expect(log.mock.calls).toStrictEqual([
     ['reset.started', { mode: 'conversations' }],
-    ['reset.finished', { mode: 'conversations', lastSequence: 2, shreddedRecords: 0 }],
+    ['reset.finished', { mode: 'conversations', lastSequence: 2, removedKeys: 0 }],
   ]);
 });
 
@@ -125,8 +128,9 @@ test('it refuses a full reset while a reset of the conversations runs', async ()
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -139,7 +143,7 @@ test('it refuses a full reset while a reset of the conversations runs', async ()
   await Promise.allSettled([conversations, full]);
 
   expect(full).rejects.toThrowWithMessage(Error, 'a reset of the conversations runs already');
-  expect(conversations).resolves.toMatchObject({ shreddedRecords: 0 });
+  expect(conversations).resolves.toMatchObject({ removedKeys: 0 });
 });
 
 test('it refuses a reset of the conversations while a full reset runs', async () => {
@@ -152,8 +156,9 @@ test('it refuses a reset of the conversations while a full reset runs', async ()
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -179,8 +184,9 @@ test('it answers a request that arrives while a reset runs with that reset', asy
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -209,8 +215,9 @@ test('it reports a failed reset as the server failing, and never resolves done',
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -240,8 +247,9 @@ test('it logs a failed reset with the error', async () => {
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
@@ -268,8 +276,9 @@ test('it waits for a reset in flight to settle, and never rejects with its failu
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -298,8 +307,9 @@ test('it closes the API before it stops the work', async () => {
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset: () => Promise.resolve(),
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI,
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -321,8 +331,9 @@ test('it removes the turn-input bodies after the log reset, and only for a full 
     adapter: ctx.sandboxes,
     work: ctx.work,
     runTurnInputsReset,
-    removeTurnInputThreads: () => Promise.resolve(),
-    clearFetchPauses: () => {},
+    readConversationForget: () =>
+      startTestConversationReset(ctx.context, { adapter: ctx.sandboxes, log: () => {} })
+        .forgetConversation,
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
