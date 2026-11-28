@@ -1,4 +1,4 @@
-import type { EnvelopeRecord, ErasableKind, Log } from '@heynixie/log';
+import type { EnvelopeRecord, ErasableKind, Log, RecordKind } from '@heynixie/log';
 import { erasureFinishedCodec, readErasureParentIDs, readRecords } from '@heynixie/log';
 import type { EventKind, NotedEvent } from '@heynixie/sessions';
 
@@ -13,14 +13,14 @@ export interface ForgottenEvent {
   readonly id: string;
 }
 
-const defaultReadLimit = 1000;
+const defaultPageSize = 1000;
 
 // A forget that another forget began, such as the messages of a forgotten image or of a reset,
-// adds no line.
+// adds no line, and neither does a forget of a record that is no message, such as a tool result.
 export function buildForgottenKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   notices: ForgottenNotices,
-  readLimit = defaultReadLimit,
+  pageSize = defaultPageSize,
 ): EventKind<ForgottenEvent> {
   return {
     name: 'forgotten',
@@ -28,40 +28,46 @@ export function buildForgottenKind(
       const events: NotedEvent<ForgottenEvent>[] = [];
       let after = range.after;
 
-      // pages past the forgets that add no line, so only the lines count against the limit
-      while (events.length < readLimit) {
+      // every forget through the range, a page at a time, so the block counts those it hides
+      for (;;) {
         const records = await readRecords(log, {
           afterSequence: after,
           beforeSequence: range.through + 1,
           kinds: [erasureFinishedCodec.kind],
-          limit: readLimit,
+          limit: pageSize,
         });
 
         const finished = records
           .map((entry) => pickFinished(entry.record, notices))
           .filter((found) => found !== null);
 
-        const parents = await readErasureParentIDs(
-          log,
-          finished.map((found) => found.erasureID),
-        );
+        const [parents, messageIDs] = await Promise.all([
+          readErasureParentIDs(
+            log,
+            finished.map((found) => found.erasureID),
+          ),
+          readMessageIDs(log, finished),
+        ]);
 
         for (const found of finished) {
-          if (parents.get(found.erasureID) === null && events.length < readLimit) {
+          const isMessage = found.event.kind === 'message';
+
+          const isListed =
+            parents.get(found.erasureID) === null && (!isMessage || messageIDs.has(found.event.id));
+
+          if (isListed) {
             events.push({ sequence: found.sequence, at: found.at, detail: found.event });
           }
         }
 
         const last = records.at(-1);
 
-        if (last === undefined || records.length < readLimit) {
-          break;
+        if (last === undefined || records.length < pageSize) {
+          return events;
         }
 
         after = last.record.sequence;
       }
-
-      return events;
     },
     render: (detail, settings) =>
       `${settings.ownerName ?? 'the owner'} forgot ${detail.kind} ${detail.id}`,
@@ -99,4 +105,30 @@ function pickFinished(record: EnvelopeRecord, notices: ForgottenNotices): Finish
         erasureID: finished.erasureID,
         event: { kind, id },
       };
+}
+
+// the records that a message forget reaches, as the API's contract names them
+const messageRecordKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];
+
+// The IDs among those that a message forget names whose record is a message.
+async function readMessageIDs(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  finished: readonly Finished[],
+): Promise<ReadonlySet<string>> {
+  const sequences = finished.flatMap((found) =>
+    found.event.kind === 'message' ? [Number(found.event.id)] : [],
+  );
+
+  if (sequences.length === 0) {
+    return new Set();
+  }
+
+  const records = await readRecords(log, {
+    afterSequence: 0,
+    sequences,
+    kinds: messageRecordKinds,
+    limit: sequences.length,
+  });
+
+  return new Set(records.map((entry) => String(entry.record.sequence)));
 }
