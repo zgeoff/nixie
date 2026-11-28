@@ -2,6 +2,7 @@ import type { ActionConnector } from '@heynixie/connectors';
 import type { CredentialStore, HeldBackend } from '@heynixie/credentials';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { publishChanged, subscribeToChanged } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { ProposalConfig, ProposalKindHandler } from '@heynixie/proposals';
 import { renderChangedSentence } from '@heynixie/tools';
 import { buildActionConnector } from './call/build-action-connector';
@@ -36,6 +37,7 @@ import type { McpContext, OnPinMoved, ReadOverrides, ServerFacts } from './types
 
 export interface McpOptions {
   readonly log: Log;
+  readonly logger: Logger;
   readonly definitions: () => Definitions;
   readonly now: () => number;
   readonly store: CredentialStore;
@@ -470,6 +472,7 @@ export function startMcp(options: McpOptions): Mcp {
     store: options.store,
     backend: options.backend,
     runtime,
+    logger: options.logger,
     onSignedIn: async (serverID) => {
       await list(serverID);
     },

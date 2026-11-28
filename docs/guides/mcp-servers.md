@@ -71,6 +71,9 @@ turn.
 When the server stops accepting its refresh token, the card shows "Needs sign-in" and a Sign in
 again button. Select it and sign in again.
 
+When the sign-in does not start, read the reason under Connect. nixie's egress check refuses a
+server on nixie's own host, and the reason gives the address that the host name resolved to.
+
 ## Let a tool's calls run
 
 You approve no tool. Each tool the server lists is available at its first listing, and each call of

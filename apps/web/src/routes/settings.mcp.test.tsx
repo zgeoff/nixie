@@ -47,6 +47,67 @@ test('it offers Connect for a server with no grant, and starts its sign-in', asy
   });
 });
 
+test('it shows why the sign-in did not start under Connect', async () => {
+  const ctx = await setupTest();
+
+  mcpStore.add({ server: 'tracker', signIn: 'no_grant' });
+
+  mcpStore.discoveryFailures.set(
+    'tracker',
+    'tracker.example.test resolves to 10.0.0.5, which is not a public address',
+  );
+
+  const rendered = ctx.render();
+
+  const card = await rendered.findByRole('listitem', { name: 'tracker' });
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Connect to tracker' }));
+
+  const alert = await within(card).findByRole('alert');
+
+  expect(alert).toHaveTextContent(
+    'The sign-in did not start. Check the server and try again. tracker.example.test resolves to 10.0.0.5, which is not a public address',
+  );
+});
+
+test('it shows the reason of a failed sign-in as text, never as markup', async () => {
+  const ctx = await setupTest();
+
+  mcpStore.add({ server: 'tracker', signIn: 'no_grant' });
+  mcpStore.discoveryFailures.set('tracker', '<img src="x" alt="probe"> is not a public address');
+
+  const rendered = ctx.render();
+
+  const card = await rendered.findByRole('listitem', { name: 'tracker' });
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Connect to tracker' }));
+
+  const alert = await within(card).findByRole('alert');
+
+  expect([alert.querySelector('img'), alert.textContent]).toStrictEqual([
+    null,
+    'The sign-in did not start. Check the server and try again. <img src="x" alt="probe"> is not a public address',
+  ]);
+});
+
+test('it shows the fixed text when a failed sign-in gives no reason', async () => {
+  const ctx = await setupTest();
+
+  mcpStore.add({ server: 'tracker', signIn: 'no_grant' });
+
+  const rendered = ctx.render();
+
+  const card = await rendered.findByRole('listitem', { name: 'tracker' });
+
+  mcpStore.servers.length = 0;
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Connect to tracker' }));
+
+  const alert = await within(card).findByRole('alert');
+
+  expect(alert.textContent).toBe('The sign-in did not start. Check the server and try again.');
+});
+
 test('it shows a signed-in server with no sign-in button', async () => {
   const ctx = await setupTest();
 

@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
@@ -22,6 +23,8 @@ export function ConnectServerButton(props: ConnectServerButtonProps): ReactNode 
     },
   });
 
+  const reason = start.isError ? readDiscoveryReason(start.error) : null;
+
   return (
     <>
       <button
@@ -35,8 +38,26 @@ export function ConnectServerButton(props: ConnectServerButtonProps): ReactNode 
         {props.label}
       </button>
       {start.isError ? (
-        <p role="alert">The sign-in did not start. Check the server and try again.</p>
+        <p role="alert">
+          The sign-in did not start. Check the server and try again.
+          {reason === null ? null : ` ${reason}`}
+        </p>
       ) : null}
     </>
   );
+}
+
+// The reason that discovery gave for refusing the server, when the error carries one.
+function readDiscoveryReason(error: unknown): string | null {
+  if (!(error instanceof ORPCError) || error.code !== 'DISCOVERY_FAILED') {
+    return null;
+  }
+
+  const data: unknown = error.data;
+
+  if (typeof data === 'object' && data !== null && 'reason' in data) {
+    return typeof data.reason === 'string' ? data.reason : null;
+  }
+
+  return null;
 }
