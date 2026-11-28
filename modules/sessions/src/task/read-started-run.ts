@@ -49,6 +49,7 @@ export interface StartedRun {
   // the skills the version lists, which the run's skill tools and catalog follow; none for a run
   // with no definition
   readonly skills: readonly string[];
+
   // the pins of the version the task run pinned, as the tool run takes them: no key for a started
   // task or a version that pins nothing
   readonly pinned: Pick<ToolRun, 'connectionPins'>;

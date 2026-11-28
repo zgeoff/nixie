@@ -26,6 +26,7 @@ import { removeFailedDestroys } from './remove-failed-destroys';
 import { renderWorkerEnd } from './render-worker-end';
 import { reserveWorkerDollars } from './reserve-worker-dollars';
 import { startWorkerRemoval } from './start-worker-removal';
+import { startWorkerToolRun } from './start-worker-tool-run';
 import type {
   WorkerDeps,
   WorkerEnd,
@@ -255,7 +256,7 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
 
     run.held.isRegistered = deps.gateway !== undefined;
 
-    run.held.endpoint = await startToolRun(deps, plan, run);
+    run.held.endpoint = await startWorkerToolRun(deps, plan, run.names);
 
     const route = await raceStop(run.held.sandbox.toolRoute(), run.stops.hard);
 
@@ -325,27 +326,6 @@ async function registerGatewaySandbox(
   if (put.kind !== 'ok') {
     throw new Error(`the gateway did not register the worker's sandbox: ${put.reason}`);
   }
-}
-
-function startToolRun(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promise<RunEndpoint> {
-  const tools = deps.readTools();
-
-  invariant(tools, 'the tool endpoint is not running');
-
-  return tools.startRun({
-    runID: run.names.workerRunID,
-    thread: plan.caller.thread,
-    logThread: plan.caller.logThread,
-    tools: [...plan.tools],
-    skills: plan.skills,
-    model: { model: run.names.model, profile: run.names.profile },
-    ...(plan.caller.taskRun === undefined ? {} : { taskRun: plan.caller.taskRun }),
-    ...(plan.caller.connectionPins === undefined
-      ? {}
-      : { connectionPins: plan.caller.connectionPins }),
-    toolUseMetaKey: plan.target.harness.toolUseMetaKey,
-    parent: plan.caller.callSequence,
-  });
 }
 
 interface GuestRoute {
