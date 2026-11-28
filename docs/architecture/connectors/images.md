@@ -52,15 +52,15 @@ false on `image.read` and `image.import` when the caps leave no room.
 
 A refusal is a result with a `refusalCode`, never a thrown error. The model reads it and chooses.
 
-| Code                               | Cause                                                                      |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot             |
-| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                |
-| `NO_EDIT`                          | The profile's provider takes no source or no references                    |
-| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0 |
-| `IMAGE_REFUSED`                    | The provider refused the prompt                                            |
-| `IMAGE_FAILED`                     | The provider failed, or its reply is over 8 MiB or does not decode         |
-| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                          |
+| Code                               | Cause                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
+| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot                |
+| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                   |
+| `NO_EDIT`                          | The profile's provider takes no source or no references                       |
+| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0    |
+| `IMAGE_REFUSED`                    | The provider refused the prompt                                               |
+| `IMAGE_FAILED`                     | The provider failed, or its reply is over `maxStoredBytes` or does not decode |
+| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                             |
 
 Every refusal and failure of `image.draw` sets `profiles` to every configured profile, so the model
 can pick one to retry on. Each entry holds the profile's key and its `model`.
@@ -172,10 +172,10 @@ and a row in the `images` table, which the call writes in the same transaction a
 | `profile`, `model`                               | The profile and model of a draw; null for an import                   |
 | `media_type`, `size`, `byte_count`, `created_at` | The stored PNG                                                        |
 
-nixie stores every image as PNG, converting a provider's reply first, and refuses a reply over 8
-MiB. The prompt and the references sit among the call record's erasable fields, never in the table.
-An image ID resolves on every thread, and [`file.send`](./code-tool.md#sending-a-file) takes one to
-show the image under a reply.
+nixie stores every image as PNG, converting a provider's reply first, and refuses a reply over
+`maxStoredBytes` in `image-limits.ts`. The prompt and the references sit among the call record's
+erasable fields, never in the table. An image ID resolves on every thread, and
+[`file.send`](./code-tool.md#sending-a-file) takes one to show the image under a reply.
 
 `image.name` writes an `image.named` record, whose name is erasable, and `image.pin` and
 `image.unpin` write `image.pinned` and `image.unpinned` records.
