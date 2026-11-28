@@ -176,9 +176,9 @@ model requests, apart from the control listener ([the route of a request](#the-r
 - A request on a route whose login is not `active` gets a 401 in the Responses error shape, and
   nothing goes upstream.
 - The gateway counts a plan request under the route's prices, as it counts every other request. A
-  plan has no price per token, so the operator sets the route's prices and the profile's prices to
-  OpenAI's API prices for the same model. The day and month dollar limits of the route and its
-  provider then cap the credits that Codex use past the plan's own limit spends.
+  plan has no price per token, so set the route's prices to OpenAI's API prices for the same model.
+  The day and month dollar limits of the route and its provider then cap the credits that Codex use
+  past the plan's own limit spends.
 
 ### The login file and the refresh
 

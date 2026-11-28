@@ -508,11 +508,11 @@ also refuses a profile that sets prices beside a gateway.
 Before each step runs a turn, the runner reads both meters, and reads the sandbox's count when the
 gateway counts. When a meter that has a limit has reached it, the step runs no turn and returns the
 limit as its end, and the step's commit ends the task run as `limit`, which writes the report, a
-`task.limit_reached` record, and a pause under the limit hold. The paused task keeps its work, and
-the user's raise of the limit resumes it. The starter learns of it through the report or the limit
-notice, and its model reads the task's ID and its turns in a system message that says only the user
-can resume the task, with no dollar figure. The message leaves out the task's name, because a model
-wrote that name, and the model trusts a system message as nixie's own text.
+`task.limit_reached` record, and a pause under the limit hold. The paused task keeps its work until
+the user raises the limit, which resumes it. The starter learns of it through the report or the
+limit notice, and its model reads the task's ID and its turns in a system message that says only the
+user can resume the task, with no dollar figure. The message leaves out the task's name, because a
+model wrote that name, and the model trusts a system message as nixie's own text.
 
 A turn can pass the dollar limit on its own. With a gateway and a dollar limit, the sandbox's limit
 stops it: the gateway refuses the next request, and a step whose sandbox refused a request since the
@@ -536,8 +536,8 @@ and resumes a paused task in one transaction. After the commit, the command sets
 task's sandbox to the raised limit, and tries again until the gateway takes it. A task with no
 dollar limit has none on its sandbox either. A task that the user stopped after the pause stays
 stopped, and a restart runs it under the raised limit. A raise names turns, dollars or both, and
-refuses when no value goes above the limit the task reached or one falls below it. A raise cannot
-set a limit on a meter that has none, so a value asked for such a meter refuses. The max of
+refuses when no value goes above the limit the task reached or one falls below it. A raise sets no
+limit on a meter that has none, so a raise that names such a meter refuses. The max of
 `models.limits.taskRun` never caps a raise, because it bounds only what a start asks for.
 
 A raise or a restart opens a task run that carries the newest one. The totals of a piece of work are
