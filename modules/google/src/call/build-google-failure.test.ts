@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { ConnectorFailure } from '@heynixie/tools';
-import { renderFailureMessage } from '@heynixie/tools';
-import { buildGoogleFailure, forgottenOutcome } from './build-google-failure';
+import { buildGoogleFailure } from './build-google-failure';
 
 interface FailureCase {
   readonly name: string;
@@ -61,12 +60,4 @@ test.each<FailureCase>([
   });
 
   expect(failure).toStrictEqual(row.expected);
-});
-
-test('it gives the forgotten connection the message that nixie writes for connection_unavailable', () => {
-  const message: string = forgottenOutcome.message;
-
-  expect(message).toBe(
-    renderFailureMessage({ code: 'connection_unavailable' }, { nowMs: 0, detailChars: 1000 }),
-  );
 });

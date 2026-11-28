@@ -1,6 +1,7 @@
 import type { ConnectorContext } from '@heynixie/connections';
 import type { ConnectorFailure } from '@heynixie/tools';
-import { buildGoogleFailure, buildUnreadableFailure } from '../call/build-google-failure';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import type { GoogleHosts } from '../types';
 import { callGmail } from './call-gmail';
 import type { GmailPart } from './types';

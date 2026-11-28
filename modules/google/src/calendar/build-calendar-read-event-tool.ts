@@ -1,6 +1,7 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
-import { buildFailureOutcome, forgottenOutcome } from '../call/build-google-failure';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { readCallContext } from '../gmail/read-call-context';
 import type { GoogleDeps } from '../types';

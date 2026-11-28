@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
-import { buildFailureRefusal, forgottenOutcome } from '../call/build-google-failure';
+import { buildFailureRefusal } from '../call/build-failure-refusal';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { buildDraftDigest } from './build-draft-digest';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { parseItemID } from './parse-item-id';

@@ -1,7 +1,8 @@
 import type { ConnectorContext } from '@heynixie/connections';
 import type { ConnectorFailure, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
-import { buildFailureOutcome, forgottenOutcome } from '../call/build-google-failure';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { buildItemID } from './build-item-id';
 import { collectAddresses } from './collect-addresses';
 import { collectMessageContent } from './collect-message-content';

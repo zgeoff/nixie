@@ -1,6 +1,7 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { buildFailureRefusal, forgottenOutcome } from '../call/build-google-failure';
+import { buildFailureRefusal } from '../call/build-failure-refusal';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { buildDraftDigest } from './build-draft-digest';
 import { collectAddresses } from './collect-addresses';
 import { collectMessageContent } from './collect-message-content';

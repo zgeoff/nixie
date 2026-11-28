@@ -1,6 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
-import { forgottenOutcome } from '../call/build-google-failure';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { pickPinnedContexts } from '../call/pick-pinned-contexts';
 import { parseItemID } from './parse-item-id';
 import type { GmailAccess } from './types';

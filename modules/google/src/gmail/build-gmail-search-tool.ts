@@ -2,12 +2,10 @@ import type { ConnectorContext } from '@heynixie/connections';
 import type { JSONObject } from '@heynixie/log';
 import type { ConnectorFailure, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
-import {
-  buildFailureOutcome,
-  buildGoogleFailure,
-  buildUnreadableFailure,
-  forgottenOutcome,
-} from '../call/build-google-failure';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { buildItemID } from './build-item-id';
 import { callGmail } from './call-gmail';
 import { collectAddresses } from './collect-addresses';

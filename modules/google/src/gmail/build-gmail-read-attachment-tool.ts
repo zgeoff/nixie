@@ -1,6 +1,7 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
-import { buildFailureOutcome, forgottenOutcome } from '../call/build-google-failure';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { maxAttachmentBytes, readAttachmentContent } from '../call/read-attachment-content';
 import { collectMessageContent } from './collect-message-content';
 import { fenceOutsideText } from './fence-outside-text';

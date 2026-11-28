@@ -1,4 +1,4 @@
-import type { ConnectorFailure, ToolOutcome } from '@heynixie/tools';
+import type { ConnectorFailure } from '@heynixie/tools';
 
 interface GoogleErrorReply {
   readonly status: number;
@@ -9,8 +9,6 @@ interface GoogleErrorReply {
   readonly retryAfterMs: number | null;
 }
 
-// What a Google error means for a direct call. A quota answer is a rate limit, a server error can
-// clear, and any other answer is a refusal that a retry would not change.
 export function buildGoogleFailure(reply: GoogleErrorReply): ConnectorFailure {
   const code = pickCode(reply);
 
@@ -23,37 +21,6 @@ export function buildGoogleFailure(reply: GoogleErrorReply): ConnectorFailure {
     detail: reply.reason,
   };
 }
-
-// An answer that came back with nothing nixie can read can clear, so it counts as a failure.
-export function buildUnreadableFailure(detail: string): ConnectorFailure {
-  return { code: 'failed', detail };
-}
-
-// The outcome of a direct call that failed. The endpoint retries it when it can clear, and writes
-// the message the model reads.
-export function buildFailureOutcome(failure: ConnectorFailure): ToolOutcome {
-  return { status: 'error', message: failure.detail ?? failure.code, failure };
-}
-
-// The refusal of a step that runs before the call, such as the read that prepares a queued action.
-// It never retries, and the endpoint writes the message the model reads from its failure.
-export function buildFailureRefusal(failure: ConnectorFailure): FailureRefusal {
-  return { status: 'error', message: failure.detail ?? failure.code, failure };
-}
-
-interface FailureRefusal {
-  readonly status: 'error';
-  readonly message: string;
-  readonly failure: ConnectorFailure;
-}
-
-// A call that names a connection that was forgotten. The error names neither the connection nor its
-// status.
-export const forgottenOutcome = {
-  status: 'error',
-  message: '{"origin":"nixie","kind":"connection_unavailable"}',
-  failure: { code: 'connection_unavailable' },
-} as const satisfies ToolOutcome;
 
 function pickCode(reply: GoogleErrorReply): 'rate_limited' | 'failed' | 'refused' {
   if (reply.isRateLimit) {

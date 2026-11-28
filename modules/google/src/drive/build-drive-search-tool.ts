@@ -1,12 +1,10 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
-import {
-  buildFailureOutcome,
-  buildGoogleFailure,
-  buildUnreadableFailure,
-  forgottenOutcome,
-} from '../call/build-google-failure';
+import { buildFailureOutcome } from '../call/build-failure-outcome';
+import { buildGoogleFailure } from '../call/build-google-failure';
+import { buildUnreadableFailure } from '../call/build-unreadable-failure';
 import { callGoogle } from '../call/call-google';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { buildItemID } from '../gmail/build-item-id';
 import { fenceOutsideText } from '../gmail/fence-outside-text';

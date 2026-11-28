@@ -1,6 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { forgottenOutcome } from '../call/build-google-failure';
+import { forgottenOutcome } from '../call/forgotten-outcome';
 import { formatReplyWake } from './format-reply-wake';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
 import { gmailDeclarations } from './gmail-declarations';
