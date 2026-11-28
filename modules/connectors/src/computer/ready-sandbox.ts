@@ -39,7 +39,10 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox | 
 
   const created = kept === undefined ? await context.options.adapter.create(spec) : kept;
 
-  const isReplaced = await replaceOld(context, others, created);
+  const isReplaced = await replaceOld(context, others, {
+    sandbox: created,
+    isNew: kept === undefined,
+  });
 
   if (!isReplaced) {
     if (kept === undefined) {
@@ -74,19 +77,30 @@ function buildComputerSpec(context: ComputerContext) {
   });
 }
 
-// Copies each old sandbox's folders into the new one and destroys the old ones only when every
-// copy passed its check. An old sandbox whose last copy never finished is no source, and it goes
-// with the others. It returns false when a copy failed.
+interface ReplacementTarget {
+  readonly sandbox: Sandbox;
+
+  // true for a sandbox this call created, whose disk holds nothing yet
+  readonly isNew: boolean;
+}
+
+// An old sandbox whose last copy never finished is no source. A new disk counts as started from its
+// first step, so a failure that leaves it behind never makes it a source.
 async function replaceOld(
   context: ComputerContext,
   old: readonly Sandbox[],
-  created: Sandbox,
+  target: ReplacementTarget,
 ): Promise<boolean> {
   const homeEnv = context.options.homeEnv ?? {};
+  const created = target.sandbox;
   const sources: Sandbox[] = [];
   const unverified: Sandbox[] = [];
 
   try {
+    if (target.isNew) {
+      await writeCopyState(created, homeEnv, 'started');
+    }
+
     for (const sandbox of old) {
       await wakeOld(sandbox);
 
@@ -111,6 +125,9 @@ async function replaceOld(
       }
 
       await writeDiskUsedMarker(created, homeEnv);
+    }
+
+    if (target.isNew || sources.length > 0) {
       await writeCopyState(created, homeEnv, 'finished');
     }
   } catch (error) {

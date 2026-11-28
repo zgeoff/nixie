@@ -2,8 +2,7 @@ import { join } from 'node:path';
 import type { Sandbox } from '@heynixie/sandbox';
 import { copyMarker } from './constants';
 
-// True for a disk whose last copy started and never finished. A disk with no copy state was never
-// a replacement, so it counts as complete.
+// A disk with no copy state was never a replacement, so it counts as complete.
 export async function probeCopyIncomplete(
   sandbox: Sandbox,
   homeEnv: Readonly<Record<string, string>>,

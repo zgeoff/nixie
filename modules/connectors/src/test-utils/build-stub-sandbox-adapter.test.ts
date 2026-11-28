@@ -483,3 +483,13 @@ test('it keeps the sandbox whose destroy a later failNextDestroy refuses', async
   expect(outcome).toMatchObject([{ status: 'rejected' }]);
   expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
 });
+
+test('it rejects the next file listing after failNextFileList', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(buildMockSandboxSpec({ owner: 'web_fetch' }));
+
+  adapter.failNextFileList('impd is down');
+
+  expect(sandbox.readFilePaths('/home/stub')).rejects.toThrowWithMessage(Error, /impd is down/u);
+});
