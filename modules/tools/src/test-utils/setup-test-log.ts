@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { budgetProjections } from '@heynixie/budgets';
+import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { placesProjection } from '@heynixie/policy';
@@ -12,7 +13,12 @@ interface TestLog {
   readonly log: Log;
 }
 
-export async function setupTestLog(): Promise<TestLog> {
+interface TestLogOptions {
+  // a clock the test moves; the system clock when absent
+  readonly clock?: Clock | undefined;
+}
+
+export async function setupTestLog(options: TestLogOptions = {}): Promise<TestLog> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -21,7 +27,10 @@ export async function setupTestLog(): Promise<TestLog> {
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const writer = await startWriter({
+    dataDir,
+    ...(options.clock === undefined ? {} : { clock: options.clock }),
+  });
 
   stack.defer(() => writer.stop());
 

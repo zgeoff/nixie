@@ -90,7 +90,8 @@ test('it refuses an answer from Gmail that is an error', async () => {
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'GMAIL_FAILED: Gmail answered insufficientPermissions',
+    message: 'Gmail answered insufficientPermissions',
+    failure: { code: 'refused', status: 403, detail: 'Gmail answered insufficientPermissions' },
   });
 });
 
@@ -105,7 +106,8 @@ test('it ends the search with an error when a listed hit fails to read', async (
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'GMAIL_FAILED: Gmail answered backendError',
+    message: 'Gmail answered backendError',
+    failure: { code: 'failed', status: 500, detail: 'Gmail answered backendError' },
   });
 });
 
@@ -118,7 +120,8 @@ test('it ends the search with an error when Gmail answers a list it cannot read'
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'GMAIL_FAILED: Gmail answered with no list of messages',
+    message: 'Gmail answered with no list of messages',
+    failure: { code: 'failed', detail: 'Gmail answered with no list of messages' },
   });
 });
 

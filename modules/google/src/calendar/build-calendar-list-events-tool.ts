@@ -1,6 +1,12 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import {
+  buildFailureOutcome,
+  buildGoogleFailure,
+  buildUnreadableFailure,
+  forgottenOutcome,
+} from '../call/build-google-failure';
 import { callGoogle } from '../call/call-google';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { buildItemID } from '../gmail/build-item-id';
@@ -71,6 +77,7 @@ export function buildCalendarListEventsTool(deps: GoogleDeps): ToolDefinition {
     },
     declaration: calendarDeclarations.listEvents,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGoogleInput(deps.access, ['after']),
     run: async (call): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
@@ -82,7 +89,7 @@ export function buildCalendarListEventsTool(deps: GoogleDeps): ToolDefinition {
       const context = await readCallContext(deps.access, call.input);
 
       if (context === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const calendar = parsed.data.calendar ?? primaryCalendar;
@@ -111,11 +118,14 @@ export function buildCalendarListEventsTool(deps: GoogleDeps): ToolDefinition {
 
       const listed = reply.kind === 'ok' ? eventListSchema.safeParse(reply.body) : null;
 
-      if (reply.kind === 'error' || listed === null || !listed.success) {
-        return {
-          status: 'error',
-          message: `GOOGLE_FAILED: ${reply.kind === 'error' ? reply.reason : 'Google answered with no list of events'}`,
-        };
+      if (reply.kind === 'error') {
+        return buildFailureOutcome(buildGoogleFailure(reply));
+      }
+
+      if (listed === null || !listed.success) {
+        return buildFailureOutcome(
+          buildUnreadableFailure('Google answered with no list of events'),
+        );
       }
 
       const rendered = (listed.data.items ?? []).flatMap((item) => {

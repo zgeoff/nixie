@@ -76,6 +76,7 @@ export type {
   SetupStep,
   ProviderResponse,
   Reconcile,
+  ConnectorFailure,
   DrawImage,
   DrawReply,
   DrawRequest,

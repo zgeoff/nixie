@@ -484,6 +484,7 @@ export async function startConversationEndpoint(
     readHeldBackTools: tools.readHeldBackTools,
     readLiveConnections: tools.readLiveConnections,
     proposalConfig: buildProposalConfig(options.config),
+    retry: options.config.tools.retry,
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });
 

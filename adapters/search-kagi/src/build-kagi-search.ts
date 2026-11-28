@@ -1,4 +1,5 @@
 import type {
+  ConnectorFailure,
   ProviderFetch,
   SearchProvider,
   SearchReply,
@@ -45,12 +46,12 @@ async function readKagiReply(
   }
 
   if (!(response instanceof Response)) {
-    return { kind: 'failed', reason: `Kagi could not be reached: ${String(response)}` };
+    return { kind: 'failed', failure: { code: 'no_answer' } };
   }
 
   const text = await response.text();
 
-  return parseKagiResponse(response.status, text);
+  return parseKagiResponse(response, text);
 }
 
 function buildKagiRequest(request: SearchRequest): KagiSearchRequest {
@@ -67,8 +68,9 @@ function buildKagiRequest(request: SearchRequest): KagiSearchRequest {
   };
 }
 
-function parseKagiResponse(status: number, text: string): SearchReply {
+function parseKagiResponse(response: Response, text: string): SearchReply {
   const body = parseJSONOrNull(text);
+  const status = response.status;
 
   if (status !== 200) {
     const error = kagiErrorSchema.safeParse(body);
@@ -77,7 +79,7 @@ function parseKagiResponse(status: number, text: string): SearchReply {
       ? error.data.error.map((detail) => detail.message ?? detail.code).join('; ')
       : 'no error detail';
 
-    return { kind: 'failed', reason: `Kagi answered ${String(status)}: ${messages}` };
+    return { kind: 'failed', failure: buildKagiFailure(response, messages) };
   }
 
   const parsed = kagiSearchResponseSchema.safeParse(body);
@@ -95,5 +97,26 @@ function parseKagiResponse(status: number, text: string): SearchReply {
           date: result.time?.slice(0, 10) ?? null,
         })),
       }
-    : { kind: 'failed', reason: 'Kagi answered with results nixie cannot read' };
+    : {
+        kind: 'failed',
+        failure: { code: 'failed', detail: 'Kagi answered with results nixie cannot read' },
+      };
+}
+
+// A 429 is a rate limit, a 5xx can clear, and any other status is a refusal that a retry would not
+// change.
+function buildKagiFailure(response: Response, detail: string): ConnectorFailure {
+  const status = response.status;
+  const seconds = Number(response.headers.get('retry-after') ?? Number.NaN);
+
+  if (status === 429) {
+    return {
+      code: 'rate_limited',
+      status,
+      ...(Number.isFinite(seconds) ? { retryAfterMs: seconds * 1000 } : {}),
+      detail,
+    };
+  }
+
+  return { code: status >= 500 ? 'failed' : 'refused', status, detail };
 }

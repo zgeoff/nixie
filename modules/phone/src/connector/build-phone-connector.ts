@@ -42,13 +42,13 @@ async function runSend(
   const request = parseSendArguments(attempt.arguments);
 
   if (request === null) {
-    return { kind: 'refused', reason: 'SEND_FAILED: the arguments of the send are unreadable' };
+    return { kind: 'refused', reason: 'the arguments of the send are unreadable' };
   }
 
   const sent = await context.provider.send(request);
 
   if (sent.kind === 'refused') {
-    return { kind: 'refused', reason: `SEND_FAILED: ${sent.reason}` };
+    return { kind: 'refused', reason: sent.reason };
   }
 
   // A claim that fails to write leaves the send of unknown outcome, which the check settles on the

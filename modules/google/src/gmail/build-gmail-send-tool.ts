@@ -1,5 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { forgottenOutcome } from '../call/build-google-failure';
 import { formatReplyWake } from './format-reply-wake';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
 import { gmailDeclarations } from './gmail-declarations';
@@ -64,7 +65,7 @@ export function buildGmailSendTool(deps: GmailDeps, kind: NewMailKind): ToolDefi
       const account = await readCallContext(deps.access, input);
 
       if (account === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const files = await readSendFiles(deps.toolkit, deps.log, {

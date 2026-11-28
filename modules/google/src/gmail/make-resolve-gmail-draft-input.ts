@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import { buildFailureRefusal, forgottenOutcome } from '../call/build-google-failure';
 import { buildDraftDigest } from './build-draft-digest';
 import { makeResolveGmailInput } from './make-resolve-gmail-input';
 import { parseItemID } from './parse-item-id';
@@ -29,25 +30,21 @@ export function makeResolveGmailDraftInput(
     const context = await readCallContext(deps.access, resolved.input);
 
     if (item === null || context === null) {
-      return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+      return forgottenOutcome;
     }
 
     const read = await readGmailDraft(deps.hosts, context, item.id);
 
     if (read.kind !== 'draft') {
-      return {
-        status: 'error',
-        message:
-          read.kind === 'missing'
-            ? `UNKNOWN_DRAFT: no draft has the ID ${draftText}`
-            : `GMAIL_FAILED: ${read.reason}`,
-      };
+      return read.kind === 'missing'
+        ? { status: 'error', message: `UNKNOWN_DRAFT: no draft has the ID ${draftText}` }
+        : buildFailureRefusal(read.failure, deps.clock);
     }
 
     const raw = await readGmailRaw(deps.hosts, context, read.message.id);
 
     return raw.kind === 'raw'
       ? { status: 'ok', input: { ...resolved.input, digest: buildDraftDigest(raw.text) } }
-      : { status: 'error', message: `GMAIL_FAILED: ${raw.reason}` };
+      : buildFailureRefusal(raw.failure, deps.clock);
   };
 }

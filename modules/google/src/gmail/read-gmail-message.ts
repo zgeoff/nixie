@@ -1,4 +1,6 @@
 import type { ConnectorContext } from '@heynixie/connections';
+import type { ConnectorFailure } from '@heynixie/tools';
+import { buildGoogleFailure, buildUnreadableFailure } from '../call/build-google-failure';
 import type { GoogleHosts } from '../types';
 import { callGmail } from './call-gmail';
 import { parseGmailMessage } from './parse-gmail-message';
@@ -13,6 +15,7 @@ export type GmailMessageRead =
 
       // the retry time that Gmail gave, in ms
       readonly retryAfterMs: number | null;
+      readonly failure: ConnectorFailure;
     };
 
 const metadataHeaders = [
@@ -46,12 +49,22 @@ export async function readGmailMessage(
   if (reply.kind === 'error') {
     return reply.status === 404
       ? { kind: 'missing' }
-      : { kind: 'failed', reason: reply.reason, retryAfterMs: reply.retryAfterMs };
+      : {
+          kind: 'failed',
+          reason: reply.reason,
+          retryAfterMs: reply.retryAfterMs,
+          failure: buildGoogleFailure(reply),
+        };
   }
 
   const message = parseGmailMessage(reply.body);
 
   return message === null
-    ? { kind: 'failed', reason: 'Gmail answered with no message', retryAfterMs: null }
+    ? {
+        kind: 'failed',
+        reason: 'Gmail answered with no message',
+        retryAfterMs: null,
+        failure: buildUnreadableFailure('Gmail answered with no message'),
+      }
     : { kind: 'message', message };
 }

@@ -1,5 +1,6 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureOutcome, forgottenOutcome } from '../call/build-google-failure';
 import { maxAttachmentBytes, readAttachmentContent } from '../call/read-attachment-content';
 import { collectMessageContent } from './collect-message-content';
 import { fenceOutsideText } from './fence-outside-text';
@@ -69,6 +70,7 @@ export function buildGmailReadAttachmentTool(deps: GmailDeps): ToolDefinition {
     },
     declaration: gmailDeclarations.readAttachment,
     execution: 'direct',
+    reachesProvider: true,
     resolveInput: makeResolveGmailInput(deps.access),
     run: async (call, toolContext): Promise<ToolOutcome> => {
       const parsed = inputSchema.safeParse(call.input);
@@ -82,19 +84,18 @@ export function buildGmailReadAttachmentTool(deps: GmailDeps): ToolDefinition {
       const item = parseItemID(parsed.data.message);
 
       if (context === null || item === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readGmailMessage(deps.hosts, context, { id: item.id, format: 'full' });
 
       if (read.kind !== 'message') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_MESSAGE: no message has the ID ${parsed.data.message}`
-              : `GMAIL_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? {
+              status: 'error',
+              message: `UNKNOWN_MESSAGE: no message has the ID ${parsed.data.message}`,
+            }
+          : buildFailureOutcome(read.failure);
       }
 
       const content = collectMessageContent(read.message);
@@ -120,7 +121,7 @@ export function buildGmailReadAttachmentTool(deps: GmailDeps): ToolDefinition {
       const bytes = await readPartBytes(deps.hosts, context, { message: item.id, part });
 
       if (bytes.kind === 'failed') {
-        return { status: 'error', message: `GMAIL_FAILED: ${bytes.reason}` };
+        return buildFailureOutcome(bytes.failure);
       }
 
       const fileContent = await readAttachmentContent(

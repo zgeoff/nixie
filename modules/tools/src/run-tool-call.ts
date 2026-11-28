@@ -14,6 +14,7 @@ import { writeInvalidCall } from './call-record/write-invalid-call';
 import { writeRefusedCall } from './call-record/write-refused-call';
 import { renderCallCapRefusal } from './cap/render-call-cap-refusal';
 import { findToolPins } from './connection/find-tool-pins';
+import { makeToolRunner } from './failure/make-tool-runner';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
 import type { PaidState } from './paid/try-prepare-paid-call';
 import { tryPreparePaidCall } from './paid/try-prepare-paid-call';
@@ -449,13 +450,7 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
     throw paid.error;
   }
 
-  const runTool = () =>
-    registered.definition.run(allowed.call, {
-      run: allowed.run,
-      callSequence: allowed.callSequence,
-      ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
-      ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
-    });
+  const runTool = makeToolRunner(registered, allowed);
 
   if (paid.status === 'ended') {
     return settleOutcome(registered, paid.outcome);

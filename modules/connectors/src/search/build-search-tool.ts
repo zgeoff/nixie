@@ -102,6 +102,7 @@ export function buildSearchTool(
       results: { hits: 'untrusted' },
     },
     execution: 'direct',
+    reachesProvider: true,
     paid: {
       priceMicros: options.priceMicros,
       callCap: {
@@ -138,7 +139,11 @@ export function buildSearchTool(
       const reply = await provider.readHits(request);
 
       if (reply.kind === 'failed') {
-        return { status: 'error', message: `the search failed: ${reply.reason}` };
+        return {
+          status: 'error',
+          message: reply.failure.detail ?? reply.failure.code,
+          failure: reply.failure,
+        };
       }
 
       const links = await writeHitLinks(

@@ -1,5 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureRefusal, forgottenOutcome } from '../call/build-google-failure';
 import { buildDraftDigest } from './build-draft-digest';
 import { collectAddresses } from './collect-addresses';
 import { collectMessageContent } from './collect-message-content';
@@ -53,19 +54,15 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
       }
 
       if (account === null || item === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readGmailDraft(deps.hosts, account, item.id);
 
       if (read.kind !== 'draft') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_DRAFT: no draft has the ID ${parsed.data.draft}`
-              : `GMAIL_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? { status: 'error', message: `UNKNOWN_DRAFT: no draft has the ID ${parsed.data.draft}` }
+          : buildFailureRefusal(read.failure, deps.clock);
       }
 
       // The card shows this message, so the digest the queued send carries must be this message's.
@@ -73,7 +70,7 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
       const raw = await readGmailRaw(deps.hosts, account, read.message.id);
 
       if (raw.kind === 'failed') {
-        return { status: 'error', message: `GMAIL_FAILED: ${raw.reason}` };
+        return buildFailureRefusal(raw.failure, deps.clock);
       }
 
       if (buildDraftDigest(raw.text) !== parsed.data.digest) {
@@ -103,7 +100,7 @@ export function buildGmailSendDraftTool(deps: GmailDeps): ToolDefinition {
             });
 
       if (text?.kind === 'failed') {
-        return { status: 'error', message: `GMAIL_FAILED: ${text.reason}` };
+        return buildFailureRefusal(text.failure, deps.clock);
       }
 
       return {

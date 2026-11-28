@@ -159,6 +159,6 @@ test('it refuses an answer from Google that is an error', async () => {
 
   expect(outcome).toMatchObject({
     status: 'error',
-    message: expect.stringContaining('GOOGLE_FAILED'),
+    failure: { code: 'failed', status: 500, detail: 'Google answered backendError' },
   });
 });

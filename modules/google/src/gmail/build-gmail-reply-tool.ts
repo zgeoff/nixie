@@ -1,5 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureRefusal, forgottenOutcome } from '../call/build-google-failure';
 import { decodeHeaderWords } from './decode-header-words';
 import { formatReplyWake } from './format-reply-wake';
 import { buildCardAttachment, formatCardFiles, joinCardList } from './gmail-card';
@@ -52,19 +53,18 @@ export function buildGmailReplyTool(deps: GmailDeps): ToolDefinition {
       }
 
       if (account === null || item === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readGmailMessage(deps.hosts, account, { id: item.id, format: 'full' });
 
       if (read.kind !== 'message') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_MESSAGE: no message has the ID ${parsed.data.message}`
-              : `GMAIL_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? {
+              status: 'error',
+              message: `UNKNOWN_MESSAGE: no message has the ID ${parsed.data.message}`,
+            }
+          : buildFailureRefusal(read.failure, deps.clock);
       }
 
       const plan = planReply(read.message, account.account, parsed.data.replyAll === true);

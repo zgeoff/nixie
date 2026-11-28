@@ -1,5 +1,6 @@
 import type { PrepareRefusal, Prepared, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildFailureRefusal, forgottenOutcome } from '../call/build-google-failure';
 import { makeResolveGoogleInput } from '../call/make-resolve-google-input';
 import { buildCardAttachment } from '../gmail/gmail-card';
 import { readCallContext } from '../gmail/read-call-context';
@@ -56,19 +57,15 @@ export function buildCalendarCancelTool(deps: GoogleDeps, withGuests: boolean): 
       const ref = parseEventRef(parsed.data.event);
 
       if (context === null || ref === null) {
-        return { status: 'error', message: 'CONNECTION_FORGOTTEN: the connection was forgotten' };
+        return forgottenOutcome;
       }
 
       const read = await readCalendarEvent(deps.hosts, context, ref);
 
       if (read.kind !== 'event') {
-        return {
-          status: 'error',
-          message:
-            read.kind === 'missing'
-              ? `UNKNOWN_EVENT: no event has the ID ${parsed.data.event}`
-              : `GOOGLE_FAILED: ${read.reason}`,
-        };
+        return read.kind === 'missing'
+          ? { status: 'error', message: `UNKNOWN_EVENT: no event has the ID ${parsed.data.event}` }
+          : buildFailureRefusal(read.failure, deps.clock);
       }
 
       const refusal = pickEventRefusal(read.event, { withGuests, addGuests: [], removeGuests: [] });
