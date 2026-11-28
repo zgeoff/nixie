@@ -36,14 +36,15 @@ the inbox kinds of take-over and handover records in the tasks module, which als
 each wakes, and the policy's tool shapes, which tell it that `computer.run` holds a command line and
 that the two screen acts share one always-allow rule. When the computer is off, both lists hold none
 of its entries, and the log registers the topics of its records only when it is on. Turning it off
-keeps its records, and the restart sweep keeps the desktop sandbox whatever its image, so both are
-as they were when the computer is turned on again.
+keeps its records, and the restart sweep keeps the desktop sandbox whatever its image, whether the
+computer is on or off, so both are as they were when the computer is turned on again.
 
 ## The sandbox
 
 The kind `computer` has public egress, no grant and no tool route. A deployment holds one, owned by
-`computer-desktop`, and the restart sweep keeps it. The [sandbox sizes](sandboxes.md#sizes) hold its
-memory and disk. The image `nixie-computer` comes from `guests/computer`.
+`computer-desktop`, and the restart sweep keeps it, whatever its image. The
+[sandbox sizes](sandboxes.md#sizes) hold its memory and disk. The image `nixie-computer` comes from
+`guests/computer`.
 
 The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
@@ -74,7 +75,9 @@ in `modules/connectors` owns the sandbox:
 - A queued click, fill, screen act or command holds the sandbox awake until its action runs or its
   approval lapses, so a card the user answers late still finds its tab.
 - When the sandbox's image or spec differs from the release, nixie creates a new one at its next
-  call and copies the disk into it.
+  call and copies the `profile` and `files` folders into it. It destroys the old sandbox only when
+  every copy passed its check. When a copy fails, nixie destroys the new sandbox, keeps the old one,
+  logs `computer.copy_failed`, and answers `COMPUTER_MOVING` until a later call copies the disk.
 - Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
   the first result from a disk that started empty, so the assistant knows what it held before is
   gone.

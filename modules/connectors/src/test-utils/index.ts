@@ -21,3 +21,4 @@ export type { StubImageProvider } from './build-stub-image-provider';
 export { buildStubImageProvider } from './build-stub-image-provider';
 export { readImageID, readToolResult } from './read-tool-result';
 export { startTestLog } from './start-test-log';
+export { makeFolderExec, writeDiskFiles, readDiskFiles } from './make-folder-exec';
