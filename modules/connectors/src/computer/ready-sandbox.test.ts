@@ -9,6 +9,7 @@ import { makeFolderExec, readDiskFiles } from '../test-utils/make-folder-exec';
 import type { DesktopDiskSeed } from '../test-utils/seed-desktop-disk';
 import { seedDesktopDisk } from '../test-utils/seed-desktop-disk';
 import { computerOwner } from './computer-owner';
+import { probeCopyIncomplete } from './probe-copy-incomplete';
 import { startComputer } from './start-computer';
 import { writeCopyState } from './write-copy-state';
 
@@ -246,16 +247,22 @@ test('it copies into a fresh sandbox and removes the half copy that a failed cop
 
   const survivors = await ctx.adapter.list(computerOwner);
 
+  const [, halfCopy, fresh] = ctx.adapter.created;
+
+  invariant(halfCopy && fresh);
+
   const disks = await Promise.all(
     survivors.map(async (sandbox) => ({
-      isOld: sandbox.id === old.id,
+      id: sandbox.id,
       files: await readDiskFiles(ctx.root, sandbox.id),
     })),
   );
 
   expect(disks).toStrictEqual([
-    { isOld: false, files: [['/home/stub/files/note.txt', 'tide times']] },
+    { id: fresh.id, files: [['/home/stub/files/note.txt', 'tide times']] },
   ]);
+
+  expect(fresh.id).not.toBeOneOf([old.id, halfCopy.id]);
 });
 
 test('it moves the good disk to a newer release after a failed copy over a replacement that once passed', async () => {
@@ -340,8 +347,48 @@ test('it replaces a lone desktop of the current image whose copy never finished'
 
   invariant(created);
 
+  const marks = await Promise.all(
+    survivors.map(async (sandbox) => ({
+      id: sandbox.id,
+      isIncomplete: await probeCopyIncomplete(sandbox, {}),
+    })),
+  );
+
   expect(gate).toBe('ready');
-  expect(survivors.map((sandbox) => sandbox.id)).toStrictEqual([created.id]);
+  expect(marks).toStrictEqual([{ id: created.id, isIncomplete: false }]);
+  expect(created.id).not.toBe(unfinished.id);
+});
+
+test('it replaces a lone unfinished desktop on the call after its destroy failed', async () => {
+  const ctx = await setupTest();
+
+  const unfinished = await ctx.seed.desktopDisk({
+    image: 'computer-new',
+    files: { '/home/stub/files/note.txt': 'tide ti' },
+  });
+
+  await writeCopyState(unfinished, {}, 'started');
+
+  ctx.adapter.failNextDestroy('impd is down');
+
+  await ctx.computer.settleMove();
+
+  const gate = await ctx.computer.settleMove();
+  const survivors = await ctx.adapter.list(computerOwner);
+
+  const created = ctx.adapter.created.at(-1);
+
+  invariant(created);
+
+  const marks = await Promise.all(
+    survivors.map(async (sandbox) => ({
+      id: sandbox.id,
+      isIncomplete: await probeCopyIncomplete(sandbox, {}),
+    })),
+  );
+
+  expect(gate).toBe('ready');
+  expect(marks).toStrictEqual([{ id: created.id, isIncomplete: false }]);
   expect(created.id).not.toBe(unfinished.id);
 });
 
@@ -365,6 +412,13 @@ test('it replaces 2 desktops of the current image whose copies never finished', 
 
   invariant(created);
 
+  const marks = await Promise.all(
+    survivors.map(async (sandbox) => ({
+      id: sandbox.id,
+      isIncomplete: await probeCopyIncomplete(sandbox, {}),
+    })),
+  );
+
   expect(gate).toBe('ready');
-  expect(survivors.map((sandbox) => sandbox.id)).toStrictEqual([created.id]);
+  expect(marks).toStrictEqual([{ id: created.id, isIncomplete: false }]);
 });
