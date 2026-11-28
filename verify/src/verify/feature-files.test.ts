@@ -184,7 +184,7 @@ test('it flags only the feature that reaches a file that no other feature reache
     [
       'apps/web/src/routes/proposals.tsx',
       'apps/web/src/approval/build-batch-answers.ts',
-      'apps/server/src/connection/render-removed-tools.ts',
+      'apps/web/src/components/definition-list.tsx',
     ],
     ['chat-turn', 'policy-proposal'],
   );
@@ -192,7 +192,7 @@ test('it flags only the feature that reaches a file that no other feature reache
   expect(flagged).toStrictEqual({
     'apps/web/src/routes/proposals.tsx': ['policy-proposal'],
     'apps/web/src/approval/build-batch-answers.ts': ['policy-proposal'],
-    'apps/server/src/connection/render-removed-tools.ts': ['chat-turn'],
+    'apps/web/src/components/definition-list.tsx': ['chat-turn'],
   });
 });
 
