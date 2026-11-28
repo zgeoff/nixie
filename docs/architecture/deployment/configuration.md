@@ -49,8 +49,8 @@ Read each part's doc for the meaning of its settings. The sections cover:
 - the limits of the [notebook](../memory/notebook.md#the-indexes): the characters of a body, the
   active notes, and how many links must repeat a reason before the check reports it
 - `forget_notices`, which turns the line that the events block shows for each kind of forget on or
-  off: `forget_notices: false` turns every kind off, and the `note` key turns the line for a note
-  that the user forgot off
+  off: `forget_notices: false` turns every kind off, and each of the keys `note`, `memory`, `moment`
+  and `message` turns the line for that kind of forget off. Each key is on by default
 - `model_credential`, which names when the model token that the deployment holds expires
   (`expires_at`), and how long before it the session's status tells the model once (`warn_before`, 3
   days by default). A token from `claude setup-token` never refreshes, so nixie cannot read its end

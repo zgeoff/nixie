@@ -7,6 +7,8 @@ export { buildRelatedMemoryLookup } from './related/build-related-memory-lookup'
 export { buildMemoryTools } from './memory/build-memory-tools';
 export { buildPinnedCoreStatus } from './pinned/build-pinned-core-status';
 export { buildMomentKeptKind } from './moment/kept/build-moment-kept-kind';
+export type { ForgottenNotices } from './forgotten/build-forgotten-kind';
+export { buildForgottenKind } from './forgotten/build-forgotten-kind';
 export { buildMomentStatus } from './moment/build-moment-status';
 export { defaultGateLimits } from './gate/default-gate-limits';
 export { defaultOwnerPronouns } from './owner/default-owner-pronouns';

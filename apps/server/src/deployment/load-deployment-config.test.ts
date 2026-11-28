@@ -95,7 +95,7 @@ test('it reads every section, with the default of each setting the file leaves o
     reminders: { min_gap_minutes: 15 },
     actions: { runners: 4 },
     notebook: { noteChars: 50_000, maxNotes: 250, checkReasonRepeats: 3 },
-    forget_notices: { note: true },
+    forget_notices: { note: true, memory: true, moment: true, message: true },
     erasure: { stuckAfterMs: 300_000, expireAfterMs: 31_536_000_000 },
     mcp: { listingTimeoutSeconds: 10, servers: {} },
     policy: {

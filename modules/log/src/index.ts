@@ -139,6 +139,7 @@ export { readOpenErasures } from './erasure/read-open-erasures';
 export type { TargetErasure } from './erasure/read-erasures';
 export { readErasures } from './erasure/read-erasures';
 export { readErasureFinishedSequence } from './erasure/read-erasure-finished-sequence';
+export { readErasureParentIDs } from './erasure/read-erasure-parent-ids';
 export { readExpiredSequences } from './erasure/read-expired-sequences';
 export { removeErasureKeys } from './erasure/remove-erasure-keys';
 
