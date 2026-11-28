@@ -109,6 +109,16 @@ The prompt and task exports raise the manifest's `format` line to the format the
 describe. The seed applies no other file, and lists each one in its record as unapplied. Each
 unapplied YAML or JSON file must still parse.
 
+A manifest may still hold the retired `prompts.writer` or `prompts.consolidator` key, which named
+the prompts of the memory tasks that nixie no longer has. The seed drops each one, whatever it
+holds, keeps every other prompt and the rest of the manifest, and logs one
+`definitions.prompt_key_retired` warning that names each key it dropped. Any other unknown prompt
+key still refuses the repo. Under format 2, which ignores the rest of the prompts map, the seed
+still names each retired key it finds. The published JSON Schema accepts both retired keys for the
+same reason. In `config.yaml`, the retired `memory_writer` and `memory_consolidation` sections and
+the `memory-writer` and `memory-consolidator` model roles are unknown keys, which
+[the loader](../deployment/configuration.md#the-schema) removes with a `config.unknown_key` warning.
+
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
 formats a release reads without a copy of nixie. The seed parses the manifest with the same schema
@@ -287,7 +297,8 @@ checks in this order:
 3. The unknown fields. A key that no schema of `task.yaml` knows, at any depth, skips the
    definition: the seed loads no part of it, lists its files as unapplied, and logs a warning that
    names the definition and the dotted path of the field. A `runner` key, or a trigger that holds
-   only `log` or `poll`, is an unknown field.
+   only `log` or `poll`, is an unknown field. The one exception is a top-level `target` key, which
+   the `target_removed` fault below refuses.
 4. Every other fault, which refuses the seed.
 
 A definition may name a tool in `tools` by nixie's own name, such as `web_fetch`, or by the
@@ -389,7 +400,7 @@ reached a limit and that the user has not raised), the first of these that holds
 1. An unread `trigger.fired` whose dedupe key no task run of the task holds opens a task run that
    pins the fire's own hash, whatever hash is in force, so a one-shot runs although its own fire
    puts it out of force. When 2 such fires are unread, the newest opens the task run, and its first
-   step marks both as read and renders only the newest.
+   step marks both as read.
 2. A raise of the limit or a restart by the user, after a task run that ended with `limit`,
    `stopped` or `failed`, opens a carrying task run: a task run that carries on the work of the
    ended one. It pins the hash of the task run it carries, keeps its fire's key and brief, resumes
@@ -399,11 +410,11 @@ reached a limit and that the user has not raised), the first of these that holds
    opens none. The step commits with a hold, the task is `waiting`, and an unread message stays
    unread.
 
-An unread fire comes first for this reason. A fire stays unread at a carry only after the user
-stopped an idle task run, and that task run has no work to carry. A message after a `limit` end
-belongs to the work that the raise carries on. A claim marks read a `trigger.fired` whose kind it
-does not know and opens no task run for it. A task run of a definition has no limit of its own on
-effects: the decision point treats its calls as it treats the conversation's.
+An unread fire comes first because a fire stays unread at a carry only after the user stopped an
+idle task run, and that task run has no work to carry. A message after a `limit` end belongs to the
+work that the raise carries on. A claim marks read a `trigger.fired` whose kind it does not know and
+opens no task run for it. A task run of a definition has no limit of its own on effects: the
+decision point treats its calls as it treats the conversation's.
 
 In the transaction that delivers a fire, the [trigger core](./triggers.md) asks the tasks module
 whether the task takes the fire, before it writes the fire's record. The first answer that holds
@@ -504,9 +515,9 @@ step resumes the session that the task last kept.
 
 nixie holds changes of task definitions that no repo commit made, such as a definition the
 conversation creates. Each change is a runtime change, and it lies over the repo's definitions until
-a seed reads the same version in the repo, the user ends it, or nixie retires it. Nothing stores the
-list of definitions in force. Each read lays the runtime changes in force over the repo's task list
-of the last accepted seed, so the repo's version stays recoverable underneath.
+a seed reads the same version in the repo, the user ends it, or nixie retires it. No table stores
+the merged list of definitions in force. Each read lays the runtime changes in force over the repo's
+task list of the last accepted seed, so the repo's version stays recoverable underneath.
 
 Two projections hold the layer, and a fold writes each row from its records:
 
@@ -546,10 +557,10 @@ holds it.
 refusals. An undefine and an undo first run the seed of the definitions source, and go on with the
 repo version last read when that seed fails. In one write transaction the function then decides the
 move, writes `definition.changed` and runs `seedInForceInTransaction`, the body of the in-force
-seed, so the seed's hooks bind the task and arm the trigger at the commit. A seed that refuses
-throws, and the transaction leaves no record. After the commit the function wakes the export without
-waiting for it. A fire written before the change keeps the hash it holds, because a record never
-changes.
+seed, so the seed's hooks bind the task and arm the trigger at the commit. When that seed refuses,
+`seedInForceInTransaction` returns the refusal as a value and the function throws its error, so the
+transaction leaves no record. After the commit the function wakes the export without waiting for it.
+A fire written before the change keeps the hash it holds, because a record never changes.
 
 `nixie definitions resolve <id> --keep nixie|repo` ends a conflict. `nixie` moves the base to the
 repo's version. `repo` retires the change, and the seed in the same transaction puts the repo's
@@ -642,15 +653,16 @@ not, or a runtime change in force holds it. An ID whose runtime definition was u
 is free, and a new definition under it gets the same task back. A change takes the input as the
 whole version, so an optional key it omits takes its default and never the value in force. A change
 may turn a schedule into a one-shot, except over a definition that the repo holds. The tools take
-the starter `conversation`, so a runtime definition holds only what a `task.start` from the
-conversation can hold. A change that puts a definition in force, or an undefine, commits its notice
-in the same transaction, so every runtime change in force has one.
+the starter `conversation`, so a runtime definition holds what a `task.start` from the conversation
+can hold, plus `memory: self_notes`, which `task.define` accepts and a `task.start` from the
+conversation refuses. A change that puts a definition in force, or an undefine, writes its
+`definition.changed` record in the same transaction, so every runtime change in force has a record
+to build its notice from.
 
 An undefine or an undo records the repo version it went on with, so the next seed compares it with
-the repo. A merge that the decision missed then ends as an adoption or a conflict and never as a
-silent overwrite. One definition has at most one runtime change in force, so a second change fails
-the unique index and its transaction. The lists show a definition whose change lost its body as
-unreadable.
+the repo. A merge that the decision missed then ends as an adoption or a conflict. One definition
+has at most one runtime change in force, so a second change fails the unique index and its
+transaction. The lists show a definition whose change lost its body as unreadable.
 
 An undo names a change X, and the first row of this table that fits decides:
 
@@ -682,7 +694,7 @@ step, because the definition hands a task the self-note writes. The tool's other
 deny rule on any of them still denies at stage 3, and stage 4 then asks before the define applies,
 whatever allow rule or request would cover a plain define.
 
-Each change shows in the conversation as a notice that carries an undo. A notice is not stored.
+Each change shows in the conversation as a notice that carries an undo. No table stores a notice.
 `readDefinitionNotices` builds it for the `definition.changed` records that a read returns, from the
 change's row, its version, the definitions in force and the spent one-shots, and renders the trigger
 in the user's zone at read time. The notice's `next` field gives the next fire, and it is null

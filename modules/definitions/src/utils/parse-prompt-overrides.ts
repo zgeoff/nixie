@@ -33,7 +33,7 @@ export function parsePromptOverrides(
     let template: string | null = null;
 
     for (const [key, value] of entries) {
-      if (value === undefined) {
+      if (typeof value !== 'string') {
         continue;
       }
 

@@ -42,6 +42,9 @@ export interface SeedOptions {
 
   // Takes each rule field this release does not know
   readonly onRuleWarning?: (warning: RuleFileWarning) => void;
+
+  // Takes each retired prompt key that the manifest held and the seed dropped
+  readonly onRetiredPromptKey?: (key: string) => void;
   readonly source: DefinitionsSource;
 
   // The check of a task definition, and the names of the tools it may list
@@ -90,6 +93,10 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
   for (const warning of read.parsed.ruleWarnings) {
     options.onRuleWarning?.(warning);
+  }
+
+  for (const key of read.parsed.retiredPromptKeys) {
+    options.onRetiredPromptKey?.(key);
   }
 
   for (const warning of read.parsed.taskWarnings) {
