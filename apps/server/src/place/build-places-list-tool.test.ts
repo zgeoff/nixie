@@ -27,6 +27,15 @@ async function setupTest() {
 
   return {
     tool,
+    addMany: async (count: number) => {
+      for (let index = 0; index < count; index++) {
+        await add(
+          { kind: 'site', domain: `site-${String(index)}.example.com`, subdomains: false },
+          'known',
+          null,
+        );
+      }
+    },
     addThree: async () => ({
       library: await add(
         { kind: 'site', domain: 'library.example.org', subdomains: true },
@@ -104,4 +113,17 @@ test('it never shows a place by its UUID', async () => {
   const outcome = await ctx.list({ detail: true });
 
   expect(JSON.stringify(outcome)).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/u);
+});
+
+test('it lists 50 places by default and counts all 51 in total', async () => {
+  const ctx = await setupTest();
+
+  await ctx.addMany(51);
+
+  const outcome = await ctx.list({});
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { total: 51, places: expect.toBeArrayOfSize(50) },
+  });
 });

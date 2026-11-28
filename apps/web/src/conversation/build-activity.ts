@@ -81,6 +81,12 @@ export interface PlaceActActivity {
   readonly tools: readonly { readonly tool: string; readonly count: number }[];
 }
 
+export interface PlaceNarrowingActivity {
+  readonly place: string;
+  readonly trust?: string;
+  readonly isRemoved: boolean;
+}
+
 export interface StepActivity {
   readonly kind: 'step';
   readonly calls: readonly ToolActivity[];
@@ -107,6 +113,9 @@ export interface StepActivity {
 
   // the places that calls of the step acted at, which an act place allowed
   readonly placeActs?: readonly PlaceActActivity[];
+
+  // the places that a places.narrow call of the step lowered or removed
+  readonly placeNarrowings?: readonly PlaceNarrowingActivity[];
 
   readonly memories?: readonly RecalledMemory[];
   readonly records: readonly LiveRecord[];

@@ -161,3 +161,31 @@ test('#planPlacesNarrow refuses an entry at self', () => {
     reason: 'self_entry',
   });
 });
+
+test('#planPlacesNarrow refuses a remove that raises a mail address when a blocked address sits on the usual sample', () => {
+  const entries: PlaceEntry[] = [
+    {
+      placeID: 'w',
+      shortID: 'w',
+      key: { kind: 'mail_domain', domain: 'example.org', subdomains: true },
+      trust: 'read',
+    },
+    {
+      placeID: 's',
+      shortID: 's',
+      key: { kind: 'mail_domain', domain: 'shop.example.org', subdomains: false },
+      trust: 'known',
+    },
+    {
+      placeID: 'b',
+      shortID: 'b',
+      key: { kind: 'address', address: 'nixie-sample@shop.example.org' },
+      trust: 'blocked',
+    },
+  ];
+
+  expect(planPlacesNarrow(entries, 's', { kind: 'remove' })).toStrictEqual({
+    status: 'refused',
+    reason: 'raises_destination',
+  });
+});

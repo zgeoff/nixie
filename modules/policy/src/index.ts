@@ -57,6 +57,7 @@ export { parsePlace } from './place/parse-place';
 export { parsePlacePattern } from './place/parse-place-pattern';
 export type { PlaceContext } from './place/place-context';
 export { placesActedCodec } from './place/places-acted-codec';
+export { placesNarrowedCodec } from './place/places-narrowed-codec';
 export { placesAddedCodec } from './place/places-added-codec';
 export { placesChangedCodec } from './place/places-changed-codec';
 export { placesProjection } from './place/places-projection';
@@ -204,6 +205,8 @@ export type { PlacesListInput, PlacesList, ListedPlace } from './place/collect-p
 export { collectPlacesList } from './place/collect-places-list';
 export type { NarrowPlan, NarrowRefusal, NarrowRequest } from './place/plan-places-narrow';
 export { planPlacesNarrow } from './place/plan-places-narrow';
+export type { PlaceNarrowResult } from './place/write-place-narrowed';
+export { writePlaceNarrowed } from './place/write-place-narrowed';
 export type { ProposedPlace, ProposedPlaces } from './place/parse-proposed-places';
 export { parseProposedPlaces } from './place/parse-proposed-places';
 export { rankTrust } from './place/rank-trust';

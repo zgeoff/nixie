@@ -1,5 +1,6 @@
 import type { StepActivity, ToolActivity } from './build-activity';
 import { collectPlaceActs } from './collect-place-acts';
+import { collectPlaceNarrowings } from './collect-place-narrowings';
 import { collectSentFiles } from './collect-sent-files';
 import { collectSentMessages } from './collect-sent-messages';
 import { collectWorkers } from './collect-workers';
@@ -46,6 +47,7 @@ export function buildStep(
   );
 
   const placeActs = collectPlaceActs(records);
+  const placeNarrowings = collectPlaceNarrowings(records);
   const sentMessages = collectSentMessages(calls);
   const sentFiles = collectSentFiles(calls);
 
@@ -61,6 +63,7 @@ export function buildStep(
     key: records[0]?.sequence ?? 0,
     kind: 'step',
     ...(placeActs.length === 0 ? {} : { placeActs }),
+    ...(placeNarrowings.length === 0 ? {} : { placeNarrowings }),
     ...(recalls.length === 0
       ? {}
       : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),

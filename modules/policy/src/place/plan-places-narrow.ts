@@ -50,18 +50,20 @@ export function planPlacesNarrow(
     return { status: 'refused', reason: 'not_lower' };
   }
 
-  const isRaised = collectSamples(entries, target).some(
+  const isRaised = collectSamples(entries, target, pickSampleLabel(entries)).some(
     (sample) => rankTrust(readLevel(after, sample)) > rankTrust(readLevel(entries, sample)),
   );
 
   return isRaised ? { status: 'refused', reason: 'raises_destination' } : { status: 'ok' };
 }
 
-const sampleLabel = 'nixie-sample';
-
 // The destinations the entry covers, as far as the other entries tell them apart: its own place, a
 // subdomain nothing else names, and each place another entry names inside it.
-function collectSamples(entries: readonly PlaceEntry[], target: PlaceEntry): DestinationText[] {
+function collectSamples(
+  entries: readonly PlaceEntry[],
+  target: PlaceEntry,
+  sampleLabel: string,
+): DestinationText[] {
   const key = target.key;
 
   if (key.kind === 'site') {
@@ -129,6 +131,18 @@ function isInside(domain: string, parent: string, hasSubdomains: boolean): boole
 
 function toMailDomain(address: string): string {
   return address.slice(address.lastIndexOf('@') + 1);
+}
+
+// A label that no entry names, so no entry sits on a sample and masks it.
+function pickSampleLabel(entries: readonly PlaceEntry[]): string {
+  const held = JSON.stringify(entries.map((entry) => entry.key));
+  let label = 'nixie-sample';
+
+  while (held.includes(label)) {
+    label += 'x';
+  }
+
+  return label;
 }
 
 function readLevel(entries: readonly PlaceEntry[], sample: DestinationText): Trust | null {

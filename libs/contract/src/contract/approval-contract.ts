@@ -8,6 +8,7 @@ import { passkeyFailedError } from './passkey-failed-error';
 import { reusedIDErrors } from './reused-id-errors';
 import { conditionErrorSchema, ruleConditionSchema } from './rule-condition-schema';
 import { signedIn } from './signed-in';
+import { tickedPlacesSchema } from './ticked-places-schema';
 
 const stateSchema = z.enum(['pending', 'deferred', 'approved', 'declined', 'lapsed', 'withdrawn']);
 const hashesSchema = z.object({ actionHash: z.string(), ruleHash: z.string().nullable() });
@@ -175,7 +176,7 @@ const answerSchema = z.object({
   placeHash: z.string().optional(),
 
   // the places of a proposal card that stay ticked, by their place in its list; absent ticks all
-  tickedPlaces: z.array(z.int().nonnegative()).max(100).optional(),
+  tickedPlaces: tickedPlacesSchema.optional(),
   deferUntil: z.date().optional(),
   note: z.string().min(1).max(500).optional(),
   clientActionID: z.uuid(),

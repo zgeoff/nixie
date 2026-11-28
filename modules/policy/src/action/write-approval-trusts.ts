@@ -8,7 +8,6 @@ import type { PlaceContext } from '../place/place-context';
 import { writePlaceTrustedInTransaction } from '../place/write-place-trusted-in-transaction';
 
 export interface ApprovedCallFacts {
-  readonly cause: string;
   readonly tool: string;
   readonly input: JSONObject;
   readonly destinations: readonly string[];
@@ -25,7 +24,7 @@ export async function writeApprovalTrusts(
   const places = readPlaces?.() ?? null;
 
   if (answer.trust !== undefined) {
-    const offer = buildCardPlaceOffer(call.cause, call.destinations);
+    const offer = buildCardPlaceOffer(call.destinations);
 
     if (offer === null) {
       return { error: 'NOT_ALLOWED', reason: 'no_place_offer' };

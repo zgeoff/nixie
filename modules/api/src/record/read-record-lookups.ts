@@ -7,7 +7,12 @@ import type { DefinitionNotice } from '@heynixie/contract';
 import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
 import { modelReplyCodec, readVoidedReplies } from '@heynixie/models';
-import { formatPlaceKey, placesActedCodec, readPlaces } from '@heynixie/policy';
+import {
+  formatPlaceKey,
+  placesActedCodec,
+  placesNarrowedCodec,
+  readPlaces,
+} from '@heynixie/policy';
 import { readProposalsBySequence } from '@heynixie/proposals';
 import { readReminderVersion } from '@heynixie/reminders';
 import {
@@ -75,6 +80,7 @@ export async function readRecordLookups(
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
     definitionNotices: await readNoticesBySequence(context, records),
     placeActs: await readPlaceActs(context, records),
+    placeNarrowings: await readPlaceNarrowings(context, records),
     proposals: await readProposalsBySequence(
       context.log.writer.db,
       records.map((record) => record.sequence),
@@ -191,4 +197,32 @@ async function readPlaceActs(
       return key === undefined ? [] : [[entry.sequence, key] as const];
     }),
   );
+}
+
+// The key of the place that each places.narrowed record names. The record holds the short ID alone,
+// so a place whose key a forget took shows by its ID.
+async function readPlaceNarrowings(
+  context: Pick<APIContext, 'log'>,
+  records: readonly LogRecord[],
+): Promise<RecordLookups['placeNarrowings']> {
+  const named = records.flatMap((record) => {
+    const narrowed =
+      record.kind === placesNarrowedCodec.kind
+        ? placesNarrowedCodec.tryDecodePartial(record.payload)
+        : undefined;
+
+    return narrowed?.shortID === undefined
+      ? []
+      : [{ sequence: record.sequence, shortID: narrowed.shortID }];
+  });
+
+  if (named.length === 0) {
+    return new Map();
+  }
+
+  const places = await readPlaces(context.log, { isRemovedIncluded: true });
+
+  const keys = new Map(places.map((place) => [place.shortID, formatPlaceKey(place.key)]));
+
+  return new Map(named.map((entry) => [entry.sequence, keys.get(entry.shortID) ?? entry.shortID]));
 }

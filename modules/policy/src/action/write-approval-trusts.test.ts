@@ -27,6 +27,7 @@ async function setupTest() {
 
   const log = { ...started.log, projections: [...started.log.projections, placesProjection] };
   const queued: string[] = [];
+  const writtenRules: unknown[] = [];
 
   const placeContext = {
     log,
@@ -39,7 +40,11 @@ async function setupTest() {
     definitions: () => ({ snapshotHash: 'snapshot-1' }),
     readPlaces: () => placeContext,
     writeThreadRecord: () => Promise.resolve(),
-    writeRule: () => Promise.resolve(),
+    writeRule: (_tx, change) => {
+      writtenRules.push(change);
+
+      return Promise.resolve();
+    },
     queueApproved: (_tx, approved) => {
       queued.push(approved.tool);
 
@@ -56,6 +61,7 @@ async function setupTest() {
     log,
     placeContext,
     queued,
+    writtenRules,
     site: { kind: 'site', domain: 'tickets.example.com', subdomains: false } satisfies PlaceKey,
     proposal: {
       places: [
@@ -160,7 +166,7 @@ test('it offers no place for a call whose destinations are in two places', async
   expect(hashes.place).toBeNull();
 });
 
-test('it offers no place for an ask that a rule made', async () => {
+test('it offers the place for an ask that a rule made', async () => {
   const ctx = await setupTest();
 
   const held = await ctx.hold({
@@ -172,7 +178,7 @@ test('it offers no place for an ask that a rule made', async () => {
 
   const hashes = await held.readHashes();
 
-  expect(hashes.place).toBeNull();
+  expect(hashes.place).toStrictEqual({ read: expect.toBeString(), act: expect.toBeString() });
 });
 
 test('it adds the place at the level of the answer, queues the call and writes no rule', async () => {
@@ -191,10 +197,12 @@ test('it adds the place at the level of the answer, queues the call and writes n
   expect({
     outcome: outcome.status === 'done' ? outcome.result : outcome,
     queued: ctx.queued,
+    writtenRules: ctx.writtenRules,
     listed: places.map((place) => [place.key, place.trust, place.addedBy]),
   }).toStrictEqual({
     outcome: { proposalID: held.row.id, state: 'approved' },
     queued: ['web_fetch'],
+    writtenRules: [],
     listed: [[ctx.site, 'read', 'card']],
   });
 });

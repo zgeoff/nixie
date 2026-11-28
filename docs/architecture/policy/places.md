@@ -59,10 +59,10 @@ and an origin: `you`, `proposal`, `card`, `seed` or `nixie_own`. The levels are:
 | `act`     | a call with any effect but `spend` is allowed, and each such call is recorded   |
 | `self`    | one of your own addresses, numbers or handles; allows like `act` with no record |
 
-The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted`,
-which goes on the call's thread. Each add, change or removal that the user or a tool makes runs the
-in-force seed inside the write transaction of its record. The in-force seed puts in force a
-definitions snapshot that holds the directory. The definitions seed writes the entries of
+The directory writes `places.added`, `places.changed` and `places.removed`, and `places.acted` and
+`places.narrowed`, which go on the call's thread. Each add, change or removal that the user or a
+tool makes runs the in-force seed inside the write transaction of its record. The in-force seed puts
+in force a definitions snapshot that holds the directory. The definitions seed writes the entries of
 `places.yaml` inside its own snapshot, and the seed of nixie's own entries runs the in-force seed
 once after its entries, when it added any. When the in-force seed refuses, the whole transaction
 rolls back. A call decides under the snapshot it started with, so a block takes effect for each call
@@ -132,10 +132,8 @@ key and IDs sit in the payload, where no key can erase them.
 ## Trusting a place from a card
 
 When every destination of a held call is one place, the call's card offers "Trust this place to
-read" and "Trust this place to act" beside the approval. The card offers them only for an ask that
-trusting a place settles: one that no rule caused, one that follows something nixie read outside
-your own words, or one that your own request caused. An ask from a rule, a repeat and a call that
-always asks show no offer. A `raw` key is never offered.
+read" and "Trust this place to act" beside the approval, whatever caused the ask, a rule, a repeat
+or an always-ask call included. A `raw` key is never offered.
 
 - Either answer approves the call and adds the entry, or raises its level, in the answer's own write
   transaction. It adds an entry with the origin `card` and writes no rule.
@@ -162,7 +160,9 @@ always asks show no offer. A `raw` key is never offered.
   level.
 
 `places.narrow` lowers an entry's level or removes it. It declares `policy_narrow`, so it applies at
-once, and the record of the change is the notice. It refuses:
+once. It checks the plan and writes the change in one write transaction, so two calls on one entry
+cannot both pass the check. A `places.narrowed` record on the call's thread holds the entry's short
+ID and the new level, and the conversation shows it as "Lowered …" or "Removed …". It refuses:
 
 - a level that is not lower than the entry's;
 - a remove of a `blocked` entry, which would make the place free to read;

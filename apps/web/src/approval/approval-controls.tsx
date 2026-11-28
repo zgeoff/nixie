@@ -140,6 +140,7 @@ export function ApprovalControls(props: ApprovalControlsProps): ReactNode {
       ) : null}
       {place !== undefined && choices.includes('approve') ? (
         <>
+          <span>The place these answers trust: {place.words}</span>
           <button
             disabled={isBusy || !props.isApprovable}
             name="trust-read"

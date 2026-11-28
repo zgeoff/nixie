@@ -12,7 +12,6 @@ import {
   modelTurnEndedCodec,
 } from '@heynixie/models';
 import type { ReplyVoidReason } from '@heynixie/models';
-import { placesActedCodec } from '@heynixie/policy';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { skillsWriteAppliedCodec } from '@heynixie/skills';
 import type { TaskProfile } from '@heynixie/tasks';
@@ -36,6 +35,8 @@ import {
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import { z } from 'zod';
 import { forgetToolName } from '../proposal/read-forget-body-fields';
+import { toPlaceActed } from './to-place-acted';
+import { toPlaceNarrowed } from './to-place-narrowed';
 import { toWorkerView } from './to-worker-view';
 
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
@@ -49,6 +50,10 @@ export interface RecordLookups {
 
   // the key of the place that each places.acted record names, keyed by its record's sequence
   readonly placeActs: ReadonlyMap<number, string>;
+
+  // the key of the place that each places.narrowed record names, or its short ID once a forget took
+  // the key, keyed by its record's sequence
+  readonly placeNarrowings: ReadonlyMap<number, string>;
   readonly proposals: ReadonlyMap<
     number,
     { readonly proposalID: string; readonly shortID: string }
@@ -69,6 +74,7 @@ const noLookups: RecordLookups = {
   cancelledActionIDs: new Set(),
   definitionNotices: new Map(),
   placeActs: new Map(),
+  placeNarrowings: new Map(),
   proposals: new Map(),
   reminders: new Map(),
   removedSequences: new Set(),
@@ -97,7 +103,17 @@ export function toContractRecord(
   const reminder = toReminder(record, lookups);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
-  const placeActed = record.kind === 'places.acted' ? toPlaceActed(record, lookups) : undefined;
+
+  const placeActed =
+    record.kind === 'places.acted'
+      ? toPlaceActed(record, lookups.placeActs.get(record.sequence))
+      : undefined;
+
+  const placeNarrowed =
+    record.kind === 'places.narrowed'
+      ? toPlaceNarrowed(record, lookups.placeNarrowings.get(record.sequence))
+      : undefined;
+
   const proposal = lookups.proposals.get(record.sequence);
   const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
   const definitionNotice = lookups.definitionNotices.get(record.sequence);
@@ -117,6 +133,7 @@ export function toContractRecord(
     ...(message === undefined ? {} : { message }),
     ...(moment === undefined ? {} : { moment }),
     ...(placeActed === undefined ? {} : { placeActed }),
+    ...(placeNarrowed === undefined ? {} : { placeNarrowed }),
     ...(proposal === undefined ? {} : { proposal }),
     ...(reminder === undefined ? {} : { reminder }),
     ...(recall === undefined ? {} : { recall }),
@@ -400,18 +417,6 @@ function toKeptMoment(record: LogRecord): KeptMoment | undefined {
     shortID: kept.shortID,
     ...(typeof title === 'string' ? { title } : {}),
   };
-}
-
-function toPlaceActed(
-  record: LogRecord,
-  lookups: RecordLookups,
-): NonNullable<ContractRecord['placeActed']> | undefined {
-  const place = lookups.placeActs.get(record.sequence);
-  const acted = placesActedCodec.tryDecodePartial(record.payload);
-
-  return place === undefined || typeof acted?.tool !== 'string'
-    ? undefined
-    : { place, tool: acted.tool };
 }
 
 const removalOutcome = z.object({ actionID: z.string(), status: z.literal('done') });

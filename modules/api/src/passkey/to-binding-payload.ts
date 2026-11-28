@@ -12,6 +12,7 @@ export function toBindingPayload(binding: ChallengeFor): JSONObject {
       ruleHash: binding.ruleHash ?? null,
       ...(binding.trust === undefined ? {} : { trust: binding.trust }),
       ...(binding.placeHash === undefined ? {} : { placeHash: binding.placeHash }),
+      ...(binding.tickedPlaces === undefined ? {} : { tickedPlaces: binding.tickedPlaces }),
     };
   }
 

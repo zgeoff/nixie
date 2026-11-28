@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { StepActivity, ToolActivity } from '../conversation/build-activity';
 import { formatPlaceAct } from '../conversation/format-place-act';
+import { formatPlaceNarrowing } from '../conversation/format-place-narrowing';
 import { formatStepSummary } from '../conversation/format-step-summary';
 import { useWholePayloads } from '../conversation/use-whole-payloads';
 import { css } from '../styled-system/css';
@@ -60,6 +61,11 @@ export function StepGroup(props: StepGroupProps): ReactNode {
       {step.placeActs?.map((act) => (
         <section aria-label="places acted" key={act.place}>
           <h3 className={css({ fontWeight: 'semibold' })}>{formatPlaceAct(act)}</h3>
+        </section>
+      ))}
+      {step.placeNarrowings?.map((narrowing, index) => (
+        <section aria-label="place narrowed" key={`${narrowing.place}-${String(index)}`}>
+          <h3 className={css({ fontWeight: 'semibold' })}>{formatPlaceNarrowing(narrowing)}</h3>
         </section>
       ))}
       {step.compactions?.map((compaction) => (

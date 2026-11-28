@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { Log } from '@heynixie/log';
+import type { Log, WriteTransaction } from '@heynixie/log';
 import type { PlaceContext } from './place-context';
 import { placesRemovedCodec } from './places-removed-codec';
 import { readPlaces } from './read-places';
@@ -9,38 +9,47 @@ import { writeRemovedSequence } from './write-removed-sequence';
 // call finds its key. The snapshot without the entry goes in force in the same transaction. The
 // fold cannot read the ID of a personal place's removal, so the row takes it here.
 export function writePlaceRemoved(context: PlaceContext, placeID: string): Promise<boolean> {
-  return withWriteTransaction(context.log.writer, async (tx) => {
-    const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
+  return withWriteTransaction(context.log.writer, (tx) =>
+    writePlaceRemovedInTransaction(tx, context, placeID),
+  );
+}
 
-    const [place] = await readPlaces(inTransaction, { placeIDs: [placeID] });
+// Removes an entry inside the caller's write transaction.
+export async function writePlaceRemovedInTransaction(
+  tx: WriteTransaction,
+  context: PlaceContext,
+  placeID: string,
+): Promise<boolean> {
+  const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 
-    if (place === undefined || place.isRemoved) {
-      return false;
-    }
+  const [place] = await readPlaces(inTransaction, { placeIDs: [placeID] });
 
-    const isOpen = place.key.kind === 'site' || place.key.kind === 'mail_domain';
+  if (place === undefined || place.isRemoved) {
+    return false;
+  }
 
-    const [record] = await writeRecordsInTransaction(tx, context.log, [
-      isOpen
-        ? {
-            kind: placesRemovedCodec.kind,
-            definitions: context.definitions(),
-            payload: placesRemovedCodec.encode({ placeID }),
-          }
-        : {
-            kind: placesRemovedCodec.kind,
-            definitions: context.definitions(),
-            payload: placesRemovedCodec.encode({}),
-            erasable: { placeID },
-          },
-    ]);
+  const isOpen = place.key.kind === 'site' || place.key.kind === 'mail_domain';
 
-    if (record !== undefined && !isOpen) {
-      await writeRemovedSequence(tx, { placeID, sequence: record.sequence });
-    }
+  const [record] = await writeRecordsInTransaction(tx, context.log, [
+    isOpen
+      ? {
+          kind: placesRemovedCodec.kind,
+          definitions: context.definitions(),
+          payload: placesRemovedCodec.encode({ placeID }),
+        }
+      : {
+          kind: placesRemovedCodec.kind,
+          definitions: context.definitions(),
+          payload: placesRemovedCodec.encode({}),
+          erasable: { placeID },
+        },
+  ]);
 
-    await context.runInForce(tx);
+  if (record !== undefined && !isOpen) {
+    await writeRemovedSequence(tx, { placeID, sequence: record.sequence });
+  }
 
-    return true;
-  });
+  await context.runInForce(tx);
+
+  return true;
 }

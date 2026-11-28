@@ -1,11 +1,7 @@
 import type { NarrowRefusal, NarrowRequest, PlaceContext } from '@heynixie/policy';
-import {
-  planPlacesNarrow,
-  readPlaces,
-  writePlaceChanged,
-  writePlaceRemoved,
-} from '@heynixie/policy';
+import { writePlaceNarrowed } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 
 const narrowArguments = z.object({
@@ -23,7 +19,8 @@ const refusalSentences: Readonly<Record<NarrowRefusal, string>> = {
     'the change would leave a place that the entry covers at a higher level than before, because another entry covers it',
 };
 
-// Declares policy_narrow, so a call applies at once. The record of the change is the notice.
+// Declares policy_narrow, so a call applies at once. The notice record on the call's thread is what
+// the conversation shows.
 export function buildPlacesNarrowTool(readContext: () => PlaceContext): ToolDefinition {
   return {
     name: 'places.narrow',
@@ -58,47 +55,35 @@ export function buildPlacesNarrowTool(readContext: () => PlaceContext): ToolDefi
       results: { place: 'owner_data', trust: 'owner_data', removed: 'owner_data' },
     },
     execution: 'direct',
-    run: async (call) => {
+    run: async (call, toolContext) => {
       const input = narrowArguments.parse(call.input);
 
       if ((input.trust === undefined) === (input.remove === undefined)) {
         return { status: 'error', message: 'pass either trust or remove: true, not both' };
       }
 
-      const context = readContext();
-
-      const everyPlace = await readPlaces(context.log);
-
-      const stored = everyPlace.filter((place) => !place.isRemoved);
-      const target = stored.find((place) => place.shortID === input.place);
-
-      if (target === undefined) {
-        return { status: 'error', message: refusalSentences.not_found };
-      }
-
       const request: NarrowRequest =
         input.trust === undefined ? { kind: 'remove' } : { kind: 'lower', trust: input.trust };
 
-      const plan = planPlacesNarrow(stored, target.placeID, request);
-
-      if (plan.status === 'refused') {
-        return { status: 'error', message: refusalSentences[plan.reason] };
-      }
-
-      if (input.trust === undefined) {
-        await writePlaceRemoved(context, target.placeID);
-
-        return { status: 'ok', result: { place: target.shortID, removed: true } };
-      }
-
-      const changed = await writePlaceChanged(context, {
-        placeID: target.placeID,
-        trust: input.trust,
+      const narrowed = await writePlaceNarrowed(readContext(), input.place, request, {
+        callID: call.callID,
+        thread: toolContext.run.thread,
       });
 
-      return changed.status === 'changed'
-        ? { status: 'ok', result: { place: target.shortID, trust: changed.trust } }
-        : { status: 'error', message: refusalSentences.not_found };
+      return match(narrowed)
+        .with({ status: 'refused' }, (refused) => ({
+          status: 'error' as const,
+          message: refusalSentences[refused.reason],
+        }))
+        .with({ status: 'removed' }, (removed) => ({
+          status: 'ok' as const,
+          result: { place: removed.shortID, removed: true },
+        }))
+        .with({ status: 'lowered' }, (lowered) => ({
+          status: 'ok' as const,
+          result: { place: lowered.shortID, trust: lowered.trust },
+        }))
+        .exhaustive();
     },
   };
 }

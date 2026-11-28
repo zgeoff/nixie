@@ -74,6 +74,7 @@ test('it reads the actions each stop cancelled and the names of the started task
     cancelledActionIDs: new Set(),
     definitionNotices: new Map(),
     placeActs: new Map(),
+    placeNarrowings: new Map(),
     proposals: new Map(),
     reminders: new Map(),
     removedSequences: new Set(),
@@ -408,4 +409,55 @@ test('it reads the key of the place that each act record names, for a site and f
   );
 
   expect([...lookups.placeActs.values()]).toStrictEqual(['tickets.example.com', 'sam@example.org']);
+});
+
+test('it reads the key of a narrowed place, and the short ID of one the directory no longer holds', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const placeContext = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const site = await writePlaceAdded(placeContext, {
+    key: { kind: 'site', domain: 'tickets.example.com', subdomains: false },
+    trust: 'act',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(site.status === 'added');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'places.narrowed',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: { shortID: site.shortID, callID: 'call-1', trust: 'read' },
+    },
+    {
+      kind: 'places.narrowed',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: { shortID: 'zzzzzzzzzz', callID: 'call-2' },
+    },
+  ]);
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.narrowed'],
+  });
+
+  const lookups = await readRecordLookups(
+    ctx.context,
+    entries.map((entry) => entry.record),
+  );
+
+  expect([...lookups.placeNarrowings.values()]).toStrictEqual([
+    'tickets.example.com',
+    'zzzzzzzzzz',
+  ]);
 });

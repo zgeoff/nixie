@@ -80,6 +80,7 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
             ...(input.ruleHash === undefined ? {} : { ruleHash: input.ruleHash }),
             ...(input.trust === undefined ? {} : { trust: input.trust }),
             ...(input.placeHash === undefined ? {} : { placeHash: input.placeHash }),
+            ...(input.tickedPlaces === undefined ? {} : { tickedPlaces: input.tickedPlaces }),
           },
           answer,
         );

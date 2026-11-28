@@ -3,7 +3,7 @@ import { buildStep } from './build-step';
 import type { LiveRecord } from './use-live-records';
 
 // A message inside a step splits it into one segment per run of records between messages. The header
-// stays on the first segment, and the status, duration and error on the last. A step that ended in
+// stays on the first segment, and the status, duration, error and the notices of places on the last. A step that ended in
 // an error or an interruption voids the replies inside it, which covers a crash with no void record.
 export function splitSteps(whole: readonly ActivityItem[]): readonly ActivityItem[] {
   const items = voidRepliesOfPartialSteps(whole);
@@ -212,7 +212,14 @@ function buildSegment(
   index: number,
   isLast: boolean,
 ): StepActivity {
-  const { durationMs: _duration, cause: _cause, error: _error, ...own } = segment;
+  const {
+    durationMs: _duration,
+    cause: _cause,
+    error: _error,
+    placeActs: _placeActs,
+    placeNarrowings: _placeNarrowings,
+    ...own
+  } = segment;
 
   return {
     ...own,
@@ -221,6 +228,8 @@ function buildSegment(
     ...(index === 0 ? {} : { isContinued: true as const }),
     ...(isLast
       ? {
+          ...(step.placeActs === undefined ? {} : { placeActs: step.placeActs }),
+          ...(step.placeNarrowings === undefined ? {} : { placeNarrowings: step.placeNarrowings }),
           status: step.status,
           ...(step.durationMs === undefined ? {} : { durationMs: step.durationMs }),
           ...(step.cause === undefined ? {} : { cause: step.cause }),

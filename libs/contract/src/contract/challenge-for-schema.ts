@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { choiceSchema } from './choice-schema';
+import { tickedPlacesSchema } from './ticked-places-schema';
 
 // The check a passkey assertion answers, so an assertion for one answer never approves another.
 export const challengeForSchema = z.discriminatedUnion('kind', [
@@ -11,6 +12,7 @@ export const challengeForSchema = z.discriminatedUnion('kind', [
     ruleHash: z.string().optional(),
     trust: z.enum(['read', 'act']).optional(),
     placeHash: z.string().optional(),
+    tickedPlaces: tickedPlacesSchema.optional(),
   }),
   z.object({
     kind: z.literal('unknown_outcome'),

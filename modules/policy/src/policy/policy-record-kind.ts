@@ -7,6 +7,7 @@ export type PolicyRecordKind =
   | 'places.added'
   | 'places.changed'
   | 'places.removed'
+  | 'places.narrowed'
   | 'places.acted';
 
 type PolicyErasableRecordKind =

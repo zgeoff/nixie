@@ -15,6 +15,7 @@ import { buildInputHash } from '../utils/build-input-hash';
 import { probeLiveIdentity } from '../utils/probe-live-identity';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
+import { buildHashedInput } from './build-hashed-input';
 import { SettledError } from './settled-error';
 import { storedApprovalSchema } from './stored-approval-schema';
 
@@ -102,24 +103,6 @@ async function runCheckedAnswer(
 
     return committed;
   }
-}
-
-// A hash of free text alone confirms a guess at the text, so the note and an edit count as flags.
-function buildHashedInput(answer: ApprovalAnswer) {
-  return {
-    proposalID: answer.proposalID,
-    actionHash: answer.actionHash,
-    choice: answer.choice,
-    ruleHash: answer.ruleHash ?? null,
-    trust: answer.trust ?? null,
-    placeHash: answer.placeHash ?? null,
-    tickedPlaces: answer.tickedPlaces ?? null,
-    deferUntil: answer.deferUntil?.toISOString() ?? null,
-    hasNote: answer.note !== undefined,
-    isEdited: answer.memory?.editedText !== undefined,
-    revisionOf: answer.memory?.revisionOf?.itemID ?? null,
-    ignoreCloseMatch: answer.memory?.ignoreCloseMatch ?? null,
-  };
 }
 
 interface AnswerQuery {

@@ -97,6 +97,14 @@ test('it offers to trust the place to read and to act, with each level its own h
   ]);
 });
 
+test('it shows the place that the trust answers grant, beside the buttons', () => {
+  const ctx = setupTest();
+
+  ctx.show({ place: { words: 'example.org', readHash: 'hash-read', actHash: 'hash-act' } });
+
+  expect(screen.getByText('The place these answers trust: example.org')).toBeDefined();
+});
+
 test('it offers no trust answer for a card that names no place', () => {
   const ctx = setupTest();
 

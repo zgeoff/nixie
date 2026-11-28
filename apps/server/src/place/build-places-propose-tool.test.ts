@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { placesProjection, writePlaceAdded } from '@heynixie/policy';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
+import invariant from 'tiny-invariant';
 import { buildPlacesProposeTool } from './build-places-propose-tool';
 
 async function setupTest() {
@@ -61,12 +62,14 @@ test('it lets a proposal of real places go to the card', async () => {
 test('it reports each place as trusted once the approval has added it', async () => {
   const ctx = await setupTest();
 
-  await writePlaceAdded(ctx.context, {
+  const added = await writePlaceAdded(ctx.context, {
     key: { kind: 'site', domain: 'tickets.example.com', subdomains: false },
     trust: 'act',
     name: null,
     addedBy: 'proposal',
   });
+
+  invariant(added.status === 'added', 'the place is added');
 
   const outcome = await ctx.run([
     { place: 'tickets.example.com', trust: 'act', why: 'You book here every week.' },
@@ -77,7 +80,12 @@ test('it reports each place as trusted once the approval has added it', async ()
     status: 'ok',
     result: {
       places: [
-        { place: 'tickets.example.com', status: 'trusted', trust: 'act' },
+        {
+          place: 'tickets.example.com',
+          status: 'trusted',
+          trust: 'act',
+          place_id: added.shortID,
+        },
         { place: 'news.example.net', status: 'not_trusted' },
       ],
     },

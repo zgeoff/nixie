@@ -280,7 +280,7 @@ function toBody(
   const destinations = erasable.destinations.map((destination) => destination.value);
   const own = extra.status === 'fields' ? extra.sentence : undefined;
   const sentence = own ?? buildActionProposalSentence(payload.tool, payload.effects, destinations);
-  const offer = buildCardPlaceOffer(payload.cause, destinations);
+  const offer = buildCardPlaceOffer(destinations);
   const proposed = payload.tool === 'places.propose' ? parseProposedPlaces(erasable.input) : null;
 
   return {
@@ -364,10 +364,7 @@ async function readHashes(
   const offer =
     record === undefined || erasable === null
       ? null
-      : buildCardPlaceOffer(
-          actionProposedCodec.decode(record.payload).cause,
-          erasable.destinations.map((destination) => destination.value),
-        );
+      : buildCardPlaceOffer(erasable.destinations.map((destination) => destination.value));
 
   return {
     action: row.actionHash,
@@ -419,7 +416,6 @@ async function writeAnswer(
           deps.readPlaces,
           tx,
           {
-            cause: payload.cause,
             tool: payload.tool,
             input: toJSONObject(trusted.input),
             destinations: trusted.destinations.map((destination) => destination.value),

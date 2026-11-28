@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { JSONObject } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { placesProjection, readPlaces, writePlaceAdded } from '@heynixie/policy';
 import type { PlaceKey } from '@heynixie/policy';
@@ -116,4 +117,29 @@ test('it refuses a place that no entry has', async () => {
   const outcome = await ctx.narrow({ place: 'zzzzzzzzzz', remove: true });
 
   expect(outcome.status).toBe('error');
+});
+
+test('it applies one of a block and a removal that arrive together, and refuses the other', async () => {
+  const ctx = await setupTest();
+  const place = await ctx.add(ctx.site('tickets.example.com'), 'act');
+
+  const outcomes = await Promise.all([
+    ctx.narrow({ place, trust: 'blocked' }),
+    ctx.narrow({ place, remove: true }),
+  ]);
+
+  expect(outcomes.map((outcome) => outcome.status)).toStrictEqual(['ok', 'error']);
+});
+
+test('it writes the notice of a lowered place on the thread of the call', async () => {
+  const ctx = await setupTest();
+  const place = await ctx.add(ctx.site('tickets.example.com'), 'act');
+
+  await ctx.narrow({ place, trust: 'read' });
+
+  const notices = await readRecords(ctx.log, { afterSequence: 0, kinds: ['places.narrowed'] });
+
+  expect(notices.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
+    [expect.toBeString(), { shortID: place, callID: 'call-1', trust: 'read' }],
+  ]);
 });
