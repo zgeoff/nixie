@@ -2,6 +2,8 @@ import { sql } from 'kysely';
 import { parseJSONObject } from '../record/parse-json-object';
 import type { Log, LogTables } from '../types';
 import type { ErasableKind } from './erasable-kind';
+import { erasureFinishedCodec } from './erasure-finished-codec';
+import { erasureStartedCodec } from './erasure-started-codec';
 
 export interface TargetErasure {
   readonly erasureID: string;
@@ -39,11 +41,11 @@ export async function readErasures(
     .execute();
 
   const finishedIDs = new Set(
-    finished.map((row) => String(parseJSONObject(row.payload)['erasureID'])),
+    finished.map((row) => erasureFinishedCodec.decode(parseJSONObject(row.payload)).erasureID),
   );
 
   return rows.map((row) => {
-    const erasureID = String(parseJSONObject(row.payload)['erasureID']);
+    const erasureID = erasureStartedCodec.decode(parseJSONObject(row.payload)).erasureID;
 
     return { erasureID, startedAtMs: row.recorded_at, isFinished: finishedIDs.has(erasureID) };
   });

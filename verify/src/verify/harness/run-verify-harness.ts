@@ -1,7 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { startFakeATCGateway } from '@heynixie/coding-atc/test-utils';
-import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
 import { startStandInMcpLoopback } from '@heynixie/mcp/test-utils';
 import {
@@ -45,6 +44,7 @@ import { serveControl } from './serve-control';
 import { startAPIRelay } from './start-api-relay';
 import { startFakeRateSite } from './start-fake-rate-site';
 import { trustSite } from './trust-site';
+import { writeRecordLines } from './write-record-lines';
 
 interface RunningState {
   isRunning: boolean;
@@ -562,38 +562,6 @@ async function countModelRequests(model: ScriptedModel, text: string): Promise<n
 
 function writeLine(line: Readonly<Record<string, unknown>>): void {
   process.stdout.write(`${JSON.stringify(line)}\n`);
-}
-
-interface SeenRecords {
-  sequence: number;
-}
-
-// Each record on the conversation thread, in the order nixie wrote them.
-async function writeRecordLines(
-  client: ContractClient,
-  signal: AbortSignal,
-  seen: SeenRecords,
-): Promise<void> {
-  const records = await client.live.follow(
-    { afterSequence: seen.sequence, thread: 'conversation' },
-    { signal },
-  );
-
-  for await (const event of records) {
-    if (event.kind !== 'record') {
-      continue;
-    }
-
-    seen.sequence = event.record.sequence;
-
-    writeLine({
-      event: 'record',
-      sequence: event.record.sequence,
-      kind: event.record.kind,
-      text: event.record.message?.text ?? null,
-      voidedReply: event.record.voidedReply?.sequence ?? null,
-    });
-  }
 }
 
 if (import.meta.main) {
