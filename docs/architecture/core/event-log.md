@@ -229,7 +229,8 @@ newest `log_reset` record, so the model reads no line of the old conversation. A
 The payloads that nobody rereads expire once they are old enough: the result of a tool call, the
 result that a connector returned for an action, and the working notes of a helper. The record stays
 as a stub, with its envelope and payload, so a reader sees that the call happened and that its text
-is gone. The age is the `erasure.expire_after_days` setting of the config, 365 days by default.
+is gone. The age is the `erasure.expire_after_days` setting, and
+[the configuration](../deployment/configuration.md) gives its default.
 
 An expiry is an erasure of the kind `expiry`, which the
 [erasure runner](../memory/store.md#forgetting) runs, so an expired payload becomes a gap the way a
