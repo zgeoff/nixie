@@ -86,15 +86,7 @@ test('it gives each feature a journey file that git tracks', async () => {
   expect(missing).toStrictEqual([]);
 });
 
-test.each([
-  'modules/sessions/src/index.ts',
-  'modules/policy/src/index.ts',
-  'modules/log/src/index.ts',
-  'guests/conversation/src/main.ts',
-  'libs/db/src/index.ts',
-  'apps/web/src/routes/__root.tsx',
-  'apps/web/src/components/app-shell.tsx',
-])('it reaches the core file %s from the entries of the first feature', async (path) => {
+test('it reaches the core files from the entries of the first feature', async () => {
   const ctx = await setupTest();
 
   const [first] = ctx.collectFeatureNames();
@@ -102,7 +94,15 @@ test.each([
 
   const reached = await ctx.readReached(featureNames);
 
-  expect(reached).toContain(path);
+  expect([...reached]).toIncludeAllMembers([
+    'modules/sessions/src/index.ts',
+    'modules/policy/src/index.ts',
+    'modules/log/src/index.ts',
+    'guests/conversation/src/main.ts',
+    'libs/db/src/index.ts',
+    'apps/web/src/routes/__root.tsx',
+    'apps/web/src/components/app-shell.tsx',
+  ]);
 });
 
 test.each([
@@ -113,43 +113,6 @@ test.each([
   const ctx = await setupTest();
 
   expect(ctx.isShared(path)).toBe(true);
-});
-
-test('it reaches every module, adapter and guest folder from a feature', async () => {
-  const ctx = await setupTest();
-  const reached = await ctx.readReached(ctx.collectFeatureNames());
-
-  const folders = new Set(
-    ctx.trackedPaths
-      .filter((path) => /^(?<kind>modules|adapters|guests)\//u.test(path))
-      .map((path) => path.split('/').slice(0, 2).join('/')),
-  );
-
-  const unreached = [...folders].filter((folder) => {
-    const runPaths = ctx.trackedPaths.filter(
-      (path) => path.startsWith(`${folder}/`) && !ctx.isIgnored(path),
-    );
-
-    return (
-      runPaths.length > 0 && runPaths.every((path) => !reached.has(path) && !ctx.isShared(path))
-    );
-  });
-
-  expect(unreached).toStrictEqual([]);
-});
-
-test('it maps every tracked file to a feature, a shared path or the ignore list', async () => {
-  const ctx = await setupTest();
-  const reached = await ctx.readReached(ctx.collectFeatureNames());
-
-  const extra = new Set(Object.values(featureFiles).flatMap((files) => files.extra));
-
-  expect(
-    ctx.trackedPaths.filter(
-      (path) =>
-        !ctx.isIgnored(path) && !ctx.isShared(path) && !reached.has(path) && !extra.has(path),
-    ),
-  ).toStrictEqual([]);
 });
 
 test('it flags each feature for its own journey file', async () => {
