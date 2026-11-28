@@ -74,9 +74,9 @@ Read a feature's file before you run its journey.
 | spend-routes       | Read each route's counts                         | [references/feature-spend-routes.md](references/feature-spend-routes.md)             |
 | device-in-browser  | Open the browser's own device full screen        | [references/feature-device-in-browser.md](references/feature-device-in-browser.md)   |
 | device-view        | Open the browser's own device                    | [references/feature-device-view.md](references/feature-device-view.md)               |
+| live-updates       | Pause from the host, see it on the page          | [references/feature-live-updates.md](references/feature-live-updates.md)             |
 | device-screen      | Enrol a device and see a picture on it           | [references/feature-device-screen.md](references/feature-device-screen.md)           |
 | device-layout      | Lay out a screen in regions, and change them     | [references/feature-device-layout.md](references/feature-device-layout.md)           |
-| live-updates       | Pause from the host, see it on the page          | [references/feature-live-updates.md](references/feature-live-updates.md)             |
 | mail-wake          | Mail wakes the chat                              | [references/feature-mail-wake.md](references/feature-mail-wake.md)                   |
 | phone-text         | A text wakes the chat                            | [references/feature-phone-text.md](references/feature-phone-text.md)                 |
 | gmail-tools        | Search and read a mail, and approve a reply      | [references/feature-gmail-tools.md](references/feature-gmail-tools.md)               |

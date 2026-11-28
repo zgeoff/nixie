@@ -39,6 +39,11 @@ export const lastFeatures = [
     ...featureFiles['device-view'],
   },
   {
+    name: 'live-updates',
+    summary: 'Pause from the host, see it on the page',
+    ...featureFiles['live-updates'],
+  },
+  {
     name: 'device-screen',
     summary: 'Enrol a device and see a picture on it',
     ...featureFiles['device-screen'],
@@ -47,11 +52,6 @@ export const lastFeatures = [
     name: 'device-layout',
     summary: 'Lay out a screen in regions, and change them',
     ...featureFiles['device-layout'],
-  },
-  {
-    name: 'live-updates',
-    summary: 'Pause from the host, see it on the page',
-    ...featureFiles['live-updates'],
   },
   {
     name: 'mail-wake',

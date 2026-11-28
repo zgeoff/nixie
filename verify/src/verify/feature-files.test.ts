@@ -54,6 +54,21 @@ async function setupTest() {
 
       return new Set(resolved.reach.get('walked')?.reached);
     },
+
+    // Whether a change to the path flags the feature, resolved from the real registry narrowed to
+    // that feature.
+    probeFlagged: async (path: string, featureName: string): Promise<boolean> => {
+      const narrowed: Wringer = {
+        ...registry,
+        features: registry.features.filter((feature) => feature.name === featureName),
+      };
+
+      const resolved = await resolveFeatures(createNodeRepoHost(), narrowed, rootDir);
+
+      return collectFeatureScopes(resolved.wringer).some(
+        (scope) => isGlobMatch(path, scope.globs) && !isGlobMatch(path, registry.ignore),
+      );
+    },
     collectFeatureNames: () => registry.features.map((feature) => feature.name),
     collectFeatures: () => registry.features,
   };
@@ -68,7 +83,6 @@ test('it asks for the verify skill before an edit under each entry and shared pa
 
   const entries = Object.values(featureFiles).flatMap((files) => files.entries);
 
-  // an entry that names a folder stands for the files under it
   const unasked = [...entries, ...sharedPaths].filter(
     (glob) => !verifyGlobs.some((gate) => gate.match(glob) || gate.match(`${glob}/file`)),
   );
@@ -125,6 +139,40 @@ test('it flags each feature for its own journey file', async () => {
   });
 
   expect(unflagged).toStrictEqual([]);
+});
+
+test.each([
+  { path: 'apps/web/src/routes/proposals.tsx', feature: 'policy-proposal' },
+  {
+    path: 'adapters/coding-atc/src/test-utils/start-fake-atc-gateway.ts',
+    feature: 'coding-session',
+  },
+])('it flags $feature for a change to $path', async (row) => {
+  const ctx = await setupTest();
+  const flagged = await ctx.probeFlagged(row.path, row.feature);
+
+  expect(flagged).toBe(true);
+});
+
+test.each([
+  'modules/calls/src/record/call-turn-timed-codec.ts',
+  'modules/memory/src/typed/is-typed-yes.ts',
+  'guests/code/Dockerfile',
+])('it flags no feature for a change to the file %s, which no journey runs', async (path) => {
+  const ctx = await setupTest();
+
+  expect(ctx.isIgnored(path)).toBe(true);
+  expect(ctx.isShared(path)).toBe(false);
+});
+
+test('it starts no walk from a file that an ignore glob matches', async () => {
+  const ctx = await setupTest();
+
+  const ignoredEntries = Object.entries(featureFiles).flatMap(([name, files]) =>
+    files.entries.filter((entry) => ctx.isIgnored(entry)).map((entry) => `${name}: ${entry}`),
+  );
+
+  expect(ignoredEntries).toStrictEqual([]);
 });
 
 test('it flags only the feature whose entry imports a file that no other entry imports', async () => {
