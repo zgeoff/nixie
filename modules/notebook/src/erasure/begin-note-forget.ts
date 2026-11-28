@@ -62,7 +62,7 @@ export async function beginNoteForget(
   );
 
   if (begun.status === 'refused') {
-    return begun;
+    return { status: 'refused', reason: begun.reason === 'stale' ? 'stale' : 'not_found' };
   }
 
   return {

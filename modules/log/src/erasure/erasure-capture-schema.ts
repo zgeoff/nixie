@@ -8,7 +8,17 @@ const keySelectionSchema = z.union([idsSelection, familySelection, threadSelecti
 const noteCause = z.strictObject({ noteID: z.string() });
 const momentCause = z.strictObject({ momentID: z.string() });
 const itemCause = z.strictObject({ itemID: z.string() });
-const recordCause = z.strictObject({ recordSequence: z.int() });
+
+// `callSequences` lists the task.start calls that hold a brief the record forget removes, whose
+// sessions the forget cleans first
+const recordCause = z.strictObject({
+  recordSequence: z.int(),
+  callSequences: z.array(z.int()).exactOptional(),
+});
+
+// The conversation reset names its thread. Its session ends before the start, so the cleanup has
+// nothing left to do.
+const threadCause = z.strictObject({ thread: z.string() });
 
 // `wakeSequences` lists the records of the wakes that show the connection's mail, whose sessions
 // the forget cleans
@@ -27,6 +37,7 @@ const sessionCauseSchema = z.union([
   recordCause,
   connectionCause,
   textCause,
+  threadCause,
 ]);
 
 const purgeSchema = z.strictObject({ recordSequence: z.int(), itemIDs: z.array(z.string()) });

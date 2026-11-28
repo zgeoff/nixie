@@ -154,6 +154,7 @@ export type {
 } from './erasure/types';
 
 export type {
+  ErasureCleanupCause,
   ErasureEffects,
   ErasureFaultPoint,
   ErasureSessionCause,

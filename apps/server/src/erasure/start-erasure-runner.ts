@@ -9,6 +9,7 @@ import { waitAtFaultPoint } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { ServerPartValues } from '../part/server-part-values';
 import type { PartReader, ServerParts } from '../types';
+import { collectCleanedCauses } from './collect-cleaned-causes';
 
 // What the runner takes of the server's parts and of the started parts, so a test supplies each
 // one for real.
@@ -56,7 +57,13 @@ export function startErasureRunner(
         await conversation.cleanupSessions(cause);
         await tasks.cleanupSessions(cause);
       },
-      readCleanedThreads: (cause) => readCleanedTaskIDs(parts.context, cause),
+      readCleanedThreads: async (cause) => {
+        const threads = await Promise.all(
+          collectCleanedCauses(cause).map((each) => readCleanedTaskIDs(parts.context, each)),
+        );
+
+        return [...new Set(threads.flat())];
+      },
       finishPurges: async (recordSequence) => {
         const memory = reader.find('memory');
 

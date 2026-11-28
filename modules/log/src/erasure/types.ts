@@ -2,6 +2,7 @@ import type { WriteTransaction } from '../record/with-write-transaction';
 import type { Definitions, Log } from '../types';
 import type { ErasableKind } from './erasable-kind';
 import type { ErasureCapture } from './erasure-capture-schema';
+import type { ErasureRefusal } from './erasure-refused-error';
 
 export interface LegacyEnd {
   readonly kind: string;
@@ -50,6 +51,11 @@ export interface Erasable<Request> {
   // back: not_found, stale.
   readonly start: (tx: WriteTransaction, request: Request) => Promise<ErasureStart>;
 
+  // Optional. Runs once before the start of a forget that a caller begins, never before a child's
+  // start or a catch-up's: the stop-work barrier of the conversation reset. It throws when the
+  // work cannot stop, and then nothing is written.
+  readonly before?: (request: Request) => Promise<void>;
+
   // After the start commits: makes the target unreachable at once, such as dropping it from search.
   readonly hide: (target: ErasureTarget) => Promise<void>;
   readonly readChildren: (tx: WriteTransaction, target: ErasureTarget) => Promise<ErasureTarget[]>;
@@ -60,6 +66,11 @@ export interface Erasable<Request> {
   // Optional. After the start commits and before any key goes: sends the target's one revocation
   // and records its outcome. It runs on every run of the tree, so it sends nothing once recorded.
   readonly revoke?: (target: ErasureTarget) => Promise<void>;
+
+  // Optional. Runs in the transaction that writes erasure.finished, after that record, so what the
+  // store writes there commits with it or not at all. A repeat after a crash finds the record and
+  // runs nothing.
+  readonly writeFinished?: (tx: WriteTransaction, finished: ErasureFinishedFacts) => Promise<void>;
 
   // After the keys go; repeats hide's work safely.
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
@@ -72,6 +83,11 @@ export interface Erasable<Request> {
 // The store's own erasable, with its descriptor.
 export type RegisteredErasable<Request> = ErasableDescriptor & Erasable<Request>;
 
+export interface ErasureFinishedFacts {
+  readonly target: ErasureTarget;
+  readonly removedKeys: number;
+}
+
 export interface ErasureStartOptions {
   readonly by: ErasureBy;
 
@@ -80,7 +96,7 @@ export interface ErasureStartOptions {
 }
 
 export type ErasureBegin =
-  | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' }
+  | { readonly status: 'refused'; readonly reason: ErasureRefusal }
   | {
       readonly status: 'begun';
       readonly erasureID: string;
@@ -111,6 +127,7 @@ export interface ErasureEntry {
   readonly descriptor: ErasableDescriptor;
   readonly hide: (target: ErasureTarget) => Promise<void>;
   readonly revoke: (target: ErasureTarget) => Promise<void>;
+  readonly writeFinished: (tx: WriteTransaction, finished: ErasureFinishedFacts) => Promise<void>;
   readonly readChildren: (tx: WriteTransaction, target: ErasureTarget) => Promise<ErasureTarget[]>;
   readonly cleanIndexes: (target: ErasureTarget) => Promise<void>;
   readonly beginChild: (target: ErasureTarget, parent: ErasureParent) => Promise<ErasureBegin>;

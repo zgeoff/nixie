@@ -101,9 +101,11 @@ export function buildMomentStore(
         ...(writeInTransaction === undefined ? {} : { writeInTransaction }),
       });
 
-      return begun.status === 'refused'
-        ? begun
-        : { status: 'begun', momentID: begun.target.targetID };
+      if (begun.status === 'refused') {
+        return { status: 'refused', reason: begun.reason === 'stale' ? 'stale' : 'not_found' };
+      }
+
+      return { status: 'begun', momentID: begun.target.targetID };
     },
     finishDestroy: async (moment) => {
       invariant(erasure, 'the memory store holds an erasure registry');

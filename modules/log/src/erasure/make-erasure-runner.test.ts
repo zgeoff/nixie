@@ -7,6 +7,7 @@ import { buildTestErasureEffects } from '../test-utils/build-test-erasure-effect
 import { readTestRecordKeyRows } from '../test-utils/read-test-record-key-rows';
 import { readTestRecordRows } from '../test-utils/read-test-record-rows';
 import { startTestLog } from '../test-utils/start-test-log';
+import type { LogTables } from '../types';
 import type { ErasableKind } from './erasable-kind';
 import type { ErasureFaultPoint } from './erasure-effects';
 import { makeErasureRunner } from './make-erasure-runner';
@@ -40,12 +41,19 @@ async function setupTest() {
       }),
     );
 
+  const registerWithHooks = (
+    kind: ErasableKind,
+    hooks: Pick<Parameters<typeof buildTestErasable>[0], 'before' | 'writeFinished'>,
+    targets: readonly TestErasureTarget[],
+  ) => runner.register(buildTestErasable({ kind, childKind: 'image', targets, events, ...hooks }));
+
   return {
     ...testLog,
     ...fake,
     events,
     runner,
     register,
+    registerWithHooks,
     createKey: async () => {
       const created = await createRecordKey(testLog.log);
 
@@ -557,4 +565,130 @@ test('it leaves open an erasure of a kind nothing registered and finishes the re
   const open = await readOpenErasures(ctx.log);
 
   expect(open.map((erasure) => erasure.started.kind)).toStrictEqual(['credential']);
+});
+
+test('it revokes a credential before it destroys any sandbox or deletes any key', async () => {
+  const ctx = await setupTest();
+
+  const keyIDs = [await ctx.createKey()];
+
+  const credential = ctx.register(
+    'credential',
+    'image',
+    [{ id: 'a', keyIDs, childIDs: [] }],
+    async (targetID) => {
+      const remaining = await ctx.readKeyIDs();
+
+      ctx.calls.push(`revoke ${targetID} with ${String(remaining.length)} keys`);
+    },
+  );
+
+  await credential.begin({ id: 'a' }, { by: 'user' });
+  await credential.finish('a');
+
+  const order = ctx.calls.filter(
+    (call) => call.startsWith('revoke') || call.startsWith('destroySandboxes'),
+  );
+
+  expect(order).toStrictEqual(['revoke a with 1 keys', 'destroySandboxes []']);
+});
+
+test('it runs the before hook once, before the start, and never for a child', async () => {
+  const ctx = await setupTest();
+
+  const seen: string[] = [];
+
+  const note = ctx.registerWithHooks(
+    'note',
+    {
+      before: async (request) => {
+        const open = await ctx.readOpenCount();
+
+        seen.push(`before ${request.id} with ${String(open)} open`);
+      },
+    },
+    [{ id: 'a', keyIDs: [], childIDs: ['b'] }],
+  );
+
+  ctx.registerWithHooks(
+    'image',
+    {
+      before: (request) => {
+        seen.push(`before ${request.id}`);
+
+        return Promise.resolve();
+      },
+    },
+    [{ id: 'b', keyIDs: [], childIDs: [] }],
+  );
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+  await note.finish('a');
+
+  expect(seen).toStrictEqual(['before a with 0 open']);
+});
+
+test('it writes nothing when the before hook throws', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.registerWithHooks(
+    'note',
+    { before: () => Promise.reject(new Error('the work will not stop')) },
+    [{ id: 'a', keyIDs: [], childIDs: [] }],
+  );
+
+  const begun = note.begin({ id: 'a' }, { by: 'user' });
+
+  expect(begun).rejects.toThrow('the work will not stop');
+
+  await Promise.allSettled([begun]);
+
+  const records = await ctx.readErasureRecords();
+
+  expect(records).toStrictEqual([]);
+});
+
+test('it writes what the store adds in the transaction of erasure.finished', async () => {
+  const ctx = await setupTest();
+
+  const seen: number[] = [];
+
+  const note = ctx.registerWithHooks(
+    'note',
+    {
+      writeFinished: async (tx, finished) => {
+        const rows = await tx
+          .$extendTables<LogTables>()
+          .selectFrom('records')
+          .select('kind')
+          .where('kind', '=', 'erasure.finished')
+          .execute();
+
+        seen.push(rows.length, finished.removedKeys);
+      },
+    },
+    [{ id: 'a', keyIDs: [], childIDs: [] }],
+  );
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+  await note.finish('a');
+
+  expect(seen).toStrictEqual([1, 0]);
+});
+
+test('it rolls erasure.finished back when the store write in its transaction fails', async () => {
+  const ctx = await setupTest();
+
+  const note = ctx.registerWithHooks(
+    'note',
+    { writeFinished: () => Promise.reject(new Error('the boundary write failed')) },
+    [{ id: 'a', keyIDs: [], childIDs: [] }],
+  );
+
+  await note.begin({ id: 'a' }, { by: 'user' });
+  await Promise.allSettled([note.finish('a')]);
+
+  const records = await ctx.readErasureRecords();
+
+  expect(records.map((record) => record.kind)).toStrictEqual(['erasure.started']);
 });

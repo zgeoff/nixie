@@ -40,7 +40,7 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
 
   const removed = new Set<string>();
 
-  // children, then sandboxes, then keys, until a scan finds no child that is new
+  // children, then revokes, then sandboxes, then keys, until a scan finds no child that is new
   for (;;) {
     await growTree(context, tree, reached);
 
@@ -50,20 +50,20 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
       break;
     }
 
-    await effects.destroySandboxes(
-      pending.flatMap((erasure) => erasure.started.capture.sandboxCallIDs),
-    );
-
-    if (NIXIE_TEST_BUILD) {
-      await effects.reachFaultPoint('erasure.sandboxes_destroyed', root.started.erasureID);
-    }
-
     for (const erasure of pending) {
       await getEntry(context, erasure.started.kind).revoke(toTarget(erasure));
     }
 
     if (NIXIE_TEST_BUILD) {
       await effects.reachFaultPoint('erasure.revoked', root.started.erasureID);
+    }
+
+    await effects.destroySandboxes(
+      pending.flatMap((erasure) => erasure.started.capture.sandboxCallIDs),
+    );
+
+    if (NIXIE_TEST_BUILD) {
+      await effects.reachFaultPoint('erasure.sandboxes_destroyed', root.started.erasureID);
     }
 
     for (const erasure of pending) {
@@ -100,7 +100,7 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
 
     invariant(erasure, 'the finish order names only erasures of the tree');
 
-    await writeErasureFinished(context, erasure);
+    await writeErasureFinished(context, erasure, getEntry(context, erasure.started.kind));
   }
 }
 
@@ -271,6 +271,17 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
     for (const sequence of cause.wakeSequences ?? []) {
       await context.effects.cleanupSessions({ recordSequence: sequence });
     }
+  } else if ('thread' in cause) {
+    // The reset ends its conversation's session before the start, so no session is left to clean.
+  } else if ('recordSequence' in cause) {
+    // Each destroyed call record names its own cleanup, so the sessions of the task that a brief
+    // started and of its starter both rebuild. The forgotten record goes last, because its cleanup
+    // also purges the memory items that quote it.
+    for (const sequence of cause.callSequences ?? []) {
+      await context.effects.cleanupSessions({ recordSequence: sequence });
+    }
+
+    await context.effects.cleanupSessions({ recordSequence: cause.recordSequence });
   } else {
     await context.effects.cleanupSessions(cause);
   }

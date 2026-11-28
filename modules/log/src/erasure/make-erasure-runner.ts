@@ -150,6 +150,7 @@ function buildEntry<Request>(
     descriptor: erasable,
     hide: (target) => erasable.hide(target),
     revoke: (target) => erasable.revoke?.(target) ?? Promise.resolve(),
+    writeFinished: (tx, finished) => erasable.writeFinished?.(tx, finished) ?? Promise.resolve(),
     readChildren: (tx, target) => erasable.readChildren(tx, target),
     cleanIndexes: (target) => erasable.cleanIndexes(target),
     beginChild: (target, parent) =>
@@ -190,7 +191,11 @@ function buildHandle<Request>(
   runSerially: <T>(task: () => Promise<T>) => Promise<T>,
 ): ErasureHandle<Request> {
   return {
-    begin: (request, startOptions) => beginErasure(options, erasable, request, startOptions),
+    begin: async (request, startOptions) => {
+      await erasable.before?.(request);
+
+      return beginErasure(options, erasable, request, startOptions);
+    },
     finish: (targetID) =>
       runSerially(async () => {
         const open = await readOpenErasures(options.log);

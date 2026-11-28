@@ -24,6 +24,12 @@ export interface TestErasableOptions {
 
   // runs as the revoke step of each target, so a test sees what is left when it runs
   readonly onRevoke?: (targetID: string) => Promise<void>;
+
+  // runs as the before hook of the kind
+  readonly before?: (request: TestErasureRequest) => Promise<void>;
+
+  // runs in the transaction that writes erasure.finished
+  readonly writeFinished?: RegisteredErasable<TestErasureRequest>['writeFinished'];
 }
 
 // An erasable over a list of targets, for a test of the runner. It captures each target's keys,
@@ -75,6 +81,8 @@ export function buildTestErasable(
         })),
       ),
     toRequest: (target) => ({ id: target.targetID }),
+    ...(options.before === undefined ? {} : { before: options.before }),
+    ...(options.writeFinished === undefined ? {} : { writeFinished: options.writeFinished }),
     ...(options.onRevoke === undefined
       ? {}
       : {

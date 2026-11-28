@@ -5,12 +5,13 @@ import type { LogTables } from '../types';
 import type { ErasureEffects } from './erasure-effects';
 import { erasureFinishedCodec } from './erasure-finished-codec';
 import type { OpenErasure } from './read-open-erasures';
-import type { ErasureLogContext } from './types';
+import type { ErasureEntry, ErasureLogContext } from './types';
 
 // Writes erasure.finished once: a repeat after a crash finds the record and writes nothing.
 export function writeErasureFinished(
   context: ErasureLogContext & { readonly effects: Pick<ErasureEffects, 'writeBackupFloor'> },
   erasure: OpenErasure,
+  entry: Pick<ErasureEntry, 'writeFinished'>,
 ): Promise<void> {
   const started = erasure.started;
 
@@ -41,6 +42,11 @@ export function writeErasureFinished(
         }),
       },
     ]);
+
+    await entry.writeFinished(tx, {
+      target: { kind: started.kind, targetID: started.targetID, version: started.version },
+      removedKeys: started.keyCount,
+    });
 
     await context.effects.writeBackupFloor(tx);
   });

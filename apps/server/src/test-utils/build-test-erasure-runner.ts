@@ -1,4 +1,4 @@
-import type { ErasureRunnerControl, ErasureSessionCause, Log } from '@heynixie/log';
+import type { ErasureCleanupCause, ErasureRunnerControl, Log } from '@heynixie/log';
 import { makeErasureRunner } from '@heynixie/log';
 import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 
@@ -6,7 +6,7 @@ import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 // runner runs, so a test forgets for real over the log and the stores.
 export function buildTestErasureRunner(
   log: Log,
-  cleanupSessions: (cause: ErasureSessionCause) => Promise<void>,
+  cleanupSessions: (cause: ErasureCleanupCause) => Promise<void>,
 ): ErasureRunnerControl {
   const fake = buildTestErasureEffects();
 
