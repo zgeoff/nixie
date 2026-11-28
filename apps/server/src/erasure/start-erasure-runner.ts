@@ -10,6 +10,8 @@ import { writeBackupFloor } from '@heynixie/backup';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import type { ErasureHandle, ErasureRunnerControl } from '@heynixie/log';
 import { localDataStorage, makeErasureRunner } from '@heynixie/log';
+import { buildExpiryErasable, expiryErasableDescriptor } from '@heynixie/memory';
+import type { ExpiryRequest } from '@heynixie/memory';
 import { buildTextErasable, phoneTextErasableDescriptor } from '@heynixie/phone';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
@@ -47,6 +49,7 @@ export interface ErasureRunnerValues {
 export interface StartedErasureRunner extends ErasureRunnerControl {
   readonly forgets: RecordForgets;
   readonly forgetConversation: ErasureHandle<ConversationErasureRequest>;
+  readonly expire: ErasureHandle<ExpiryRequest>;
 }
 
 // The runner takes every forget through the same steps. Only the server reaches the sessions, the
@@ -136,5 +139,12 @@ export function startErasureRunner(
     }),
   });
 
-  return { ...runner, forgets, forgetConversation };
+  // Registered whether or not anything expires, because an expiry that a crash cut short finishes at
+  // the next start, and the entry reads only the log.
+  const expire = runner.register({
+    ...expiryErasableDescriptor,
+    ...buildExpiryErasable({ log: parts.context.log }),
+  });
+
+  return { ...runner, forgets, forgetConversation, expire };
 }

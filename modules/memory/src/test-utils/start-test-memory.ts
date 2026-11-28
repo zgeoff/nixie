@@ -3,8 +3,15 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
-import type { ErasureRunnerControl, ErasureSessionCause, Log, Writer } from '@heynixie/log';
+import type {
+  ErasureHandle,
+  ErasureRunnerControl,
+  ErasureSessionCause,
+  Log,
+  Writer,
+} from '@heynixie/log';
 import type { KyselyPlugin } from 'kysely';
+import type { ExpiryRequest } from '../expiry/build-expiry-erasable';
 import type { GateContext } from '../gate/gate-context';
 import type { MemoryIndexConfig } from '../index-block/default-index-settings';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
@@ -20,6 +27,10 @@ export interface TestMemory {
   readonly log: Log;
   readonly store: StartedMemoryStore;
   readonly runner: ErasureRunnerControl;
+  readonly expiry: ErasureHandle<ExpiryRequest>;
+
+  // each call that the erasure runner made to its stand-in effects, in order
+  readonly effectCalls: readonly string[];
 
   // a destroy that runs to its end, as a route's does
   readonly destroyMoment: (target: MomentTarget) => Promise<MomentDestroy>;

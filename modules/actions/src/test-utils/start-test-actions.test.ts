@@ -9,6 +9,7 @@ test('it starts a writer whose log folds the tasks, actions and proposals projec
 
   expect(tables).toStrictEqual([
     'threads',
+    'expired_keys',
     'nixie_pause',
     'pause_exemptions',
     'recoveries',

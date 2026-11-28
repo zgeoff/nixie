@@ -9,7 +9,7 @@ export const erasureFinishedCodec = defineRecordCodec(
     kind: erasableKindSchema,
     targetID: z.string(),
     shortID: z.string().nullable(),
-    by: z.enum(['user', 'assistant']),
+    by: z.enum(['user', 'assistant', 'system']),
     removedKeys: z.int().nonnegative(),
   }),
 );

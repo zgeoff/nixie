@@ -178,6 +178,56 @@ test('it leaves an expired text as a gap with its own reason and still finishes'
   ]);
 });
 
+test('it marks a text that an expiry removed as expired, never as forgotten', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'conversation',
+      erasable: { text: 'one' },
+    },
+  ]);
+
+  const keyID = await ctx.readKeyID(1);
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'erasure.started',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      payload: erasureStartedCodec.encode({
+        erasureID: 'erasure-1',
+        kind: 'expiry',
+        targetID: '1',
+        shortID: null,
+        version: null,
+        parentID: null,
+        by: 'system',
+        capture: {
+          keys: { ids: [keyID] },
+          cleanupKeys: [],
+          sandboxCallIDs: [],
+          purges: [],
+          sessionCause: { sessions: 'none' },
+          turnInputs: { threads: 'none', cleaned: false, floor: null },
+        },
+        keyCount: 1,
+      }),
+    },
+  ]);
+
+  await removeTestRecordKey(ctx.log, 1);
+  await runLogExport(ctx.log, ctx.path);
+
+  const rows = await ctx.queryExport(
+    ctx.path,
+    "select sequence, text, text_status from records where kind = 'owner_message'",
+  );
+
+  expect(rows).toStrictEqual([{ sequence: 1, text: null, text_status: 'expired' }]);
+});
+
 test('it keeps the short ID of a record beside its payload', async () => {
   const ctx = await setupTest();
 

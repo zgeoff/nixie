@@ -121,10 +121,10 @@ The file holds one table, `records`, with a row per record:
 | `text_status`                                                                       | `readable`, `none`, `shredded`, `expired` or `unreadable`                   |
 
 A record whose key is gone, or whose text fails to decrypt, keeps its envelope and payload and gets
-a null `text` with the reason in `text_status`. The reason is `shredded` when an erasure that began
-named the key, its family or its thread, and `expired` for a key that left without one. The export
-counts these gaps and finishes. The file holds no attachment: an image or another binary stays in
-the database.
+a null `text` with the reason in `text_status`. The reason is `shredded` when a forget that began
+named the key, its family or its thread, and `expired` for a key that left by [expiry](#expiry) or
+without any erasure. The export counts these gaps and finishes. The file holds no attachment: an
+image or another binary stays in the database.
 
 The export is a plain copy of every conversation, so it carries the declared effect `export`, under
 the tool name `log.export`, and passes the [decision point](../policy/decision-point.md) like any
@@ -223,3 +223,33 @@ a rebuild after a forget: every summary on the thread is shredded, and the recen
 newest `log_reset` record, so the model reads no line of the old conversation. A crash before stage
 5 leaves the erasure open with no `log_reset` record, and the next start finishes it and writes the
 `log_reset` record.
+
+## Expiry
+
+The payloads that nobody rereads expire once they are old enough: the result of a tool call, the
+result that a connector returned for an action, and the working notes of a helper. The record stays
+as a stub, with its envelope and payload, so a reader sees that the call happened and that its text
+is gone. The age is the `erasure.expire_after_days` setting of the config, 365 days by default.
+
+An expiry is an erasure of the kind `expiry`, which the
+[erasure runner](../memory/store.md#forgetting) runs, so an expired payload becomes a gap the way a
+forgotten one does:
+
+1. At the start, after the catch-up of open erasures, and then every hour, the server's expiry sweep
+   asks for one erasure at a time.
+2. The start transaction reads the records of those kinds that are older than the age, whose key no
+   expiry has named, and that no kept moment covers. A moment covers the records on its thread from
+   its first sequence to its last while it is active or retired. It keeps the keys that the key
+   store still holds, up to 500 of them, and writes `erasure.started` with them and the actor
+   `system`. It names no session, sandbox, turn input or memory purge, because none holds a payload
+   that old.
+3. The runner deletes the keys, writes `erasure.finished` and the backup floor, so the expiry makes
+   a backup due as a forget does. The sweep then starts the next batch after the last record the
+   previous one read, until a start finds nothing to expire.
+
+A crash after the start leaves the erasure open, and the next start finishes it before the sweep
+runs again. The `expired_keys` projection holds each key that an expiry named, so a reader tells an
+expired record from a forgotten one, and a rebuild of the projections gives the same rows. The
+export and `log.read` both read it: `log.read` shows an expired entry with a null `text` and
+`isExpired` true, and never as an error. A forget still wins over expiry: it names its own keys, and
+the key of a record that a forget removed is not an expiry's to name.

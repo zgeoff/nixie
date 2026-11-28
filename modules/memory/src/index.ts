@@ -166,3 +166,7 @@ export type { MomentLabel } from './moment/read-moment-labels';
 export { readMomentLabels } from './moment/read-moment-labels';
 export type { MomentDestroy, MomentTarget } from './utils/moment-context';
 export { memoryRecordTopics } from './record/memory-record-topics';
+export type { ExpiryRequest } from './expiry/build-expiry-erasable';
+export { buildExpiryErasable } from './expiry/build-expiry-erasable';
+export { expiryErasableDescriptor } from './expiry/expiry-erasable-descriptor';
+export { defaultExpiryBatchSize, runExpiry } from './expiry/run-expiry';

@@ -74,7 +74,12 @@ const logReadOutput = {
           },
           text: {
             type: ['string', 'null'],
-            description: 'null once the owner forgot it',
+            description: 'null once the entry was forgotten or has expired',
+          },
+          isExpired: {
+            type: 'boolean',
+            description:
+              'present and true when the entry is old enough that its text was removed, which is no error',
           },
           isCut: {
             type: 'boolean',
@@ -306,6 +311,7 @@ function toEntryJSON(entry: LogEntry): JSONObject {
     recordedAt: formatRecordedAt(entry.recordedAt),
     text: entry.text,
     isCut: entry.isCut,
+    ...(entry.isExpired === true ? { isExpired: true } : {}),
   };
 }
 

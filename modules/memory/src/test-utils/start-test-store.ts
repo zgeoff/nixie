@@ -3,6 +3,8 @@ import { logProjections, makeErasureRunner, startWriter } from '@heynixie/log';
 import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import { buildProposalsProjection } from '@heynixie/proposals';
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import { buildExpiryErasable } from '../expiry/build-expiry-erasable';
+import { expiryErasableDescriptor } from '../expiry/expiry-erasable-descriptor';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import { defaultIndexSettings } from '../index-block/default-index-settings';
 import { startMemoryStore } from '../memory/start-memory-store';
@@ -17,7 +19,12 @@ type StoreWiring = Pick<TestMemory, 'dataDir' | 'deploymentKey' | 'defer'>;
 export async function startTestStore(
   wiring: StoreWiring,
   options: TestMemoryOptions,
-): Promise<Pick<TestMemory, 'writer' | 'log' | 'store' | 'runner' | 'destroyMoment'>> {
+): Promise<
+  Pick<
+    TestMemory,
+    'writer' | 'log' | 'store' | 'runner' | 'expiry' | 'destroyMoment' | 'effectCalls'
+  >
+> {
   const writer = await startWriter({
     dataDir: wiring.dataDir,
     keyStoreBusyTimeoutMs: options.keyStoreBusyTimeoutMs,
@@ -52,6 +59,8 @@ export async function startTestStore(
         waitAtFaultPoint(point, { kind: 'erasure', id: erasureID }),
     },
   });
+
+  const expiry = runner.register({ ...expiryErasableDescriptor, ...buildExpiryErasable({ log }) });
 
   const store = await startMemoryStore({
     log,
@@ -96,5 +105,5 @@ export async function startTestStore(
     return begun;
   };
 
-  return { writer, log, store, runner, destroyMoment };
+  return { writer, log, store, runner, expiry, destroyMoment, effectCalls: fake.calls };
 }

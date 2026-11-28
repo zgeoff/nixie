@@ -1690,6 +1690,11 @@
           "default": 5,
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "expire_after_days": {
+          "default": 365,
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       },
       "additionalProperties": false

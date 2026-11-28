@@ -146,20 +146,18 @@ it can still decrypt, and updates it on each append. Forgetting a record removes
 
 ## Retention
 
-Retention expires content by shredding keys, so the log stays append-only. Each default is a setting
-per kind of record:
+Retention expires content by shredding keys, so the log stays append-only. Only the payloads of tool
+results and of helpers' working notes expire, after one age that a single setting holds. Every other
+record kind is kept for the deployment's life, and definition snapshots stay while a record points
+at one. [The event log](../../../architecture/core/event-log.md#expiry) describes how expiry works.
 
-| Kind                                | Default                           | Why                                                        |
-| ----------------------------------- | --------------------------------- | ---------------------------------------------------------- |
-| Envelopes                           | Kept for the deployment's life    | They hold no personal content and explain every action     |
-| Your messages and the model's text  | Kept for the deployment's life    | Retrieval over past conversation reads them                |
-| Tool results and worker transcripts | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
-| Definition snapshots                | Kept while a record points at one | A replay always finds its definitions                      |
+**Why:** tool results and working notes are the bulk of the log, and nobody rereads them after a
+year. Your messages and the model's text stay because retrieval over past conversation reads them.
 
 A record inside the span of a kept moment never expires, whatever its kind, as
 [moments](../memory/moments.md#removal-and-forgetting) sets. **Why:** a span over an autonomous task
-is mostly tool results, so the 1-year default would empty the moment. A forget still wins over the
-span: forgetting a record inside it deletes the record's key, and the moment shows a gap there.
+is mostly tool results, so the expiry age would empty the moment. A forget still wins over the span:
+forgetting a record inside it deletes the record's key, and the moment shows a gap there.
 
 An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
 transcript is a live cache, not part of the log, under [memory context](../memory/context.md).

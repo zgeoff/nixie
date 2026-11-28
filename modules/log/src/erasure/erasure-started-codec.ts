@@ -13,7 +13,7 @@ export const erasureStartedCodec = defineRecordCodec(
     shortID: z.string().nullable(),
     version: z.int().positive().nullable(),
     parentID: z.string().nullable(),
-    by: z.enum(['user', 'assistant']),
+    by: z.enum(['user', 'assistant', 'system']),
     capture: erasureCaptureSchema,
     keyCount: z.int().nonnegative(),
   }),

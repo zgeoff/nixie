@@ -66,7 +66,7 @@ function pickForgottenNote(
   if (record.kind === erasureFinishedCodec.kind) {
     const finished = erasureFinishedCodec.decode(record.payload);
 
-    return finished.kind === 'note' && finished.shortID !== null
+    return finished.kind === 'note' && finished.shortID !== null && finished.by !== 'system'
       ? { shortID: finished.shortID, by: finished.by }
       : null;
   }

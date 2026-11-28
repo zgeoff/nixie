@@ -35,7 +35,8 @@ export interface ErasureTarget {
   readonly version: number | null;
 }
 
-export type ErasureBy = 'user' | 'assistant';
+// `system` is an erasure that nixie starts itself, such as an expiry.
+export type ErasureBy = 'user' | 'assistant' | 'system';
 
 // What a store's start returns after it checked the target and read what the erasure must delete.
 export interface ErasureStart {

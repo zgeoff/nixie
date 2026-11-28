@@ -18,6 +18,7 @@ test('it starts a log with the tasks and sandboxes projections, and the stub gue
 
   expect(host.context.log.projections.map((projection) => projection.table)).toStrictEqual([
     'threads',
+    'expired_keys',
     'nixie_pause',
     'pause_exemptions',
     'recoveries',
@@ -45,6 +46,7 @@ test('it folds the projections it is given after its own', async () => {
 
   expect(host.context.log.projections.map((projection) => projection.table)).toStrictEqual([
     'threads',
+    'expired_keys',
     'nixie_pause',
     'pause_exemptions',
     'recoveries',
