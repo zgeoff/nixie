@@ -137,6 +137,8 @@ export async function writeRenewedConnection(
           fingerprint: finished.fingerprint,
           again: true,
           wasAttending,
+          endsAtMs: finished.refreshExpiresAtMs,
+          endedAtMs: target.refresh_expires_at,
         }),
       },
     ]);

@@ -1,6 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
-import type { ToolDefinition } from '@heynixie/tools';
+import type { InputResolution, ToolDefinition } from '@heynixie/tools';
 import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
 import type { ScheduleFacts } from '@heynixie/triggers';
@@ -110,7 +110,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         const refused = {
           code: 'connection_not_usable',
           path: 'connections',
-          sentence: `You cannot use ${pinned.unusable.join(', ')}, so the task cannot be pinned to it.`,
+          sentence: renderUnusableSentence(pinned.unusable),
         };
 
         return { status: 'ok', result: { refused }, refusalCode: refused.code };
@@ -164,14 +164,17 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
   };
 }
 
-// A call that lists connector tools gets the connections each one is pinned to now, before the
-// decision point reads it, so the approval covers exactly the pins the saved job holds. An account
-// that connects, or gains a scope, while the approval waits never joins the job.
-async function resolveDefineConnections(options: ChatToolOptions, input: JSONObject) {
+// Pins each listed connector tool before the decision point reads the call, so the approval covers
+// the pins the saved job holds. A call that names a connection it cannot use ends here, because a
+// list approved unresolved could resolve to other pins at save time.
+async function resolveDefineConnections(
+  options: ChatToolOptions,
+  input: JSONObject,
+): Promise<InputResolution> {
   const parsed = taskDefineInputSchema.safeParse(input);
 
   if (!parsed.success) {
-    return { status: 'ok' as const, input };
+    return { status: 'ok', input };
   }
 
   const usable = await options.connections?.readUsable();
@@ -182,11 +185,19 @@ async function resolveDefineConnections(options: ChatToolOptions, input: JSONObj
     usable: usable ?? {},
   });
 
-  if (pinned.status === 'refused' || Object.keys(pinned.pins).length === 0) {
-    return { status: 'ok' as const, input };
+  if (pinned.status === 'refused') {
+    return { status: 'error', message: renderUnusableSentence(pinned.unusable) };
   }
 
-  return { status: 'ok' as const, input: { ...input, connections: pinned.pins } };
+  if (Object.keys(pinned.pins).length === 0 && parsed.data.connections === undefined) {
+    return { status: 'ok', input };
+  }
+
+  return { status: 'ok', input: { ...input, connections: pinned.pins } };
+}
+
+function renderUnusableSentence(unusable: readonly string[]): string {
+  return `You cannot use ${unusable.join(', ')}, so the task cannot be pinned to it.`;
 }
 
 // A define that sets `memory` to `self_notes` hands the task the self-note write tools, so the call

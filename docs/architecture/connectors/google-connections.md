@@ -172,12 +172,14 @@ A task run of a definition keeps the connections its definition names for its li
   holds to those connections that hold the tool's scopes, so a job never reaches an account that
   lacks a tool's scope now and gains it later. An account holds a tool's scope only when the last
   check found every scope of the tool granted, so a tool that a release added after the account
-  consented pins to no account until the account consents again. It refuses a connection that no
-  listed tool can use with `connection_not_usable`. Before the decision point, the call's input is
-  rewritten so `connections` holds the short IDs each listed connector tool is pinned to, whether
-  the call named connections or not. The approval shows those pins and the saved job holds the same
-  pins, so an account that connects, or gains another tool's scope, while the approval waits never
-  joins the job. A `task.yaml` may carry the same map under `connections`.
+  consented pins to no account until the account consents again. Before the decision point, the
+  call's input is rewritten so `connections` holds the short IDs each listed connector tool is
+  pinned to, whether the call named connections or not. A call that names a connection no listed
+  tool can use ends there as an error, before it asks for any approval, because a list approved
+  unresolved could resolve to other pins at save time. A call that reaches `run` with the list
+  unresolved is refused with `connection_not_usable`. The approval shows those pins and the saved
+  job holds the same pins, so an account that connects, or gains another tool's scope, while the
+  approval waits never joins the job. A `task.yaml` may carry the same map under `connections`.
 - A Google tool resolves its call against the pinned connections only. A call whose `connection`
   argument falls outside the pins fails with `NOT_PINNED` and lists the connections the task may
   use. With no argument, the tool picks among the pinned connections that are live.
@@ -194,12 +196,14 @@ A task run of a definition keeps the connections its definition names for its li
 ## The status line
 
 The first message of a session lists each connection that is `needs_consent`, `failing` or
-`expiring`, and never one that is `forgotten`. A connection's line holds its connector, label,
-account, status, reason, the time the status began, its last success, the removed tools and where to
-reconnect, which is Settings → Connections. The removed tools are the tools whose calls the status
-stops: a `needs_consent` connection stops every tool of its connector whose scopes it holds, and a
-`failing` or `expiring` one stops none. The line names up to 5 by name and counts the rest. A rule
-under the list tells the model when to raise each kind of line.
+`expiring`, and never one that is `forgotten`. A connection is `forgotten` from the moment its
+Forget begins, so a Forget that waits on its revocation never lists the connection. A connection's
+line holds its connector, label, account, status, reason, the time the status began, its last
+success, the removed tools and where to reconnect, which is Settings → Connections. The removed
+tools are the tools whose calls the status stops: a `needs_consent` connection stops every tool of
+its connector whose scopes it holds, and a `failing` or `expiring` one stops none. The line names up
+to 5 by name and counts the rest. A rule under the list tells the model when to raise each kind of
+line.
 
 - The entry renders nothing, and the session opens with no connections line, while every connection
   works.
@@ -207,7 +211,9 @@ under the list tells the model when to raise each kind of line.
   end. Neither moves the credential store's status, so an hourly sweep, `runStatusWatch`, writes a
   `connection.status_reached` record the first time the clock takes a connection into either. The
   sweep compares the status the clock reads with the one the store holds, so a failing connection
-  whose grant ends still gets its record, and it runs at least 4 times in `google.break_notice`.
+  whose grant ends still gets its record, and it runs at least 4 times in `google.break_notice`. A
+  connection that the store marks `needs_consent` after its grant ended lists from the end of the
+  grant.
 - A task run of a definition reads the same entry, limited to the pinned connections and with no
   model credential, as an `<input name="connections">` block after the trigger. The block renders
   with the run's other blocks, in a new session or at the first step of a task run that nothing
@@ -238,14 +244,21 @@ a connection makes, read from the log:
   that started with the connection broken, from the `connection.run_without` records. Each count
   covers the calls that began, and the runs that started, from the break's start to the return, by
   their own times. A break that the clock began starts when the grant ended, not when the sweep
-  wrote its record. A return from `expiring` alone counts none. A reconnect that renews a grant
-  already within its window, before the sweep wrote the `expiring` record, still gives a return;
+  wrote its record, and a reconnect that renews a grant that had ended counts from that end when no
+  record of the break exists. A return from `expiring` alone counts none. A reconnect that renews a
+  grant already within its window, before the sweep wrote the `expiring` record, still gives a
+  return. A reconnect whose new grant ends within the window is no return: it is a change into
+  `expiring`, or no line when the connection was `expiring` already;
 - a break that passes `google.break_notice`, once per break, from the `connection.break_lasted`
   record that the sweep writes. A break begins at its earliest failing or consent step after the
-  last return, and a consent step that the clock took counts from the end of the grant, so the
-  notice falls due at that end plus the notice time whenever the sweep runs. A refresh that fails
-  again never moves the start or repeats the record. The sweep runs at least 4 times in the notice
-  time, and as often as every millisecond for a notice time that short.
+  last return, or at the end of the grant when the store marked the connection later, and a consent
+  step that the clock took counts from the end of the grant, so the notice falls due at that end
+  plus the notice time whenever the sweep runs. A refresh that fails again never moves the start or
+  repeats the record. The sweep runs at least 4 times in the notice time, and as often as every
+  millisecond for a notice time that short.
+
+A change into the status and reason that the connection already holds gives no line. Each line
+leaves out its own time, because the events block puts the time before every line.
 
 A model-originated call through a connection writes one `connection.call_failed` record, holding the
 time the call began, when the call fails or answers a non-ok status while the connection is

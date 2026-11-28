@@ -48,8 +48,8 @@ test('it lists each status event of a connection after its time, oldest first', 
   const block = await ctx.read();
 
   expect(block.text?.split('\n').slice(1)).toStrictEqual([
-    '- Fri 20 Nov, 09:00, UTC · The google connection "Work" (sam@example.com) is now failing (no_answer) as of Fri 20 Nov, 09:00, UTC. Last success none yet. Reconnect it in Settings → Connections.',
-    '- Fri 20 Nov, 10:00, UTC · The google connection "Work" (sam@example.com) is active again as of Fri 20 Nov, 10:00, UTC. 2 calls failed during the break.',
+    '- Fri 20 Nov, 09:00, UTC · The google connection "Work" (sam@example.com) is now failing (no_answer). Last success none yet. Reconnect it in Settings → Connections.',
+    '- Fri 20 Nov, 10:00, UTC · The google connection "Work" (sam@example.com) is active again. 2 calls failed during the break.',
   ]);
 });
 

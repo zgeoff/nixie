@@ -450,3 +450,32 @@ test('it leaves the input of a call that lists no connector tool as it is', asyn
     input: parseJSONObject(JSON.stringify(input)),
   });
 });
+
+test('it refuses before approval a call that names a connection no listed tool can use, so one that becomes usable later is never saved unseen', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const resolved = await ctx.resolve({
+    ...buildTestDefineInput({ tools: ['time.now'] }),
+    connections: ['p8d2v6n4rc'],
+  });
+
+  expect(resolved).toStrictEqual({
+    status: 'error',
+    message: 'You cannot use p8d2v6n4rc, so the task cannot be pinned to it.',
+  });
+});
+
+test('it replaces the named connections of a call that lists no connector tool with an empty pin map', async () => {
+  const ctx = await setupTest();
+
+  const input = { ...buildTestDefineInput({ tools: ['tasks.list'] }), connections: ['k3x9m2p7qa'] };
+
+  const resolved = await ctx.resolve(input);
+
+  expect(resolved).toStrictEqual({
+    status: 'ok',
+    input: parseJSONObject(JSON.stringify({ ...input, connections: {} })),
+  });
+});

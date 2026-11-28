@@ -35,9 +35,9 @@ interface DueOptions {
   readonly noticeMs: number;
 }
 
-// The records that the clock owes the log: each time the clock alone took a connection into
-// `expiring` or `needs_consent`, and each break that passed `noticeMs`, once per break. A break
-// begins at its earliest failing or consent step after the last return to `active`.
+// The records the clock owes the log: each time the clock alone took a connection into `expiring` or
+// `needs_consent`, and each break past `noticeMs`, once. A break begins at its earliest failing or
+// consent step since the last return, or when its status began, such as a grant's end, if earlier.
 export function collectDueStatusRecords(
   connections: readonly WatchedConnection[],
   steps: readonly StatusStep[],
@@ -66,7 +66,7 @@ export function collectDueStatusRecords(
     }
 
     const isBreak = watched.status === 'needs_consent' || watched.status === 'failing';
-    const sinceMs = pickBreakStartMs(current) ?? watched.sinceMs;
+    const sinceMs = Math.min(pickBreakStartMs(current) ?? watched.sinceMs, watched.sinceMs);
 
     if (
       isBreak &&

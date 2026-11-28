@@ -1,5 +1,6 @@
 import type { LogRecord, RecordKind } from '@heynixie/log';
 import { z } from 'zod';
+import { expiringWindowMs } from '../connection/pick-connection-status';
 import { breakLastedCodec } from '../record/break-lasted-codec';
 import { connectedCodec } from '../record/connected-codec';
 import { statusReachedCodec } from '../record/status-reached-codec';
@@ -15,9 +16,9 @@ const stepKinds = [
   connectedCodec.kind,
 ] as const satisfies readonly RecordKind[];
 
-// Every step of the status of the connections the IDs name, oldest first, from the whole log. A
-// step the clock took holds the time of the grant, not of the record. A reconnect that renewed a
-// connection steps it back to `active`, because it writes no status change of its own.
+// Every status step of the connections the IDs name, oldest first. A step the clock took holds the
+// time of the grant. A renewal, which writes no status change of its own, steps the connection to
+// `active`, or to `expiring` when its new grant ends within the window.
 export async function readStatusSteps(
   context: ServiceContext,
   known: ReadonlySet<string>,
@@ -69,15 +70,25 @@ function parseStep(record: LogRecord, known: ReadonlySet<string>): StatusStep[] 
   if (record.kind === connectedCodec.kind) {
     const connected = connectedCodec.decode(record.payload);
 
-    return connected.again && known.has(connected.connection)
-      ? [
-          {
-            ...base,
-            connection: connected.connection,
-            step: { kind: 'active', wasAttending: connected.wasAttending === true },
-          },
-        ]
-      : [];
+    if (!connected.again || !known.has(connected.connection)) {
+      return [];
+    }
+
+    const endedAtMs = connected.endedAtMs ?? null;
+
+    return [
+      {
+        ...base,
+        connection: connected.connection,
+        step: isExpiringGrant(connected.endsAtMs ?? null, base.atMs)
+          ? { kind: 'expiring' }
+          : {
+              kind: 'active',
+              wasAttending: connected.wasAttending === true,
+              ...(endedAtMs !== null && endedAtMs <= base.atMs ? { endedAtMs } : {}),
+            },
+      },
+    ];
   }
 
   const stored = storedChangeSchema.safeParse(record.payload);
@@ -98,4 +109,10 @@ function parseStep(record: LogRecord, known: ReadonlySet<string>): StatusStep[] 
           : { kind: change.status },
     },
   ];
+}
+
+// A renewal that gives a grant within the expiring window of its end leaves the connection
+// `expiring`, so it is no return to `active`.
+function isExpiringGrant(endsAtMs: number | null, atMs: number): boolean {
+  return endsAtMs !== null && endsAtMs - atMs <= expiringWindowMs;
 }

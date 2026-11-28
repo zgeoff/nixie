@@ -25,10 +25,10 @@ export const connectionStatusText = {
   ].join('\n'),
 
   changedLine:
-    'The {{ connector }} connection "{{ label }}"{{ account }} is now {{ status }}{{ reason }} as of {{ at }}. Last success {{ lastSuccess }}.{{ removed }} Reconnect it in {{ place }}.',
+    'The {{ connector }} connection "{{ label }}"{{ account }} is now {{ status }}{{ reason }}. Last success {{ lastSuccess }}.{{ removed }} Reconnect it in {{ place }}.',
 
   returnedLine:
-    'The {{ connector }} connection "{{ label }}"{{ account }} is active again as of {{ at }}. {{ failed }}{{ runs }}',
+    'The {{ connector }} connection "{{ label }}"{{ account }} is active again. {{ failed }}{{ runs }}',
 
   lastedLine:
     'The {{ connector }} connection "{{ label }}"{{ account }} has been broken since {{ since }}. Tell the owner once, at a natural moment.',

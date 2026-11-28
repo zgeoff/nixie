@@ -21,6 +21,9 @@ export interface StatusStep {
 
         // a renewal that found the connection in a status the model hears of
         readonly wasAttending?: boolean;
+
+        // for a renewal of a grant that had ended, when it ended
+        readonly endedAtMs?: number;
       }
     | { readonly kind: 'needs_consent' }
     | { readonly kind: 'expiring' }
@@ -45,11 +48,12 @@ interface StatusFacts {
   readonly facts: ReadonlyMap<string, ConnectionFacts>;
 }
 
-// The events of the range: a line for each change into a status the model hears of, each return to
-// `active` from one of them, and each break that passed the notice time. A return counts, by the
-// time each happened, the calls that failed and the job runs that ran without the connection.
+// The events of the range: each change into a status the model hears of, never into the one it
+// holds, each return to `active` from one, and each break that passed the notice time. A return
+// counts the calls that failed and the job runs that ran without the connection in its break.
 export function collectStatusEvents(facts: StatusFacts, range: StatusEventRange): StatusEvent[] {
   const away = new Set<string>();
+  const held = new Map<string, string>();
 
   const events: StatusEvent[] = [];
 
@@ -61,6 +65,8 @@ export function collectStatusEvents(facts: StatusFacts, range: StatusEventRange)
     const isInRange = step.sequence > range.after && step.sequence <= range.through;
 
     if (change.kind === 'active') {
+      held.delete(step.connection);
+
       const wasAway = away.delete(step.connection) || change.wasAttending === true;
 
       if (isInRange && who !== undefined && wasAway) {
@@ -78,11 +84,15 @@ export function collectStatusEvents(facts: StatusFacts, range: StatusEventRange)
       continue;
     }
 
+    const heldBefore = held.get(step.connection);
+    const heldNow = change.kind === 'failing' ? `failing:${String(change.reason)}` : change.kind;
+
     if (change.kind !== 'lasted') {
       away.add(step.connection);
+      held.set(step.connection, heldNow);
     }
 
-    if (!isInRange || who === undefined) {
+    if (!isInRange || who === undefined || heldBefore === heldNow) {
       continue;
     }
 
@@ -121,16 +131,20 @@ interface BreakBounds {
   readonly endMs: number;
 }
 
-// The time span of the break a return ends: from its first failing or consent step after the last
-// return to `active`, to the return. A call or a run counts in the span of the time it happened.
+// The break a return ends: from its first failing or consent step since the last return, or from the
+// end of the grant it renewed when that comes first, so an end that no step recorded still starts a
+// break, to the return. A call or a job run counts by the time it happened.
 function pickBreakBounds(steps: readonly StatusStep[], returned: StatusStep): BreakBounds {
   const earlier = steps.filter(
     (step) => step.connection === returned.connection && step.sequence < returned.sequence,
   );
 
   const lastActive = earlier.findLastIndex((step) => step.step.kind === 'active');
+  const recordedMs = pickBreakStartMs(earlier.slice(lastActive + 1));
+  const endedAtMs = returned.step.kind === 'active' ? returned.step.endedAtMs : undefined;
+  const starts = [recordedMs, endedAtMs].filter((startMs) => typeof startMs === 'number');
 
-  return { startMs: pickBreakStartMs(earlier.slice(lastActive + 1)), endMs: returned.atMs };
+  return { startMs: starts.length === 0 ? null : Math.min(...starts), endMs: returned.atMs };
 }
 
 function countNotes(notes: readonly BreakNote[], connection: string, bounds: BreakBounds): number {

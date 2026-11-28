@@ -57,6 +57,19 @@ test('it dates a break from its first failing step, not from the status time tha
   expect(due).toStrictEqual([{ kind: 'lasted', key: { connection: 'conn-1', sinceMs: 0 } }]);
 });
 
+test('it dates a break from the end of the grant when the store marked it as needing consent later', () => {
+  const ctx = setupTest();
+
+  const due = ctx.collect(
+    { ...ctx.watched, status: 'needs_consent', sinceMs: 0.5 * ctx.day, endsAtMs: 0.5 * ctx.day },
+    [ctx.buildStep(1, 1.5 * ctx.day, { kind: 'needs_consent' })],
+  );
+
+  expect(due).toStrictEqual([
+    { kind: 'lasted', key: { connection: 'conn-1', sinceMs: 0.5 * ctx.day } },
+  ]);
+});
+
 test('it owes one record for the whole break when it moves from failing to needing consent', () => {
   const ctx = setupTest();
 

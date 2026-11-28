@@ -63,7 +63,11 @@ test('it writes a record after the time that the setting names', async () => {
 test('it writes one record when the clock takes a connection into expiring', async () => {
   const ctx = await setupTest();
 
-  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * ctx.day);
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 4 * ctx.day);
+
+  const endsAtMs = ctx.clock.now() + 4 * ctx.day;
+
+  ctx.clock.advance(2 * ctx.day);
 
   const first = await ctx.connections.runStatusWatch();
   const second = await ctx.connections.runStatusWatch();
@@ -76,7 +80,7 @@ test('it writes one record when the clock takes a connection into expiring', asy
       {
         connection: ctx.row.connection_id,
         status: 'expiring',
-        endsAtMs: ctx.clock.now() + 2 * ctx.day,
+        endsAtMs,
       },
     ],
   ]);
@@ -154,11 +158,15 @@ test('it writes a record when the grant of a failing connection ends', async () 
 test('it writes a record again for an expiry that a reconnect renewed', async () => {
   const ctx = await setupTest();
 
-  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * ctx.day);
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 4 * ctx.day);
+
+  ctx.clock.advance(2 * ctx.day);
 
   await ctx.connections.runStatusWatch();
 
-  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * ctx.day);
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 4 * ctx.day);
+
+  ctx.clock.advance(2 * ctx.day);
 
   const written = await ctx.connections.runStatusWatch();
 

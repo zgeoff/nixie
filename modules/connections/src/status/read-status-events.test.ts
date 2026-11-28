@@ -249,3 +249,67 @@ test('it counts a call that failed after the grant ended and before the sweep re
     ['returned', 1],
   ]);
 });
+
+test('it reads no return of a renewal that leaves an expiring grant within 3 days of its end', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 2 * 24 * 60 * 60 * 1000);
+
+  await ctx.connections.runStatusWatch();
+
+  const afterChange = await ctx.readHead();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 24 * 60 * 60 * 1000);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(events).toStrictEqual([]);
+});
+
+test('it reads a renewal past the end of a grant into a grant within 3 days of its end as a change into expiring', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 60_000);
+
+  ctx.clock.advance(61_000);
+
+  await ctx.connections.runStatusWatch();
+
+  const afterChange = await ctx.readHead();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 24 * 60 * 60 * 1000);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(
+    events.map((event) => [event.kind, event.kind === 'changed' ? event.status : null]),
+  ).toStrictEqual([['changed', 'expiring']]);
+});
+
+test('it counts a call that failed after the grant ended when no sweep recorded the end before the reconnect', async () => {
+  const ctx = await setupTest();
+
+  await seedGrantEnd(ctx, ctx.row, 'code-work', 60_000);
+
+  const afterChange = await ctx.readHead();
+
+  ctx.clock.advance(61_000);
+
+  await ctx.callGmail();
+  await ctx.connect('code-work', ctx.row.short_id);
+
+  const events = await ctx.connections.readStatusEvents({
+    after: afterChange,
+    through: await ctx.readHead(),
+  });
+
+  expect(
+    events.map((event) => [event.kind, event.kind === 'returned' ? event.failedCalls : null]),
+  ).toStrictEqual([['returned', 1]]);
+});

@@ -6,13 +6,13 @@ import { renderConnectionAccount } from './render-connection-account';
 import { renderLastSuccess } from './render-last-success';
 import { renderRemovedTools } from './render-removed-tools';
 
-// One line of the events block about a connection.
+// One line of the events block about a connection. The block puts the time of the event before the
+// line, so the line holds only the times of other moments.
 export function renderConnectionEvent(event: StatusEvent, timeZone: string): string {
   const named = {
     connector: event.who.connector,
     label: event.who.label,
     account: renderConnectionAccount(event.who.account),
-    at: formatEventTime(event.atMs, timeZone),
   };
 
   if (event.kind === 'changed') {

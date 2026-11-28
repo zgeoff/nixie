@@ -263,26 +263,19 @@ test('it never pins a job to an account that connects while the approval card is
   expect(version?.connections).toStrictEqual({ 'time.now': ['k3x9m2p7qa', 'p8d2v6n4rc'] });
 });
 
-test('it refuses a definition from chat that names a connection the conversation may not use, and stores none', async () => {
+test('it refuses a definition from chat that names a connection the conversation may not use before any approval, and stores none', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
   await ctx.startConversation();
 
-  const refused = await ctx.runDefine({ connections: ['zzzzzzzzzz'] });
+  const refused = await ctx.resolveDefine({ connections: ['zzzzzzzzzz'] });
   const changed = await readRecords(ctx.log, { afterSequence: 0, kinds: ['definition.changed'] });
 
   expect([refused, changed]).toStrictEqual([
     {
-      status: 'ok',
-      result: {
-        refused: {
-          code: 'connection_not_usable',
-          path: 'connections',
-          sentence: 'You cannot use zzzzzzzzzz, so the task cannot be pinned to it.',
-        },
-      },
-      refusalCode: 'connection_not_usable',
+      status: 'error',
+      message: 'You cannot use zzzzzzzzzz, so the task cannot be pinned to it.',
     },
     [],
   ]);

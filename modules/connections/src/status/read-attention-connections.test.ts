@@ -124,6 +124,23 @@ test('it lists a connection past the end of its grant as needing consent from th
   expect([listed?.status, listed?.sinceMs]).toStrictEqual(['needs_consent', endsAtMs]);
 });
 
+test('it lists a connection that the store marked as needing consent after its grant ended from that end', async () => {
+  const ctx = await setupTest();
+  const row = await ctx.connectAccount('code-work');
+
+  const endsAtMs = ctx.clock.now() + 60_000;
+
+  await seedGrantEnd(ctx, row, 'code-work', 60_000);
+
+  ctx.clock.advance(120_000);
+
+  await seedConnectionStatus(ctx, row.connection_id, { status: 'needs_consent' });
+
+  const [listed] = await ctx.connections.readAttention();
+
+  expect([listed?.status, listed?.sinceMs]).toStrictEqual(['needs_consent', endsAtMs]);
+});
+
 test('it never lists a forgotten connection', async () => {
   const ctx = await setupTest();
   const row = await ctx.connectAccount('code-work');
@@ -135,6 +152,22 @@ test('it never lists a forgotten connection', async () => {
   const attention = await ctx.connections.readAttention();
 
   expect(attention).toStrictEqual([]);
+});
+
+test('it never lists a connection whose forget is still in progress', async () => {
+  const ctx = await setupTest();
+  const row = await ctx.connectAccount('code-work');
+
+  await seedConnectionStatus(ctx, row.connection_id, { status: 'failing' });
+
+  ctx.effects.crashAt('erasure.revoked');
+
+  await ctx.connections.forgetConnection(row.short_id);
+
+  const [stored] = await ctx.readRows();
+  const attention = await ctx.connections.readAttention();
+
+  expect([stored?.binding, attention]).toStrictEqual(['removing', []]);
 });
 
 test('it lists only the pinned connections when it is given a scope', async () => {

@@ -30,7 +30,7 @@ test('it renders a change into failing with its reason, its last success and whe
   });
 
   expect(line).toBe(
-    'The google connection "Work" (sam@example.com) is now failing (no_answer) as of Fri 20 Nov, 09:00, London. Last success Fri 20 Nov, 08:30, London. Reconnect it in Settings → Connections.',
+    'The google connection "Work" (sam@example.com) is now failing (no_answer). Last success Fri 20 Nov, 08:30, London. Reconnect it in Settings → Connections.',
   );
 });
 
@@ -47,7 +47,7 @@ test('it renders a change into needs consent with the tools it removed and no la
   });
 
   expect(line).toBe(
-    'The google connection "Work" (sam@example.com) is now needs consent as of Fri 20 Nov, 09:00, London. Last success none yet. Calls to these tools stop: gmail.search, gmail.read. Reconnect it in Settings → Connections.',
+    'The google connection "Work" (sam@example.com) is now needs consent. Last success none yet. Calls to these tools stop: gmail.search, gmail.read. Reconnect it in Settings → Connections.',
   );
 });
 
@@ -89,7 +89,7 @@ test.each([
   });
 
   expect(line).toBe(
-    `The google connection "Work" (sam@example.com) is active again as of Fri 20 Nov, 09:00, London. ${row.sentence}`,
+    `The google connection "Work" (sam@example.com) is active again. ${row.sentence}`,
   );
 });
 
