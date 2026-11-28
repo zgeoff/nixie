@@ -31,11 +31,22 @@ test('it pins and exposes a new tool at its first listing, with no proposal', as
   const tool = await ctx.readTool('tracker.item_get');
   const open = await readOpenProposals(ctx.mcp.log.writer.db, ctx.mcp.context.now());
 
-  expect([moves, tool, open]).toMatchObject([
-    [{ tool: 'tracker.item_get', cause: 'listed', toHash: hashToolForm(buildToolForm()) }],
-    { state: 'exposed', pinned_hash: hashToolForm(buildToolForm()), proposal_id: null },
-    [],
+  expect(moves).toStrictEqual([
+    {
+      tool: 'tracker.item_get',
+      fromHash: null,
+      toHash: hashToolForm(buildToolForm()),
+      cause: 'listed',
+    },
   ]);
+
+  expect([tool?.state, tool?.pinned_hash, tool?.proposal_id]).toStrictEqual([
+    'exposed',
+    hashToolForm(buildToolForm()),
+    null,
+  ]);
+
+  expect(open).toStrictEqual([]);
 });
 
 test('it moves the pin of a changed tool that keeps its input shape, and tells you', async () => {
@@ -51,17 +62,29 @@ test('it moves the pin of a changed tool that keeps its input shape, and tells y
   const tool = await ctx.readTool('tracker.item_get');
   const notices = await ctx.mcp.readNotices();
 
-  expect([tool, moves, notices]).toMatchObject([
-    { state: 'exposed', pinned_hash: hashToolForm(changed), proposal_id: null },
-    [{ tool: 'tracker.item_get', cause: 'changed', toHash: hashToolForm(changed) }],
-    [
-      {
-        tool: 'tracker.item_get',
-        change: 'tool_changed',
-        fromHash: hashToolForm(first),
-        toHash: hashToolForm(changed),
-      },
-    ],
+  expect([tool?.state, tool?.pinned_hash, tool?.proposal_id]).toStrictEqual([
+    'exposed',
+    hashToolForm(changed),
+    null,
+  ]);
+
+  expect(moves).toStrictEqual([
+    {
+      tool: 'tracker.item_get',
+      fromHash: hashToolForm(first),
+      toHash: hashToolForm(changed),
+      cause: 'changed',
+    },
+  ]);
+
+  expect(notices).toStrictEqual([
+    {
+      serverID: 'tracker',
+      tool: 'tracker.item_get',
+      change: 'tool_changed',
+      fromHash: hashToolForm(first),
+      toHash: hashToolForm(changed),
+    },
   ]);
 });
 
@@ -92,13 +115,16 @@ test('it stops a tool that gains an input property until you accept the change',
 
   const accepted = await ctx.readTool('tracker.item_get');
 
-  expect([stopped, accepted]).toMatchObject([
-    {
-      state: 'stopped_changed',
-      pinned_hash: hashToolForm(first),
-      latest_hash: hashToolForm(ctx.widened),
-    },
-    { state: 'exposed', pinned_hash: hashToolForm(ctx.widened), proposal_id: null },
+  expect([stopped?.state, stopped?.pinned_hash, stopped?.latest_hash]).toStrictEqual([
+    'stopped_changed',
+    hashToolForm(first),
+    hashToolForm(ctx.widened),
+  ]);
+
+  expect([accepted?.state, accepted?.pinned_hash, accepted?.proposal_id]).toStrictEqual([
+    'exposed',
+    hashToolForm(ctx.widened),
+    null,
   ]);
 });
 
@@ -124,11 +150,11 @@ test('it keeps an accept that commits while the listing is between its read and 
 
   const tool = await ctx.readTool('tracker.item_get');
 
-  expect(tool).toMatchObject({
-    state: 'stopped_changed',
-    pinned_hash: hashToolForm(ctx.widened),
-    latest_hash: hashToolForm(further),
-  });
+  expect([tool?.state, tool?.pinned_hash, tool?.latest_hash]).toStrictEqual([
+    'stopped_changed',
+    hashToolForm(ctx.widened),
+    hashToolForm(further),
+  ]);
 });
 
 test('it closes the approval of a tool that the next listing omits', async () => {

@@ -531,10 +531,18 @@ test('it finds no connector for a tool the proxy does not serve', async () => {
   expect(ctx.mcp.findConnector('tracker.item_missing')).toBeUndefined();
 });
 
-test('it tells the model each server with its sign-in, health and tool counts', async () => {
+test('it tells the model each server with its sign-in, health and tool counts, and fences each name and reason as untrusted text', async () => {
   const ctx = await setupTest();
 
-  ctx.site.setTools([ctx.itemGet, ctx.widenedCreate]);
+  ctx.site.setTools([
+    ctx.itemGet,
+    ctx.widenedCreate,
+    {
+      name: 'item odd',
+      description: 'A tool whose name nixie refuses.',
+      inputSchema: { type: 'object' },
+    },
+  ]);
 
   await ctx.mcp.list('tracker');
 
@@ -547,15 +555,28 @@ test('it tells the model each server with its sign-in, health and tool counts', 
         state: 'added',
         signIn: 'ok',
         health: 'healthy',
-        tools: { exposed: 1, stopped: 1, hidden: 0 },
+        tools: { exposed: 1, stopped: 1, hidden: 1 },
         toolList: [
           {
-            tool: expect.stringContaining('"tracker.item_create"'),
+            tool: expect.stringMatching(
+              /^<tool-result source="untrusted" fence="[0-9a-f]+">\n"tracker\.item odd"\n<\/tool-result fence="[0-9a-f]+">$/u,
+            ),
+            state: 'hidden_new',
+            hiddenReason: expect.stringMatching(
+              /^<tool-result source="untrusted" fence="[0-9a-f]+">\n".+"\n<\/tool-result fence="[0-9a-f]+">$/su,
+            ),
+          },
+          {
+            tool: expect.stringMatching(
+              /^<tool-result source="untrusted" fence="[0-9a-f]+">\n"tracker\.item_create"\n<\/tool-result fence="[0-9a-f]+">$/u,
+            ),
             state: 'stopped_changed',
             hiddenReason: null,
           },
           {
-            tool: expect.stringContaining('"tracker.item_get"'),
+            tool: expect.stringMatching(
+              /^<tool-result source="untrusted" fence="[0-9a-f]+">\n"tracker\.item_get"\n<\/tool-result fence="[0-9a-f]+">$/u,
+            ),
             state: 'exposed',
             hiddenReason: null,
           },
@@ -1433,7 +1454,7 @@ test('it lets one rule on the whole server run a write of the server, and asks n
   ]).toStrictEqual([['done'], ['item_create']]);
 });
 
-test('it runs no queued call once its tool has another pin, and tells the model to call again', async () => {
+test('it sends no first attempt of a queued call once its tool has another pin, and tells the model to call again', async () => {
   const ctx = await setupTest();
 
   const ran = await ctx.callInStep(['tracker.*'], async () => {
@@ -1448,5 +1469,138 @@ test('it runs no queued call once its tool has another pin, and tells the model 
     0,
   ]);
 
-  expect(JSON.stringify(ran.results)).toContain('call it again');
+  expect(ran.results).toStrictEqual([
+    {
+      content: [
+        {
+          type: 'text',
+          text: expect.stringMatching(
+            /^<tool-result source="untrusted" fence="[0-9a-f]+">\naction [0-9a-f-]+ failed: tracker\.item_create changed after you approved this call, so nothing ran; call it again\n<\/tool-result fence="[0-9a-f]+">$/u,
+          ),
+        },
+      ],
+      isError: true,
+    },
+  ]);
+});
+
+test('it sends no first attempt of a queued call once its override is replaced with another idempotency argument', async () => {
+  const ctx = await setupTest();
+
+  const keyedCreate = {
+    ...ctx.itemCreate,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        requestID: { type: 'string' },
+        otherID: { type: 'string' },
+      },
+      required: ['title'],
+    },
+  };
+
+  ctx.setOverrides(
+    {
+      tracker: {
+        item_create: {
+          effects: ['write'],
+          destinations: [],
+          amount: null,
+          content: null,
+          reconcile: { idempotencyKey: 'requestID' },
+        },
+      },
+    },
+    'sha256:first',
+  );
+
+  ctx.site.setTools([ctx.itemGet, keyedCreate]);
+
+  await ctx.mcp.list('tracker');
+  await ctx.acceptChange('tracker.item_create');
+
+  const ran = await ctx.callInStep(['tracker.*'], async () => {
+    ctx.setOverrides(
+      {
+        tracker: {
+          item_create: {
+            effects: ['write'],
+            destinations: [],
+            amount: null,
+            content: null,
+            reconcile: { idempotencyKey: 'otherID' },
+          },
+        },
+      },
+      'sha256:second',
+    );
+
+    await ctx.mcp.refit();
+  });
+
+  expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
+    ['failed'],
+    0,
+  ]);
+});
+
+test('it sends no first attempt of a queued call once an override is added for its tool', async () => {
+  const ctx = await setupTest();
+
+  const ran = await ctx.callInStep(['tracker.*'], async () => {
+    ctx.setOverrides(
+      {
+        tracker: {
+          item_create: {
+            effects: ['write'],
+            destinations: [],
+            amount: null,
+            content: null,
+            reconcile: null,
+          },
+        },
+      },
+      'sha256:added',
+    );
+
+    await ctx.mcp.refit();
+  });
+
+  expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
+    ['failed'],
+    0,
+  ]);
+});
+
+test('it sends no first attempt of a queued call once the override of its tool is removed', async () => {
+  const ctx = await setupTest();
+
+  ctx.setOverrides(
+    {
+      tracker: {
+        item_create: {
+          effects: ['write'],
+          destinations: [],
+          amount: null,
+          content: null,
+          reconcile: null,
+        },
+      },
+    },
+    'sha256:first',
+  );
+
+  await ctx.mcp.refit();
+
+  const ran = await ctx.callInStep(['tracker.*'], async () => {
+    ctx.setOverrides({}, 'sha256:removed');
+
+    await ctx.mcp.refit();
+  });
+
+  expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
+    ['failed'],
+    0,
+  ]);
 });

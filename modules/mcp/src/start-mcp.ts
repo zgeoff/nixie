@@ -560,8 +560,8 @@ function buildSignInRefusal(serverID: string) {
   return { kind: 'refused' as const, text: `${serverID} needs you to sign in again` };
 }
 
-// The facts of a config entry. The entry may hold more keys, such as one that an earlier release
-// read, and the facts in use and their hash never cover them.
+// The facts of a config entry. The entry may hold more keys, and the facts in use and their hash
+// never cover them.
 function pickServerFacts(entry: ServerFacts): ServerFacts {
   return {
     url: entry.url,

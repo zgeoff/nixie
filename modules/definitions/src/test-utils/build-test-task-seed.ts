@@ -37,7 +37,7 @@ export function buildTestTaskSeed(serverIDs: readonly string[] = []): TaskSeedCo
         },
       }),
       toolNames,
-      conversationTools,
+      conversationTools: [...conversationTools, ...serverIDs.map((serverID) => `${serverID}.*`)],
     }),
   };
 }

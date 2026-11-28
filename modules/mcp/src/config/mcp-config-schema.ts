@@ -41,9 +41,6 @@ function buildServerSchema(isTestBuild: boolean) {
       clientID: z.string().min(1),
       scope: z.string().min(1),
       privateRange: z.string().nullable().default(null),
-
-      // A config written for an earlier release holds this key. It decides nothing, because every
-      // tool pins at its first listing, and the server's facts leave it out.
       trusted: z.boolean().optional(),
     })
     .superRefine((server, issues) => {

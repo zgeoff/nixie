@@ -105,11 +105,14 @@ test('it pins a tool that stayed hidden for an answer that never came, at its cu
     nameRefusal: null,
   });
 
-  expect(decision).toMatchObject({
+  expect(decision).toStrictEqual({
     state: 'exposed',
     pinnedHash: 'sha256:b',
+    latestHash: 'sha256:b',
     move: { fromHash: null, toHash: 'sha256:b', cause: 'listed' },
     propose: null,
+    notice: null,
+    hiddenReason: null,
   });
 });
 
@@ -122,9 +125,13 @@ test('it keeps a tool hidden, with the reason, when its name is refused', () => 
     nameRefusal: 'its name is longer than the model allows',
   });
 
-  expect(decision).toMatchObject({
+  expect(decision).toStrictEqual({
     state: 'hidden_new',
+    pinnedHash: null,
+    latestHash: 'sha256:a',
+    move: null,
     propose: null,
+    notice: null,
     hiddenReason: 'its name is longer than the model allows',
   });
 });
@@ -138,11 +145,14 @@ test('it pins the latest form of a tool whose pinned form a forget erased', () =
     nameRefusal: null,
   });
 
-  expect(decision).toMatchObject({
+  expect(decision).toStrictEqual({
     state: 'exposed',
     pinnedHash: 'sha256:b',
+    latestHash: 'sha256:b',
     move: { fromHash: 'sha256:a', toHash: 'sha256:b', cause: 'forgotten' },
     propose: null,
+    notice: null,
+    hiddenReason: null,
   });
 });
 
@@ -155,7 +165,15 @@ test('it exposes a stopped tool again when the server returns to the pinned form
     nameRefusal: null,
   });
 
-  expect(decision).toMatchObject({ state: 'exposed', move: null, propose: null });
+  expect(decision).toStrictEqual({
+    state: 'exposed',
+    pinnedHash: 'sha256:a',
+    latestHash: 'sha256:a',
+    move: null,
+    propose: null,
+    notice: null,
+    hiddenReason: null,
+  });
 });
 
 test('it keeps the pin of a tool that the listing no longer holds', () => {
@@ -165,10 +183,13 @@ test('it keeps the pin of a tool that the listing no longer holds', () => {
     state: 'exposed',
   });
 
-  expect(decision).toMatchObject({
+  expect(decision).toStrictEqual({
     state: 'removed',
     pinnedHash: 'sha256:a',
     latestHash: 'sha256:a',
+    move: null,
+    propose: null,
     notice: { kind: 'tool_removed', fromHash: 'sha256:a', toHash: null },
+    hiddenReason: null,
   });
 });

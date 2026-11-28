@@ -120,6 +120,28 @@ test('it lists the tools of a server with the state of each', async () => {
   ]);
 });
 
+test('it links the change of a stopped tool to the card of that tool', async () => {
+  const ctx = await setupTest();
+
+  mcpStore.add({
+    server: 'tracker',
+    tools: [
+      {
+        tool: 'tracker.item_set',
+        state: 'stopped_changed',
+        hiddenReason: null,
+        proposalID: 'p1',
+      },
+    ],
+  });
+
+  const rendered = ctx.render();
+
+  const link = await rendered.findByRole('link', { name: 'Accept the change' });
+
+  expect(link).toHaveAttribute('href', '/proposals?proposal=p1');
+});
+
 test('it points a held server at its proposal and offers no sign-in', async () => {
   const ctx = await setupTest();
 

@@ -18,6 +18,10 @@ export interface StoredCall {
 
   // the consent answer the call recorded, because the consent checker is a model
   readonly consentCheck: ConsentCheck | null;
+
+  // the version of the tool that the call loaded, when it had one
+  readonly pinHash: string | undefined;
+  readonly definitionsHash: string | undefined;
 }
 
 const erasableSchema = z.object({
@@ -54,5 +58,7 @@ export async function readStoredCall(log: Log, sequence: number): Promise<Stored
     destinations: erasable.destinations,
     inputs,
     consentCheck: record.decision?.consentCheck ?? null,
+    pinHash: called.pinHash,
+    definitionsHash: called.definitionsHash,
   };
 }

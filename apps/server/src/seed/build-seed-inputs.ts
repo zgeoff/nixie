@@ -60,7 +60,7 @@ export function buildSeedInputs(
       checkTaskStart: makeCheckTaskStart({
         bounds: tools.taskBounds,
         toolNames,
-        conversationTools,
+        conversationTools: [...conversationTools, ...serverTools],
       }),
     },
     buildPolicy: (prompts) => ({

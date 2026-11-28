@@ -20,6 +20,7 @@ import type { ToolRegistry } from '@heynixie/tools';
 import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
+import { isCallVersionMoved } from './is-call-version-moved';
 import type { StoredCall } from './read-stored-call';
 import { readStoredCall } from './read-stored-call';
 
@@ -76,6 +77,17 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
         : { effects: stored.inputs.effects.filter((name) => isEffect(name)) }),
     });
 
+    // An action that no approval answered asks again once its tool has another form or declaration,
+    // because a rule that allowed the call decided it for the form it loaded.
+    const current = options.registry.findTool(stored.tool)?.definition;
+
+    const isMoved =
+      input.action.is_approved !== 1 &&
+      isCallVersionMoved(
+        { pinHash: stored.pinHash, definitionsHash: stored.definitionsHash },
+        { pinHash: current?.pinHash, definitionsHash: current?.definitionsHash },
+      );
+
     return buildVerdict(options, {
       policy,
       policyTool,
@@ -83,6 +95,7 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       input,
       destinations: stored.destinations,
       frame: stored.inputs,
+      isMoved,
       writeActs: () => writeActedPlaces(options, { policy, stored, declaration }),
     });
   };
@@ -159,6 +172,9 @@ interface VerdictFacts {
   readonly destinations: readonly CallDestination[];
   readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
   readonly writeActs?: () => Promise<void>;
+
+  // true when the tool has another version than the call loaded, so an allow asks instead
+  readonly isMoved?: boolean;
 }
 
 function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): AttemptVerdict {
@@ -181,7 +197,9 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     .filter((destination) => destination.replyTarget)
     .map((destination) => destination.value);
 
-  if (decision.outcome !== 'ask' || facts.declaration === null) {
+  const isAsked = decision.outcome === 'ask' || facts.isMoved === true;
+
+  if (!isAsked || facts.declaration === null) {
     return {
       kind: 'go',
       destinations,
@@ -190,7 +208,7 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     };
   }
 
-  const cause: AskCause = decision.cause ?? 'no_rule';
+  const cause: AskCause = decision.cause ?? (facts.isMoved === true ? 'always_ask' : 'no_rule');
   const action = facts.input.action;
 
   return {

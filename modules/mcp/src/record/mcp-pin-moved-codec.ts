@@ -5,8 +5,7 @@ import type { McpRecordKind } from './mcp-record-kind';
 const kind = 'mcp.pin_moved' satisfies McpRecordKind;
 
 // A tool's pin moved: at its first listing, by a change that keeps its input shape, or by your
-// accept of a change that widens it. `trusted_change` is the cause that records written before the
-// change of the input shape hold.
+// accept of a change that widens it.
 export const mcpPinMovedCodec = defineRecordCodec(
   kind,
   z.object({

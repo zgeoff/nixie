@@ -14,6 +14,7 @@ export interface ApprovalDigestLineProps {
   readonly defer: DeferSettings;
   readonly onRefresh: () => void;
 
+  readonly isOpenedAtStart: boolean;
   readonly isSelected: boolean;
   readonly onSelect: (isSelected: boolean) => void;
 }
@@ -27,7 +28,7 @@ const state = css({ color: 'textMuted', fontSize: 'sm' });
 // added a rule, whose notice stays on screen.
 export function ApprovalDigestLine(props: ApprovalDigestLineProps): ReactNode {
   const item = props.entry.item;
-  const [isExpanded, setExpanded] = useState(false);
+  const [isExpanded, setExpanded] = useState(props.isOpenedAtStart);
   const [hasNotice, setHasNotice] = useState(false);
   const isOpen = item.proposal.state === 'pending' || item.proposal.state === 'deferred';
   const sentence = item.body?.sentence ?? `Proposal ${item.proposal.shortID}`;

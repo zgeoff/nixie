@@ -47,16 +47,19 @@ export async function listServerTools(request: ListRequest): Promise<ListOutcome
     let cursor: string | undefined;
 
     do {
-      const params = cursor === undefined ? {} : { cursor };
-
-      const page = await client.listTools(params, { signal });
+      // A listTools call with no cursor walks every page itself, so nixie asks for the first page
+      // with the request, and for each later one with its cursor, to bound the walk page by page.
+      const page =
+        cursor === undefined
+          ? await client.request({ method: 'tools/list', params: {} }, { signal })
+          : await client.listTools({ cursor }, { signal });
 
       const pageForms = page.tools.flatMap((tool) => parseToolForm(tool) ?? []);
-      const pageBytes = Buffer.byteLength(JSON.stringify(page.tools));
+      const pageBytes = Buffer.byteLength(JSON.stringify(page));
 
       const refusal = pickListingRefusal(
         { pages, toolCount: forms.length, bytes, names: new Set(forms.map((form) => form.name)) },
-        { bytes: pageBytes, forms: pageForms },
+        { bytes: pageBytes, forms: pageForms, hasNextPage: page.nextCursor !== undefined },
       );
 
       if (refusal !== null) {

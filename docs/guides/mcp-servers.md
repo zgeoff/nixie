@@ -86,9 +86,10 @@ To let the calls of a server run, add a rule whose `tools` holds `<server_id>.*`
 so allow only the scopes you gave the server. The deny, always-ask, destination and scope checks
 still run for each call. To allow one tool, name it: `tracker.item_create`.
 
-Each tool declares its effects by its annotations, and an annotation is the server's own claim. For
-a server you don't trust to describe its tools, write an override file in the definitions repo, or
-add no rule for it.
+Each tool declares its effects by its annotations, and an annotation is the server's own claim. The
+starter rule `allow-reads` runs any tool that declares only reads with no question, so a tool that
+claims `readOnlyHint` runs unasked. For a server you don't trust to describe its tools, write an
+override file for each of its tools in the definitions repo, and add no rule that allows the server.
 
 A task or job definition lists a server's tools in its `tools`: `<server_id>.*` for all of them, or
 `<server_id>.<tool>` for one. The run holds them, and a tool the server lists later too.

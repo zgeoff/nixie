@@ -174,3 +174,45 @@ test('it finds a dropped property no wider when the schema refuses other propert
 
   expect(hasWidenedInput(before, after)).toBe(false);
 });
+
+test('it finds a dropped property wider when a pattern property still matches its name', () => {
+  const ctx = setupTest();
+
+  const before = {
+    ...ctx.base,
+    patternProperties: { '^state$': { enum: ['open', 'closed', 'stale'] } },
+    additionalProperties: false,
+  };
+
+  const after = { ...before, properties: { id: ctx.base.properties.id } };
+
+  expect(hasWidenedInput(before, after)).toBe(true);
+});
+
+test('it finds a dropped property no wider when no pattern property matches its name', () => {
+  const ctx = setupTest();
+
+  const before = {
+    ...ctx.base,
+    patternProperties: { '^x-': { type: 'string' } },
+    additionalProperties: false,
+  };
+
+  const after = { ...before, properties: { id: ctx.base.properties.id } };
+
+  expect(hasWidenedInput(before, after)).toBe(false);
+});
+
+test('it finds a dropped property wider when a pattern property cannot be read', () => {
+  const ctx = setupTest();
+
+  const before = {
+    ...ctx.base,
+    patternProperties: { '(': { type: 'string' } },
+    additionalProperties: false,
+  };
+
+  const after = { ...before, properties: { id: ctx.base.properties.id } };
+
+  expect(hasWidenedInput(before, after)).toBe(true);
+});

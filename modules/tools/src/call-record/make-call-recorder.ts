@@ -100,6 +100,9 @@ export interface CallRecordFields {
 
   // the version of the tool that the call loaded, which its record keeps
   readonly pinHash?: string | undefined;
+
+  // the snapshot that supplied the declaration the call loaded, when one did
+  readonly definitionsHash?: string | undefined;
 }
 
 export function makeCallRecorder(
@@ -139,6 +142,9 @@ export function makeCallRecorder(
               model: run.model.model,
               profile: run.model.profile,
               ...(fields.pinHash === undefined ? {} : { pinHash: fields.pinHash }),
+              ...(fields.definitionsHash === undefined
+                ? {}
+                : { definitionsHash: fields.definitionsHash }),
               ...(decided === null || decided.deadlineAt === null
                 ? {}
                 : { deadlineAt: decided.deadlineAt }),

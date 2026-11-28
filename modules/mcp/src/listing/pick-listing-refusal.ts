@@ -18,15 +18,22 @@ export interface ListingTotals {
 }
 
 export interface PageContents {
-  // the size of the page's tools as the server sent them
+  // the size of the page as the server sent it, cursor included
   readonly bytes: number;
   readonly forms: readonly ToolForm[];
+
+  // whether the page names a page after it
+  readonly hasNextPage: boolean;
 }
 
-// Why a listing is refused whole once this page joins it, or null. A server decides the size of its
+// Why a listing is refused whole once this page joins it, or null. A page that names a page after
+// the last one allowed refuses the listing before that page is fetched. A server decides the size of its
 // listing, so nixie bounds it before it compiles or stores any of it.
 export function pickListingRefusal(totals: ListingTotals, page: PageContents): string | null {
-  if (totals.pages + 1 > listingLimits.pages) {
+  if (
+    totals.pages + 1 > listingLimits.pages ||
+    (page.hasNextPage && totals.pages + 1 >= listingLimits.pages)
+  ) {
     return `the listing runs over ${String(listingLimits.pages)} pages`;
   }
 

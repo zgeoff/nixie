@@ -26,9 +26,10 @@ local `$ref` together with the keywords that sit beside the `$ref`. No argument 
 an amount, and every result field is outside content, so its source is `untrusted`. A tool whose
 effects are all reads runs direct, and a tool with any other effect is queued.
 
-An annotation is the server's own claim, and nixie takes it as written. For a server that the user
-does not trust to describe its tools, write an override file, or leave out the rule that allows its
-tools.
+An annotation is the server's own claim, and nixie takes it as written. The starter rule
+`allow-reads` runs a tool that declares only reads with no question, so a tool that claims
+`readOnlyHint` runs unasked. For a server that the user does not trust to describe its tools, write
+an override file for each of its tools, and leave out the rule that allows the server.
 
 A rule that names `<server>.*` in its `tools` allows every tool of that server, the tools that the
 server lists later too, so a write of any of them runs with no question. The deny, always-ask,

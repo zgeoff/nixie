@@ -120,8 +120,9 @@ decided inside the write transaction, so an accept that commits while a listing 
 overwritten with an older pin. After the user declines an accept proposal or it lapses,
 `nixie mcp allow <tool>` writes a new one, because an unchanged listing proposes nothing.
 
-nixie bounds a listing before it compiles or stores any of it: at most 200 tools, 1 MiB of tool
-text, 64 KiB for each tool schema and 20 pages. A listing that goes over a limit, or that holds two
+nixie bounds a listing before it compiles or stores any of it: at most 200 tools, 1 MiB of listing
+with its page cursors, 64 KiB for each tool schema and 20 pages. nixie asks for the pages one at a
+time and never asks for a page after the 20th. A listing that goes over a limit, or that holds two
 forms for one tool name, fails whole. The pins stay as they were, and calls stay closed under the
 failed-listing rule of [Calls and results](#calls-and-results). A server listing has one timeout for
 every page together, so a server that keeps returning a page cursor cannot hold a sign-in open.
@@ -201,17 +202,23 @@ counts the blocks the proxy drops. A tool with an output schema returns the serv
 content, which the connector and the registry check against the pinned schema, so an answer outside
 it is never a done action. A server's own error keeps its text and sets the call's error flag.
 
-The tool's definition holds its pinned hash, and the call record keeps it. A queued call, its
-approval, a retry and a reconciliation check all read the pin hash that the call was decided on.
-Before an attempt or a check runs, the connector compares that hash with the pin now. When the pin
-moved, a first attempt sends nothing and settles as refused with a request to call again, so the
-model's next call asks again. A later attempt, which an earlier one may have sent, settles as
-ambiguous and comes to the user, and a check is inconclusive. A call runs only under the form it
-loaded. When a listing moves the pin after the call loaded the tool, nothing runs and the call
-returns an error that asks the model to call again. A call checks its input and its result against
-the pin hash it loaded, never the newest one. The proxy reads the pin again once the call's session
-is open and before `tools/call` leaves, so a listing that lands while the session opens cannot move
-it between the check and the send.
+The tool's definition holds its pinned hash and the snapshot that supplied its declaration, and the
+call record keeps both. A queued call, its approval, a retry and a reconciliation check all read the
+version that the call was decided on. Before the first attempt of a call that no approval answered,
+the attempt check decides it again. When the tool has another pin or another declaration, such as an
+override that was added, replaced or removed, the call asks for approval again whatever rule allowed
+it first, and nothing is sent until the user answers. The first attempt of an approved action
+carries no version, because the approval covers the tool as it stands.
+
+Before an attempt or a check runs, the connector compares the version with the tool now, as a second
+guard. When it moved, a first attempt sends nothing and settles as refused with a request to call
+again. A later attempt, which an earlier one may have sent, settles as ambiguous and comes to the
+user, and a check is inconclusive. A call runs only under the form it loaded. When a listing moves
+the pin after the call loaded the tool, nothing runs and the call returns an error that asks the
+model to call again. A call checks its input and its result against the pin hash it loaded, never
+the newest one. The proxy reads the pin again once the call's session is open and before
+`tools/call` leaves, so a listing that lands while the session opens cannot move it between the
+check and the send.
 
 A tool declared by an override carries the hash of the snapshot that held the override, and a call
 that would record another snapshot runs nothing and asks the model to call again, because the

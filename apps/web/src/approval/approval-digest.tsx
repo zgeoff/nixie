@@ -12,6 +12,8 @@ import { UnknownOutcomeCard } from './unknown-outcome-card';
 import { useApprovalDigest } from './use-approval-digest';
 
 export interface ApprovalDigestProps {
+  // the proposal whose card opens when the page loads
+  readonly openProposalID?: string;
   readonly navigation?: ReactNode;
 }
 
@@ -48,6 +50,7 @@ export function ApprovalDigest(props: ApprovalDigestProps): ReactNode {
     <ApprovalDigestLine
       defer={defer}
       entry={entry}
+      isOpenedAtStart={entry.proposalID === props.openProposalID}
       isSelected={selected.has(entry.proposalID)}
       key={entry.proposalID}
       onRefresh={digest.refresh}

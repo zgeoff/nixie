@@ -403,6 +403,23 @@ test('it ends a listing that keeps returning a page cursor within one timeout', 
   expect(listed.status).toBe('failed');
 });
 
+test('it asks for no page after the 20th, and fails the listing', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  const before = ctx.site.readListingCount();
+
+  ctx.site.serveEndlessPages(0);
+
+  const listed = await ctx.mcp.list('tracker');
+
+  expect([listed, ctx.site.readListingCount() - before]).toStrictEqual([
+    { status: 'failed', message: 'the listing runs over 20 pages' },
+    20,
+  ]);
+});
+
 test('it forgets the grant when the config drops a scope, so the server shows no grant until you sign in', async () => {
   const ctx = await setupTest();
 

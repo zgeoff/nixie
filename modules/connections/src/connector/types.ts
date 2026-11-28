@@ -29,6 +29,10 @@ export interface ActionAttempt {
   // The version of the tool that the call was decided on. A connector whose tool has versions
   // refuses to send once the tool has another one.
   readonly pinHash?: string;
+
+  // The snapshot that supplied the declaration the call was decided under, absent for a declaration
+  // that came from no snapshot.
+  readonly definitionsHash?: string;
   readonly attempt: number;
   readonly idempotencyKey: string;
 

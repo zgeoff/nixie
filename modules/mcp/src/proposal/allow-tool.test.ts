@@ -67,12 +67,11 @@ test('it answers that an unknown tool has nothing to allow', async () => {
 });
 
 test('it answers that an exposed tool has nothing to allow', async () => {
-  const mcp = await startTestMcp();
+  const ctx = await setupTest();
 
-  await mcp.addServer('tracker', buildServerFacts());
-  await mcp.list('tracker', { forms: [buildToolForm()] });
+  await ctx.mcp.allow('tracker.item_get');
 
-  const allowed = await allowTool(mcp.context, 'tracker.item_get');
+  const allowed = await ctx.allow();
 
   expect(allowed).toStrictEqual({ status: 'nothing_to_allow', reason: 'the tool is exposed' });
 });

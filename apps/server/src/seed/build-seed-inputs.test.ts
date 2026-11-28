@@ -236,3 +236,37 @@ test('it lists a configured MCP server as one task tool entry, and no conversati
 
   expect(inputs.tasks.toolNames).toStrictEqual(['tracker.*', 'actions.log']);
 });
+
+test.each([
+  ['the whole server', 'tracker.*'],
+  ['one tool of the server', 'tracker.item_get'],
+])(
+  'it plans the start of a task from chat that names %s of a configured MCP server',
+  (_case, entry) => {
+    const config = {
+      definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+      models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
+      owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
+      mcp: mcpConfigSchema.parse({
+        servers: {
+          tracker: { url: 'https://tracker.example.org/mcp', clientID: 'a', scope: 'read' },
+        },
+      }),
+    } as const;
+
+    const tool = buildLogConnector(() => {}).tool;
+
+    const inputs = buildSeedInputs(config, {
+      definitions: [],
+      actions: { logConnector: { tool }, queuedTools: [] },
+      taskBounds: buildMockTaskStartBounds(),
+    });
+
+    const checked = inputs.tasks.checkTaskStart(
+      { name: 'Check the rain gauge', brief: 'Read the gauge.', tools: [entry] },
+      'conversation',
+    );
+
+    expect(checked).toStrictEqual({ status: 'planned' });
+  },
+);

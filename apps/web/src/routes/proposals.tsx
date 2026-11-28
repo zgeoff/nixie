@@ -7,13 +7,20 @@ import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession } from '../conversation/read-route-session';
 import { css } from '../styled-system/css';
 
+interface ProposalsSearch {
+  readonly proposal?: string;
+}
+
 export const Route = createFileRoute('/proposals')({
   component: Approvals,
+  validateSearch: (search: Record<string, unknown>): ProposalsSearch =>
+    typeof search['proposal'] === 'string' ? { proposal: search['proposal'] } : {},
   loader: (options) => readRouteSession(options.context),
 });
 
 function Approvals(): ReactNode {
   const data = Route.useLoaderData();
+  const search = Route.useSearch();
   const router = useRouter();
 
   return (
@@ -24,6 +31,7 @@ function Approvals(): ReactNode {
       session={data.session}
     >
       <ApprovalDigest
+        {...(search.proposal === undefined ? {} : { openProposalID: search.proposal })}
         navigation={
           <Link className={link} to="/mandates">
             Mandates

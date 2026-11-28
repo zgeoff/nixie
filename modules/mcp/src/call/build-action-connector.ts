@@ -60,7 +60,11 @@ export function buildActionConnector(
       },
       reconcile: { kind: 'check', tool, onNotFound: 'retry' },
       check: async (attempt) => {
-        if (isRecoveryMoved(reconcile, attempt) || isPinMoved(reconcile, attempt)) {
+        if (
+          isRecoveryMoved(reconcile, attempt) ||
+          isPinMoved(reconcile, attempt) ||
+          isDeclarationMoved(reconcile, attempt)
+        ) {
           return { kind: 'inconclusive' };
         }
 
@@ -115,14 +119,14 @@ export function buildActionConnector(
   };
 }
 
-// What a call answers once its tool has another pin than the one it was decided on, or its
-// declaration moved after a first attempt. A first attempt sent nothing, so it is refused and the
-// model asks again; a later attempt may have sent, so it comes to you.
+// What a call answers once its tool has another pin than the one it was decided on, or another
+// declaration. A first attempt sent nothing, so it is refused; a later attempt may have sent, so it
+// comes to you.
 function pickMovedResponse(
   reconcile: ConnectorReconcile,
   attempt: ActionAttempt,
 ): ProviderResponse | null {
-  if (isPinMoved(reconcile, attempt)) {
+  if (isPinMoved(reconcile, attempt) || isDeclarationMoved(reconcile, attempt)) {
     return attempt.attempt > 1
       ? { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) }
       : { kind: 'refused', reason: renderChangedBeforeRunReason(attempt.tool) };
@@ -137,6 +141,14 @@ function pickMovedResponse(
 
 function isPinMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
   return attempt.pinHash !== undefined && attempt.pinHash !== reconcile.findPinHash();
+}
+
+// Whether the snapshot that supplies the tool's declaration differs from the one the call was
+// decided under, which includes an override that was added or removed since.
+function isDeclarationMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
+  return (
+    attempt.pinHash !== undefined && (attempt.definitionsHash ?? null) !== reconcile.definitionsHash
+  );
 }
 
 function renderMovedReason(tool: string): string {

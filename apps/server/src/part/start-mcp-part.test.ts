@@ -11,6 +11,7 @@ import {
   seedDefinitionTask,
   seedOpenDefinitionRun,
 } from '@heynixie/tasks/test-utils';
+import { buildToolRegistry, collectHeldToolNames } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { startMcpPart } from './start-mcp-part';
 
@@ -125,4 +126,15 @@ test('it lapses an accept proposal of a tool after the days that the config sets
   const row = await readProposal(ctx.test.log.writer.db, allowed.proposalID);
 
   expect(row?.lapsesAt).toBe(ctx.test.clock.now() + 2 * 24 * 60 * 60 * 1000);
+});
+
+test('it holds the tools of a configured server for a task run that names the whole server, once the server lists them', async () => {
+  const ctx = await setupTest();
+
+  await ctx.part.list('tracker');
+
+  const registry = buildToolRegistry([], [ctx.part.tools]);
+  const held = collectHeldToolNames(['tracker.*'], registry.toolNames, registry.serverIDs);
+
+  expect(held).toStrictEqual({ held: ['tracker.item_get'], unknown: [] });
 });

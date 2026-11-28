@@ -7,6 +7,7 @@ import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from './build-tool-registry';
 import { startToolEndpoint } from './start-tool-endpoint';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
+import { buildServerToolSource } from './test-utils/build-server-tool-source';
 import { setupTestLog } from './test-utils/setup-test-log';
 import { startRunClient } from './test-utils/start-run-client';
 import type { ToolContext, ToolDefinition, ToolSource } from './types';
@@ -21,7 +22,8 @@ interface SetupConfig {
 async function setupTest(config: SetupConfig) {
   const testLog = await setupTestLog();
 
-  const registry = buildToolRegistry(config.tools, config.sources);
+  const server = buildServerToolSource(['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other']);
+  const registry = buildToolRegistry(config.tools, [...(config.sources ?? []), server.source]);
   const heldBack = { names: config.heldBack ?? [] };
 
   const logLines: { event: string; fields: LogFields | undefined; level: LogLevel | undefined }[] =
@@ -58,7 +60,23 @@ async function setupTest(config: SetupConfig) {
 
   onTestFinished(() => endpoint.stop());
 
-  return { endpoint, log: testLog.log, dataDir: testLog.dataDir, logLines, heldBack };
+  return {
+    endpoint,
+    log: testLog.log,
+    dataDir: testLog.dataDir,
+    logLines,
+    heldBack,
+    server,
+    startServerRun: (tools: readonly string[]) =>
+      endpoint.startRun({
+        toolUseMetaKey: null,
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools,
+        model: { model: 'model-a', profile: 'chat-direct' },
+      }),
+  };
 }
 
 test('it lists and runs a tool that the run names by its SDK name under the registered name', async () => {
@@ -1094,79 +1112,50 @@ test('it refuses an approved call under the token of a step that stopped', async
   expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });
 
-test('it lists and runs a tool that a server exposes after the run starts, when the run names the server', async () => {
-  const state = { names: ['boxxy.item_get'] };
-
-  const served = buildToolRegistry(
-    ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'].map((name) =>
-      buildMockToolDefinition({ name }),
-    ),
-  );
-
-  const source: ToolSource = {
-    toolNames: () => state.names,
-    serverIDs: () => ['boxxy', 'boxxy2'],
-    findTool: (name) => (state.names.includes(name) ? served.findTool(name) : null),
-  };
-
-  const ctx = await setupTest({ tools: [], sources: [source] });
-
-  const run = await ctx.endpoint.startRun({
-    toolUseMetaKey: null,
-    runID: 'run-1',
-    thread: 'task-1',
-    logThread: 'task-1',
-    tools: ['boxxy.*'],
-    model: { model: 'model-a', profile: 'chat-direct' },
-  });
-
+test('it lists no tool of a server that the run names before the server exposes one', async () => {
+  const ctx = await setupTest({ tools: [] });
+  const run = await ctx.startServerRun(['boxxy.*']);
   const client = await startRunClient(run);
-  const before = await client.listTools();
+  const listed = await client.listTools();
 
-  state.names = ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'];
+  expect(listed.tools.map((tool) => tool.name)).toStrictEqual([]);
+});
 
-  const after = await client.listTools();
+test('it lists the tools of the named server that the server exposes after the run starts, and no tool of another server', async () => {
+  const ctx = await setupTest({ tools: [] });
+  const run = await ctx.startServerRun(['boxxy.*']);
+  const client = await startRunClient(run);
+
+  ctx.server.expose(['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other']);
+
+  const listed = await client.listTools();
+
+  expect(listed.tools.map((tool) => tool.name)).toStrictEqual([
+    'boxxy.item_get',
+    'boxxy.item_list',
+  ]);
+});
+
+test('it runs a tool that the server exposes after the run starts', async () => {
+  const ctx = await setupTest({ tools: [] });
+  const run = await ctx.startServerRun(['boxxy.*']);
+  const client = await startRunClient(run);
+
+  ctx.server.expose(['boxxy.item_get', 'boxxy.item_list']);
+
   const result = await client.callTool({ name: 'boxxy.item_list', arguments: { query: 'milk' } });
 
-  expect([
-    before.tools.map((tool) => tool.name),
-    after.tools.map((tool) => tool.name),
-    result.structuredContent,
-  ]).toStrictEqual([['boxxy.item_get'], ['boxxy.item_get', 'boxxy.item_list'], { text: 'a note' }]);
+  expect(result.structuredContent).toStrictEqual({ text: 'a note' });
 });
 
 test('it refuses a call to a tool of a server that the run does not name', async () => {
-  const state = { names: ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'] };
-
-  const served = buildToolRegistry(
-    ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'].map((name) =>
-      buildMockToolDefinition({ name }),
-    ),
-  );
-
-  const source: ToolSource = {
-    toolNames: () => state.names,
-    serverIDs: () => ['boxxy', 'boxxy2'],
-    findTool: (name) => (state.names.includes(name) ? served.findTool(name) : null),
-  };
-
-  const ctx = await setupTest({ tools: [], sources: [source] });
-
-  const run = await ctx.endpoint.startRun({
-    toolUseMetaKey: null,
-    runID: 'run-1',
-    thread: 'task-1',
-    logThread: 'task-1',
-    tools: ['boxxy.item_get'],
-    model: { model: 'model-a', profile: 'chat-direct' },
-  });
-
+  const ctx = await setupTest({ tools: [] });
+  const run = await ctx.startServerRun(['boxxy.item_get']);
   const client = await startRunClient(run);
-  const listed = await client.listTools();
+
+  ctx.server.expose(['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other']);
+
   const result = await client.callTool({ name: 'boxxy.item_list', arguments: { query: 'milk' } });
 
-  expect([listed.tools.map((tool) => tool.name), result.isError]).toStrictEqual([
-    ['boxxy.item_get'],
-    true,
-  ]);
+  expect(result.isError).toBe(true);
 });

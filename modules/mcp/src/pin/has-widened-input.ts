@@ -179,15 +179,30 @@ function isPropertiesNoWider(
     return isSame(oldValue, newValue);
   }
 
-  // an old property the new schema drops is still accepted unless the schema refuses extra ones
+  // a dropped property is still accepted unless the schema refuses extra ones and no pattern takes it
   const isClosed = next['additionalProperties'] === false;
+
+  const patterns = isRecord(next['patternProperties'])
+    ? Object.keys(next['patternProperties'])
+    : [];
 
   return (
     Object.keys(newValue).every((name) => Object.hasOwn(oldValue, name)) &&
     Object.entries(oldValue).every(([name, schema]) =>
-      Object.hasOwn(newValue, name) ? isNoWider(schema, newValue[name]) : isClosed,
+      Object.hasOwn(newValue, name)
+        ? isNoWider(schema, newValue[name])
+        : isClosed && !patterns.some((pattern) => isMatchedBy(pattern, name)),
     )
   );
+}
+
+// An unreadable pattern counts as a match, so the change waits for your accept.
+function isMatchedBy(pattern: string, name: string): boolean {
+  try {
+    return new RegExp(pattern, 'u').test(name);
+  } catch {
+    return true;
+  }
 }
 
 // Whether every member of `inner` is a member of `outer`.

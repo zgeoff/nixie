@@ -74,7 +74,7 @@ function ServerCard(props: ServerCardProps): ReactNode {
         {formatServerHealth(server)}
       </span>
       {server.state === 'held' && server.proposalID !== null ? (
-        <Link className={link} to="/proposals">
+        <Link className={link} search={{ proposal: server.proposalID }} to="/proposals">
           Review the proposal to add this server
         </Link>
       ) : null}
@@ -94,7 +94,7 @@ function ServerCard(props: ServerCardProps): ReactNode {
               {tool.state === 'stopped_changed' && tool.proposalID !== null ? (
                 <>
                   {' '}
-                  <Link className={link} to="/proposals">
+                  <Link className={link} search={{ proposal: tool.proposalID }} to="/proposals">
                     Accept the change
                   </Link>
                 </>
