@@ -110,9 +110,10 @@ host is longer than a call waits. A 200, a refused or failed fetch and a blocked
 The fallback fetches the named URL as named and never runs twice, so its reply is the call's result,
 a 404 or a rate limit included.
 
-The tool stores the page of the one fetch that ends the call. After a fallback, only the named URL's
-page is stored, never the body of the first fetch's 404 or rate limit. The result's `url` is the URL
-the fetch ended at, so a rewritten fetch shows the rewritten URL. The tool's description says so.
+The tool stores the page of the one fetch that ends the call, when that page holds text. After a
+fallback, only the named URL's page is stored, never the body of the first fetch's 404 or rate
+limit. The result's `url` is the URL the fetch ended at, so a rewritten fetch shows the rewritten
+URL. The tool's description says so.
 
 ## Pauses
 
@@ -163,7 +164,7 @@ skill's files takes no pause.
 
 The cache is the session's page store, with no table of its own. Step 4 of the first pass returns
 the stored copy of the sent URL when the session holds one that is fresh enough, so the call starts
-no sandbox and writes nothing. The result is the page's stored view with `isCached` true, and every
+no sandbox and stores no page. The result is the page's stored view with `isCached` true, and every
 other result has it false.
 
 A stored page answers when all of these hold:
@@ -350,7 +351,7 @@ sandbox adapter has a time limit as well, so a create or a destroy that never en
 and never blocks the fetches after it.
 
 Each caller's fetch sandboxes have an owner of their own: the default owner for the web fetch tool,
-whose sandbox also reads each HTML mail, `skill_fetch` for the skill file reader and `device_fetch`
+whose queue also reads each HTML mail, `skill_fetch` for the skill file reader and `device_fetch`
 for a device's declared fetches. A caller's first fetch after nixie starts removes every fetch
 sandbox of its owner, which clears what an earlier process left. The next fetch after a failed
 create or a destroy that fails or passes its time limit does the same, because a create can fail
@@ -463,7 +464,7 @@ IPv4-translated, NAT64, 6to4 and Teredo.
 
 nixie runs the fetcher for 3 callers: the web fetch tool, the reader of a skill's files and a
 device's [declared fetches](../channels/devices.md#declared-fetches). A mail's HTML goes through the
-web fetch tool's sandbox. nixie sends each fetch these limits:
+web fetch tool's queue, in a fetch sandbox of its own. nixie sends each fetch these limits:
 
 | Limit                                           | Web fetch tool         | Skill files                                                           | Declared fetches                   |
 | ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- | ---------------------------------- |

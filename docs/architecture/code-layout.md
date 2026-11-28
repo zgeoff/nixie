@@ -154,8 +154,9 @@ and writer evals in `evals/` drive the SDK itself, to check the behaviours nixie
 covers `bun:sqlite`, which Bun provides with no declared dependency. Check in review that the Kysely
 dialect stays in `libs/db`, because the rule has no zone for it. Lint also refuses `require`,
 `import.meta.require`, `node:module` and any `import()` whose specifier the rule cannot read, so no
-import escapes the zones. The zones exist because the Agent SDK runs only inside a sandbox
-([0003](../decisions/0003-sdk-placement.md)) and one package owns each outside system.
+import escapes the zones. The zones exist because product code runs the Agent SDK only inside a
+sandbox ([0003](../decisions/0003-sdk-placement.md)) and one package owns each outside system. Tests
+and evals run it outside one, as [tests and checks](#tests-and-checks) describes.
 
 ## Modules
 
@@ -268,9 +269,9 @@ and the conversation guest.
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an
 imp or a real model. Each probe of the [SDK contract suite](core/sdk-contract-suite.md) is a
-function in the guest's `sdk-contract` folder: the guest's tests run it against the stub model, and
-the suite in `evals/` runs it against a real model, to check the SDK behaviours nixie relies on. The
-suite's doc lists the probes that only the real model can check, which no guest test runs. The
+function in the guest's `sdk-contract` folder. The suite in `evals/` runs each probe against a real
+model, to check the SDK behaviours nixie relies on, and the guest's tests run each probe but those
+that only the real model can check against the stub model. The suite's doc lists those probes. The
 suite's probes run only with `NIXIE_SDK_CONTRACT=1` and a model credential, and skip otherwise, so a
 plain `bun test` never calls a model. Whole-program suites in an app's `e2e/` folder run nixie with
 the sandbox double, which starts the conversation guest as a local process, so the SDK still loads
