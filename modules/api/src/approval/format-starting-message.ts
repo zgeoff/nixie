@@ -34,17 +34,19 @@ function formatOwnerMessage(text: string | null): string {
     return 'Your message';
   }
 
-  if (flat.length <= excerptLimit) {
+  const characters = [...flat];
+
+  if (characters.length <= excerptLimit) {
     return `Your message: ${flat}`;
   }
 
-  return `Your message: ${flat.slice(0, excerptLimit).trimEnd()}… (${digestText(flat)})`;
+  const excerpt = characters.slice(0, excerptLimit).join('').trimEnd();
+
+  return `Your message: ${excerpt}… (${toTextHash(flat)})`;
 }
 
-// A cut message ends in a digest of its whole text, so 2 messages that share their first 60
-// characters still read apart.
-const digestLength = 6;
+const hashLength = 12;
 
-function digestText(text: string): string {
-  return createHash('sha256').update(text).digest('hex').slice(0, digestLength);
+function toTextHash(text: string): string {
+  return createHash('sha256').update(text).digest('hex').slice(0, hashLength);
 }
