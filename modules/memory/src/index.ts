@@ -129,7 +129,7 @@ export type { UntypedTokenQuery } from './gate/check-untyped-token';
 export { checkUntypedToken } from './gate/check-untyped-token';
 export type { DestinationToken } from './gate/collect-destination-tokens';
 export { collectDestinationTokens } from './gate/collect-destination-tokens';
-export { removeImageOfferKeys } from './image/remove-image-offer-keys';
+export { readImageOfferKeyIDs } from './image/read-image-offer-key-ids';
 export { renderCheckerInput } from './checker/render-checker-input';
 export type { MemoryRecordKind } from './record/memory-record-kind';
 export { memoryItemErasableDescriptor } from './record/memory-item-erasable-descriptor';
@@ -141,6 +141,8 @@ export { readRemovedSequences } from './record/read-removed-sequences';
 export { recordForgottenCodec } from './record/record-forgotten-codec';
 export { readPurgeSet } from './record/read-purge-set';
 export { writeRecordPurgeSet } from './purge/write-record-purge-set';
+export type { ThreadPurge } from './purge/write-thread-purge-sets';
+export { writeThreadPurgeSets } from './purge/write-thread-purge-sets';
 export type { RecordForgetPreview, RecordForgetTarget } from './record/read-record-forget-preview';
 export { readRecordForgetPreview } from './record/read-record-forget-preview';
 

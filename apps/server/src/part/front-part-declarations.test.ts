@@ -57,8 +57,8 @@ test('it destroys the code sandbox of a forgotten call, then erases its key and 
   expect({
     isSandboxKept: ctx.nixie.guest.readSandboxIDs().includes(ctx.sandbox.id),
     forgotten: exit.records
-      .filter((record) => record.kind === 'record.forgotten')
-      .map((record) => record.payload['recordSequence']),
+      .filter((record) => record.kind === 'erasure.finished' && record.payload['kind'] === 'record')
+      .map((record) => Number(record.payload['targetID'])),
     survivingKeyIDs: await ctx.readSurvivingKeyIDs(),
   }).toStrictEqual({ isSandboxKept: false, forgotten: [ctx.call.sequence], survivingKeyIDs: [] });
 });
@@ -83,7 +83,7 @@ test('it keeps the key and the record when the code sandbox will not go, so the 
   const exit = await ctx.nixie.waitForExit();
 
   expect({
-    forgotten: exit.records.filter((record) => record.kind === 'record.forgotten'),
+    forgotten: exit.records.filter((record) => record.kind === 'erasure.finished'),
     survivingKeyIDs: await ctx.readSurvivingKeyIDs(),
   }).toStrictEqual({ forgotten: [], survivingKeyIDs: [ctx.call.keyID] });
 });

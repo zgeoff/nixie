@@ -3,6 +3,7 @@ import { readRecordKeys } from '@heynixie/log';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import type { ImageRow, ImageTables } from './image-tables';
+import { readErasingImageUUIDs } from './read-erasing-image-uuids';
 import { readGalleryImages } from './read-gallery-images';
 import type { GalleryImage } from './types';
 
@@ -34,13 +35,18 @@ export async function readGalleryPage(
   const scanned = await readScannedRows(log, query);
   const keyed = await readKeyedSequences(log, scanned);
 
+  const erasing = await readErasingImageUUIDs(
+    log,
+    scanned.map((row) => row.uuid),
+  );
+
   const kept: ScannedRow[] = [];
   let last: ScannedRow | null = null;
 
   for (const row of scanned) {
     last = row;
 
-    if (keyed.has(row.sequence)) {
+    if (keyed.has(row.sequence) && !erasing.has(row.uuid)) {
       kept.push(row);
     }
 

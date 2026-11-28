@@ -110,11 +110,11 @@ content. Either read returns the records as untrusted, so a span that holds outs
 the task that reads it, even when the outside content itself is left out. The payload holds what the
 text leaves out, such as a called tool's name or an action's outcome. A record with no source holds
 only what nixie itself wrote, and a record whose key is gone shows as a gap. Each record also says
-whether it was removed. A gap is removed only when its key is gone and a `record.forget_started`
-record names its sequence, so a record whose key fails to decrypt, or a session summary whose key a
-session cleanup deleted, shows as a gap that is not removed. The read looks for
-`record.forget_started` and never `record.forgotten`, because a crash between the key's deletion and
-`record.forgotten` leaves only the start record.
+whether it was removed. A gap is removed only when its key is gone and an `erasure.started` of the
+kind `record`, or a `record.forget_started` of an earlier release, names its sequence, so a record
+whose key fails to decrypt, or a session summary whose key a session cleanup deleted, shows as a gap
+that is not removed. The read looks for the start record and never the finish record, because a
+crash between the key's deletion and `erasure.finished` leaves only the start record.
 
 A record that is an owner message with images lists a pointer to each, as `images` of `n` and
 `mediaType`, with `n` counted from 1 in its message. The span entry builds the list from the

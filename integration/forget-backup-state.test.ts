@@ -24,7 +24,8 @@ import {
   memoryProjections,
   startMemoryStore,
 } from '@heynixie/memory';
-import { erasableDescriptors, runConversationReset } from '@heynixie/server';
+import { erasableDescriptors } from '@heynixie/server';
+import { startTestConversationReset } from '@heynixie/server/test-utils';
 import { tasksProjections } from '@heynixie/tasks';
 import {
   buildTestDefinitionReaders,
@@ -75,7 +76,6 @@ async function setupTest() {
     ...buildTestDefinitionReaders(),
     runners: buildTestTaskRunners(),
     settings: defaultAPISettings,
-    readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     features: [],
     passkeys: createPasskeyState(),
@@ -144,14 +144,10 @@ async function setupTest() {
     wakeExports: () => {},
     runReset: () => Promise.reject(new Error('no full reset runs in this suite')),
     runConversationReset: () =>
-      runConversationReset({
-        context,
+      startTestConversationReset(context, {
         adapter: { id: 'stub', list: () => Promise.resolve([]) },
-        stopWork: () => Promise.resolve(),
         log: () => {},
-        removeTurnInputThreads: () => Promise.resolve(),
-        clearFetchPauses: () => {},
-      }),
+      }).run(),
     gate: { runCall: (call) => call() },
   });
 
@@ -165,14 +161,10 @@ async function setupTest() {
     wakeExports: () => {},
     runReset: () => Promise.reject(new Error('no full reset runs in this suite')),
     runConversationReset: () =>
-      runConversationReset({
-        context: offContext,
+      startTestConversationReset(offContext, {
         adapter: { id: 'stub', list: () => Promise.resolve([]) },
-        stopWork: () => Promise.resolve(),
         log: () => {},
-        removeTurnInputThreads: () => Promise.resolve(),
-        clearFetchPauses: () => {},
-      }),
+      }).run(),
     gate: { runCall: (call) => call() },
   });
 
@@ -636,6 +628,7 @@ test('it reports a reset of the conversations as pending on its key backups, as 
   expect(reset).toStrictEqual({
     resetAt: expect.toBeValidDate(),
     lastSequence: expect.any(Number),
+    removedKeys: 0,
     shreddedRecords: 0,
     backup: { state: 'pending' },
   });
@@ -685,6 +678,7 @@ test('it reports a reset of the conversations as off on its key backups when bac
   expect(reset).toStrictEqual({
     resetAt: expect.toBeValidDate(),
     lastSequence: expect.any(Number),
+    removedKeys: 0,
     shreddedRecords: 0,
     backup: { state: 'off' },
   });

@@ -32,26 +32,26 @@ every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
    published or failed. A forget record is `erasure.finished`, which ends a memory item, note or
-   moment forget, or the end record of a message forget or a reset of the conversations, each of
-   which deletes its keys before it writes that record. The end records of a message forget and a
-   reset predate `erasure.finished`: each erasable's descriptor in the log module lists them as a
-   record kind and an optional field match, and the server passes them to the backup module, so the
-   module imports no store. nixie's pass withdraws a set that staged before `erasure.finished` and
-   stages a new one, because a stale set holds the deleted keys. The same transaction that writes
-   `erasure.finished` writes `floor.json` into the staging folder, naming the highest set that
-   exists then, and the job ships no set at or below it. The job reads `floor.json` again once a
-   set's key snapshot is in the key repo, and again once its data snapshot is in the data repo,
-   whether that data snapshot passed or failed. The data retention, the removal of the other key
-   snapshots and the key prune run only after that last read passes. When an erasure finished before
-   one of those reads, the job removes the set's own key and data snapshots, prunes the key repo,
-   keeps the restore note and writes no receipt, so the previous published pair stays whole. A
-   failure of that removal fails the job, and the next publish removes the stale snapshot with the
-   other old ones. When an erasure finishes after the last read, the set still publishes, because
-   nothing in the job is atomic with the receipt's rename. That receipt does not cover the erasure,
-   which waits for a set that started after it. The withdrawal waits for the job's staging lock, so
-   it never removes a set that the job is shipping, and a pass that finds the lock held withdraws
-   the set on the next pass. A withdrawal that a failure stopped after the rename finishes on the
-   next pass.
+   moment forget, or the end record of a message forget or a reset of the conversations of an
+   earlier release, each of which deletes its keys before it writes that record. The end records of
+   a message forget and a reset predate `erasure.finished`: each erasable's descriptor in the log
+   module lists them as a record kind and an optional field match, and the server passes them to the
+   backup module, so the module imports no store. nixie's pass withdraws a set that staged before
+   `erasure.finished` and stages a new one, because a stale set holds the deleted keys. The same
+   transaction that writes `erasure.finished` writes `floor.json` into the staging folder, naming
+   the highest set that exists then, and the job ships no set at or below it. The job reads
+   `floor.json` again once a set's key snapshot is in the key repo, and again once its data snapshot
+   is in the data repo, whether that data snapshot passed or failed. The data retention, the removal
+   of the other key snapshots and the key prune run only after that last read passes. When an
+   erasure finished before one of those reads, the job removes the set's own key and data snapshots,
+   prunes the key repo, keeps the restore note and writes no receipt, so the previous published pair
+   stays whole. A failure of that removal fails the job, and the next publish removes the stale
+   snapshot with the other old ones. When an erasure finishes after the last read, the set still
+   publishes, because nothing in the job is atomic with the receipt's rename. That receipt does not
+   cover the erasure, which waits for a set that started after it. The withdrawal waits for the
+   job's staging lock, so it never removes a set that the job is shipping, and a pass that finds the
+   lock held withdraws the set on the next pass. A withdrawal that a failure stopped after the
+   rename finishes on the next pass.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 

@@ -8,9 +8,8 @@ async function setupTest() {
   return { api, forgets: await startTestMemoryForgets(api.context) };
 }
 
-test('it answers a context whose session cleanup is set', async () => {
+test('it answers a context whose forgets run on the runner of the memory store', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.forgets.forgetContext.readSessionCleanup()).toBeFunction();
-  expect(ctx.api.context.readSessionCleanup()).toBeNull();
+  expect(ctx.forgets.forgetContext.readForgets?.()).not.toBe(ctx.api.context.readForgets?.());
 });

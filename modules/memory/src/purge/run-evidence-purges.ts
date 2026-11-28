@@ -53,12 +53,13 @@ async function readOwedPurges(
   return owed.filter((purge) => !owners.has(purge.recordSequence));
 }
 
-const endedRowSchema = z.object({ record_sequence: z.int() });
+const endedRowSchema = z.object({ record_sequence: z.coerce.number().int() });
 
-// The record forgets with no record.forgotten yet. A forget that ended leaves no later step to finish
-// a purge it owed, as when a previous release skipped an item whose own forget had begun.
+// The record forgets with no end record yet: no record.forgotten, and no erasure.finished of the
+// record kind. A forget that ended leaves no later step to finish a purge it owed, as when a
+// previous release skipped an item whose own forget had begun.
 async function readOpenForgetSequences(db: Kysely<unknown>): Promise<ReadonlySet<number>> {
-  const [started, forgotten] = await Promise.all([
+  const [started, forgotten, finished] = await Promise.all([
     readAllRemovedSequences(db),
     db
       .$extendTables<LogTables>()
@@ -66,9 +67,18 @@ async function readOpenForgetSequences(db: Kysely<unknown>): Promise<ReadonlySet
       .select(sql`json_extract(payload, '$.recordSequence')`.as('record_sequence'))
       .where('kind', '=', sql.lit(recordForgottenCodec.kind))
       .execute(),
+    db
+      .$extendTables<LogTables>()
+      .selectFrom('records')
+      .select(sql`json_extract(payload, '$.targetID')`.as('record_sequence'))
+      .where('kind', '=', sql.lit('erasure.finished'))
+      .where(sql`json_extract(payload, '$.kind')`, '=', 'record')
+      .execute(),
   ]);
 
-  const ended = new Set(forgotten.map((row) => endedRowSchema.parse(row).record_sequence));
+  const ended = new Set(
+    [...forgotten, ...finished].map((row) => endedRowSchema.parse(row).record_sequence),
+  );
 
   return new Set([...started].filter((sequence) => !ended.has(sequence)));
 }

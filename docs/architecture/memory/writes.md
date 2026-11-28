@@ -69,11 +69,12 @@ about the user or a shared item, it runs these steps in order:
    [Reading the log](./context.md#reading-the-log) covers a write that cites an older message. A
    cited event that the readable thread lacks makes the write wait with `no_quote`, and so does an
    event on any other thread. A cited record that is not the user's message gives `quote_not_typed`,
-   and a cited message that the user forgot, or that backed an item the user forgot, gives
-   `forgotten_evidence`. A quote with no event ID searches the caller's own thread only, so an
-   uncited quote from a task with the log grant waits with `no_quote`, and such a task must cite the
-   event. The gate looks up a covering allow rule by the caller's own thread, whatever the grant.
-   The grant changes where the gate looks for evidence, and nothing else.
+   and a cited message that backed an item the user forgot gives `forgotten_evidence`. A cited
+   message whose record forget has begun fails as [forgotten evidence](#forgotten-evidence) says. A
+   quote with no event ID searches the caller's own thread only, so an uncited quote from a task
+   with the log grant waits with `no_quote`, and such a task must cite the event. The gate looks up
+   a covering allow rule by the caller's own thread, whatever the grant. The grant changes where the
+   gate looks for evidence, and nothing else.
 3. **The quote check.** The quote lies wholly in text the user typed, outside any quoted block.
 4. **The token check.** Every [destination-like token](#the-token-check) in the text and the labels
    appears in the quote, so a label never carries a destination that the text could not.
@@ -119,12 +120,13 @@ records the event IDs of the messages that backed it, and a quote found only in 
 becomes a proposal with the reason `forgotten_evidence`.
 
 A record forget is a separate operation: it removes one message, or another record, from the event
-log for good, and first commits a `record.forget_started` record that holds the sequence of the
-record it removes ([forgetting a record](../channels/api.md#forgetting-a-record)). From then on, a
-write that cites that message fails with `QuotedRecordForgettingError`, whether the gate found the
-message for a quote or an intent quote, or the write passed its event ID. The write transaction
-checks again, so a write that found its quote before the forget began fails too. nixie tells the
-model, in the tool error, to write the fact again with no quote and no event ID, as a proposal.
+log for good, and first commits an `erasure.started` record of the kind `record` that holds the
+sequence of the record it removes ([forgetting a record](../channels/api.md#forgetting-a-record)).
+From then on, a write that cites that message fails with `QuotedRecordForgettingError`, whether the
+gate found the message for a quote or an intent quote, or the write passed its event ID. The write
+transaction checks again, so a write that found its quote before the forget began fails too. nixie
+tells the model, in the tool error, to write the fact again with no quote and no event ID, as a
+proposal.
 
 ### The token check
 

@@ -2,7 +2,10 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { queueTestAction } from '@heynixie/actions/test-utils';
 import { clientHeaderName } from '@heynixie/contract';
+import { writeRecords } from '@heynixie/log';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
+import invariant from 'tiny-invariant';
+import { runRecordForget } from '../record/run-record-forget';
 import { buildSeeder } from './build-seeder';
 import { buildTestClient } from './build-test-client';
 import { createDeviceSession } from './create-device-session';
@@ -147,18 +150,25 @@ test('it reads back an action that the actions module created', async () => {
   });
 });
 
-test('it gives a record forget no session cleanup until the test sets one', async () => {
-  const ctx = await startTestAPI();
-
-  expect(ctx.context.readSessionCleanup()).toBeNull();
-});
-
-test('it gives a record forget the session cleanup the test sets', async () => {
+test('it runs the session cleanup the test sets for a forgotten record', async () => {
   const ctx = await startTestAPI();
 
   const cleanup = mock(() => Promise.resolve());
 
   ctx.setSessionCleanup(cleanup);
 
-  expect(ctx.context.readSessionCleanup()).toBe(cleanup);
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'The locker code is 2291.', spans: [] },
+    },
+  ]);
+
+  invariant(message);
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: message.sequence });
+
+  expect(cleanup).toHaveBeenCalledExactlyOnceWith({ recordSequence: message.sequence });
 });

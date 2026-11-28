@@ -21,17 +21,19 @@ async function setupTest() {
 }
 
 test.each([
-  'record.forget.started',
+  'erasure.begun',
   'memory.purge.keys_created',
   'memory.purge.closed',
   'memory.purge.keys_removed',
-  'record.forget.purged',
+  'erasure.cleaned',
 ] as const)(
   'it finishes the purge of a record forget that nixie was killed during at %s, and the current text still reads',
   async (point) => {
     const ctx = await setupTest();
 
-    const killed = ctx.nixie.harness.start([{ point, kind: 'memory' }]);
+    const killed = ctx.nixie.harness.start([
+      { point, kind: point.startsWith('memory') ? 'memory' : 'erasure' },
+    ]);
 
     await killed.waitForArrival(point);
     await killed.kill();
@@ -40,7 +42,7 @@ test.each([
 
     await restarted.ready;
 
-    await ctx.nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+    await ctx.nixie.waitForRecord((record) => record.kind === 'erasure.finished');
     await restarted.kill();
 
     const state = await readPurgeState(ctx.nixie);
@@ -74,7 +76,7 @@ test.skipIf(!isPreviousReleaseReadable)(
 
     const rolledBack = nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
-    await nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+    await nixie.waitForRecord((record) => record.kind === 'erasure.finished');
     await rolledBack.kill();
 
     const rolledBackState = await readPurgeState(nixie);
@@ -108,25 +110,27 @@ test.skipIf(!isPreviousReleaseReadable)(
 test
   .skipIf(!isPreviousReleaseReadable)
   .each([
-    'record.forget.started',
+    'erasure.begun',
     'memory.purge.keys_created',
     'memory.purge.closed',
     'memory.purge.keys_removed',
-    'record.forget.purged',
+    'erasure.cleaned',
   ] as const)(
   'it finishes, on a start of the previous release, the purge of a record forget that nixie was killed during at %s',
   async (point) => {
     const ctx = await setupTest();
     const previous = await readPreviousReleaseBuild();
 
-    const killed = ctx.nixie.harness.start([{ point, kind: 'memory' }]);
+    const killed = ctx.nixie.harness.start([
+      { point, kind: point.startsWith('memory') ? 'memory' : 'erasure' },
+    ]);
 
     await killed.waitForArrival(point);
     await killed.kill();
 
     const restarted = ctx.nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
-    await ctx.nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+    await ctx.nixie.waitForRecord((record) => record.kind === 'erasure.finished');
     await restarted.kill();
 
     const state = await readPurgeState(ctx.nixie);
@@ -165,7 +169,7 @@ test.skipIf(isPreviousReleaseReadable)(
 
     await restarted.ready;
 
-    await ctx.nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+    await ctx.nixie.waitForRecord((record) => record.kind === 'erasure.finished');
     await restarted.kill();
 
     const state = await readPurgeState(ctx.nixie);

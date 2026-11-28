@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { removeRecordKey } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { buildStubImageProvider } from '../test-utils/build-stub-image-provider';
 import { readImageID, readToolResult } from '../test-utils/read-tool-result';
@@ -6,7 +7,7 @@ import { seedCodeRunFiles } from '../test-utils/seed-code-run-files';
 import { seedCodeRunImage } from '../test-utils/seed-code-run-image';
 import { seedOwnerPhoto } from '../test-utils/seed-owner-photo';
 import { startTestImages } from '../test-utils/start-test-images';
-import { removeImportedImageKeys } from './remove-imported-image-keys';
+import { readImportedImageKeyIDs } from './read-imported-image-key-ids';
 
 async function setupTest() {
   const main = buildStubImageProvider();
@@ -116,8 +117,11 @@ test('it forgets an imported photo when the owner forgets the message that held 
   const ctx = await setupTest();
   const photo = await seedOwnerPhoto(ctx.log, { thread: 'conversation', width: 64, height: 48 });
   const imported = await ctx.read('image.import', { photo: { eventID: String(photo), number: 1 } });
+  const keyIDs = await readImportedImageKeyIDs(ctx.log.writer.db, photo);
 
-  await removeImportedImageKeys(ctx.log, photo);
+  for (const keyID of keyIDs) {
+    await removeRecordKey(ctx.log, keyID);
+  }
 
   const reply = await ctx.call('image.read', { image: readImageID(imported) });
 
@@ -135,8 +139,11 @@ test('it leaves an imported file alone when another record is forgotten', async 
   });
 
   const imported = await ctx.read('image.import', { file: seeded.file });
+  const keyIDs = await readImportedImageKeyIDs(ctx.log.writer.db, seeded.resultSequence + 1000);
 
-  await removeImportedImageKeys(ctx.log, seeded.resultSequence + 1000);
+  for (const keyID of keyIDs) {
+    await removeRecordKey(ctx.log, keyID);
+  }
 
   const reply = await ctx.call('image.read', { image: readImageID(imported) });
 

@@ -208,7 +208,7 @@ purge makes those values unreadable and keeps the current text readable. The sta
 the forgotten record and the items to purge, the purge set: each active, retired or forgetting item,
 and each pending proposal for a new item, that has a version or a proposal whose evidence or intent
 evidence names the record. The [record forget](../channels/api.md#forgetting-a-record) writes the
-record in the transaction that writes `record.forget_started`, so a crash leaves both or neither. It
+purge set in the capture of the `erasure.started` it commits, so a crash leaves both or neither. It
 writes none for a record that no item quotes, because a second read finds the same empty set.
 
 From the started record on, every reader reads each older version and pending proposal of those
@@ -229,9 +229,9 @@ the purge fails as stale. After the commit the purge deletes the closed keys and
 An item whose own [forget](#forgetting) has begun gets no closing commit, because that forget
 deletes every key of the item. The purge waits for that forget: it runs the item's open erasure to
 its end, which deletes every key of the item, and then writes `memory.evidence_purged`. A forget
-that an earlier release left in forgetting gets its `erasure.started` first. So `record.forgotten`
-always follows the delete of every key that holds the record's text, even when the item's own forget
-has not reached its key delete.
+that an earlier release left in forgetting gets its `erasure.started` first. So the record's
+`erasure.finished` always follows the delete of every key that holds the record's text, even when
+the item's own forget has not reached its key delete.
 
 The memory view's history shows a bridge with its text and "Kept when a message was removed", with
 no change or origin. Recall shows its change as `kept`, with the line "kept when a message it quoted
@@ -242,34 +242,26 @@ that holds the brief ([started tasks](../core/started-tasks.md#the-start)). It r
 [session cleanup](./context.md#forgetting-and-the-live-session), which invalidates each session that
 can hold the record's text, once for each record it destroys. The call records go first and the
 forgotten record last, because the cleanup for the forgotten record finishes that record's purge set
-before the forget writes `record.forgotten`, and every other cleanup must have run before a purge
-deletes a key. The backup job reads `record.forgotten` as the forget's end, so every key a purge
+before the runner writes `erasure.finished`, and every other cleanup must have run before a purge
+deletes a key. The backup job reads `erasure.finished` as the forget's end, so every key a purge
 deletes is covered by [the forget's backup state](../deployment/backups.md#a-forgets-backup-state).
 
-A forget that an earlier release began has `record.forget_started` and no purge set. Its cleanup
-writes the set in one transaction before any key goes, because the set reads the evidence of the
-items that the purge then changes, and then goes on. A cleanup that runs again finds the set and
-writes nothing more. A forget that an earlier release finished, with a `record.forgotten` and no
-purge set, leaves its quotes in the items, and the user forgets such an item from the memory view.
+A forget that an earlier release began has `record.forget_started` and no purge set. The server's
+start gives it an `erasure.started` whose capture holds the set, written in one transaction before
+any key goes, because the set reads the evidence of the items that the purge then changes. A forget
+that an earlier release finished, with a `record.forgotten` and no purge set, leaves its quotes in
+the items, and the user forgets such an item from the memory view.
 
 After a kill at any step, the next start finishes the purge, because each step finds its own record
-or a missing key and writes nothing more when it runs again:
-
-| A kill after                          | The server start finds                             | The server start does                   |
-| ------------------------------------- | -------------------------------------------------- | --------------------------------------- |
-| the forget's first transaction        | `record.forget_started` with no `record.forgotten` | the rest of the forget                  |
-| the new keys, before the commit       | no closing record for the item                     | the item's purge again, with fresh keys |
-| the commit, before the key deletes    | a key of the closing record still in the key store | the deletes                             |
-| the key deletes, before the last mark | no `memory.evidence_purged` for the item           | `memory.evidence_purged`                |
-| every item                            | no `record.forgotten`                              | `record.forgotten`                      |
-
-[Crash tests](../core/crash-tests.md#fault-points-of-the-record-forget) lists the fault points that
-hold each of these. The purge deletes a key with `removeRecordKey`, which fails when a reader of the
-key store holds the write-ahead log. The purge then stops before `memory.evidence_purged`, so a
-purge counts as done only after the checkpoint cleared the old key from the log.
+or a missing key and writes nothing more when it runs again. The purge's own fault points are
+`memory.purge.keys_created`, `memory.purge.closed` and `memory.purge.keys_removed`, and the runner's
+fault points cover the rest, as [crash tests](../core/crash-tests.md) lists. The purge deletes a key
+with `removeRecordKey`, which fails when a reader of the key store holds the write-ahead log. The
+purge then stops before `memory.evidence_purged`, so a purge counts as done only after the
+checkpoint cleared the old key from the log.
 
 At its start, the server finishes each purge that no open record forget owns, where an open forget
-has no `record.forgotten` yet. The release before this one can end a forget with such a purge left:
+has no `erasure.finished` yet. The release before this one can end a forget with such a purge left:
 it skips an item whose own forget began, deletes that item's keys at its start before any record
 forget, and never marks the item purged. No code writes a purge set with no record forget behind it.
 The start also scrubs none of the consolidator's merge changes, which sat under the key of their
@@ -608,7 +600,8 @@ so the retry begins the items that never started and joins the ones that did, a 
 included. A route replies pending when a step after the starts fails, and the retry finishes the
 forget. The page keeps its retry control on a pending reply.
 
-The model has no tool that forgets an item, as it has none that forgets a record. The model's
+The model has no tool that forgets an item. It forgets a record of its own thread only through the
+[`log.forget` tool](../channels/api.md#the-logforget-tool), under the user's rules. The model's
 `forget.retry` only finishes a forget that a checked action or the host started. The runner still
 records `by` as `assistant` for a forget whose provenance is not the owner's, so a later tool needs
 no change to the record.
@@ -629,9 +622,9 @@ A backup copied before a forget still holds the forgotten item's key. The key ba
 let nixie delete every past copy, so a store with versioning that nixie does not manage, or with
 immutable retention, cannot hold them. Staging files, restore samples and backup caches count as
 copies too. A forget also reports the state of the backups of its keys: off, pending, failed with a
-reason, or complete. A forget or a bulk forget answers with this state, and
-`memory.readForgetStatus` reads it again. nixie applies these rules in order, and the first that
-holds gives the state:
+reason, complete, or unknown when nixie cannot read the state. A forget or a bulk forget answers
+with this state, and `memory.readForgetStatus` reads it again. nixie applies these rules in order,
+and the first that holds gives the state:
 
 1. Off, when the deployment turned the backup schedule off.
 2. Pending, until a forget has deleted every item asked about. An item that no forget took, or an

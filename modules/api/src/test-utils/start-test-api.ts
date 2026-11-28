@@ -15,8 +15,15 @@ import {
   readDefinitionVersion,
 } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
-import type { Writer } from '@heynixie/log';
-import { logProjections, registerRecordTopics, startWriter } from '@heynixie/log';
+import type { ErasureRunnerControl, Writer } from '@heynixie/log';
+import {
+  logProjections,
+  makeErasureRunner,
+  registerRecordTopics,
+  startWriter,
+} from '@heynixie/log';
+import type { TestErasureEffects } from '@heynixie/log/test-utils';
+import { buildTestErasureEffects } from '@heynixie/log/test-utils';
 import type { McpPort } from '@heynixie/mcp';
 import { memoryProjections } from '@heynixie/memory';
 import { notebookProjections } from '@heynixie/notebook';
@@ -53,9 +60,11 @@ import type {
   CleanupRecordSessions,
   ComputerWatchPort,
   ErasureStuckPort,
+  RecordForgets,
   ViewNotebookStore,
 } from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
+import { registerTestRecordForgets } from './register-test-record-forgets';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
 
@@ -88,6 +97,10 @@ interface TestAPI {
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
 
+  // what the runner's turn-input removal also does, which a test sets to write a record at the
+  // moment that a forget reaches it
+  readonly setTurnInputRemoval: (removal: () => Promise<void>) => void;
+
   // the computer that a watch opens, which a running nixie sets once its computer starts
   readonly setWatch: (open: ReturnType<ComputerWatchPort['readWatch']>) => void;
 
@@ -100,6 +113,17 @@ interface TestAPI {
 
   // every line the watch route and its relay logged
   readonly logged: readonly string[];
+
+  // the runner that a record and an image forget on, over the log and stores, with effects that
+  // touch nothing but the session cleanup that `setSessionCleanup` gives
+  readonly runner: ErasureRunnerControl;
+
+  // the calls of its effects, and the fault points that a test arms
+  readonly effects: TestErasureEffects;
+
+  // what the runner does to destroy the code sandboxes of a forget, which does nothing until a test
+  // sets it
+  readonly setSandboxDestroy: (destroy: (callIDs: readonly string[]) => Promise<void>) => void;
   readonly writer: Writer;
   readonly clock: FakeClock;
   readonly context: APIContext;
@@ -169,11 +193,13 @@ export async function startTestAPI(
 
   const definitionStore = buildTestDefinitionStore();
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
+  const turnInputs: { removal: (() => Promise<void>) | null } = { removal: null };
   const notebook: { store: ViewNotebookStore | null } = { store: null };
   const erasure: { port: ErasureStuckPort | null } = { port: null };
   const connections: { port: ConnectionsPort | null } = { port: null };
   const picked: { read: APIContext['readPickedFiles'] } = { read: undefined };
   const mcp: { port: McpPort | null } = { port: null };
+  const forgets: { handles: RecordForgets | null } = { handles: null };
   const spendGateway = buildStubSpendGateway();
 
   const watching: {
@@ -185,8 +211,8 @@ export async function startTestAPI(
   const logged: string[] = [];
 
   const created = await createTestContext(writer, settings, definitionStore, {
-    readSessionCleanup: () => sessions.cleanup,
     readNotebook: () => notebook.store,
+    readForgets: () => forgets.handles,
     readErasure: () => erasure.port,
     readConnections: () => connections.port,
     readPickedFiles: (connection, files) =>
@@ -210,12 +236,43 @@ export async function startTestAPI(
   });
 
   const context = created.context;
+  const effects = buildTestErasureEffects();
+
+  const sandboxes: { destroy: (callIDs: readonly string[]) => Promise<void> } = {
+    destroy: () => Promise.resolve(),
+  };
+
+  const runner = makeErasureRunner({
+    log: context.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    effects: {
+      ...effects.effects,
+      cleanupSessions: async (cause) => {
+        if ('recordSequence' in cause) {
+          await sessions.cleanup?.({ recordSequence: cause.recordSequence });
+        }
+      },
+      destroySandboxes: (callIDs) => sandboxes.destroy(callIDs),
+      removeTurnInputs: async (scope) => {
+        await effects.effects.removeTurnInputs(scope);
+        await turnInputs.removal?.();
+      },
+    },
+  });
+
+  forgets.handles = registerTestRecordForgets(context, runner);
+
   const served = startTestApp(context);
 
   stack.defer(served.stop);
 
   return {
     dataDir,
+    runner,
+    effects,
+    setSandboxDestroy: (destroy) => {
+      sandboxes.destroy = destroy;
+    },
     writer,
     clock: context.clock,
     context,
@@ -243,6 +300,9 @@ export async function startTestAPI(
     setSessionCleanup: (cleanup) => {
       sessions.cleanup = cleanup;
     },
+    setTurnInputRemoval: (removal) => {
+      turnInputs.removal = removal;
+    },
     setWatch: (open) => {
       watching.open = open;
     },
@@ -255,8 +315,8 @@ export async function startTestAPI(
 }
 
 interface TestContextDeps {
-  readonly readSessionCleanup: APIContext['readSessionCleanup'];
   readonly readNotebook: NonNullable<APIContext['readNotebook']>;
+  readonly readForgets: NonNullable<APIContext['readForgets']>;
   readonly readErasure: NonNullable<APIContext['readErasure']>;
   readonly readConnections: NonNullable<APIContext['readConnections']>;
   readonly readPickedFiles?: APIContext['readPickedFiles'];
@@ -354,8 +414,8 @@ async function createTestContext(
     clients: createClientRegistry({ clock }),
 
     readZone: () => Promise.resolve('UTC'),
-    readSessionCleanup: deps.readSessionCleanup,
     readNotebook: deps.readNotebook,
+    readForgets: deps.readForgets,
     readErasure: deps.readErasure,
     ...(deps.extend === null ? {} : deps.extend({ log, clock: writer.clock, contextClock: clock })),
     readConnections: deps.readConnections,

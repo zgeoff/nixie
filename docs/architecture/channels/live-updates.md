@@ -55,9 +55,9 @@ screen state and each change, as [the devices doc](./devices.md#the-streams) des
 A page stream starts after the last event ID when that is a sequence of 1 to 15 digits, and
 otherwise after `afterSequence`, and never past the head, because a start past the head would skip a
 `session.revoked` record that names the caller. A shredded record arrives with `isRemoved`, which
-the server reads from the `record.forget_started` record that names it. That record belongs to the
-forget of a log record, and is a separate family from the `erasure.started` and `erasure.finished`
-records that [Topics](#topics) covers. A `record` event reads the record as a page read does, as
+the server reads from the `erasure.started` record of the kind `record` that names it, or from the
+`record.forget_started` of an earlier release. [Topics](#topics) covers the erasure records. A
+`record` event reads the record as a page read does, as
 [the API doc](./api.md#reading-and-the-live-stream) describes.
 
 The API reads the head of the log, then checks the session, and refuses a missing or revoked session

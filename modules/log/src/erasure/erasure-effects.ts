@@ -11,6 +11,9 @@ export type ErasureFaultPoint =
 
 export type ErasureSessionCause = ErasureCapture['sessionCause'];
 
+// A cause that names a session to clean, which a forget with no sessions never does.
+export type ErasureCleanupCause = Exclude<ErasureSessionCause, { readonly sessions: 'none' }>;
+
 export interface ErasureTurnInputScope {
   // every request on these threads goes
   readonly threads: readonly string[];
@@ -34,7 +37,7 @@ export interface ErasureEffects {
   readonly destroySandboxes: (callIDs: readonly string[]) => Promise<void>;
 
   // invalidates each session that can hold the target's text
-  readonly cleanupSessions: (cause: ErasureSessionCause) => Promise<void>;
+  readonly cleanupSessions: (cause: ErasureCleanupCause) => Promise<void>;
 
   // the threads whose sessions the cleanup closed, which the turn inputs on them follow
   readonly readCleanedThreads: (cause: ErasureSessionCause) => Promise<readonly string[]>;

@@ -27,7 +27,7 @@ test('it runs the reset that its flags name, and starts nixie again', async () =
   const reset = await runTestReset(nixie, ['--only', 'conversations', '--yes']);
 
   expect(reset.command.exitCode).toBe(0);
-  expect(reset.command.stdout).toStartWith('nixie shredded ');
+  expect(reset.command.stdout).toStartWith('nixie removed ');
   expect(reset.serverExit).toBe(0);
 });
 

@@ -1,19 +1,37 @@
+import type { RecordForgets } from '@heynixie/api';
+import {
+  buildImageErasable,
+  buildRecordErasable,
+  conversationErasableDescriptor,
+  imageErasableDescriptor,
+  recordErasableDescriptor,
+} from '@heynixie/api';
 import { writeBackupFloor } from '@heynixie/backup';
-import type { CodeSandboxLister } from '@heynixie/connectors';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
-import type { ErasureRunnerControl } from '@heynixie/log';
+import type { ErasureHandle, ErasureRunnerControl } from '@heynixie/log';
 import { localDataStorage, makeErasureRunner } from '@heynixie/log';
 import { buildTextErasable, phoneTextErasableDescriptor } from '@heynixie/phone';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { ServerPartValues } from '../part/server-part-values';
+import { makeStopWork } from '../server/make-stop-work';
 import type { PartReader, ServerParts } from '../types';
+import type {
+  ConversationErasableOptions,
+  ConversationErasureRequest,
+} from './build-conversation-erasable';
+import { buildConversationErasable } from './build-conversation-erasable';
+import { collectCleanedCauses } from './collect-cleaned-causes';
 
 // What the runner takes of the server's parts and of the started parts, so a test supplies each
 // one for real.
-export type ErasureRunnerParts = Pick<ServerParts, 'context' | 'turnInputs'> & {
-  readonly tools: { readonly adapter: CodeSandboxLister };
+export type ErasureRunnerParts = Pick<ServerParts, 'context' | 'apiContext' | 'turnInputs'> & {
+  readonly tools: {
+    readonly adapter: ConversationErasableOptions['adapter'];
+    readonly webFetch: { readonly clearPauses: () => void };
+  };
+  readonly cleanup: Pick<ServerParts['cleanup'], 'stop'>;
   readonly config: { readonly backup: Pick<ServerParts['config']['backup'], 'isEnabled'> };
 };
 
@@ -22,6 +40,13 @@ export interface ErasureRunnerValues {
   readonly sandbox_runner: Pick<ServerPartValues['sandbox_runner'], 'cleanupSessions'>;
   readonly memory: Pick<ServerPartValues['memory'], 'finishEvidencePurges'>;
   readonly phone: Pick<ServerPartValues['phone'], 'bindForget'>;
+  readonly api_gate: Pick<ServerPartValues['api_gate'], 'close'>;
+}
+
+// The runner with the handles of the kinds that the API and the reset begin.
+export interface StartedErasureRunner extends ErasureRunnerControl {
+  readonly forgets: RecordForgets;
+  readonly forgetConversation: ErasureHandle<ConversationErasureRequest>;
 }
 
 // The runner takes every forget through the same steps. Only the server reaches the sessions, the
@@ -30,7 +55,7 @@ export interface ErasureRunnerValues {
 export function startErasureRunner(
   parts: ErasureRunnerParts,
   reader: PartReader<ErasureRunnerValues>,
-): ErasureRunnerControl {
+): StartedErasureRunner {
   const conversation = reader.get('conversation_imp');
   const tasks = reader.get('sandbox_runner');
 
@@ -56,7 +81,13 @@ export function startErasureRunner(
         await conversation.cleanupSessions(cause);
         await tasks.cleanupSessions(cause);
       },
-      readCleanedThreads: (cause) => readCleanedTaskIDs(parts.context, cause),
+      readCleanedThreads: async (cause) => {
+        const threads = await Promise.all(
+          collectCleanedCauses(cause).map((each) => readCleanedTaskIDs(parts.context, each)),
+        );
+
+        return [...new Set(threads.flat())];
+      },
       finishPurges: async (recordSequence) => {
         const memory = reader.find('memory');
 
@@ -83,5 +114,27 @@ export function startErasureRunner(
 
   reader.find('phone')?.bindForget(forgetText);
 
-  return runner;
+  // Registered whether or not the images feature is on, because a forget that a crash cut short
+  // finishes at the next start, and each entry reads only the log.
+  const forgets = {
+    record: runner.register({
+      ...recordErasableDescriptor,
+      ...buildRecordErasable(parts.apiContext),
+    }),
+    image: runner.register({ ...imageErasableDescriptor, ...buildImageErasable(parts.apiContext) }),
+  };
+
+  const stopWork = makeStopWork({ closeAPI: reader.get('api_gate').close, work: parts.cleanup });
+
+  const forgetConversation = runner.register({
+    ...conversationErasableDescriptor,
+    ...buildConversationErasable({
+      context: parts.apiContext,
+      adapter: parts.tools.adapter,
+      stopWork,
+      clearFetchPauses: parts.tools.webFetch.clearPauses,
+    }),
+  });
+
+  return { ...runner, forgets, forgetConversation };
 }

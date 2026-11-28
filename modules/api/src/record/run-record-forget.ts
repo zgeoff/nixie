@@ -1,30 +1,45 @@
-import { withWriteTransaction } from '@heynixie/log';
+import type { ErasureBy } from '@heynixie/log';
 import type { APIContext } from '../types';
-import { readRecordStartCalls } from './read-record-start-calls';
-import { runRecordForgetCleanup } from './run-record-forget-cleanup';
-import type { RecordForgetStart } from './write-record-forget-start';
-import { writeRecordForgetStart } from './write-record-forget-start';
+import { readRecordForget } from '../utils/read-record-forget';
+import { beginRecordForget, readRecordForgets } from './begin-record-forget';
+import type { RecordForgetCheck } from './read-record-forget-check';
 
 interface RecordTarget {
   readonly thread: string;
   readonly sequence: number;
 }
 
-// Forgets one record and runs its cleanup, with no check of who asks. Run again after a completed
-// forget, it answers forgotten and changes nothing.
+export type RecordForgetStart =
+  | { readonly status: 'forgotten'; readonly forgottenAt: number }
+  | Exclude<RecordForgetCheck, { readonly status: 'ok' }>;
+
+// Forgets one record to its end, with no check of who asks. Run again after a completed forget, it
+// answers forgotten with the time of the first start and changes nothing.
 export async function runRecordForget(
   context: APIContext,
   target: RecordTarget,
+  by: ErasureBy = 'user',
 ): Promise<RecordForgetStart> {
-  const startCalls = await readRecordStartCalls(context, target.sequence);
+  const begun = await beginRecordForget(context, target, { by });
 
-  const start = await withWriteTransaction(context.log.writer, (tx) =>
-    writeRecordForgetStart(tx, context, target, startCalls),
-  );
-
-  if (start.status === 'forgotten') {
-    await runRecordForgetCleanup(context, target.sequence);
+  if (begun.status !== 'begun') {
+    return begun;
   }
 
-  return start;
+  return finishRecordForget(context, target.sequence);
+}
+
+// Steps 2 to 9 of the forget, and the time that it began.
+export async function finishRecordForget(
+  context: APIContext,
+  sequence: number,
+): Promise<Extract<RecordForgetStart, { status: 'forgotten' }>> {
+  await readRecordForgets(context).record.finish(String(sequence));
+
+  const started = await readRecordForget(context.log.writer.db, {
+    kind: 'record.forget_started',
+    sequence,
+  });
+
+  return { status: 'forgotten', forgottenAt: started?.recordedAt ?? context.clock.now() };
 }

@@ -86,7 +86,7 @@ test('it ends the turn that made the call, runs its step again on a rebuilt sess
   const errored = kinds.indexOf('task.step_errored');
   const reply = kinds.lastIndexOf('model.reply');
 
-  expect(kinds.filter((kind) => kind === 'record.forget_started')).toHaveLength(1);
+  expect(kinds.filter((kind) => kind === 'erasure.started')).toHaveLength(1);
   expect(kinds.slice(errored)).toContain('model.session_opened');
   expect(reply).toBeGreaterThan(outcome);
   expect(read.lastStepEnd?.kind).toBe('task.step_committed');

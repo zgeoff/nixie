@@ -8,7 +8,17 @@ const keySelectionSchema = z.union([idsSelection, familySelection, threadSelecti
 const noteCause = z.strictObject({ noteID: z.string() });
 const momentCause = z.strictObject({ momentID: z.string() });
 const itemCause = z.strictObject({ itemID: z.string() });
-const recordCause = z.strictObject({ recordSequence: z.int() });
+
+// `callSequences` lists the task.start calls that hold a brief the record forget removes, whose
+// sessions the forget cleans first
+const recordCause = z.strictObject({
+  recordSequence: z.int(),
+  callSequences: z.array(z.int()).exactOptional(),
+});
+
+// A forget with no session to clean: the reset ends its conversation's session before the start,
+// and an image's records each clean their own.
+const noSessionsCause = z.strictObject({ sessions: z.literal('none') });
 
 // `wakeSequences` lists the records of the wakes that show the connection's mail, whose sessions
 // the forget cleans
@@ -27,6 +37,7 @@ const sessionCauseSchema = z.union([
   recordCause,
   connectionCause,
   textCause,
+  noSessionsCause,
 ]);
 
 const purgeSchema = z.strictObject({ recordSequence: z.int(), itemIDs: z.array(z.string()) });
@@ -48,6 +59,10 @@ export const erasureCaptureSchema = z.strictObject({
   purges: z.array(purgeSchema),
   sessionCause: sessionCauseSchema,
   turnInputs: turnInputsSchema,
+
+  // The place whose records hold the target's text, which a record forget reads before its own key
+  // goes so that a record of the place written later still finds its way to the scan
+  placeID: z.string().exactOptional(),
 });
 
 export type ErasureCapture = ReadonlyDeep<z.infer<typeof erasureCaptureSchema>>;

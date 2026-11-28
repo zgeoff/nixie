@@ -5,9 +5,9 @@ import type { DefinitionsContext } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { TurnInputs } from '@heynixie/turn-inputs';
+import type { ConversationReset } from '../erasure/run-conversation-reset';
 import type { Cleanup } from '../types';
 import type { APIGate } from '../utils/build-api-gate';
-import type { ConversationReset } from '../utils/run-conversation-reset';
 import type { ServerReset } from '../utils/run-server-reset';
 import { startControlSocket } from './start-control-socket';
 

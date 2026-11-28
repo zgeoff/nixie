@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
 import type { ImageRow } from './image-tables';
+import { readErasingImageUUIDs } from './read-erasing-image-uuids';
 import { readImageRow } from './read-image-row';
 
 export type ImageEntry =
@@ -8,8 +9,8 @@ export type ImageEntry =
   | { readonly kind: 'forgotten'; readonly row: ImageRow }
   | { readonly kind: 'ok'; readonly row: ImageRow; readonly bytes: Uint8Array<ArrayBuffer> };
 
-// An image of any thread, with its bytes. An image whose result record a forget made unreadable
-// reads as forgotten, and its row stays so the edit chain keeps its shape.
+// An image of any thread, with its bytes. An image whose forget has started, or whose result record
+// a forget made unreadable, reads as forgotten, and its row stays so the edit chain keeps its shape.
 export async function readImageEntry(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   id: string,
@@ -18,6 +19,12 @@ export async function readImageEntry(
 
   if (row === null) {
     return { kind: 'missing' };
+  }
+
+  const erasing = await readErasingImageUUIDs(log, [row.uuid]);
+
+  if (erasing.has(row.uuid)) {
+    return { kind: 'forgotten', row };
   }
 
   const attachments = await readRecordAttachments(log, [row.sequence]);

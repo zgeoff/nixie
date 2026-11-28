@@ -414,8 +414,6 @@ export type FaultPointID =
   | 'memory.purge.keys_created'
   | 'memory.purge.closed'
   | 'memory.purge.keys_removed'
-  | 'record.forget.started'
-  | 'record.forget.purged'
   | 'erasure.begun'
   | 'erasure.sandboxes_destroyed'
   | 'erasure.revoked'

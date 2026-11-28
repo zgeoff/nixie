@@ -17,19 +17,15 @@ async function setupTest() {
   return {
     ...api,
     forget: (sequence: number) =>
-      writeRecordForget(
-        { ...api.context, readSessionCleanup: () => () => Promise.resolve() },
-        laptop.caller,
-        {
-          clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-          thread: 'conversation',
-          sequence,
-        },
-      ),
+      writeRecordForget(api.context, laptop.caller, {
+        clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+        thread: 'conversation',
+        sequence,
+      }),
     readForgottenSequences: async () => {
       const entries = await readRecords(api.context.log, {
         afterSequence: 0,
-        kinds: ['record.forgotten'],
+        kinds: ['erasure.finished'],
       });
 
       return entries.map((entry) => entry.record.sequence);
@@ -56,7 +52,7 @@ test('it reads the forget of a record that has not finished its cleanup as delet
   expect(progress).toStrictEqual({ stage: 'deleting' });
 });
 
-test('it reads a finished forget of a record with a key as forgotten at the sequence of its record.forgotten', async () => {
+test('it reads a finished forget of a record with a key as forgotten at the sequence of its erasure.finished', async () => {
   const ctx = await setupTest();
 
   const [result] = await writeRecords(ctx.context.log, [

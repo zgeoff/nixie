@@ -1,9 +1,8 @@
-import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
+import type { HostBackups } from '@heynixie/api';
 import type { Connections, DatabaseHeldBackend } from '@heynixie/connections';
 import type { ActionConnector, ComputerTools, RenderSandbox } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { DeviceStreams } from '@heynixie/devices';
-import type { ErasureRunnerControl } from '@heynixie/log';
 import type { Mcp } from '@heynixie/mcp';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
@@ -12,6 +11,7 @@ import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ServerCoding } from '../coding/build-server-coding';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
 import type { ConversationImages, ConversationSearch } from '../conversation/types';
+import type { StartedErasureRunner } from '../erasure/start-erasure-runner';
 import type { ServerMail } from '../mail/create-server-mail';
 import type { PhonePart } from '../phone/start-phone-part';
 import type { ServerResetControl } from '../server/build-server-reset';
@@ -59,7 +59,7 @@ export interface ServerPartValues {
   readonly add_images: void;
   readonly conversation_imp: ConversationImp;
   readonly checker: CheckerTask;
-  readonly erasure: ErasureRunnerControl;
+  readonly erasure: StartedErasureRunner;
   readonly held_credentials: DatabaseHeldBackend;
   readonly connections: Connections;
   readonly mcp: Mcp;
@@ -70,8 +70,6 @@ export interface ServerPartValues {
   readonly memory: StartedMemoryStore;
   readonly notebook: NotebookStore;
 
-  readonly session_cleanup: CleanupRecordSessions;
-  readonly record_forgets: void;
   readonly definitions_seed: SeedResult;
   readonly start_record: void;
   readonly heartbeat: void;

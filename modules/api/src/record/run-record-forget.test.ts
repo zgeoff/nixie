@@ -22,8 +22,9 @@ import { seedQuotedMemoryItems } from '../test-utils/seed-quoted-memory-items';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { startTestMemoryForgets } from '../test-utils/start-test-memory-forgets';
 import type { CleanupRecordSessions } from '../types';
+import { beginRecordForget } from './begin-record-forget';
 import { readRecordForgetCheck } from './read-record-forget-check';
-import { runRecordForget } from './run-record-forget';
+import { finishRecordForget, runRecordForget } from './run-record-forget';
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -55,7 +56,7 @@ async function setupTest() {
 
       return entries.map((entry) => entry.record.kind);
     },
-    readSequences: async (kind: 'memory.evidence_purged' | 'record.forgotten') => {
+    readSequences: async (kind: 'memory.evidence_purged' | 'erasure.finished') => {
       const entries = await readRecords(api.context.log, { afterSequence: 0, kinds: [kind] });
 
       return entries.map((entry) => entry.record.sequence);
@@ -69,10 +70,9 @@ test('it forgets a record with no caller check and runs the session cleanup once
 
   const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  const forgotten = await runRecordForget(
-    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
-    { thread: 'conversation', sequence },
-  );
+  ctx.setSessionCleanup(cleanupSessions);
+
+  const forgotten = await runRecordForget(ctx.context, { thread: 'conversation', sequence });
 
   expect(forgotten).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
   expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: sequence });
@@ -82,8 +82,8 @@ test('it forgets a record with no caller check and runs the session cleanup once
   expect(kinds).toStrictEqual([
     'task.created',
     'owner_message',
-    'record.forget_started',
-    'record.forgotten',
+    'erasure.started',
+    'erasure.finished',
   ]);
 });
 
@@ -91,12 +91,10 @@ test('it answers forgotten and writes nothing more when the record is already fo
   const ctx = await setupTest();
   const sequence = await ctx.writeOwnerMessage('The shed key sits under the blue pot.');
 
-  const context = { ...ctx.context, readSessionCleanup: () => () => Promise.resolve() };
-
-  await runRecordForget(context, { thread: 'conversation', sequence });
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence });
 
   const before = await ctx.readKinds();
-  const again = await runRecordForget(context, { thread: 'conversation', sequence });
+  const again = await runRecordForget(ctx.context, { thread: 'conversation', sequence });
   const after = await ctx.readKinds();
 
   expect(again).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
@@ -201,7 +199,7 @@ test('it lists in the purge set the items that the preview lists, and purges exa
   expect(unrelated?.versions).toMatchObject([{ version: 1, status: 'readable', isRemoved: false }]);
 });
 
-test('it writes the purge set in the forget start, before any purge step runs', async () => {
+test('it writes the purge set in the start transaction, before any purge step runs', async () => {
   const ctx = await setupTest();
   const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
 
@@ -210,7 +208,11 @@ test('it writes the purge set in the forget start, before any purge step runs', 
   const kinds = await ctx.readKinds();
   const rows = await readPurgeRows(ctx.context.log.writer.db);
 
-  expect(kinds.slice(-2)).toStrictEqual(['record.forget_started', 'memory.evidence_purge_started']);
+  expect(kinds.slice(-3)).toStrictEqual([
+    'memory.evidence_purge_started',
+    'erasure.started',
+    'erasure.finished',
+  ]);
 
   expect(rows).toStrictEqual([
     {
@@ -222,14 +224,14 @@ test('it writes the purge set in the forget start, before any purge step runs', 
   ]);
 });
 
-test('it writes record.forgotten after the last mark of every item of the set', async () => {
+test('it writes erasure.finished after the last mark of every item of the set', async () => {
   const ctx = await setupTest();
   const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
 
   await runRecordForget(ctx.forgetContext, { thread: 'conversation', sequence: seeded.sequence });
 
   const purged = await ctx.readSequences('memory.evidence_purged');
-  const [forgotten] = await ctx.readSequences('record.forgotten');
+  const [forgotten] = await ctx.readSequences('erasure.finished');
 
   invariant(forgotten !== undefined);
 
@@ -511,4 +513,156 @@ test('it refuses to forget the removal of a site place, which holds nothing a ke
   });
 
   expect(forgotten).toStrictEqual({ status: 'wrong_kind', kind: 'places.removed' });
+});
+
+test("it shreds an act of a place written after the forget of the place's act began", async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  await beginRecordForget(
+    ctx.context,
+    { thread: 'conversation', sequence: first.record.sequence },
+    { by: 'user' },
+  );
+
+  await writePlaceActed(places, { ...act, callID: 'call-2' });
+  await finishRecordForget(ctx.context, first.record.sequence);
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
+});
+
+test('it shreds an act of a place written while the forget of the place act cleans up', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  let isWritten = false;
+
+  ctx.setSessionCleanup(async () => {
+    if (!isWritten) {
+      isWritten = true;
+
+      await writePlaceActed(places, { ...act, callID: 'call-2' });
+    }
+  });
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: first.record.sequence });
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
+  expect(isWritten).toBe(true);
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
+});
+
+test('it shreds an act of a place written while the forget of the place act removes turn inputs', async () => {
+  const ctx = await setupTest();
+
+  const places = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const added = await writePlaceAdded(places, {
+    key: { kind: 'phone', e164: '+61455501234' },
+    trust: 'act',
+    name: 'Front desk',
+    addedBy: 'you',
+  });
+
+  invariant(added.status === 'added');
+
+  const act = {
+    placeID: added.placeID,
+    shortID: added.shortID,
+    tool: 'phone.send',
+    thread: 'conversation',
+  };
+
+  await writePlaceActed(places, { ...act, callID: 'call-1' });
+
+  const [first] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  invariant(first);
+
+  let isWritten = false;
+
+  ctx.setTurnInputRemoval(async () => {
+    if (!isWritten) {
+      isWritten = true;
+
+      await writePlaceActed(places, { ...act, callID: 'call-2' });
+    }
+  });
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: first.record.sequence });
+
+  const acts = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['places.acted'] });
+
+  expect(isWritten).toBe(true);
+  expect(acts.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded', 'shredded']);
 });

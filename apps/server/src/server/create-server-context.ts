@@ -1,5 +1,5 @@
 import { makeQueueRunnerActions } from '@heynixie/actions';
-import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
+import type { APIContext, APISettings } from '@heynixie/api';
 import { createClientRegistry, createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { buildBuiltInBudgets } from '@heynixie/budgets';
 import { callBudgetName } from '@heynixie/calls';
@@ -55,7 +55,6 @@ export interface ServerContextOptions {
 export async function createServerContext(
   writer: Writer,
   deploymentKey: CryptoKey,
-  readSessionCleanup: () => CleanupRecordSessions | null,
   options: ServerContextOptions,
 ): Promise<ServerContext> {
   const current = { inForce: await readDefinitionsInForce(writer.db) };
@@ -120,7 +119,6 @@ export async function createServerContext(
       passkeys: createPasskeyState(),
       clients: createClientRegistry({ clock: writer.clock }),
       readZone: makeReadZone(writer, writer.db, options.defaultZone),
-      readSessionCleanup,
     },
   };
 }

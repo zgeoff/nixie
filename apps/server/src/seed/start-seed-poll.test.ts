@@ -70,7 +70,7 @@ test('it reports the definitions ready again once the source returns to its last
   await writeFile(join(root, 'persona.md'), '# Persona\n');
   await writeFile(join(root, 'skills', 'tide-tables', 'SKILL.md'), skill);
 
-  const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
+  const context = await createServerContext(log.writer, log.deploymentKey, {
     runSettings: buildTestRunSettings(),
     taskRunLimits: { turns: 25, dollars: 2 },
     defaultZone: 'Europe/Lisbon',

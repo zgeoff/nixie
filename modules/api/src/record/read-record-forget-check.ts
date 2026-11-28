@@ -7,7 +7,8 @@ import { unthreadedPlaceKinds } from '../utils/unthreaded-place-kinds';
 import { probeUnfinishedQueuedAction } from './probe-unfinished-queued-action';
 
 interface RecordTarget {
-  readonly thread: string;
+  // null checks the record on any thread, for a child that the runner starts from a target
+  readonly thread: string | null;
   readonly sequence: number;
 }
 
@@ -36,11 +37,13 @@ export async function readRecordForgetCheck(
     .selectFrom('records')
     .select('kind')
     .where('sequence', '=', target.sequence)
-    .where((eb) =>
-      eb.or([
-        eb('thread', '=', target.thread),
-        eb.and([eb('thread', 'is', null), eb('kind', 'in', unthreadedPlaceKinds)]),
-      ]),
+    .$if(target.thread !== null, (query) =>
+      query.where((eb) =>
+        eb.or([
+          eb('thread', '=', target.thread),
+          eb.and([eb('thread', 'is', null), eb('kind', 'in', unthreadedPlaceKinds)]),
+        ]),
+      ),
     )
     .executeTakeFirst();
 

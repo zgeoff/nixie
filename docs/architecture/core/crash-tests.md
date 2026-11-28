@@ -124,31 +124,31 @@ lists.
 ## Fault points of the record forget
 
 A forgotten record can leave evidence quotes in memory items. The evidence purge of a
-[record forget](../memory/store.md#the-evidence-purge) removes them, and it holds at 5 fault points,
-one for each row of its kill table. Each point sits behind the test-build flag. A test arms a point,
-makes the forget or the purge reach it, stops nixie there and starts it again, and checks that the
-purge finishes and the current text of each item still reads. `recover-record-forget-purge.test.ts`
-does this. The next section covers the erasure runner.
+[record forget](../memory/store.md#the-evidence-purge) removes them, and it holds at the 3 fault
+points of the purge, and at the runner's points below. Each point sits behind the test-build flag. A
+test arms a point, makes the forget or the purge reach it, stops nixie there and starts it again,
+and checks that the purge finishes and the current text of each item still reads.
+`recover-record-forget-purge.test.ts` does this. The next section covers the erasure runner.
 
-| Fault point                 | Reached                                                   |
-| --------------------------- | --------------------------------------------------------- |
-| `record.forget.started`     | after the forget's first transaction, before any key goes |
-| `memory.purge.keys_created` | after an item's new keys, before its closing commit       |
-| `memory.purge.closed`       | after the closing commit, before the key deletes          |
-| `memory.purge.keys_removed` | after the key deletes, before `memory.evidence_purged`    |
-| `record.forget.purged`      | after every item's purge, before `record.forgotten`       |
+| Fault point                 | Reached                                                |
+| --------------------------- | ------------------------------------------------------ |
+| `erasure.begun`             | after the forget's `erasure.started`, before any key   |
+| `memory.purge.keys_created` | after an item's new keys, before its closing commit    |
+| `memory.purge.closed`       | after the closing commit, before the key deletes       |
+| `memory.purge.keys_removed` | after the key deletes, before `memory.evidence_purged` |
+| `erasure.cleaned`           | after the session cleanup, which ends every purge      |
 
 Beside the oracle, this suite checks one more case. It starts the previous release on the data after
-each kill, and checks that it finishes the purge too, so a rollback by one release in the middle of
-a record forget loses nothing. The case covers only the record forget: a memory item forgets through
-the erasure runner, and a release before that runner cannot open the data, as
-[forgetting](../memory/store.md#forgetting) says. The case runs the previous release's test build,
-which the e2e lane builds from the release's tag, because the release build stops at the parts of a
-start that need a real sandbox.
+each kill, and checks that it finishes the purge too. The case runs only when the previous release
+can open the data, and the test skips it otherwise. A record forget runs through the erasure runner,
+and a release before that runner cannot open the data, as
+[forgetting](../memory/store.md#forgetting) says, so no rollback of that release is possible
+mid-forget. The case runs the previous release's test build, which the e2e lane builds from the
+release's tag, because the release build stops at the parts of a start that need a real sandbox.
 
 ## Fault points of the erasure runner
 
-The [erasure runner](../memory/store.md#forgetting) forgets each of the 8 kinds in
+The [erasure runner](../memory/store.md#forgetting) forgets each of the kinds in
 `erasableKindSchema`, such as a memory item, a note or a connection's credential. It holds at 6
 fault points behind the test-build flag, in the order of its steps. `recover-erasure.test.ts` arms
 each point but `erasure.revoked` for a note and for a memory item.
@@ -166,8 +166,8 @@ erasures:
 | Fault point                   | Reached                                                                                                    |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `erasure.begun`               | after `erasure.started` commits, and when a run of the open erasure begins, before any sandbox or key goes |
-| `erasure.sandboxes_destroyed` | after the code sandboxes, before each target's revoke                                                      |
-| `erasure.revoked`             | once every pending target is revoked, before the keys                                                      |
+| `erasure.revoked`             | once every pending target is revoked, before any code sandbox goes                                         |
+| `erasure.sandboxes_destroyed` | after the code sandboxes, before the keys                                                                  |
 | `erasure.keys_removed`        | after the key deletes, before the session cleanup                                                          |
 | `erasure.cleaned`             | after the session cleanup, before the turn inputs                                                          |
 | `erasure.turn_inputs_removed` | after the turn inputs, before `erasure.finished`                                                           |

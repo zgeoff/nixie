@@ -21,6 +21,7 @@ export { startFakeGoogleSite } from './start-fake-google-site';
 export type { FakeGoogleSite } from './start-fake-google-site';
 export { startE2ENixie } from './start-e2e-nixie';
 export { startSpawnedNixie } from './start-spawned-nixie';
+export { startTestConversationReset } from './start-test-conversation-reset';
 export { startTestServer } from './start-test-server';
 export { writeSeedMessages } from './write-seed-messages';
 

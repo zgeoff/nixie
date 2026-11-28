@@ -1,11 +1,15 @@
 import { waitForSettled } from '@heynixie/async';
 import type { LogFields, Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import type {
+  ConversationReset,
+  ConversationResetOptions,
+} from '../erasure/run-conversation-reset';
+import { runConversationReset } from '../erasure/run-conversation-reset';
 import type { Cleanup } from '../types';
-import type { ConversationReset, ConversationResetOptions } from '../utils/run-conversation-reset';
-import { runConversationReset } from '../utils/run-conversation-reset';
 import type { ServerReset, ServerResetOptions } from '../utils/run-server-reset';
 import { runServerReset } from '../utils/run-server-reset';
+import { makeStopWork } from './make-stop-work';
 
 export interface ServerResetControl {
   readonly run: () => Promise<ServerReset>;
@@ -22,11 +26,8 @@ export interface ServerResetControlOptions extends Omit<ServerResetOptions, 'sto
   // removes the request bodies that the turn-input log holds, after the log's own reset
   readonly runTurnInputsReset: () => Promise<void>;
 
-  // removes the request bodies of the threads that a reset of the conversations covers
-  readonly removeTurnInputThreads: (threads: readonly string[]) => Promise<void>;
-
-  // empties the web fetch pause of every host, for a reset of the conversations
-  readonly clearFetchPauses: () => void;
+  // the conversation's handle on the erasure runner, which a reset of the conversations runs on
+  readonly readConversationForget: () => ConversationResetOptions['forgetConversation'];
 
   readonly closeAPI: () => Promise<void>;
 
@@ -76,10 +77,15 @@ export function buildServerReset(options: ServerResetControlOptions): ServerRese
 
       pending.conversations ??= runLoggedReset(options, {
         mode: 'conversations',
-        run: runConversationReset,
+        run: (resetOptions) =>
+          runConversationReset({
+            context: resetOptions.context,
+            log: resetOptions.log,
+            forgetConversation: options.readConversationForget(),
+          }),
         toFields: (reset) => ({
           lastSequence: reset.lastSequence,
-          shreddedRecords: reset.shreddedRecords,
+          removedKeys: reset.removedKeys,
         }),
         onDone: done.resolve,
       });
@@ -95,7 +101,7 @@ export function buildServerReset(options: ServerResetControlOptions): ServerRese
 
 interface ResetRun<Reset> {
   readonly mode: 'full' | 'conversations';
-  readonly run: (options: ConversationResetOptions) => Promise<Reset>;
+  readonly run: (options: ServerResetOptions) => Promise<Reset>;
   readonly toFields: (reset: Reset) => LogFields;
   readonly onDone: () => void;
 }
@@ -122,7 +128,7 @@ async function runLoggedReset<Reset>(
 
 async function runStoppedReset<Reset>(
   options: ServerResetControlOptions,
-  run: (options: ConversationResetOptions) => Promise<Reset>,
+  run: (options: ServerResetOptions) => Promise<Reset>,
 ): Promise<Reset> {
   options.work.abort();
 
@@ -130,9 +136,6 @@ async function runStoppedReset<Reset>(
 
   return run({
     ...options,
-    stopWork: async () => {
-      await options.closeAPI();
-      await options.work.stop();
-    },
+    stopWork: makeStopWork(options),
   });
 }

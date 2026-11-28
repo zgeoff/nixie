@@ -14,8 +14,7 @@ metadata:
 Run `bun verify` to start the app, try each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 10 of
 [Check a change](#check-a-change). You are done once you have published the report, ended the run
-and given the **Reply** at the end. Leave `bun verify gate` to CI: it fails a PR that changes a
-feature with no verdict in its description.
+and given the **Reply** at the end. Leave `bun verify gate` to CI.
 
 ## Key rules
 
@@ -82,6 +81,7 @@ feature with no verdict in its description.
 | gmail-wake         | A matching Gmail mail wakes the chat             | [references/feature-gmail-wake.md](references/feature-gmail-wake.md)                 |
 | calendar-tools     | Read the calendar, and approve an invitation     | [references/feature-calendar-tools.md](references/feature-calendar-tools.md)         |
 | drive-tools        | Search the files, and create a text file         | [references/feature-drive-tools.md](references/feature-drive-tools.md)               |
+| conversation-reset | Reset the conversation from the host             | [references/feature-conversation-reset.md](references/feature-conversation-reset.md) |
 
 <!-- /wringer:features -->
 

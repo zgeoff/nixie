@@ -578,13 +578,13 @@ test('it runs the turn after you forget a message the live session holds on a re
     after
       .filter((record) => record.sequence > message.sequence)
       .map((record) => record.kind)
-      .filter((kind) => kind.startsWith('model.session_') || kind.startsWith('record.')),
+      .filter((kind) => kind.startsWith('model.session_') || kind.startsWith('erasure.')),
   ).toStrictEqual([
     'model.session_opened',
-    'record.forget_started',
+    'erasure.started',
     'model.session_invalidated',
     'model.session_cleanup_completed',
-    'record.forgotten',
+    'erasure.finished',
     'model.session_opened',
   ]);
 });

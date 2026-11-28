@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startTestAPI } from '@heynixie/api/test-utils';
 import { buildHostClient } from '../cli/build-host-client';
+import type { ConversationReset } from '../erasure/run-conversation-reset';
 import { buildCleanup } from '../server/build-cleanup';
 import { buildAPIGate } from '../utils/build-api-gate';
-import type { ConversationReset } from '../utils/run-conversation-reset';
 import type { ServerReset } from '../utils/run-server-reset';
 import { startHostCommands } from './start-host-commands';
 
@@ -59,6 +59,7 @@ test('it runs the reset of the conversations itself once the gate is closed', as
   ctx.runConversationReset.mockResolvedValue({
     resetAt: new Date(2_000_000),
     lastSequence: 31,
+    removedKeys: 9,
     shreddedRecords: 9,
     backup: { state: 'pending' },
   });
@@ -70,6 +71,7 @@ test('it runs the reset of the conversations itself once the gate is closed', as
   expect(reset).toStrictEqual({
     resetAt: new Date(2_000_000),
     lastSequence: 31,
+    removedKeys: 9,
     shreddedRecords: 9,
     backup: { state: 'pending' },
   });

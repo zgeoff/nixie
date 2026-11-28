@@ -13,6 +13,8 @@ export interface RecordForget {
   readonly recordedAt: number;
 }
 
+// The first record that begins or ends the forget of the record: the old record of the kind, or the
+// erasure.started or erasure.finished of the record kind that replaced it.
 export async function readRecordForget(
   db: Kysely<unknown>,
   query: RecordForgetQuery,
@@ -26,5 +28,22 @@ export async function readRecordForget(
     .orderBy('sequence')
     .executeTakeFirst();
 
-  return row === undefined ? null : { sequence: row.sequence, recordedAt: row.recorded_at };
+  const erasureKind =
+    query.kind === 'record.forget_started' ? 'erasure.started' : 'erasure.finished';
+
+  const erasure = await db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select(['sequence', 'recorded_at'])
+    .where('kind', '=', sql.lit(erasureKind))
+    .where(sql`json_extract(payload, '$.targetID')`, '=', String(query.sequence))
+    .where(sql`json_extract(payload, '$.kind')`, '=', 'record')
+    .orderBy('sequence')
+    .executeTakeFirst();
+
+  const [first] = [row, erasure]
+    .filter((found) => found !== undefined)
+    .toSorted((left, right) => left.sequence - right.sequence);
+
+  return first === undefined ? null : { sequence: first.sequence, recordedAt: first.recorded_at };
 }

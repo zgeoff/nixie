@@ -88,7 +88,7 @@ test('it asks first under the starter rules, with the record on the card, and re
 
   expect(
     records.filter((record) => record.forget !== undefined).map((record) => record.kind),
-  ).toStrictEqual(['record.forget_started', 'record.forgotten']);
+  ).toStrictEqual(['erasure.started', 'erasure.finished']);
 
   expect(records.find((record) => record.removal !== undefined)?.removal).toStrictEqual({
     kind: 'owner_message',

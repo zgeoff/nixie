@@ -21,10 +21,10 @@ async function setupTest() {
     readForgottenSequence: async () => {
       const [entry] = await readRecords(api.context.log, {
         afterSequence: 0,
-        kinds: ['record.forgotten'],
+        kinds: ['erasure.finished'],
       });
 
-      invariant(entry, 'the forget wrote no record.forgotten');
+      invariant(entry, 'the forget wrote no erasure.finished');
 
       return entry.record.sequence;
     },
@@ -46,7 +46,7 @@ test('it reads the backup as pending while the purge of an item has not finished
   expect(state).toStrictEqual({ state: 'pending' });
 });
 
-test('it reads the backup as pending until a published set copied at record.forgotten, which follows every purge', async () => {
+test('it reads the backup as pending until a published set copied at erasure.finished, which follows every purge', async () => {
   const ctx = await setupTest();
 
   await runRecordForget(ctx.forgetContext, {

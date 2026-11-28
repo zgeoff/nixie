@@ -192,6 +192,7 @@ test('it runs both resets while the gate is closed', async () => {
       Promise.resolve({
         resetAt: new Date('2026-10-11T12:20:00.000Z'),
         lastSequence: 57,
+        removedKeys: 14,
         shreddedRecords: 14,
         backup: { state: 'pending' },
       }),
@@ -216,6 +217,7 @@ test('it runs both resets while the gate is closed', async () => {
   expect(conversationReset).toStrictEqual({
     resetAt: new Date('2026-10-11T12:20:00.000Z'),
     lastSequence: 57,
+    removedKeys: 14,
     shreddedRecords: 14,
     backup: { state: 'pending' },
   });

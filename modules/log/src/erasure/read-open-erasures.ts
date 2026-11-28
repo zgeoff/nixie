@@ -7,6 +7,9 @@ import { erasureStartedCodec } from './erasure-started-codec';
 export interface OpenErasure {
   readonly sequence: number;
   readonly startedAtMs: number;
+
+  // the thread that shows the start, when it has one
+  readonly thread: string | null;
   readonly started: ReturnType<typeof erasureStartedCodec.decode>;
 }
 
@@ -16,7 +19,7 @@ export async function readOpenErasures(log: Pick<Log, 'writer'>): Promise<readon
   const rows = await log.writer.db
     .$extendTables<LogTables>()
     .selectFrom('records as started')
-    .select(['started.sequence', 'started.recorded_at', 'started.payload'])
+    .select(['started.sequence', 'started.recorded_at', 'started.thread', 'started.payload'])
     .where('started.kind', '=', 'erasure.started')
     .where((eb) => eb.not(eb.exists(buildFinishedQuery(eb))))
     .orderBy('started.sequence', 'asc')
@@ -25,6 +28,7 @@ export async function readOpenErasures(log: Pick<Log, 'writer'>): Promise<readon
   const open = rows.map((row): OpenErasure => ({
     sequence: row.sequence,
     startedAtMs: row.recorded_at,
+    thread: row.thread,
     started: erasureStartedCodec.decode(parseJSONObject(row.payload)),
   }));
 

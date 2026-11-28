@@ -313,6 +313,7 @@ export const hostContract = {
     z.object({
       resetAt: z.date(),
       lastSequence: z.int().nonnegative(),
+      removedKeys: z.int().nonnegative(),
       shreddedRecords: z.int().nonnegative(),
       backup: forgetBackupSchema,
     }),

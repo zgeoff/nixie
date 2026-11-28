@@ -39,50 +39,34 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
   const reached = collectReached(tree);
 
   const removed = new Set<string>();
+  const cleaned = new Set<string>();
+  const lateKeyIDs = new Set<string>();
 
-  // children, then sandboxes, then keys, until a scan finds no child that is new
+  // Keys, then cleanup, until a scan after the cleanup finds no child that is new and no late key
+  // that is new: a call that ran while the cleanup did can leave a record that holds the target's
+  // text.
   for (;;) {
+    await removeTreeKeys(context, { root, tree, reached, removed, lateKeyIDs });
+
+    for (const erasure of tree.values()) {
+      if (!cleaned.has(erasure.started.erasureID)) {
+        await cleanErasure(context, erasure);
+
+        cleaned.add(erasure.started.erasureID);
+      }
+    }
+
+    if (NIXIE_TEST_BUILD) {
+      await effects.reachFaultPoint('erasure.cleaned', root.started.erasureID);
+    }
+
     await growTree(context, tree, reached);
 
-    const pending = [...tree.values()].filter((erasure) => !removed.has(erasure.started.erasureID));
+    const isLate = await removeLateKeys(context, tree, lateKeyIDs);
 
-    if (pending.length === 0) {
+    if (!isLate && [...tree.values()].every((erasure) => removed.has(erasure.started.erasureID))) {
       break;
     }
-
-    await effects.destroySandboxes(
-      pending.flatMap((erasure) => erasure.started.capture.sandboxCallIDs),
-    );
-
-    if (NIXIE_TEST_BUILD) {
-      await effects.reachFaultPoint('erasure.sandboxes_destroyed', root.started.erasureID);
-    }
-
-    for (const erasure of pending) {
-      await getEntry(context, erasure.started.kind).revoke(toTarget(erasure));
-    }
-
-    if (NIXIE_TEST_BUILD) {
-      await effects.reachFaultPoint('erasure.revoked', root.started.erasureID);
-    }
-
-    for (const erasure of pending) {
-      await removeErasureKeys(context.log, erasure.started.capture);
-
-      removed.add(erasure.started.erasureID);
-    }
-
-    if (NIXIE_TEST_BUILD) {
-      await effects.reachFaultPoint('erasure.keys_removed', root.started.erasureID);
-    }
-  }
-
-  for (const erasure of tree.values()) {
-    await cleanErasure(context, erasure);
-  }
-
-  if (NIXIE_TEST_BUILD) {
-    await effects.reachFaultPoint('erasure.cleaned', root.started.erasureID);
   }
 
   for (const erasure of tree.values()) {
@@ -95,12 +79,19 @@ export async function runErasureTree(context: ErasureRunContext, root: OpenErasu
     await effects.reachFaultPoint('erasure.turn_inputs_removed', root.started.erasureID);
   }
 
-  for (const erasureID of collectFinishOrder([...tree.keys()], reached)) {
+  // The walk starts at the root, so when a child reaches its own parent, as an image and its record
+  // do, the root still finishes last, whatever order the open erasures read in after a crash.
+  const erasureIDs = [
+    root.started.erasureID,
+    ...[...tree.keys()].filter((id) => id !== root.started.erasureID),
+  ];
+
+  for (const erasureID of collectFinishOrder(erasureIDs, reached)) {
     const erasure = tree.get(erasureID);
 
     invariant(erasure, 'the finish order names only erasures of the tree');
 
-    await writeErasureFinished(context, erasure);
+    await writeErasureFinished(context, erasure, getEntry(context, erasure.started.kind));
   }
 }
 
@@ -148,6 +139,70 @@ function addReached(reached: Map<string, Set<string>>, parentID: string, childID
 
   children.add(childID);
   reached.set(parentID, children);
+}
+
+interface TreeKeys {
+  readonly root: OpenErasure;
+  readonly tree: Map<string, OpenErasure>;
+  readonly reached: Map<string, Set<string>>;
+  readonly removed: Set<string>;
+  readonly lateKeyIDs: Set<string>;
+}
+
+// Steps 3 to 6: children, then revokes, then sandboxes, then keys, until a scan finds no child that
+// is new.
+async function removeTreeKeys(context: ErasureRunContext, state: TreeKeys): Promise<void> {
+  const effects = context.effects;
+  const rootID = state.root.started.erasureID;
+
+  for (;;) {
+    await growTree(context, state.tree, state.reached);
+
+    const pending = [...state.tree.values()].filter(
+      (erasure) => !state.removed.has(erasure.started.erasureID),
+    );
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    for (const erasure of pending) {
+      await getEntry(context, erasure.started.kind).revoke(toTarget(erasure));
+    }
+
+    if (NIXIE_TEST_BUILD) {
+      await effects.reachFaultPoint('erasure.revoked', rootID);
+    }
+
+    await effects.destroySandboxes(
+      pending.flatMap((erasure) => erasure.started.capture.sandboxCallIDs),
+    );
+
+    if (NIXIE_TEST_BUILD) {
+      await effects.reachFaultPoint('erasure.sandboxes_destroyed', rootID);
+    }
+
+    for (const erasure of pending) {
+      const capture = erasure.started.capture;
+
+      const late = await readLateKeyIDs(context, erasure);
+
+      for (const keyID of late) {
+        state.lateKeyIDs.add(keyID);
+      }
+
+      await removeErasureKeys(context.log, {
+        keys: capture.keys,
+        cleanupKeys: [...capture.cleanupKeys, ...late],
+      });
+
+      state.removed.add(erasure.started.erasureID);
+    }
+
+    if (NIXIE_TEST_BUILD) {
+      await effects.reachFaultPoint('erasure.keys_removed', rootID);
+    }
+  }
 }
 
 // Finds the children of every erasure in the tree until a pass finds no target that is new. A
@@ -258,6 +313,19 @@ async function beginOrJoin(
   return { status: 'joined', erasure: started };
 }
 
+function readLateKeyIDs(
+  context: ErasureRunContext,
+  erasure: OpenErasure,
+): Promise<readonly string[]> {
+  return withWriteTransaction(context.log.writer, (tx) =>
+    getEntry(context, erasure.started.kind).readLateKeyIDs(
+      tx,
+      toTarget(erasure),
+      erasure.started.capture,
+    ),
+  );
+}
+
 async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): Promise<void> {
   const capture = erasure.started.capture;
 
@@ -271,6 +339,17 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
     for (const sequence of cause.wakeSequences ?? []) {
       await context.effects.cleanupSessions({ recordSequence: sequence });
     }
+  } else if ('sessions' in cause) {
+    // No session holds the target's text, or the erasures of its children clean them.
+  } else if ('recordSequence' in cause) {
+    // Each destroyed call record names its own cleanup, so the sessions of the task that a brief
+    // started and of its starter both rebuild. The forgotten record goes last, because its cleanup
+    // also purges the memory items that quote it.
+    for (const sequence of cause.callSequences ?? []) {
+      await context.effects.cleanupSessions({ recordSequence: sequence });
+    }
+
+    await context.effects.cleanupSessions({ recordSequence: cause.recordSequence });
   } else {
     await context.effects.cleanupSessions(cause);
   }
@@ -278,6 +357,33 @@ async function cleanErasure(context: ErasureRunContext, erasure: OpenErasure): P
   for (const purge of capture.purges) {
     await context.effects.finishPurges(purge.recordSequence);
   }
+}
+
+// Scans again for the keys of records written since the last scan, such as a record of the same
+// place that landed during the cleanup, and removes them. Returns whether it found any that is new.
+async function removeLateKeys(
+  context: ErasureRunContext,
+  tree: ReadonlyMap<string, OpenErasure>,
+  seen: Set<string>,
+): Promise<boolean> {
+  const found: string[] = [];
+
+  for (const erasure of tree.values()) {
+    for (const keyID of await readLateKeyIDs(context, erasure)) {
+      if (!seen.has(keyID)) {
+        seen.add(keyID);
+        found.push(keyID);
+      }
+    }
+  }
+
+  if (found.length === 0) {
+    return false;
+  }
+
+  await removeErasureKeys(context.log, { keys: { ids: [] }, cleanupKeys: found });
+
+  return true;
 }
 
 async function removeTurnInputs(effects: ErasureEffects, erasure: OpenErasure): Promise<void> {

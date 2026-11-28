@@ -107,7 +107,7 @@ async function runConversationsReset(
 
   io.print(
     [
-      `nixie shredded ${reset.shreddedRecords} records of the conversation up to sequence ${reset.lastSequence} at ${reset.resetAt.toISOString()}.`,
+      `nixie removed ${reset.removedKeys} keys of the conversation up to sequence ${reset.lastSequence} at ${reset.resetAt.toISOString()}.`,
       'The server restarts now, and its next turn starts with no history.',
       formatForgetBackup(reset.backup),
     ].join('\n'),
