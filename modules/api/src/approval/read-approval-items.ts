@@ -8,6 +8,7 @@ import type { APIContext, ReadViewMemory } from '../types';
 import { defaultApprovalSettings } from '../utils/default-api-settings';
 import { collectOrderedRows, pickApprovalGroup } from './collect-ordered-rows';
 import { readApprovalBodies } from './read-approval-bodies';
+import { readApprovalChains } from './read-approval-chains';
 import { toApprovalRow } from './to-approval-row';
 
 // The open rows that have a handler and a body, in the digest's order.
@@ -44,6 +45,21 @@ export async function readApprovalItems(
     ];
   });
 
+  const chains = await readApprovalChains(
+    context,
+    items.flatMap((item) =>
+      item.taskID === null
+        ? []
+        : [
+            {
+              proposalID: item.proposal.id,
+              taskID: item.taskID,
+              createdSequence: item.proposal.createdSequence,
+            },
+          ],
+    ),
+  );
+
   const messageZone = await readMessageTimeZone(context.log);
   const unknown = await readUnknownOutcomes(context.log);
 
@@ -59,6 +75,7 @@ export async function readApprovalItems(
       proposal: toApprovalRow(item.proposal),
       body: item.body,
       task: item.taskID === null ? null : { id: item.taskID, name: item.taskName ?? item.taskID },
+      chain: item.taskID === null ? [] : (chains.get(item.proposal.id) ?? []),
       choices: [...pickProposalChoices(item.proposal)],
       passkeyChoices: [...pickPasskeyChoices(item.proposal)],
     })),

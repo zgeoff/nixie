@@ -4,6 +4,7 @@ import type { ProposalCoreDeps, SharedProposal } from '@heynixie/proposals';
 import { pickPasskeyChoices, pickProposalChoices, readProposalsByID } from '@heynixie/proposals';
 import type { APIContext, APITables, Identity, ReadViewMemory } from '../types';
 import { readApprovalBodies } from './read-approval-bodies';
+import { readApprovalChains } from './read-approval-chains';
 import { toApprovalRow } from './to-approval-row';
 
 interface ProposalsRequest {
@@ -36,6 +37,17 @@ export async function readApprovalProposals(
 
   const directory = new Map(context.settings.taskDirectory.map((task) => [task.taskID, task.name]));
 
+  const chains = await readApprovalChains(
+    context,
+    rows.flatMap((row) => {
+      const taskID = row.taskID ?? row.thread;
+
+      return taskID === null
+        ? []
+        : [{ proposalID: row.id, taskID, createdSequence: row.createdSequence }];
+    }),
+  );
+
   return {
     proposals: rows.flatMap((row) => {
       const body = bodies.get(row.id);
@@ -52,6 +64,7 @@ export async function readApprovalProposals(
           proposal: toApprovalRow(row),
           body,
           task: taskID === null ? null : { id: taskID, name: directory.get(taskID) ?? taskID },
+          chain: taskID === null ? [] : (chains.get(row.id) ?? []),
           choices: isOpen ? [...pickProposalChoices(row)] : [],
           passkeyChoices: isOpen ? [...pickPasskeyChoices(row)] : [],
           answeredOn: row.answeredBy === null ? null : (labels.get(row.answeredBy) ?? null),

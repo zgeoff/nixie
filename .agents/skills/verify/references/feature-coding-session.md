@@ -190,17 +190,23 @@ journey above has passed, on an `up` of its own:
 
    Expect: `proposals` exits 0, and `sessions` is 0.
 
-6. Open the approvals page again, expand the spawn, and approve it. Take a new snapshot, find the
-   line that holds "Run coding.spawn" and `[cursor=pointer]`, and pass its `ref` as `<item_ref>`.
+6. Open the approvals page again, expand the spawn, check the chain that its card lists, and approve
+   it. Take a new snapshot, find the line that holds "Run coding.spawn" and `[cursor=pointer]`, and
+   pass its `ref` as `<item_ref>`.
 
    ```bash
    bun verify browser goto /proposals
    bun verify browser snapshot
    bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
    bun verify browser click --role button --name 'Run coding.spawn'
    ```
 
-   Expect: all commands exit 0, and the page shows no refusal.
+   Expect: all commands exit 0, and the page shows no refusal. The snapshot of the expanded item
+   holds the list "How this came about" with 2 entries: "Message conversation: Your message: Start a
+   coding session on the login test.", then "Task `<id>`: Login fix", where `<id>` is the short ID
+   of the coding task. The coding task asked for the spawn, and no session is bound yet, so its
+   entry reads "Task".
 
 7. Check that the held spawn ran. The session can take a few seconds to bind, so on a result that
    differs from Expect, run the queries again, up to 5 runs in all.

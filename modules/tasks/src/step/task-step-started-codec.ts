@@ -10,5 +10,8 @@ export const taskStepStartedCodec = defineRecordCodec(
     generation: z.int(),
     hop: z.int().exactOptional(),
     cause: wakeCauseSchema.exactOptional(),
+
+    // the sequence of the waking record that gave the step its hop and cause
+    source: z.int().exactOptional(),
   }),
 );

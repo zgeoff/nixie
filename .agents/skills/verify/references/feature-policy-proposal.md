@@ -73,10 +73,13 @@ Before you start:
    ```bash
    bun verify proposals --tool memory.export --waiting pending
    bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.actionID') as action from records where kind = 'tool_result' and thread = 'conversation' order by sequence"
+   bun verify db query "select task_id as task from proposals where family = 'action'"
    ```
 
-   Expect: `proposals` exits 0. The last row of `data.rows` is the export call's result, with
-   `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool calls.
+   Expect: `proposals` exits 0. The last row of `data.rows` of the first query is the export call's
+   result, with `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool
+   calls. The second query returns one row, with `task` `conversation`. That is the task that made
+   the call, and the chain that its card lists starts there.
 
 4. Script a text reply for the turn that the call's outcome starts, or that turn fails. The later
    steps never check its reply.
@@ -97,18 +100,23 @@ Before you start:
    Expect: the "Routine" list holds one collapsed item, which reads "Run memory.export (export).",
    with no buttons.
 
-6. Expand the item, then approve the call. Take the `ref` from the snapshot of step 5, and take no
-   other snapshot before the first click: each snapshot gives every element a new `ref`. In that
-   snapshot, find the line that holds "Run memory.export (export)." and `[cursor=pointer]`. Pass
-   that line's `ref`, such as `f3e11`, as `<item_ref>`. The approve button is named "Run
-   memory.export".
+6. Expand the item, check the chain that the card lists, then approve the call. Take the `ref` from
+   the snapshot of step 5, and take no other snapshot before the first click: each snapshot gives
+   every element a new `ref`. In that snapshot, find the line that holds "Run memory.export
+   (export)." and `[cursor=pointer]`. Pass that line's `ref`, such as `f3e11`, as `<item_ref>`. The
+   approve button is named "Run memory.export".
 
    ```bash
    bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
    bun verify browser click --role button --name 'Run memory.export'
    ```
 
-   Expect: both clicks exit 0.
+   Expect: both clicks exit 0. The snapshot of the expanded item holds the list "How this came
+   about" with one entry, "Message conversation: Your message: Export my memory, please.". The
+   conversation made this call itself, in the turn that the user's message woke, so the chain is
+   that message alone, with no entry for a task. To check a chain that runs through a task, follow
+   [coding-session](feature-coding-session.md#held-spawn).
 
 7. Check the answer. `proposals --waiting none` checks once, with no wait, and exits 0 when nixie
    holds no call of the tool.

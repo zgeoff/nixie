@@ -15,6 +15,14 @@ const hashesSchema = z.object({ actionHash: z.string(), ruleHash: z.string().nul
 const versionSchema = z.int().positive();
 const taskSchema = z.object({ id: z.string(), name: z.string() });
 
+// One step of the chain that led to a proposal, first the message or task that started it, last
+// the task that asked. `id` is the short ID that the step is known by.
+const chainStepSchema = z.object({
+  kind: z.enum(['message', 'task', 'coding']),
+  id: z.string(),
+  name: z.string(),
+});
+
 const proposalSchema = z.object({
   proposalID: z.string(),
   shortID: z.string(),
@@ -93,6 +101,7 @@ const itemSchema = z.object({
   proposal: proposalSchema,
   body: bodySchema,
   task: taskSchema.nullable(),
+  chain: z.array(chainStepSchema),
   choices: z.array(choiceSchema),
   passkeyChoices: z.array(choiceSchema),
 });
@@ -142,6 +151,7 @@ const readItemSchema = z.object({
   proposal: proposalSchema,
   body: bodySchema.nullable(),
   task: taskSchema.nullable(),
+  chain: z.array(chainStepSchema),
   choices: z.array(choiceSchema),
   passkeyChoices: z.array(choiceSchema),
   answeredOn: z.string().nullable(),

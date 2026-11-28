@@ -47,7 +47,7 @@ export async function writeActionProposal(
       actionHash: proposal.actionHash,
       ruleHash: proposal.ruleHash,
       thread: facts.thread,
-      taskID: null,
+      taskID: facts.thread,
       deadlineAt: facts.deadlineAt ?? null,
       sameThing: null,
     },

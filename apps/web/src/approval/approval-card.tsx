@@ -153,6 +153,16 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
         </>
       )}
       {item.task === null ? null : <p className={meta}>Task: {item.task.name}</p>}
+      {item.chain.length < 2 && item.chain[0]?.kind !== 'message' ? null : (
+        <div className={meta}>
+          <p>How this came about</p>
+          <ol aria-label="How this came about">
+            {item.chain.map((step) => (
+              <li key={step.id}>{formatChainStep(step)}</li>
+            ))}
+          </ol>
+        </div>
+      )}
       {isOpen ? <p className={meta}>{formatLapsesIn(proposal.lapsesAt, new Date())}</p> : null}
       {state === null ? null : <p role="status">{state}</p>}
       {changes.length === 0 && !isChanged ? null : <ApprovalChanges changes={changes} />}
@@ -236,6 +246,12 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
       {ruleID === null ? null : <ApprovalRuleNotice ruleID={ruleID} />}
     </section>
   );
+}
+
+const chainKinds = { message: 'Message', task: 'Task', coding: 'Coding session' } as const;
+
+function formatChainStep(step: ApprovalRead['chain'][number]): string {
+  return `${chainKinds[step.kind]} ${step.id}: ${step.name}`;
 }
 
 interface OutcomeLineProps {

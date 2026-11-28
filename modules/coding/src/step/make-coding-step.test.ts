@@ -10,7 +10,7 @@ import { readBinding } from '../session/read-binding';
 import { readOpenBindings } from '../session/read-open-bindings';
 import { collectTaskInputs } from '../source/collect-task-inputs';
 import { startTestCoding } from '../test-utils/start-test-coding';
-import type { SessionEvent } from '../types';
+import type { CodingTables, SessionEvent } from '../types';
 import { makeCodingStep } from './make-coding-step';
 
 async function setupTest() {
@@ -666,6 +666,23 @@ test('it replies once to an answer whose note settles after the step read its in
       body: 'The coding session answered: It is 5 now.',
     },
   ]);
+});
+
+test('it gives the session that a task spawned a short ID in the step that binds it', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.seed.session();
+  const binding = await ctx.readBinding(taskID);
+
+  invariant(binding !== null, 'the step bound the session');
+
+  const names = await ctx.log.writer.db
+    .$extendTables<CodingTables>()
+    .selectFrom('coding_session_ids')
+    .select('session_id')
+    .where('session_id', '=', binding.sessionID)
+    .execute();
+
+  expect(names).toHaveLength(1);
 });
 
 test('it ends a started task as done, and binds nothing, when another task joined its session first', async () => {

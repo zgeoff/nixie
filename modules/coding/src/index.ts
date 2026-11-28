@@ -25,6 +25,7 @@ export type {
 export type { CodingRecordKind } from './record/coding-record-kind';
 export { codingRecordTopics } from './record/coding-record-topics';
 export { codingProjections } from './projection/coding-projections';
+export { writeTaskSessionNames } from './session/write-task-session-names';
 export { buildCodingConnectors } from './connector/build-coding-connectors';
 export { codingToolNames } from './connector/coding-tool-names';
 export { codingActionDeclarations, codingDeclarations } from './connector/coding-declarations';

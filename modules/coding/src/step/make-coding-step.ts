@@ -3,6 +3,7 @@ import invariant from 'tiny-invariant';
 import { codingSessionBoundCodec } from '../record/coding-session-bound-codec';
 import { readBinding } from '../session/read-binding';
 import { readOpenBindings } from '../session/read-open-bindings';
+import { writeSessionNames } from '../session/write-session-names';
 import type { CodingAdapter, CodingContext, SessionRef } from '../types';
 import type { CodingStepEnd, CodingStepFacts, CodingStepPlan } from './collect-coding-step';
 import { collectCodingStep } from './collect-coding-step';
@@ -50,6 +51,8 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
 
     const plan = collectCodingStep(facts);
 
+    await writeSpawnedName(context, adapter, plan);
+
     const result: StepResult = {
       next: 'wait',
       records: plan.records,
@@ -74,6 +77,26 @@ export function makeCodingStep(context: CodingContext, adapter: CodingAdapter): 
       run: { activity: 'worked', report },
     };
   };
+}
+
+// A session that a task just spawned gets its short ID now, so an approval card that names the
+// task by its session never reads a session that has none.
+async function writeSpawnedName(
+  context: CodingContext,
+  adapter: CodingAdapter,
+  plan: CodingStepPlan,
+): Promise<void> {
+  const bound = plan.records.find((record) => record.kind === codingSessionBoundCodec.kind);
+
+  if (bound === undefined) {
+    return;
+  }
+
+  await writeSessionNames(
+    { log: context.tasks.log, definitions: context.tasks.definitions },
+    adapter.id,
+    [codingSessionBoundCodec.decode(bound.payload ?? {}).sessionID],
+  );
 }
 
 // A join can bind the session after the step read who binds it, so the commit reads the binding

@@ -3,6 +3,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ApprovedCall } from '@heynixie/actions';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
+import { writeTaskSessionNames } from '@heynixie/coding';
+import { seedJoinedSession } from '@heynixie/coding/test-utils';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { encodeTestImage, seedImage } from '@heynixie/connectors/test-utils';
 import { checkPromptProposal, createPathSource, runSeed } from '@heynixie/definitions';
@@ -18,7 +20,7 @@ import {
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import type { Effect } from '@heynixie/policy';
-import { buildActionProposalInput } from '@heynixie/policy';
+import { buildActionProposalInput, writeActionProposal } from '@heynixie/policy';
 import { promptsOverrideProposedCodec } from '@heynixie/prompts';
 import {
   buildProposeDeps,
@@ -27,7 +29,15 @@ import {
   runProposalLapses,
   runProposalReturns,
 } from '@heynixie/proposals';
-import { createConversationTask, readInbox, writeTaskControl } from '@heynixie/tasks';
+import {
+  claimTask,
+  createConversationTask,
+  readInbox,
+  triggerTaskInputCodec,
+  writeInboxRecords,
+  writeTaskControl,
+} from '@heynixie/tasks';
+import { buildTaskSeeder, seedDefinitionTask } from '@heynixie/tasks/test-utils';
 import { toolCalledCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
@@ -43,7 +53,7 @@ interface PasskeyTarget {
 }
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const api = await startTestAPI(undefined, { isCodingOn: true });
 
   const root = join(api.dataDir, 'definitions');
 
@@ -154,9 +164,32 @@ async function setupTest() {
     });
   };
 
+  const proposeMailSend = (thread: string) =>
+    withWriteTransaction(api.context.log.writer, (tx) =>
+      writeActionProposal(
+        tx,
+        {
+          log: api.context.log,
+          clock: api.context.clock,
+          definitions: api.context.definitions,
+        },
+        {
+          definitions: api.context.definitions(),
+          thread,
+          callSequence: 1,
+          tool: 'mail.send',
+          effects: ['send'],
+          cause: 'no_rule',
+          input: { to: 'harbour@example.org' },
+          destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+        },
+      ),
+    );
+
   return {
     laptop,
     exports,
+    proposeMailSend,
     proposePrompt,
     answerWithPasskey,
     api,
@@ -988,6 +1021,7 @@ test('#approvals.readProposals reads an open row with its choices, its approve l
         proposal: item.proposal,
         body: item.body,
         task: item.task,
+        chain: item.chain,
         choices: ['approve', 'defer', 'decline'],
         passkeyChoices: [],
         answeredOn: null,
@@ -1299,4 +1333,143 @@ test('#approvals.readImage refuses a screen picture ID that names no screen clic
   await Promise.allSettled([refused]);
 
   expect(refused).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
+});
+
+test('#approvals.readProposals and #approvals.listItems give the chain from the conversation through each task to the asking task, by short ID and name', async () => {
+  const ctx = await setupTest();
+
+  const seeder = buildTaskSeeder({ context: ctx.api.context });
+
+  const step = await seeder.conversationStep();
+
+  const parentID = await seeder.task({
+    starter: step.claim,
+    name: 'Read the inbox',
+    brief: 'Read the new mail.',
+  });
+
+  const askingID = await seeder.childTask({
+    parentID,
+    name: 'Check the sender',
+    brief: 'Check who sent it.',
+  });
+
+  const shortID = await ctx.proposeMailSend(askingID);
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+
+  invariant(item);
+
+  const read = await ctx.client.approvals.readProposals({
+    proposalIDs: [item.proposal.proposalID],
+  });
+
+  const expected = [
+    {
+      kind: 'message' as const,
+      id: 'conversation',
+      name: 'Your message: Please look into this for me.',
+    },
+    { kind: 'task' as const, id: parentID, name: 'Read the inbox' },
+    { kind: 'task' as const, id: askingID, name: 'Check the sender' },
+  ];
+
+  expect({ listed: item.chain, read: read.proposals[0]?.chain }).toStrictEqual({
+    listed: expected,
+    read: expected,
+  });
+});
+
+test('#approvals.listItems gives the starting message alone for a call that the conversation made itself', async () => {
+  const ctx = await setupTest();
+
+  const seeder = buildTaskSeeder({ context: ctx.api.context });
+
+  await seeder.conversationStep();
+
+  const shortID = await ctx.proposeMailSend('conversation');
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+
+  invariant(item);
+
+  expect(item.chain).toStrictEqual([
+    { kind: 'message', id: 'conversation', name: 'Your message: Please look into this for me.' },
+  ]);
+});
+
+test('#approvals.listItems names the coding session that a task in the chain binds by its short ID', async () => {
+  const ctx = await setupTest();
+
+  invariant(ctx.api.coding, 'the test turns coding on');
+
+  const codingTaskID = await seedJoinedSession(ctx.api.coding, ctx.api.context, {
+    id: 'cloud.3f9a1c2e.00000001',
+    name: 'login fix',
+    state: 'idle',
+  });
+
+  const sessionNames = await writeTaskSessionNames(ctx.api.context, [codingTaskID]);
+  const shortID = await ctx.proposeMailSend(codingTaskID);
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+  const sessionShortID = sessionNames.get(codingTaskID);
+
+  invariant(item !== undefined && sessionShortID !== undefined);
+
+  expect(item.chain).toStrictEqual([
+    { kind: 'message', id: 'conversation', name: 'Your message: Join my session.' },
+    { kind: 'coding', id: sessionShortID, name: 'login fix' },
+  ]);
+});
+
+test('#approvals.listItems starts the chain of a definition task that outside content woke with the outside content', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(
+    {
+      context: ctx.api.context,
+      definitionStore: ctx.api.definitionStore,
+      writer: ctx.api.context.log.writer,
+    },
+    {
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+      version: { name: 'Water the tomatoes' },
+    },
+  );
+
+  await writeInboxRecords(ctx.api.context, [
+    {
+      kind: 'trigger.task_input',
+      definitions: ctx.api.context.definitions(),
+      thread: taskID,
+      payload: triggerTaskInputCodec.encode({
+        taskID,
+        source: 'schedule',
+        dedupeKey: 'water-the-tomatoes:1',
+        occurredAt: '2027-03-11T21:00:00.000Z',
+        hop: 0,
+        wake: true,
+        facts: {},
+      }),
+    },
+  ]);
+
+  await claimTask(ctx.api.context, { holder: 'seed-runner', leaseMs: 60_000, taskID });
+
+  const shortID = await ctx.proposeMailSend(taskID);
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+
+  invariant(item);
+
+  expect(item.chain).toStrictEqual([
+    { kind: 'message', id: 'outside-content', name: 'Outside content' },
+    { kind: 'task', id: taskID, name: 'Water the tomatoes' },
+  ]);
 });

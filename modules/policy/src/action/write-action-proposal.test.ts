@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
+import { readProposal } from '@heynixie/proposals';
 import { startShortIDDraws, startTestProposals } from '@heynixie/proposals/test-utils';
 import { writeActionProposal } from './write-action-proposal';
 
@@ -29,6 +30,14 @@ async function setupTest() {
       ),
   };
 }
+
+test('it records the task that proposed the action on the proposal', async () => {
+  const ctx = await setupTest();
+  const shortID = await ctx.ask('sam@example.org');
+  const proposal = await readProposal(ctx.log.writer.db, shortID);
+
+  expect(proposal?.taskID).toBe('conversation');
+});
 
 test('it draws another short ID for a held action when the drawn one names an existing proposal', async () => {
   const ctx = await setupTest();

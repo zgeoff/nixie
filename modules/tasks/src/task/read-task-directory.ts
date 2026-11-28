@@ -4,19 +4,31 @@ import { taskCreatedCodec } from './codec/task-created-codec';
 import { readDefinitionTaskVersions } from './read-definition-task-versions';
 import { readTaskBriefs } from './read-task-briefs';
 
+export interface TaskDirectoryQuery {
+  // reads only these tasks
+  readonly taskIDs?: readonly string[];
+}
+
 export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'directory'>>(
   context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   messaging: Messaging,
+  query: TaskDirectoryQuery = {},
 ): Promise<Messaging> {
   const rows = await context.log.writer.db
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
     .select(['task_id', 'created_sequence'])
     .where('started_by', 'is not', null)
+    .$if(query.taskIDs !== undefined, (builder) =>
+      builder.where('task_id', 'in', query.taskIDs ?? []),
+    )
     .orderBy('created_sequence')
     .execute();
 
-  const versions = await readDefinitionTaskVersions(context, { isInForceOnly: true });
+  const versions = await readDefinitionTaskVersions(context, {
+    isInForceOnly: true,
+    ...(query.taskIDs === undefined ? {} : { taskIDs: query.taskIDs }),
+  });
 
   const definitions = versions.map((entry): TaskProfile => ({
     taskID: entry.taskID,

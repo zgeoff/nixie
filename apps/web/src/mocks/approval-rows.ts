@@ -33,6 +33,12 @@ const callSchema = z.object({
   reason: z.string().nullable(),
 });
 
+const chainStepSchema = z.object({
+  kind: z.enum(['message', 'task', 'coding']),
+  id: z.string(),
+  name: z.string(),
+});
+
 const fieldsRuleSchema = z.record(z.string(), z.unknown());
 const ruleRefSchema = z.object({ destinations: z.array(z.string()), ruleID: z.string() });
 
@@ -59,6 +65,9 @@ export const approvalRows = new Collection({
     // what became of the call an approved action row queued
     call: callSchema.nullable().default(null),
     cause: z.string().default('no_rule'),
+
+    // the steps from the starting message to the asking task
+    chain: z.array(chainStepSchema).default(() => []),
     choices: choicesSchema.default((): ApprovalChoice[] => ['approve', 'defer', 'decline']),
     closeMatch: closeMatchSchema.optional(),
     createdAt: z.date().default(() => faker.date.recent()),

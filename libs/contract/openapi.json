@@ -37342,6 +37342,33 @@
                               }
                             ]
                           },
+                          "chain": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "enum": [
+                                    "message",
+                                    "task",
+                                    "coding"
+                                  ],
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "name"
+                              ]
+                            }
+                          },
                           "choices": {
                             "type": "array",
                             "items": {
@@ -37372,6 +37399,7 @@
                           "proposal",
                           "body",
                           "task",
+                          "chain",
                           "choices",
                           "passkeyChoices"
                         ]
@@ -38365,6 +38393,33 @@
                               }
                             ]
                           },
+                          "chain": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "enum": [
+                                    "message",
+                                    "task",
+                                    "coding"
+                                  ],
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "id",
+                                "name"
+                              ]
+                            }
+                          },
                           "choices": {
                             "type": "array",
                             "items": {
@@ -38442,6 +38497,7 @@
                           "proposal",
                           "body",
                           "task",
+                          "chain",
                           "choices",
                           "passkeyChoices",
                           "answeredOn",

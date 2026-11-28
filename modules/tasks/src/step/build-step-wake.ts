@@ -5,5 +5,9 @@ import { pickWakeSource } from './pick-wake-source';
 export type WakeRecord = Pick<EnvelopeRecord, 'kind' | 'payload' | 'thread'>;
 
 export function buildStepWake(unread: readonly WakeRecord[], previousHop: number): StepWake {
-  return pickWakeSource(unread)?.wake ?? { hop: previousHop, cause: { kind: 'carried' } };
+  return pickWakeSource(unread)?.wake ?? buildCarriedWake(previousHop);
+}
+
+export function buildCarriedWake(previousHop: number): StepWake {
+  return { hop: previousHop, cause: { kind: 'carried' } };
 }

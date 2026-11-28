@@ -1,4 +1,6 @@
 import type { TasksContext } from '../types';
+import { seedChildTask } from './seed-child-task';
+import type { ChildTaskSeed } from './seed-child-task';
 import { seedClosedTask } from './seed-closed-task';
 import { seedConversationStep } from './seed-conversation-step';
 import { seedDoneConversationTask } from './seed-done-conversation-task';
@@ -32,6 +34,7 @@ export function buildTaskSeeder(deps: TaskSeederDeps) {
     doneConversationTask: () => seedDoneConversationTask(deps.context),
     failedConversationTurn: () => seedFailedConversationTurn(deps.context),
     task: (input: StartedTaskSeed) => seedTask(deps.context, input),
+    childTask: (input: ChildTaskSeed) => seedChildTask(deps.context, input),
     runningTask: (input: StartedTaskSeed) => seedRunningTask(deps.context, input),
     waitingTask: (input: StartedTaskSeed) => seedWaitingTask(deps.context, input),
     pausedTask: (input: PausedTaskSeed) => seedPausedTask(deps.context, input),
