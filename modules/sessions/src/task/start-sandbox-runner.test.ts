@@ -29,7 +29,12 @@ import {
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import type { ToolSource } from '@heynixie/tools';
+import {
+  buildMockToolCall,
+  buildMockToolContext,
+  buildServerToolSource,
+} from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildCountAnswer } from '../test-utils/build-count-answer';
@@ -52,6 +57,7 @@ async function setupTest(
   options: {
     readonly isGatewayMetered?: boolean;
     readonly taskRunLimits?: { readonly default: { readonly turns: number } };
+    readonly sources?: readonly ToolSource[];
   } = {},
 ) {
   const clock = createFakeClock({ startMs: 1_000_000 });
@@ -106,6 +112,7 @@ async function setupTest(
   };
 
   const host = await startTestSessionHost({
+    ...(options.sources === undefined ? {} : { sources: options.sources }),
     clock,
     runSettings: buildRunSettings({
       models,
@@ -4104,4 +4111,83 @@ test('it ends at its limit the task run of a step only once the gateway answers 
   ]);
 
   expect(ended?.payload).toMatchObject({ taskID, cause: 'limit', used: { dollars: 2.75 } });
+});
+
+test('it serves a definition task that names a whole server the tools that server exposes after the run starts', async () => {
+  const server = buildServerToolSource(['boxxy.item_get', 'boxxy.item_list']);
+
+  const ctx = await setupTest({ sources: [server.source] });
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'chase-items',
+    definitionHash: 'hash-1',
+    version: { tools: ['boxxy.*'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-server');
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.guest.addReplies({ text: 'Done.', gate: () => gate.promise });
+
+  const runner = await ctx.startRunner({ tools: ctx.endpoint });
+
+  const stepping = ctx.runNextStep(runner);
+
+  await waitForCondition(() => ctx.guest.received.length === 1);
+
+  const [received] = ctx.guest.received;
+
+  invariant(received);
+
+  const before = await ctx.readToolNames(received);
+
+  server.expose(['boxxy.item_get']);
+
+  const after = await ctx.readToolNames(received);
+
+  gate.resolve();
+
+  await stepping;
+
+  expect(before).toStrictEqual([]);
+  expect(after).toStrictEqual(['boxxy.item_get']);
+});
+
+test('it serves a definition task that names one server tool only that tool', async () => {
+  const server = buildServerToolSource(['boxxy.item_get', 'boxxy.item_list']);
+
+  const ctx = await setupTest({ sources: [server.source] });
+
+  server.expose(['boxxy.item_get', 'boxxy.item_list']);
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'chase-items',
+    definitionHash: 'hash-1',
+    version: { tools: ['boxxy.item_list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-one');
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.guest.addReplies({ text: 'Done.', gate: () => gate.promise });
+
+  const runner = await ctx.startRunner({ tools: ctx.endpoint });
+
+  const stepping = ctx.runNextStep(runner);
+
+  await waitForCondition(() => ctx.guest.received.length === 1);
+
+  const [received] = ctx.guest.received;
+
+  invariant(received);
+
+  const names = await ctx.readToolNames(received);
+
+  gate.resolve();
+
+  await stepping;
+
+  expect(names).toStrictEqual(['boxxy.item_list']);
 });
