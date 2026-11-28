@@ -6,6 +6,7 @@ import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { startTestMemory } from '@heynixie/memory/test-utils';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { startControlSocket } from '../part/start-control-socket';
 import { writeBootFiles } from '../test-utils/write-boot-files';
 import { buildAPIGate } from '../utils/build-api-gate';
@@ -90,6 +91,7 @@ test('it prints what the server reset, and that backups still hold the old data'
       context: api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -141,6 +143,7 @@ test('it exits 1 when the server fails the reset', async () => {
       context: api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -237,6 +240,7 @@ test('it prints what a reset of the conversations shredded, that the server rest
       context: api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -291,6 +295,7 @@ test('it forgets every memory item through a reset of the memories, and prints h
       context: api.context,
       readMemory: () => memory.store,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -405,6 +410,7 @@ test('it pins a self-note from memory-pin', async () => {
       context: api.context,
       readMemory: () => memory.store,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -447,6 +453,7 @@ test('it prints the subject of a self-note from memory-show', async () => {
       context: api.context,
       readMemory: () => memory.store,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -493,6 +500,7 @@ test('it prints the count of each subject from memory-subjects', async () => {
       context: api.context,
       readMemory: () => memory.store,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

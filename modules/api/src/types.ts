@@ -15,6 +15,7 @@ import type {
   MomentStore,
 } from '@heynixie/memory';
 import type { NotebookStore } from '@heynixie/notebook';
+import type { DecisionPoint } from '@heynixie/policy';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { ProposalConfig, QuietHours } from '@heynixie/proposals';
 import type { SpendContext } from '@heynixie/spend';
@@ -204,6 +205,9 @@ export interface HostRouterOptions {
   readonly readMemory: ReadHostMemory;
 
   readonly readBackups: ReadHostBackups;
+
+  // decides the host's own calls, such as the log export, under the rules in force
+  readonly decide: DecisionPoint;
 
   readonly runReset: () => Promise<HostReset>;
   readonly runConversationReset: () => Promise<HostConversationReset>;

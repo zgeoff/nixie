@@ -3,8 +3,8 @@
 This spike compares keyword search, SQLite FTS5 with BM25 ranking, vectors from a small local
 embedding model, and BM25 fused with vectors, over 276 synthetic memory items and 75 questions. It
 times the in-memory FTS5 index that the
-[event log design](../../docs/design/platform/core/event-log.md#memory-history-and-export) requires
-for free text that can be shredded. A second measurement takes the shipped per-turn retrieval to one
+[event log design](../../docs/design/platform/core/event-log.md#memory-history) requires for free
+text that can be shredded. A second measurement takes the shipped per-turn retrieval to one
 deployment's own conversations and tunes its settings.
 
 ## Question

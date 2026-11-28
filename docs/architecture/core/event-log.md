@@ -101,6 +101,36 @@ covers a change the watcher misses and a filesystem that cannot watch.
 The subscription marks every earlier wake as seen before each read, never after, so a commit that
 lands while a read runs wakes the next read at once.
 
+## Exporting the log
+
+`nixie export <path>` writes every record of the log into a new SQLite file with the free text of
+each record decrypted, so any SQLite tool opens it. The server writes the file, because it holds the
+writer lock, and `runLogExport` in `modules/log` reads the records page by page up to the newest
+sequence at the start, so a record that lands during the export stays out. `libs/db` writes the
+file.
+
+The file holds one table, `records`, with a row per record:
+
+| Column                                                                              | Holds                                                                       |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `sequence`, `recorded_at`, `kind`, `thread`, `parent`, `step_key`, `content_source` | the envelope, with the time as an ISO 8601 string                           |
+| `decision`, `approval`                                                              | the envelope's decision and approval as JSON, null when the record has none |
+| `payload`                                                                           | the structured payload as JSON                                              |
+| `text`                                                                              | the decrypted erasable fields as JSON, null for a gap or a record with none |
+| `text_status`                                                                       | `readable`, `none`, `shredded` or `unreadable`                              |
+
+A record whose key is gone, whether a forget or an expiry removed it, or whose text fails to
+decrypt, keeps its envelope and payload and gets a null `text` with the reason in `text_status`. The
+export counts these gaps and finishes. The file holds no attachment: an image or another binary
+stays in the database.
+
+The export is a plain copy of every conversation, so it carries the declared effect `export`, under
+the tool name `log.export`, and passes the [decision point](../policy/decision-point.md) like any
+other action. A deny rule that matches stops it before any file exists. The decision point has no
+user to ask, so an ask outcome or no rule at all lets it run: the command is the user's own request.
+The file is created with the permissions 0600 under a partial name, and a hard link gives it its
+final name only when nothing holds that path, so an export never overwrites a file.
+
 ## The reset
 
 A reset removes every record, every projection row and every record key, and keeps the identities of

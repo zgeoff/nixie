@@ -7,6 +7,7 @@ import { makeHostResponder } from '@heynixie/api';
 import { seedPublishedBackupSet, startTestAPI } from '@heynixie/api/test-utils';
 import { startBackupSchedule } from '@heynixie/backup';
 import { localDataStorage } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { runCLI } from '../cli/run-cli';
 import { startControlSocket } from '../part/start-control-socket';
@@ -46,6 +47,7 @@ async function setupTest() {
       context: api.context,
       readMemory: () => null,
       readBackups: () => holder.backups,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

@@ -5,6 +5,7 @@ import { forgetBackupSchema } from './forget-backup-schema';
 import { forgottenItemsSchema } from './forgotten-items-schema';
 import { hostBackupsContract } from './host-backups-contract';
 import { hostBudgetsContract } from './host-budgets-contract';
+import { hostLogContract } from './host-log-contract';
 import { hostMandatesContract } from './host-mandates-contract';
 import { hostMcpContract } from './host-mcp-contract';
 import { hostPasskeyContract } from './host-passkey-contract';
@@ -339,6 +340,7 @@ export const hostContract = {
     read: oc.output(z.object({ recovery: recoverySchema })),
   },
   backups: hostBackupsContract,
+  log: hostLogContract,
   tasks: {
     pause: taskControl,
     resume: taskControl.errors(spendStopErrors),

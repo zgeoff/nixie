@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { startControlSocket } from '../part/start-control-socket';
 import { buildAPIGate } from '../utils/build-api-gate';
 import { sendHostRequest } from './send-host-request';
@@ -27,6 +28,7 @@ test('it returns the answer of the procedure it calls on the running server', as
       context: ctx.api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -62,6 +64,7 @@ test('it rejects with the status and the reason when the server refuses the requ
       context: ctx.api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

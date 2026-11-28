@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { startControlSocket } from '../part/start-control-socket';
 import { buildAPIGate } from '../utils/build-api-gate';
 import { buildHostClient } from './build-host-client';
@@ -23,6 +24,7 @@ async function setupTest() {
       context: api.context,
       readMemory: () => null,
       readBackups: () => null,
+      decide: buildAllowingDecisionPoint(),
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

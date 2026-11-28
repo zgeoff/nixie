@@ -7,6 +7,7 @@ import { createHostBudgetProcedures } from './create-host-budget-procedures';
 import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostDefinitionProcedures } from './create-host-definition-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
+import { createHostLogProcedures } from './create-host-log-procedures';
 import { createHostMandateProcedures } from './create-host-mandate-procedures';
 import { createHostMcpProcedures } from './create-host-mcp-procedures';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
@@ -54,6 +55,9 @@ export function createHostRouter(options: HostRouterOptions) {
     backups: hostImplementer.backups
       .use(gated)
       .router(createHostBackupProcedures(options.readBackups)),
+    log: hostImplementer.log
+      .use(gated)
+      .router(createHostLogProcedures(options.context, options.decide)),
     tasks: hostImplementer.tasks.use(gated).router(createHostTaskProcedures(options.context)),
     sessions: hostImplementer.sessions
       .use(gated)

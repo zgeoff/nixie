@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import type { HostContractClient } from '@heynixie/contract';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -16,6 +17,7 @@ test('it answers a host procedure call with its output, dates included', async (
     context: ctx.context,
     readMemory: () => null,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -50,6 +52,7 @@ test('it answers 404 to a request outside the procedures', async () => {
     context: ctx.context,
     readMemory: () => null,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -73,6 +76,7 @@ test('it answers 500 with the reason when a procedure fails', async () => {
     context: ctx.context,
     readMemory: () => null,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -104,6 +108,7 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
     context: ctx.context,
     readMemory: () => null,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -131,6 +136,7 @@ test('it refuses a session, memory, skill or prompt procedure with 503 while the
     context: ctx.context,
     readMemory: () => null,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -178,6 +184,7 @@ test('it runs both resets while the gate is closed', async () => {
     context: ctx.context,
     readMemory: () => null,
     readBackups: () => null,
+    decide: buildAllowingDecisionPoint(),
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
