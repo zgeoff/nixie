@@ -21,12 +21,12 @@ them.
 All 7 run [direct](./tool-calls.md#a-tool-definition), except a draw that sends a photo of the user,
 as [photos of the user](#photos-of-the-user) says.
 
-Images are on only when the deployment config has an `images` section, as
-[feature switches](../deployment/server.md#feature-switches) says. With no `images` section, nixie
-offers no image tool, `nixie.read` leaves `images` out of its features, and each `images` procedure
-of the gallery answers `FEATURE_OFF`. The web client then hides the Images page, and a note shows
-each stored image in its body as unavailable. The stored images stay, and the gallery and the notes
-show them again once the section is back.
+To turn images on, add an `images` section to the deployment config, as
+[feature switches](../deployment/server.md#feature-switches) explains. With no `images` section,
+nixie offers no image tool, `nixie.read` leaves `images` out of its features, and each `images`
+procedure of the gallery answers `FEATURE_OFF`. The web client then hides the Images page, and shows
+each stored image that a note embeds as unavailable. The stored images stay, and once the section is
+back, the gallery and the notes show them again.
 
 `image.draw` takes a prompt of 1 to 4,000 characters, and optionally:
 
