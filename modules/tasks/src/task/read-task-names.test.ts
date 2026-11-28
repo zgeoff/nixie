@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { KyselyPlugin } from 'kysely';
 import { seedChildTask } from '../test-utils/seed-child-task';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedDefinitionTask } from '../test-utils/seed-definition-task';
@@ -11,8 +12,40 @@ async function setupTest() {
   const tasks = await startTestTasks();
   const step = await seedConversationStep(tasks.context);
 
+  const createdRecords: number[] = [];
+
+  const recordReadsPlugin: KyselyPlugin = {
+    transformQuery: (args) => args.node,
+    transformResult: (args) => {
+      for (const row of args.result.rows) {
+        if (
+          typeof row === 'object' &&
+          row !== null &&
+          'kind' in row &&
+          row['kind'] === 'task.created'
+        ) {
+          createdRecords.push(Number(row['sequence']));
+        }
+      }
+
+      return Promise.resolve(args.result);
+    },
+  };
+
+  const watchedContext = {
+    ...tasks.context,
+    log: {
+      ...tasks.context.log,
+      writer: {
+        ...tasks.context.log.writer,
+        db: tasks.context.log.writer.db.withPlugin(recordReadsPlugin),
+      },
+    },
+  };
+
   return {
     tasks,
+    createdRecords,
     startInboxTask: () =>
       seedTask(tasks.context, {
         starter: step.claim,
@@ -32,6 +65,7 @@ async function setupTest() {
         version: { name: 'Water the tomatoes' },
       }),
     readNames: (query: TaskDirectoryQuery = {}) => readTaskNames(tasks.context, query),
+    readWatchedNames: (query: TaskDirectoryQuery) => readTaskNames(watchedContext, query),
   };
 }
 
@@ -70,4 +104,14 @@ test('#readTaskNames names a definition task that the given IDs name', async () 
   const names = await ctx.readNames({ taskIDs: [wateringID] });
 
   expect([...names]).toStrictEqual([[wateringID, 'Water the tomatoes']]);
+});
+
+test('#readTaskNames reads the creation record of only the tasks that the given IDs name', async () => {
+  const ctx = await setupTest();
+  const inboxID = await ctx.startInboxTask();
+  const bedsID = await ctx.startBedsTask(inboxID);
+  const names = await ctx.readWatchedNames({ taskIDs: [bedsID] });
+
+  expect([...names]).toStrictEqual([[bedsID, 'Plan the beds']]);
+  expect(new Set(ctx.createdRecords).size).toBe(1);
 });
