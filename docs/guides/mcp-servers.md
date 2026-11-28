@@ -1,7 +1,8 @@
 # Connect an MCP server
 
-Add an outside MCP server to nixie's config, register nixie as a client on the server, sign in from
-Settings → MCP servers, and allow the tools the model may call. nixie reaches the server through its
+Add an outside MCP server to nixie's config, register nixie as a client on the server, and sign in
+from Settings → MCP servers. The model can then call the server's tools, and each call goes through
+your rules. nixie reaches the server through its
 [MCP proxy](../architecture/connectors/mcp-proxy.md), and keeps the server's tokens sealed in its
 credential store. Each tool takes the name `<server_id>.<tool>`.
 
@@ -37,15 +38,12 @@ mcp:
       url: https://tracker.example.org/mcp
       clientID: <client_id>
       scope: read write
-      trusted: false
 ```
 
 - `tracker` is the server ID. It matches `^[a-z][a-z0-9]{1,15}$` and prefixes every tool name.
 - `url` is the server's MCP address. It has no user name, query or fragment.
 - `clientID` is the ID from the previous section.
 - `scope` lists the scopes to ask for, separated by spaces.
-- `trusted` stays `false` unless you want a changed tool to apply with a notice. A new tool always
-  waits for you.
 - `privateRange` is a CIDR range. Add it only when the server's host resolves to a private address.
 
 Expect: after the restart, the server shows as Held on Settings → MCP servers, and a proposal waits
@@ -67,24 +65,50 @@ change one of these facts in the config to give the server more reach.
 2. Sign in on the server's own page and allow the scopes.
 
 Expect: the server sends you back to Settings → MCP servers, the sign-in reads "Signed in", and the
-tools the server lists appear on its card as waiting for your approval.
+tools the server lists appear on its card as available. The assistant can call them on its next
+turn.
 
 When the server stops accepting its refresh token, the card shows "Needs sign-in" and a Sign in
 again button. Select it and sign in again.
 
-## Approve a tool
+## Let a tool's calls run
 
-nixie hides each tool the server lists until you allow it, because the model would otherwise call a
-tool you never read.
+You approve no tool. Each tool the server lists is available at its first listing, and each call of
+a tool goes through the same rules as a call of nixie's own tool:
 
-1. Open Proposals.
-2. Read the card for the tool. It shows the whole form of the tool, and the effects the tool runs
-   under.
-3. Select Allow the tool.
+- A tool that only reads, by its annotations or by an
+  [override file](../architecture/connectors/mcp-proxy-declarations.md#override-files), runs with no
+  question.
+- Any other tool asks you before each call, unless a rule allows it.
 
-Expect: the tool shows as Allowed on the server's card, and the model can call it. When a server
-changes a tool you allowed, nixie stops the tool and writes a new card, unless the server is trusted
-and the change adds no input property.
+To let the calls of a server run, add a rule whose `tools` holds `<server_id>.*`, such as
+`tracker.*`. The rule allows every tool of that server, including the tools the server lists later,
+so give the server only scopes you accept for all of them. The deny, always-ask, destination and
+scope checks still run for each call. To allow one tool, name it: `tracker.item_create`.
+
+Each tool declares its effects by its annotations, and an annotation is the server's own claim. The
+starter rule `allow-reads` runs any tool that declares only reads with no question, so a tool that
+claims `readOnlyHint` runs unasked. For a server you don't trust to describe its tools, write an
+override file for each of its tools in the definitions repo, and add no rule that allows the server.
+
+In a task or job definition, list a server's tools in `tools`: `<server_id>.*` for all of them, or
+`<server_id>.<tool>` for one. The job run or task run holds them, and any tool the server lists
+later too.
+
+## When a tool changes
+
+- A change that keeps the shape of the tool's input, such as a new description or new annotations,
+  applies at once, and the assistant and you get a notice. `nixie mcp notices` lists them.
+- A change that widens what the tool accepts, such as a new property, a removed limit or a wider
+  type, stops the tool. Settings → MCP servers shows "Stopped" beside it and the link "Accept the
+  change". Open the card, read both forms, and select Accept the change.
+
+Expect: after you accept, the tool shows as Available again in its new form.
+
+nixie refuses a listing of more than 200 tools, a tool schema over 64 KiB, or a name that appears
+twice. nixie counts that as a failed listing, so the server shows as unreachable after the failures
+that [When a server is unreachable](#when-a-server-is-unreachable) describes, until a listing
+passes.
 
 ## When a server is unreachable
 

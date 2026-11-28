@@ -182,7 +182,7 @@ export function planTaskStart(
   ];
 
   const kept = [...new Set(tools)].filter(
-    (tool) => tool === taskReportToolName || starterTools.includes(tool),
+    (tool) => tool === taskReportToolName || findHeldToolName(tool, starterTools) !== null,
   );
 
   const connectionPins = pickStartedPins(starter.connectionPins, kept);
@@ -215,7 +215,7 @@ function pickToolRefusal(
   memoryTools: readonly string[],
 ): Omit<ToolRefusal, 'accepted'> | null {
   const checks: readonly [ToolRefusalReason, (tool: string) => boolean][] = [
-    ['wider_tools', (tool) => !starterTools.includes(tool)],
+    ['wider_tools', (tool) => findHeldToolName(tool, starterTools) === null],
     ['conversation_tools', (tool) => bounds.conversationTools.includes(tool)],
     [
       'memory_tools',

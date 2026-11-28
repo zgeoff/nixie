@@ -44,12 +44,11 @@ async function setupTest() {
   };
 }
 
-test('it registers an allowed tool as the server ID, a dot and the tool name', async () => {
+test('it registers a tool at its first listing as the server ID, a dot and the tool name', async () => {
   const ctx = await setupTest();
 
   await ctx.mcp.addServer('tracker', buildServerFacts());
   await ctx.mcp.list('tracker', { forms: [buildToolForm({ name: 'item_get' })] });
-  await ctx.mcp.allow('tracker.item_get');
   await ctx.catalog.refresh();
 
   expect([
@@ -62,7 +61,11 @@ test('it never registers a tool that has no pin', async () => {
   const ctx = await setupTest();
 
   await ctx.mcp.addServer('tracker', buildServerFacts());
-  await ctx.mcp.list('tracker', { forms: [buildToolForm({ name: 'item_get' })] });
+
+  await ctx.mcp.list('tracker', {
+    forms: [buildToolForm({ name: 'item_get', inputSchema: { type: 'string' } })],
+  });
+
   await ctx.catalog.refresh();
 
   expect([ctx.catalog.toolNames(), ctx.catalog.findTool('tracker.item_get')]).toStrictEqual([
@@ -86,7 +89,6 @@ test('it drops a tool whose pinned form was erased, though it served the same ha
 
   await ctx.mcp.addServer('tracker', buildServerFacts());
   await ctx.mcp.list('tracker', { forms: [buildToolForm({ name: 'item_get' })] });
-  await ctx.mcp.allow('tracker.item_get');
   await ctx.catalog.refresh();
 
   const served = ctx.catalog.toolNames();

@@ -29,11 +29,11 @@ async function setupTest() {
       return taskID;
     },
     move: (move: PinMove) => withWriteTransaction(tasks.writer, (tx) => notify(tx, move)),
-    trustedChange: {
+    changedForm: {
       tool: 'tracker.item_get',
       fromHash: 'old',
       toHash: 'new',
-      cause: 'trusted_change',
+      cause: 'changed',
     } satisfies PinMove,
     readNotes: async () => {
       const records = await readRecords(tasks.context.log, {
@@ -51,7 +51,7 @@ test('it leaves the change note in the conversation and in each task whose run h
   const chase = await ctx.startRun('chase-items', ['tracker.*']);
 
   await ctx.startRun('water-plants', ['notes_read']);
-  await ctx.move(ctx.trustedChange);
+  await ctx.move(ctx.changedForm);
 
   const payload = { tool: 'tracker.item_get', fromHash: 'old', toHash: 'new' };
 
@@ -67,7 +67,7 @@ test('it leaves no note for a pin that you allowed yourself', async () => {
   const ctx = await setupTest();
 
   await ctx.startRun('chase-items', ['tracker.item_get']);
-  await ctx.move({ ...ctx.trustedChange, cause: 'allowed' });
+  await ctx.move({ ...ctx.changedForm, cause: 'allowed' });
 
   const notes = await ctx.readNotes();
 

@@ -1,4 +1,9 @@
-import type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from '@heynixie/actions';
+import type {
+  AttemptCheck,
+  AttemptCheckInput,
+  AttemptVerdict,
+  ToolVersion,
+} from '@heynixie/actions';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import type {
@@ -20,6 +25,7 @@ import type { ToolRegistry } from '@heynixie/tools';
 import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
+import { isCallVersionMoved } from './is-call-version-moved';
 import type { StoredCall } from './read-stored-call';
 import { readStoredCall } from './read-stored-call';
 
@@ -76,6 +82,19 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
         : { effects: stored.inputs.effects.filter((name) => isEffect(name)) }),
     });
 
+    // An action asks again once its tool has another form or declaration than the one that its call,
+    // or the last question about it, was decided on: a rule or an approval covers only that form.
+    const current = options.registry.findTool(stored.tool)?.definition;
+
+    const currentVersion = {
+      ...(current?.pinHash === undefined ? {} : { pinHash: current.pinHash }),
+      ...(current?.definitionsHash === undefined
+        ? {}
+        : { definitionsHash: current.definitionsHash }),
+    };
+
+    const isMoved = isCallVersionMoved(input.version, currentVersion);
+
     return buildVerdict(options, {
       policy,
       policyTool,
@@ -83,6 +102,8 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       input,
       destinations: stored.destinations,
       frame: stored.inputs,
+      isMoved,
+      currentVersion,
       writeActs: () => writeActedPlaces(options, { policy, stored, declaration }),
     });
   };
@@ -159,6 +180,10 @@ interface VerdictFacts {
   readonly destinations: readonly CallDestination[];
   readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
   readonly writeActs?: () => Promise<void>;
+
+  // true when the tool has another version than the call loaded, so an allow asks instead
+  readonly isMoved?: boolean;
+  readonly currentVersion?: ToolVersion;
 }
 
 function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): AttemptVerdict {
@@ -181,7 +206,9 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     .filter((destination) => destination.replyTarget)
     .map((destination) => destination.value);
 
-  if (decision.outcome !== 'ask' || facts.declaration === null) {
+  const isAsked = decision.outcome === 'ask' || facts.isMoved === true;
+
+  if (!isAsked || facts.declaration === null) {
     return {
       kind: 'go',
       destinations,
@@ -190,7 +217,7 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     };
   }
 
-  const cause: AskCause = decision.cause ?? 'no_rule';
+  const cause: AskCause = decision.cause ?? (facts.isMoved === true ? 'always_ask' : 'no_rule');
   const action = facts.input.action;
 
   return {
@@ -199,6 +226,7 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     destinations,
     replyTargets,
     proposalID: facts.input.proposalID,
+    ...(facts.currentVersion === undefined ? {} : { version: facts.currentVersion }),
     proposal: {
       definitions: options.definitions(),
       thread: action.task_id,

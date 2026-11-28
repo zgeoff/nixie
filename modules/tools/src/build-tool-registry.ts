@@ -36,6 +36,9 @@ export function buildToolRegistry(
         ...sources.flatMap((source) => source.toolNames()).filter((name) => !known.has(name)),
       ];
     },
+    get serverIDs() {
+      return [...new Set(sources.flatMap((source) => source.serverIDs?.() ?? []))];
+    },
     findTool: (name) => tools.get(name) ?? findInSources(sources, name),
     prepareTaskRun: async (names) => {
       await Promise.all(

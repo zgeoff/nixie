@@ -9,13 +9,13 @@ export interface ToolChangeNoteTarget {
   readonly thread: string;
 }
 
-// The inbox record of a pin move that applied with no allow, or null for a move that needs none: you
-// allowed the tool yourself, or a forget moved it.
+// The inbox record of a pin move that applied with no allow, or null for a move that needs none: a
+// first listing, your accept of a change, or a forget.
 export function buildToolChangeNote(
   move: PinMove,
   target: ToolChangeNoteTarget,
 ): RecordInput | null {
-  if (move.cause !== 'trusted_change') {
+  if (move.cause !== 'changed') {
     return null;
   }
 

@@ -23,7 +23,14 @@ export { readUnknownOutcomes } from './action/read-unknown-outcomes';
 export { readUnknownWaiting } from './action/read-unknown-waiting';
 export type { UnknownAnswer } from './action/write-unknown-answer';
 export { writeUnknownAnswer } from './action/write-unknown-answer';
-export type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from './action/attempt-check';
+
+export type {
+  AttemptCheck,
+  AttemptCheckInput,
+  AttemptVerdict,
+  ToolVersion,
+} from './action/attempt-check';
+
 export type { QueuedAction } from './action/create-allowed-action';
 export { createAllowedAction } from './action/create-allowed-action';
 export { pickOutcome } from './action/pick-outcome';

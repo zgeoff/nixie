@@ -16,7 +16,6 @@ test('it lists an allowed tool through the endpoint', async () => {
 
   await ctx.approveServer();
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
   await ctx.mcp.tools.refresh();
 
   const listed = await readListedTools(ctx, ['tracker.item_get']);

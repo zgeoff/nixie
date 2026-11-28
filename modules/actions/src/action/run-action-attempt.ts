@@ -10,6 +10,7 @@ import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { isKeyExpired } from './is-key-expired';
 import type { Attempt, QueuedCall, Settlement } from './leased-records';
 import { buildOutcomeRecord, readQueuedCall, writeLeasedRecords } from './leased-records';
+import { pickCallVersion } from './pick-call-version';
 import { pickOutcome } from './pick-outcome';
 import { readAttemptStep } from './read-attempt-step';
 import { runReconcileCheck } from './run-reconcile-check';
@@ -137,6 +138,7 @@ async function runAttempt(
   const step = await readAttemptStep(options.checkAttempt, {
     action: claimed.action,
     arguments: queued.arguments,
+    version: pickCallVersion(queued),
   });
 
   if (step.kind !== 'go') {
@@ -270,6 +272,7 @@ async function runConnector(
       tool: attempt.action.tool,
       arguments: call.queued.arguments,
       snapshotHash: call.queued.snapshotHash,
+      ...pickCallVersion(call.queued),
       attempt: attempt.attempt,
       idempotencyKey: buildAttemptKey(attempt.action),
       destinations: call.destinations,

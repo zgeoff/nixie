@@ -1,12 +1,13 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ActionRow } from '../types';
-import type { AttemptCheck, AttemptVerdict } from './attempt-check';
+import type { AttemptCheck, AttemptVerdict, ToolVersion } from './attempt-check';
 import type { AttemptStep } from './pick-attempt-step';
 import { pickAttemptStep } from './pick-attempt-step';
 
 export interface AttemptFacts {
   readonly action: ActionRow;
   readonly arguments: JSONObject;
+  readonly version: ToolVersion;
 }
 
 // Decides the action again from the stored call and the rules in force now. With no check, every
@@ -21,6 +22,7 @@ export async function readAttemptStep(
       : await checkAttempt({
           action: facts.action,
           arguments: facts.arguments,
+          version: facts.version,
           proposalID: facts.action.is_approved === 1 ? crypto.randomUUID() : facts.action.action_id,
         });
 

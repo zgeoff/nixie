@@ -12,6 +12,20 @@ async function setupTest() {
   await mcp.addServer('tracker', buildServerFacts());
   await mcp.list('tracker', { forms: [buildToolForm()] });
 
+  // a form that widens the input stops the tool and waits for an accept
+  await mcp.list('tracker', {
+    forms: [
+      buildToolForm({
+        description: 'Read one item and say who owns it.',
+        inputSchema: {
+          type: 'object',
+          properties: { id: { type: 'string' }, owner: { type: 'string' } },
+          required: ['id'],
+        },
+      }),
+    ],
+  });
+
   return {
     mcp,
     declineOpen: async () => {
@@ -19,6 +33,14 @@ async function setupTest() {
 
       await mcp.answer(row?.proposal_id ?? '', 'decline');
     },
+    widenedForm: buildToolForm({
+      description: 'Read one item and say who owns it.',
+      inputSchema: {
+        type: 'object',
+        properties: { id: { type: 'string' }, owner: { type: 'string' } },
+        required: ['id'],
+      },
+    }),
     allow: () => allowTool(mcp.context, 'tracker.item_get'),
     readOpen: () => readOpenProposals(mcp.log.writer.db, mcp.context.now()),
   };
@@ -28,7 +50,7 @@ test('it writes a new allow proposal after you declined the first, though the li
   const ctx = await setupTest();
 
   await ctx.declineOpen();
-  await ctx.mcp.list('tracker', { forms: [buildToolForm()] });
+  await ctx.mcp.list('tracker', { forms: [ctx.widenedForm] });
 
   const before = await ctx.readOpen();
   const allowed = await ctx.allow();
@@ -42,4 +64,14 @@ test('it answers that an unknown tool has nothing to allow', async () => {
   const allowed = await allowTool(ctx.mcp.context, 'tracker.item_put');
 
   expect(allowed).toStrictEqual({ status: 'unknown_tool' });
+});
+
+test('it answers that an exposed tool has nothing to allow', async () => {
+  const ctx = await setupTest();
+
+  await ctx.mcp.allow('tracker.item_get');
+
+  const allowed = await ctx.allow();
+
+  expect(allowed).toStrictEqual({ status: 'nothing_to_allow', reason: 'the tool is exposed' });
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { callStepSchema } from './run-call-step';
 
+const toolInputSchema = z.record(z.string(), z.json());
 const skillNamesSchema = z.array(z.string().min(1)).min(1);
 
 const listedTaskSchema = z.strictObject({
@@ -115,6 +116,10 @@ export const controlRoutes = {
       // opens the newest, before its reply
       mailRead: z.strictObject({ from: z.string().min(1) }).optional(),
 
+      // the model calls this tool of a proxied MCP server, named as `<server>.<tool>`, with this input
+      // before its reply
+      mcpCall: z.strictObject({ tool: z.string().min(1), input: toolInputSchema }).optional(),
+
       // the model reads each of these skills with the skill read tool before its reply
       skillRead: z.strictObject({ names: skillNamesSchema }).optional(),
 
@@ -210,7 +215,7 @@ export const controlRoutes = {
   approveHeldMcp: {
     method: 'POST',
     path: '/control/approve-held-mcp',
-    input: z.strictObject({ label: z.enum(['Add the server', 'Allow the tool']) }),
+    input: z.strictObject({}),
     output: z.strictObject({ approved: z.int().positive() }),
   },
   approveHeldMandate: {

@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { startStandInMcp } from '@heynixie/mcp/test-utils';
+import { readListedTools, startStandInMcp } from '@heynixie/mcp/test-utils';
 import { defaultProposalConfig, readProposal } from '@heynixie/proposals';
 import type { TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
@@ -17,7 +17,6 @@ import { startMcpPart } from './start-mcp-part';
 async function setupTest() {
   const standIn = await startStandInMcp({
     tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
-    facts: { trusted: true },
     extraProjections: tasksProjections,
   });
 
@@ -86,13 +85,12 @@ async function setupTest() {
   };
 }
 
-test('it leaves a change note in the conversation and in each task whose run holds the tool, when a listing that the part started moves a trusted pin', async () => {
+test('it leaves a change note in the conversation and in each task whose run holds the tool, when a listing that the part started moves a pin', async () => {
   const ctx = await setupTest();
   const chase = await ctx.startRun('chase-items', ['tracker.*']);
 
   await ctx.startRun('water-plants', ['notes_read']);
   await ctx.part.list('tracker');
-  await ctx.test.allow('tracker.item_get');
 
   ctx.site.setTools([
     { name: 'item_get', description: 'Read one item, newly.', inputSchema: { type: 'object' } },
@@ -105,8 +103,18 @@ test('it leaves a change note in the conversation and in each task whose run hol
   expect(notes).toStrictEqual(['conversation', chase]);
 });
 
-test('it lapses an allow proposal of a tool after the days that the config sets for the family', async () => {
+test('it lapses an accept proposal of a tool after the days that the config sets for the family', async () => {
   const ctx = await setupTest();
+
+  await ctx.part.list('tracker');
+
+  ctx.site.setTools([
+    {
+      name: 'item_get',
+      description: 'Read one item.',
+      inputSchema: { type: 'object', properties: { owner: { type: 'string' } } },
+    },
+  ]);
 
   await ctx.part.list('tracker');
 
@@ -117,4 +125,11 @@ test('it lapses an allow proposal of a tool after the days that the config sets 
   const row = await readProposal(ctx.test.log.writer.db, allowed.proposalID);
 
   expect(row?.lapsesAt).toBe(ctx.test.clock.now() + 2 * 24 * 60 * 60 * 1000);
+});
+
+test('it lists the tools of a configured server to a task run that names the whole server, as the tool endpoint serves them', async () => {
+  const ctx = await setupTest();
+  const listed = await readListedTools(ctx, ['tracker.*'], ctx.part.tools);
+
+  expect(listed).toStrictEqual([{ name: 'tracker.item_get', description: 'Read one item.' }]);
 });

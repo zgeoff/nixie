@@ -5,9 +5,9 @@ import type { TaskSeedContext } from '../task/types';
 const conversationTools = ['tasks.list', 'task.message', 'task.report', 'time.now', 'task.define'];
 
 // The context a seed of task definitions takes, on the real check of a start. The conversation holds
-// task.define, which a file definition may not list, and the file starter also holds files.write,
-// which the conversation lacks.
-export function buildTestTaskSeed(): TaskSeedContext {
+// task.define, which a file definition may not list, and the file starter also holds files.write.
+// Each server ID adds the `<server>.*` entry of a configured MCP server.
+export function buildTestTaskSeed(serverIDs: readonly string[] = []): TaskSeedContext {
   const toolNames = [
     ...conversationTools,
     'files.write',
@@ -20,6 +20,7 @@ export function buildTestTaskSeed(): TaskSeedContext {
     'moment.edit',
     'log.read',
     'web.fetch',
+    ...serverIDs.map((serverID) => `${serverID}.*`),
   ];
 
   return {
@@ -36,7 +37,7 @@ export function buildTestTaskSeed(): TaskSeedContext {
         },
       }),
       toolNames,
-      conversationTools,
+      conversationTools: [...conversationTools, ...serverIDs.map((serverID) => `${serverID}.*`)],
     }),
   };
 }

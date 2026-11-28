@@ -102,11 +102,11 @@ test('it forgets the grant of a server whose entry dropped a scope, so you sign 
   ]).toStrictEqual([[before?.grant_credential_id ?? ''], false, true]);
 });
 
-test('it keeps the grant of a server whose entry only switched trust off', async () => {
+test('it keeps the grant of a server whose entry only narrowed its range', async () => {
   const ctx = await setupTest();
 
-  await ctx.mcp.addServer('tracker', buildServerFacts({ trusted: true }));
-  await ctx.start({ tracker: buildServerFacts({ trusted: false }) });
+  await ctx.mcp.addServer('tracker', buildServerFacts({ privateRange: '10.0.0.0/16' }));
+  await ctx.start({ tracker: buildServerFacts({ privateRange: '10.0.1.0/24' }) });
 
   expect(ctx.forgotten).toStrictEqual([]);
 });

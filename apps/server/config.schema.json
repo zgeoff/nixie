@@ -1728,16 +1728,15 @@
                 "type": "string",
                 "minLength": 1
               },
-              "trusted": {
-                "default": false,
-                "type": "boolean"
-              },
               "privateRange": {
                 "default": null,
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "trusted": {
+                "type": "boolean"
               }
             },
             "required": [

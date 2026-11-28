@@ -40,8 +40,8 @@ function buildServerSchema(isTestBuild: boolean) {
       url: z.string().min(1),
       clientID: z.string().min(1),
       scope: z.string().min(1),
-      trusted: z.boolean().default(false),
       privateRange: z.string().nullable().default(null),
+      trusted: z.boolean().optional(),
     })
     .superRefine((server, issues) => {
       const reason = findUnfitURL(server.url, isTestBuild);

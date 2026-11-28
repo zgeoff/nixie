@@ -8,13 +8,12 @@ test('it defaults the listing timeout and an empty server list', () => {
   });
 });
 
-test('it reads a server with the defaults for trust and range', () => {
+test('it reads a server with the default for the range', () => {
   const server = { url: 'https://tracker.example.org/mcp', clientID: 'nixie-7f3a', scope: 'read' };
   const config = buildMcpConfigSchema(false).parse({ servers: { tracker: server } });
 
   expect(config.servers['tracker']).toStrictEqual({
     ...server,
-    trusted: false,
     privateRange: null,
   });
 });
@@ -128,4 +127,17 @@ test('it refuses an unknown key', () => {
   });
 
   expect(result.success).toBe(false);
+});
+
+test('it still accepts the trusted key of an earlier release', () => {
+  const server = {
+    url: 'https://tracker.example.org/mcp',
+    clientID: 'nixie-7f3a',
+    scope: 'read',
+    trusted: true,
+  };
+
+  expect(buildMcpConfigSchema(false).safeParse({ servers: { tracker: server } }).success).toBe(
+    true,
+  );
 });

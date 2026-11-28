@@ -1,5 +1,4 @@
 import type { z } from 'zod';
-import type { McpApprovalLabel } from './approve-held-mcp';
 import type { ControlRoute } from './control-routes';
 import { controlRoutes } from './control-routes';
 
@@ -16,7 +15,7 @@ export interface ControlHandlers {
     layout: z.output<typeof controlRoutes.layoutOnDevice.input>,
   ) => Promise<number>;
 
-  readonly approveHeldMcp: (label: McpApprovalLabel) => Promise<number>;
+  readonly approveHeldMcp: () => Promise<number>;
   readonly approveHeldMandate: () => Promise<number>;
 
   // adds the site to the directory at read, and returns the short ID of its entry
@@ -101,8 +100,8 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
         })),
       },
       [controlRoutes.approveHeldMcp.path]: {
-        POST: makeRouteHandler(controlRoutes.approveHeldMcp, async (approval) => ({
-          approved: await handlers.approveHeldMcp(approval.label),
+        POST: makeRouteHandler(controlRoutes.approveHeldMcp, async () => ({
+          approved: await handlers.approveHeldMcp(),
         })),
       },
       [controlRoutes.approveHeldMandate.path]: {

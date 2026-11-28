@@ -4,6 +4,5 @@ export const serverFactsSchema = z.object({
   url: z.string(),
   clientID: z.string(),
   scope: z.string(),
-  trusted: z.boolean(),
   privateRange: z.string().nullable(),
 });

@@ -9,7 +9,7 @@ export type AllowResult =
   | { readonly status: 'unknown_tool' }
   | { readonly status: 'nothing_to_allow'; readonly reason: string };
 
-// Writes the allow proposal of a tool that waits for one, in place of the open one. `nixie mcp
+// Writes the accept proposal of a tool that a change stopped, in place of the open one. `nixie mcp
 // allow` calls it after you decline a proposal or it lapses, because a listing never proposes the
 // same form twice.
 export async function allowTool(context: McpContext, tool: string): Promise<AllowResult> {
@@ -23,7 +23,7 @@ export async function allowTool(context: McpContext, tool: string): Promise<Allo
     return { status: 'nothing_to_allow', reason: row.hidden_reason };
   }
 
-  if (row.state !== 'hidden_new' && row.state !== 'stopped_changed') {
+  if (row.state !== 'stopped_changed') {
     return { status: 'nothing_to_allow', reason: `the tool is ${row.state}` };
   }
 

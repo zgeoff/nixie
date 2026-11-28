@@ -4,7 +4,7 @@ import type { ServerFacts } from '../types';
 export type FactsChange = 'same' | 'widened' | 'narrowed';
 
 // Sorts what a config entry asks for against the facts in use: a new URL or client ID, more scopes,
-// a wider range or `trusted` on widen; fewer scopes, a narrower range or `trusted` off narrow. An
+// or a wider range widen; fewer scopes or a narrower range narrow. An
 // entry that does both widens, because the proposal then carries every fact of the entry.
 export function classifyServerFacts(inUse: ServerFacts, asked: ServerFacts): FactsChange {
   const inUseScopes = toScopeSet(inUse.scope);
@@ -15,7 +15,6 @@ export function classifyServerFacts(inUse: ServerFacts, asked: ServerFacts): Fac
     inUse.url !== asked.url ||
     inUse.clientID !== asked.clientID ||
     [...askedScopes].some((scope) => !inUseScopes.has(scope)) ||
-    (!inUse.trusted && asked.trusted) ||
     rangeChange === 'widened';
 
   if (isWidened) {
@@ -23,9 +22,7 @@ export function classifyServerFacts(inUse: ServerFacts, asked: ServerFacts): Fac
   }
 
   const isNarrowed =
-    [...inUseScopes].some((scope) => !askedScopes.has(scope)) ||
-    (inUse.trusted && !asked.trusted) ||
-    rangeChange === 'narrowed';
+    [...inUseScopes].some((scope) => !askedScopes.has(scope)) || rangeChange === 'narrowed';
 
   return isNarrowed ? 'narrowed' : 'same';
 }

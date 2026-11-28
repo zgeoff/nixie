@@ -45,10 +45,14 @@ export function createToolCatalog(
   prepareServers: (serverIDs: readonly string[]) => Promise<void>,
   readOverrides: ReadOverrides,
 ): ToolCatalog {
-  const served = { tools: new Map<string, ServedTool>() };
+  const served: { tools: Map<string, ServedTool>; serverIDs: string[] } = {
+    tools: new Map(),
+    serverIDs: [],
+  };
 
   return {
     toolNames: () => [...served.tools.keys()],
+    serverIDs: () => served.serverIDs,
     prepareTaskRun: async (names) => {
       const serverIDs = names.flatMap((name) =>
         name.includes('.') ? [name.split('.')[0] ?? ''] : [],
@@ -153,6 +157,7 @@ export function createToolCatalog(
       }
 
       served.tools = next;
+      served.serverIDs = [...live];
     },
   };
 }

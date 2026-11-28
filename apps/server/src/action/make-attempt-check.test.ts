@@ -24,6 +24,11 @@ import { buildMockVariantToolDefinition } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { makeAttemptCheck } from './make-attempt-check';
 
+interface PinnedVersion {
+  pinHash: string;
+  definitionsHash: string | null;
+}
+
 interface RunnerActionInput {
   tool: string;
   args: object;
@@ -82,6 +87,24 @@ async function setupTest() {
     run: () => Promise.reject(new Error('mail.send runs as an action, never inside the turn')),
   };
 
+  const pinned: ToolDefinition = {
+    name: 'board.pin',
+    description: 'Pins a note to the shared board.',
+    input: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+    output: { type: 'object' },
+    execution: 'queued',
+    declaration: {
+      effects: ['send'],
+      destinations: [],
+      amount: null,
+      content: ['text'],
+      results: {},
+    },
+    pinHash: 'pin-2',
+    definitionsHash: 'snapshot-2',
+    run: () => Promise.reject(new Error('board.pin runs as an action, never inside the turn')),
+  };
+
   const rules: RuleEntry[] = [];
   const places: PolicyPlace[] = [];
 
@@ -94,6 +117,7 @@ async function setupTest() {
     findRunnerDeclaration: (name) => codingActionDeclarations.get(name) ?? null,
     registry: buildToolRegistry([
       tool,
+      pinned,
       reader,
       mailer,
       buildMockVariantToolDefinition({
@@ -128,6 +152,76 @@ async function setupTest() {
     rules,
     places,
     snapshotTools,
+    queuePinnedCall: async (version: PinnedVersion, covered?: PinnedVersion) => {
+      const step = await createTestStep(actions.context);
+
+      const [called] = await writeRecords(actions.context.log, [
+        {
+          kind: toolCalledCodec.kind,
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: step.lease.workID,
+          payload: toolCalledCodec.encode({
+            callID: 'call-pin',
+            runID: 'run-1',
+            toolUseID: 'toolu_1',
+            tool: 'board.pin',
+            model: 'claude-test-1',
+            profile: 'chat-direct',
+            pinHash: version.pinHash,
+            ...(version.definitionsHash === null
+              ? {}
+              : { definitionsHash: version.definitionsHash }),
+          }),
+          decision: {
+            outcome: 'allow',
+            stage: 9,
+            rule: { id: 'allow-board', revision: 1 },
+            inputs: {
+              toolList: ['board.pin'],
+              context: 'task',
+              definitionID: 'board-notes',
+              sources: ['task'],
+              turnMessageSequence: null,
+              onBehalfOf: [],
+            },
+          },
+          erasable: { input: { text: 'Boat is ready' }, destinations: [] },
+        },
+      ]);
+
+      invariant(called, 'the call is recorded');
+
+      const queued = await queueTestAction(actions.context, {
+        step,
+        tool: 'board.pin',
+        actionHash: 'sha256:pin-1',
+        arguments: { text: 'Boat is ready' },
+        decision: { outcome: 'allow', stage: 9, rule: { id: 'allow-board', revision: 1 } },
+        callSequence: called.sequence,
+      });
+
+      const action = await readTestAction(actions.writer, queued.actionID);
+
+      rules.push({
+        id: 'allow-board',
+        revision: 1,
+        rule: { id: 'allow-board', outcome: 'allow', tools: ['board.pin'] },
+      });
+
+      const answered = covered ?? version;
+
+      return check({
+        action,
+        arguments: { text: 'Boat is ready' },
+        proposalID: action.action_id,
+        version: {
+          pinHash: answered.pinHash,
+          ...(answered.definitionsHash === null
+            ? {}
+            : { definitionsHash: answered.definitionsHash }),
+        },
+      });
+    },
     queueMailToActPlace: async () => {
       const step = await createTestStep(actions.context);
 
@@ -189,6 +283,7 @@ async function setupTest() {
         action,
         arguments: { to: 'sam@example.org' },
         proposalID: action.action_id,
+        version: {},
       });
 
       invariant(verdict.kind === 'go', 'the act place allows the mail');
@@ -297,6 +392,7 @@ test('it gives the proposal of an allowed action that no rule now steers the fra
     action,
     arguments: { text: 'Boat is ready' },
     proposalID: action.action_id,
+    version: {},
   });
 
   invariant(verdict.kind === 'ask', 'no rule allows the call now');
@@ -377,6 +473,7 @@ test('it denies an allowed variant call when a rule now denies that variant', as
     action,
     arguments: { kind: 'risky', query: 'a' },
     proposalID: action.action_id,
+    version: {},
   });
 
   expect(verdict).toStrictEqual({
@@ -492,6 +589,7 @@ test('it decides a runner action under its own tool with the task as caller, and
     action,
     arguments: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'started' },
     proposalID: action.action_id,
+    version: {},
   });
 
   invariant(verdict.kind === 'ask', 'the stop asks under the ask rule');
@@ -560,6 +658,7 @@ test.each([
       action,
       arguments: parseJSONObject(JSON.stringify(args)),
       proposalID: action.action_id,
+      version: {},
     });
 
     expect(verdict).toStrictEqual({
@@ -594,6 +693,7 @@ test('it denies a runner steer under a send deny rule, even when the snapshot de
     action,
     arguments: { session: 'atc:cloud.3f9a1c2e.1', text: 'Go on.' },
     proposalID: action.action_id,
+    version: {},
   });
 
   expect(verdict).toMatchObject({ kind: 'deny', rule: { id: 'deny-sends' } });
@@ -620,6 +720,7 @@ test('it holds a steer that a step queued at the destination limits, when an all
     action,
     arguments: { session: 'atc:cloud.3f9a1c2e.1', text: 'Check the cookie expiry.' },
     proposalID: action.action_id,
+    version: {},
   });
 
   invariant(verdict.kind === 'ask', 'the steer asks');
@@ -665,4 +766,48 @@ test('it writes one act record for a retried call when more than 200 act records
   const acted = await ctx.countActedRecords(queued.step.lease.workID);
 
   expect(acted).toBe(1);
+});
+
+test('it lets a call run that its rule allowed, when its tool still has the pin and declaration it loaded', async () => {
+  const ctx = await setupTest();
+  const verdict = await ctx.queuePinnedCall({ pinHash: 'pin-2', definitionsHash: 'snapshot-2' });
+
+  expect(verdict.kind).toBe('go');
+});
+
+test.each([
+  { title: 'another pin', version: { pinHash: 'pin-1', definitionsHash: 'snapshot-2' } },
+  { title: 'another declaration', version: { pinHash: 'pin-2', definitionsHash: 'snapshot-1' } },
+  { title: 'no declaration', version: { pinHash: 'pin-2', definitionsHash: null } },
+])('it asks again for a call that its rule allowed, when its tool has $title now', async (row) => {
+  const ctx = await setupTest();
+  const verdict = await ctx.queuePinnedCall(row.version);
+
+  invariant(verdict.kind === 'ask', 'the changed tool asks');
+
+  expect(verdict.cause).toBe('always_ask');
+});
+
+test('it lets a call run that its tool changed, when the owner answered a question about the changed tool', async () => {
+  const ctx = await setupTest();
+
+  const verdict = await ctx.queuePinnedCall(
+    { pinHash: 'pin-1', definitionsHash: 'snapshot-1' },
+    { pinHash: 'pin-2', definitionsHash: 'snapshot-2' },
+  );
+
+  expect(verdict.kind).toBe('go');
+});
+
+test('it asks again about a call that its owner approved, when its tool changed after the approval', async () => {
+  const ctx = await setupTest();
+
+  const verdict = await ctx.queuePinnedCall(
+    { pinHash: 'pin-2', definitionsHash: 'snapshot-2' },
+    { pinHash: 'pin-1', definitionsHash: 'snapshot-2' },
+  );
+
+  invariant(verdict.kind === 'ask', 'the changed tool asks');
+
+  expect(verdict.version).toStrictEqual({ pinHash: 'pin-2', definitionsHash: 'snapshot-2' });
 });

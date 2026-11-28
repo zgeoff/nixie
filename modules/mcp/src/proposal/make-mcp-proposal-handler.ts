@@ -2,7 +2,7 @@ import { findMcpToolOverride } from '@heynixie/policy';
 import type { ProposalBody, ProposalKindHandler } from '@heynixie/proposals';
 import { buildDiscardedOutcome } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
-import { buildOperationHash } from '../operation/build-operation-hash';
+import { pickActionHash } from '../operation/pick-action-hash';
 import { readFormsByHash } from '../rows/read-forms-by-hash';
 import type { McpOperation } from '../types';
 import { answerMcpProposal } from './answer-mcp-proposal';
@@ -42,7 +42,8 @@ export function makeMcpProposalHandler(context: AnswerContext): ProposalKindHand
     readHashes: async (db, row) => {
       const operation = await readOperation(db, row.id);
 
-      const action = operation === null ? row.actionHash : buildOperationHash(operation);
+      const action =
+        operation === null ? row.actionHash : pickActionHash(operation, row.actionHash);
 
       return { action, rule: null };
     },

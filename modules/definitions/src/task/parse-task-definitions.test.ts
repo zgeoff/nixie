@@ -788,3 +788,41 @@ test('it refuses a definition that lists a skill the definitions lack', () => {
     },
   ]);
 });
+
+test.each([
+  ['the whole server', 'tracker.*'],
+  ['one tool of the server', 'tracker.item_get'],
+])('it keeps %s when a definition names a configured MCP server', (_case, entry) => {
+  const parsed = parseTaskDefinitions(
+    new Map([
+      [
+        'tasks/rain-gauge/task.yaml',
+        `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntools:\n  - ${entry}\n`,
+      ],
+    ]),
+    buildTestTaskSeed(['tracker']),
+    ['tide-tables'],
+  );
+
+  expect(parsed.warnings).toStrictEqual([]);
+  expect(parsed.faults).toStrictEqual([]);
+
+  expect(parsed.definitions[0]?.form['tools']).toStrictEqual([
+    'tasks.list',
+    'task.message',
+    'task.report',
+    entry,
+  ]);
+});
+
+test('it drops a server entry whose server the config lacks, with a warning', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntools:\n  - tracker.*\n`,
+  });
+
+  expect(parsed.warnings).toStrictEqual([
+    { kind: 'tool_dropped', definition: 'rain-gauge', tool: 'tracker.*' },
+  ]);
+});

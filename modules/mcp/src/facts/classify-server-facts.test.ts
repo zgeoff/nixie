@@ -10,7 +10,6 @@ test.each<{ title: string; asked: Partial<ServerFacts>; change: FactsChange }>([
   { title: 'a new URL', asked: { url: 'https://tracker.example.org/other' }, change: 'widened' },
   { title: 'a new client ID', asked: { clientID: 'nixie-9' }, change: 'widened' },
   { title: 'one more scope', asked: { scope: 'read write admin' }, change: 'widened' },
-  { title: 'trusted switched on', asked: { trusted: true }, change: 'widened' },
   {
     title: 'a range where there was none',
     asked: { privateRange: '10.0.0.0/24' },
@@ -28,12 +27,6 @@ test.each<{
   asked: Partial<ServerFacts>;
   change: FactsChange;
 }>([
-  {
-    title: 'trusted switched off',
-    inUse: { trusted: true },
-    asked: { trusted: false },
-    change: 'narrowed',
-  },
   {
     title: 'a range removed',
     inUse: { privateRange: '10.0.0.0/24' },
@@ -65,9 +58,9 @@ test.each<{
     change: 'same',
   },
   {
-    title: 'a wider scope list that also drops trust',
-    inUse: { trusted: true },
-    asked: { scope: 'read write admin', trusted: false },
+    title: 'a wider scope list that also drops a range',
+    inUse: { privateRange: '10.0.0.0/24' },
+    asked: { scope: 'read write admin', privateRange: null },
     change: 'widened',
   },
 ])('it classifies $title as $change', (row) => {

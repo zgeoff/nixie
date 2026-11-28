@@ -3,6 +3,8 @@ export { buildMockToolContext } from './build-mock-tool-context';
 export type { MockToolDefinitionOverrides } from './build-mock-tool-definition';
 export { buildMockToolDefinition } from './build-mock-tool-definition';
 export { buildMockVariantToolDefinition } from './build-mock-variant-tool-definition';
+export type { ServerToolSource } from './build-server-tool-source';
+export { buildServerToolSource } from './build-server-tool-source';
 export type { StubActionQueue, StubActionQueueOptions } from './build-stub-action-queue';
 export { buildStubActionQueue } from './build-stub-action-queue';
 export { parseFencedResult } from './parse-fenced-result';

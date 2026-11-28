@@ -70,7 +70,14 @@ export async function runToolCall(
   const definitions = options.definitions();
   const found = options.registry.findTool(requested.tool);
   const pinHash = found?.definition.pinHash;
-  const recordedFields = { definitions, parent, pinHash };
+
+  const recordedFields = {
+    definitions,
+    parent,
+    pinHash,
+    definitionsHash: found?.definition.definitionsHash,
+  };
+
   const requestRecorder = makeCallRecorder(requested, run, options, recordedFields);
   const loaded = { pinHash, definitionsHash: found?.definition.definitionsHash };
 

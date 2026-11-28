@@ -6,6 +6,7 @@ import { collectReachableConnections } from './connection/collect-reachable-conn
 import { collectReachableTools } from './connection/collect-reachable-tools';
 import { findToolPins } from './connection/find-tool-pins';
 import { runToolCall } from './run-tool-call';
+import { collectHeldToolNames } from './tool-name/collect-held-tool-names';
 import type { GuestToolRun } from './types';
 
 // oxlint-disable-next-line typescript/no-deprecated -- McpServer answers a call to a tool it does not list itself, so the scope stage would never see it
@@ -18,7 +19,9 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
     { capabilities: { tools: { listChanged: true } } },
   );
 
-  // the run's tools minus the ones held back at the moment of the request
+  // The run's tools at the moment of the request: each listed name resolved against the registry as
+  // it stands, minus the ones held back. The list and the scope check of a call read the same
+  // names, so a tool a server exposes after the run starts is in both.
   const readLiveTools = async () => {
     const heldBackNames = await options.readHeldBackTools?.();
 
@@ -33,7 +36,11 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
 
     return {
       names: collectReachableTools(
-        run.tools.filter((name) => !heldBack.has(name)),
+        collectHeldToolNames(
+          run.tools,
+          options.registry.toolNames,
+          options.registry.serverIDs,
+        ).held.filter((name) => !heldBack.has(name)),
         run.connectionPins,
         liveIDs,
       ),

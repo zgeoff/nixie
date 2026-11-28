@@ -2,11 +2,12 @@
 
 The MCP proxy lets the model use the tools of an outside MCP server, such as an issue tracker, under
 the same rules as nixie's own tools. The user lists each server in the `mcp` section of the config.
-nixie signs in to the server as the user, lists its tools, and registers each tool the user allowed
-under the name `<serverID>.<tool>`. Everything the server sends is outside content, because the
-server is outside nixie. Only the user decides which of the server's tools the model may call. The
-[credential store](./credentials.md) holds the tokens, and [tool calls](./tool-calls.md) covers the
-endpoint that serves the registered tools.
+nixie signs in to the server as the user, lists its tools, and registers each tool that passes its
+checks under the name `<serverID>.<tool>`. Everything the server sends is outside content, because
+the server is outside nixie. The user approves the server once. After that, each call of a tool goes
+through the same rules as a call of nixie's own tool: a read runs, and a write asks unless a rule
+allows it. The [credential store](./credentials.md) holds the tokens, and
+[tool calls](./tool-calls.md) covers the endpoint that serves the registered tools.
 
 ```mermaid
 flowchart LR
@@ -17,20 +18,21 @@ flowchart LR
   F --> I["sign in (OAuth, PKCE)"]
   I --> L["listing: tools/list"]
   L --> N["pins: hash of each tool form"]
-  N -->|"allowed"| R["registry: serverID.tool"]
+  N -->|"first listing, or a change that keeps the input shape"| R["registry: serverID.tool"]
+  N -->|"a change that widens the input"| A["stopped until you accept"]
 ```
 
 ## Server facts and approvals
 
-A server's facts are its URL, its OAuth client ID, its scopes, whether it is trusted and the private
-address range it may sit in. The user sets the facts they want in the config. The log holds the
-facts in use, which are the facts the user last approved.
+A server's facts are its URL, its OAuth client ID, its scopes and the private address range it may
+sit in. The user sets the facts they want in the config. The log holds the facts in use, which are
+the facts the user last approved.
 
 At each start nixie compares the two. A fact that gives the server more reach is a widening: a new
-URL or client ID, a scope the server lacked, `trusted` switched on, or a wider range. A widening
-changes who nixie talks to or what that party may do, so it never applies by itself. The server is
-held, and nixie writes one approval proposal that names the facts it asks for. The server keeps the
-facts in use until the user approves.
+URL or client ID, a scope the server lacked, or a wider range. A widening changes who nixie talks to
+or what that party may do, so it never applies by itself. The server is held, and nixie writes one
+approval proposal that names the facts it asks for. The server keeps the facts in use until the user
+approves.
 
 A narrowing, which gives the server less reach, applies at once and leaves a record, because nothing
 the user approved is lost by it. A narrowing that drops a scope also forgets the server's grant, so
@@ -43,8 +45,8 @@ to the credential store's forget, and its pins stay as records.
 
 The proposal belongs to the shared proposal path, as the `mcp` family. When the user answers, nixie
 re-reads the facts, compares their hash with the one the user saw, and refuses the answer when the
-config changed in between. A server card shows the URL, the client ID, the scopes, the trust and the
-range, so a change of client ID alone reads as a change.
+config changed in between. A server card shows the URL, the client ID, the scopes and the range, so
+a change of client ID alone reads as a change.
 
 ## Signing in
 
@@ -82,35 +84,49 @@ event as the event arrives.
 ## Pins
 
 A tool's form is its name, title, description, input schema, output schema and annotations. nixie
-hashes the form in canonical JSON, with sorted keys and NFC text, and pins the hash the user
-allowed. On a trusted server, the user allowed each later change when they trusted the server. The
-model sees only the pinned form. nixie keeps the listing's newest hash beside the pin.
+hashes the form in canonical JSON, with sorted keys and NFC text, and pins the hash. The model sees
+only the pinned form. nixie keeps the listing's newest hash beside the pin.
 
-| Listing shows                             | Untrusted server      | Trusted server                    |
-| ----------------------------------------- | --------------------- | --------------------------------- |
-| A tool nixie has not seen                 | hidden until allowed  | hidden until allowed              |
-| A changed form with no new input property | stopped until allowed | pin moves, the user gets a notice |
-| A changed form with a new input property  | stopped until allowed | stopped until allowed             |
+| Listing shows                                    | Result                                                |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| A tool nixie has no pin for                      | pinned at once, and exposed when it has a declaration |
+| A changed form that keeps the input's shape      | pin moves, the assistant and the user get a notice    |
+| A changed form that widens what the tool accepts | stopped until the user accepts the change             |
 
-A new tool stays hidden on every server because the model would otherwise use a tool the user never
-read. A new input property stops even a trusted server's tool, because a property is the way a
-server asks for a new kind of data. nixie writes an allow proposal for each waiting tool, and the
-approval moves the pin to the hash the proposal holds. The tool form is the server's text, so the
-listing record keeps it in an erasable field, and a forget of the record leaves the hash and removes
-the form. A tool whose form can no longer be read stays stopped.
+The user approves the server, and that approval covers the tools it lists, so a new tool needs no
+card. A tool that fails the name or form check, or whose form has no declaration, stays hidden with
+the reason, and nixie writes no proposal for it. That includes a form whose input or output schema
+cannot compile, such as one with a `$ref` that names nothing.
 
-A listing that omits a tool closes the tool's open allow proposal, so a withdrawn form cannot be
-approved. A form that the registry refuses stays hidden with the reason, and nixie writes no
-proposal for it. That includes a form whose input or output schema cannot compile, such as one with
-a `$ref` that names nothing. nixie refuses an approval of a waiting proposal for such a form, or for
-a form that a forget erased. When a trusted server's change applies, or a listing drops a tool,
-nixie writes an `mcp.notice` record that names the tool and its old and new hash.
-`nixie mcp notices` prints the newest ones, one JSON line each, newest first, and takes `--limit`.
-The tool rows are decided inside the write transaction, so an allow that commits while a listing
-runs is never overwritten with an older pin. A server listing has one timeout for every page
-together, so a server that keeps returning a page cursor cannot hold a sign-in open. After the user
-declines an allow proposal or it lapses, `nixie mcp allow <tool>` writes a new one, because an
-unchanged listing proposes nothing.
+A change keeps the input's shape when it changes only text that has no effect on what the tool
+accepts, such as a description, a title, an example or the annotations. A change widens the input
+when the new schema is not provably as narrow as the old one: a new property, a removed constraint,
+a raised maximum, a lowered minimum, a longer enum, a wider type or a property that is no longer
+required. A property that the new schema drops counts as widening unless the schema refuses extra
+properties. Descriptions and annotations are the server's own words, so a change to them moves the
+pin and leaves a notice on every server.
+
+A tool that a change stopped waits as `stopped_changed`. nixie writes one proposal, which shows both
+forms in full, and the server's page links it as "Accept the change". The approval moves the pin to
+the hash the proposal holds. The tool form is the server's text, so the listing record keeps it in
+an erasable field, and a forget of the record leaves the hash and removes the form. A tool whose
+form can no longer be read stays stopped until the next listing pins its current form.
+
+A listing that omits a tool closes the tool's open proposal, so a withdrawn form cannot be approved.
+When a change moves a pin, or a listing drops a tool, nixie writes an `mcp.notice` record that names
+the tool and its old and new hash, at most one for each tool in a listing. `nixie mcp notices`
+prints the newest ones, one JSON line each, newest first, and takes `--limit`. The tool rows are
+decided inside the write transaction, so an accept that commits while a listing runs is never
+overwritten with an older pin. After the user declines an accept proposal or it lapses,
+`nixie mcp allow <tool>` writes a new one, because an unchanged listing proposes nothing.
+
+nixie bounds a listing before it compiles or stores any of it. The count of tools, the bytes of the
+listing with its page cursors, the bytes of each tool schema and the count of pages each have a
+limit, which `pick-listing-refusal.ts` holds. nixie asks for the pages one at a time and never asks
+for a page past the page limit. A listing that goes over a limit, or that holds two forms for one
+tool name, fails whole. The pins stay as they were, and calls stay closed under the failed-listing
+rule of [Calls and results](#calls-and-results). A server listing has one timeout for every page
+together, so a server that keeps returning a page cursor cannot hold a sign-in open.
 
 The model sees each tool under the Agent SDK's name for it: `mcp__nixie__` and then the registry
 name, with each character other than a letter, a digit, `_` or `-` turned into `_`. The model sees
@@ -127,7 +143,7 @@ The tool registry takes a second source of tools beside nixie's own. The proxy i
 tool joins the registry as `<serverID>.<tool>` only while it has a pin, is exposed or stopped, its
 server is not removed and the record that holds its pinned form can still be read. Hidden tools and
 tools without a pin never register. The registry reads the source's names each time it is asked, so
-an allow or a removal changes what the model can call without a restart. nixie's own tool wins a
+a new tool or a removal changes what the model can call without a restart. nixie's own tool wins a
 name that both hold.
 
 A tool joins the registry only when its pinned form has a declaration (see
@@ -137,9 +153,22 @@ pinned form stays `stopped_unfit` until the override or the form changes. It sta
 in its pinned form while that form can still be read, as a `stopped_changed` tool does, and nixie
 refuses each call to it.
 
+A task run or the conversation lists a server's tools by naming the server. The conversation names
+`<serverID>.*` for each configured server beside nixie's own tools, and a task or job definition may
+name `<server>.*` or `<server>.<tool>`. The registry exposes the IDs of its servers, and
+`collectHeldToolNames` in `modules/tools` expands `<server>.*` into the registry's live names that
+start with that server's ID and a dot, and into no others. A seed keeps such a name when the server
+is configured, and drops it with a warning otherwise.
+
+The tool endpoint resolves the names of a task run or the conversation again at each request. The
+`tools/list` that a step serves and the scope check of each call read the same names, so the two
+never disagree, and a tool that a server exposes after the task run started is on the list at the
+next request. A turn reads the list when it starts, so the model gets the tool in its next turn.
+
 Before a task run reads its tool list, the registry asks each source to prepare the run's tools. The
-proxy lists the server of each named `<serverID>.<tool>`, unless that server's backoff is running. A
-failed listing leaves the pinned tools in place, and the preparation never rejects.
+proxy lists the server of each name `<serverID>.<tool>` or `<serverID>.*`, unless that server's
+backoff is running. A failed listing leaves the pinned tools in place, and the preparation never
+rejects.
 
 ## Effect declarations
 
@@ -174,12 +203,24 @@ counts the blocks the proxy drops. A tool with an output schema returns the serv
 content, which the connector and the registry check against the pinned schema, so an answer outside
 it is never a done action. A server's own error keeps its text and sets the call's error flag.
 
-The tool's definition holds its pinned hash, and the call record keeps it. A call runs only under
-the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs and
-the call returns an error that asks the model to call again. A call checks its input and its result
-against the pin hash it loaded, never the newest one. The proxy reads the pin again once the call's
-session is open and before `tools/call` leaves, so a listing that lands while the session opens
-cannot move it between the check and the send.
+The tool's definition holds its pinned hash and the snapshot that supplied its declaration, and the
+call record keeps both. A queued call, its approval, a retry and a reconciliation check all read the
+version that the call was decided on, or that the user's last answer about it covered. Before each
+attempt, the attempt check decides the call again. When the tool has another pin or another
+declaration than that version, such as an override that was added, replaced or removed, the call
+asks for approval again whatever rule allowed it first, and nothing is sent until the user answers.
+The question records the version of the tool it asks about, so the approval covers that form and no
+other.
+
+Before an attempt or a check runs, the connector compares the version with the tool now, as a second
+guard. When it moved, a first attempt sends nothing and settles as a refusal that can clear, so the
+next attempt meets the attempt check, which asks again. A later attempt, which an earlier one may
+have sent, settles as ambiguous and comes to the user, and a check is inconclusive. A call runs only
+under the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs
+and the call returns an error that asks the model to call again. A call checks its input and its
+result against the pin hash it loaded, never the newest one. The proxy reads the pin again once the
+call's session is open and before `tools/call` leaves, so a listing that lands while the session
+opens cannot move it between the check and the send.
 
 A tool declared by an override carries the hash of the snapshot that held the override, and a call
 that would record another snapshot runs nothing and asks the model to call again, because the
@@ -240,7 +281,9 @@ the server was unhealthy, and stops listing the server until the user signs in.
 ## The model's view
 
 The `mcp.servers` tool lists every server that is not removed, with its state, its sign-in, its
-health and the count of its tools that are exposed, stopped and hidden. The conversation holds it
+health, the count of its tools that are exposed, stopped and hidden, and each tool with its state
+and the reason it is hidden. A tool's name and its hidden reason come from the server, so each
+reaches the model inside `tool-result` markers, as untrusted text. The conversation holds the tool
 beside the proxied tools. The config load refuses `mcp` as a server ID.
 
 ## The servers page
@@ -251,32 +294,33 @@ feeds it, and the page refreshes when the `mcp` live topic changes. Each server 
 - its state: held while its facts wait for approval, added after;
 - its sign-in: not added, not signed in, needs sign-in, or signed in;
 - its health, and for an unhealthy server the last error and the next try;
-- its tools by name, each with its pin state.
+- its tools by name, each with its state.
 
 A server that is added and has no recorded sign-in has no grant, and its card shows Connect. A
 server whose newest listing found its grant marked `needs_consent`, or moved to another
 authorization server, shows Sign in again. Both buttons call `mcp.connect` with the page's origin
 and send the browser to the authorize URL that comes back. The OAuth return route then sends the
-browser to this page. A held server shows a link to its proposal in place of a button. The proposals
-of the `mcp` family, for a server and for a tool, show on the same approval cards as every other
-proposal, with the cause worded as "your config adds an MCP server or widens what one may do" or "an
-MCP server lists a tool that you have not allowed in this form".
+browser to this page. A held server shows a link to its proposal in place of a button. A tool that a
+change stopped shows the link "Accept the change". The proposals of the `mcp` family, for a server
+and for a stopped tool, show on the same approval cards as every other proposal, with the cause
+worded as "your config adds an MCP server or widens what one may do" or "an MCP server changed a
+tool so that it takes input it did not take before".
 
 ## Notices to the user
 
-A trusted server's change to a tool, and a tool that a listing drops, each write an `mcp.notice`
+A change that moves a tool's pin, and a tool that a listing drops, each write an `mcp.notice`
 record, which marks the `mcp` live topic. `mcp.readNotices` returns the newest notices to a
 signed-in client, and `nixie mcp notices` prints them for the host.
 
-A pin that moves by a trusted server's change also reaches the tasks that hold the tool. Each task
-with an open run whose tool list names the tool, or the whole server with `<serverID>.*`, gets the
-same system message in its inbox.
+A pin that moves by a change also reaches the tasks that hold the tool. Each task with an open run
+whose tool list names the tool, or the whole server with `<serverID>.*`, gets a system message in
+its inbox that names the tool.
 
-A pin that moves by a trusted server's change also writes a `tool_changed` record in the same
-transaction, on the conversation's thread. It sits in the conversation's inbox without waking the
-model, and the next turn reads it as a system message of type `mcp` that names the tool with its old
-and new hash. The tasks module owns that record kind, because the `mcp.` records sit off every
-thread.
+A pin that moves by a change also writes a `tool_changed` record in the same transaction, on the
+conversation's thread. It sits in the conversation's inbox without waking the model, and the next
+turn reads it as a system message of type `mcp` that names the tool with its old and new hash. The
+tasks module owns that record kind, because the `mcp.` records sit off every thread. A first pin and
+the accept of a stopped tool write no such record.
 
 ## Tests
 

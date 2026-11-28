@@ -76,6 +76,18 @@ export function buildScriptedReplies(
 
   const mailRead = reply.mailRead === undefined ? [] : buildMailReadReplies(reply.mailRead.from);
 
+  const mcpCall =
+    reply.mcpCall === undefined
+      ? []
+      : [
+          {
+            toolUse: {
+              name: `mcp__nixie__${reply.mcpCall.tool.replace('.', '_')}`,
+              input: reply.mcpCall.input,
+            },
+          },
+        ];
+
   const skillRead =
     reply.skillRead === undefined
       ? []
@@ -171,6 +183,7 @@ export function buildScriptedReplies(
       ...notebook,
       ...mailWatch,
       ...mailRead,
+      ...mcpCall,
       ...skillRead,
       ...phoneWatch,
       ...phoneRead,
@@ -197,6 +210,7 @@ export function buildScriptedReplies(
     ...notebook,
     ...mailWatch,
     ...mailRead,
+    ...mcpCall,
     ...skillRead,
     ...phoneWatch,
     ...phoneRead,

@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { buildToolChangeNote } from './build-tool-change-note';
 
-test('it builds the inbox note of a trusted server changing a tool', () => {
+test('it builds the inbox note of a tool whose form changed', () => {
   const note = buildToolChangeNote(
-    { tool: 'tracker.item_get', fromHash: 'old', toHash: 'new', cause: 'trusted_change' },
+    { tool: 'tracker.item_get', fromHash: 'old', toHash: 'new', cause: 'changed' },
     { definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
   );
 
@@ -15,7 +15,7 @@ test('it builds the inbox note of a trusted server changing a tool', () => {
   });
 });
 
-test.each(['allowed', 'forgotten'] as const)(
+test.each(['allowed', 'listed', 'forgotten'] as const)(
   'it builds no note for a pin that moved by %s',
   (cause) => {
     const note = buildToolChangeNote(

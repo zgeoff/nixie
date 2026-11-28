@@ -14,12 +14,11 @@ function setupTest() {
 }
 
 test.each([
-  ['hidden_new', 'p1', null, 'Hidden: waits for your approval'],
-  ['hidden_new', null, null, 'Hidden: not allowed'],
+  ['hidden_new', null, null, 'Hidden: waits for the next listing'],
   ['hidden_new', null, 'its name is taken', 'Hidden: its name is taken'],
-  ['stopped_changed', 'p1', null, 'Stopped: changed, waits for your review'],
-  ['stopped_changed', null, null, 'Stopped: changed since you allowed it'],
-  ['exposed', null, null, 'Allowed'],
+  ['stopped_changed', 'p1', null, 'Stopped: takes new input, waits for you to accept the change'],
+  ['stopped_changed', null, null, 'Stopped: takes new input since the last form you accepted'],
+  ['exposed', null, null, 'Available'],
 ] as const)(
   'it words the state %s with proposal %s and reason %s as "%s"',
   (state, proposalID, hiddenReason, text) => {

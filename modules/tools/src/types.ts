@@ -361,6 +361,9 @@ export interface RegisteredTool {
 export interface ToolRegistry {
   // the name of each registered tool, which a source's tools join at each read
   readonly toolNames: readonly string[];
+
+  // the servers that sources serve, which a `<server>.*` entry of a tool list names
+  readonly serverIDs: readonly string[];
   readonly findTool: (name: string) => RegisteredTool | null;
 
   // Lets each source ready the named tools before a task run's first step reads its tool list. It
@@ -373,6 +376,8 @@ export interface ToolRegistry {
 export interface ToolSource {
   // the exposed, stopped and held tools, read at each call
   readonly toolNames: () => readonly string[];
+
+  readonly serverIDs?: () => readonly string[];
 
   // Built from the tool's current pin, and cached for its hash. A definition that fails the
   // registry's checks is not served.

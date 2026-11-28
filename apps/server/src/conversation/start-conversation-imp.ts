@@ -21,6 +21,7 @@ import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import { toSessionDefinitions } from '../utils/to-session-definitions';
 import { buildVersionStatus } from './build-version-status';
+import { collectConversationToolNames } from './collect-conversation-tool-names';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
 import { startConversation } from './start-conversation';
 
@@ -47,7 +48,10 @@ export async function startConversationImp(
     credentials: parts.credentials,
     sandboxes: parts.tools.adapter,
     tools: parts.tools.endpoint,
-    toolNames: parts.tools.definitions.map((definition) => definition.name),
+    toolNames: collectConversationToolNames(
+      parts.tools.definitions.map((definition) => definition.name),
+      Object.keys(parts.config.mcp.servers),
+    ),
     images: toImageNames(parts.images),
     getDefinitions: () => toSessionDefinitions(parts.inForce.read()),
     readTurnNote: makeTurnNoteReader(

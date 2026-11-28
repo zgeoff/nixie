@@ -12,7 +12,6 @@ import type { ListingState } from './types';
 
 export interface ListingRequest {
   readonly serverID: string;
-  readonly isTrusted: boolean;
 
   // the tools of the newest passed listing
   readonly forms: readonly ToolForm[];
@@ -58,7 +57,7 @@ export interface ToolPlan {
 export function planListing(request: ListingRequest, state: ListingState): ToolPlan[] {
   const taken = new Set(request.takenModelNames);
 
-  const forms = pickFirstOfEachName(request.forms);
+  const forms = request.forms.toSorted((first, second) => first.name.localeCompare(second.name));
 
   const names = new Set(forms.map((form) => form.name));
 
@@ -111,19 +110,6 @@ export function planListing(request: ListingRequest, state: ListingState): ToolP
   return [...listed, ...missing, ...unheld];
 }
 
-// The tools in the order of their names, with one tool for each name: the first one a server lists.
-function pickFirstOfEachName(forms: readonly ToolForm[]): ToolForm[] {
-  const byName = new Map<string, ToolForm>();
-
-  for (const form of forms) {
-    if (!byName.has(form.name)) {
-      byName.set(form.name, form);
-    }
-  }
-
-  return [...byName.values()].toSorted((first, second) => first.name.localeCompare(second.name));
-}
-
 interface ListedTool {
   readonly form: ToolForm;
 
@@ -154,7 +140,6 @@ function planListedTool(
   }
 
   const decision = decidePin({
-    isTrusted: request.isTrusted,
     existing:
       row === undefined
         ? null

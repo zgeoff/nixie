@@ -73,15 +73,6 @@ export type McpPort = Pick<
   'connect' | 'finishSignIn' | 'forgetGrants' | 'allow' | 'readNotices' | 'readServerViews'
 >;
 
-// One line of the model's view of the servers.
-export interface McpServerSummary {
-  readonly server: string;
-  readonly state: 'held' | 'added';
-  readonly signIn: 'ok' | 'needs_sign_in' | 'not_added';
-  readonly health: 'healthy' | 'unhealthy';
-  readonly tools: { readonly exposed: number; readonly stopped: number; readonly hidden: number };
-}
-
 export interface Mcp {
   // the tools that the registry serves from the proxy
   readonly tools: ToolCatalog;
@@ -122,9 +113,6 @@ export interface Mcp {
 
   // every server that is not removed, as its page in the client shows it
   readonly readServerViews: () => Promise<McpServerView[]>;
-
-  // every server that is not removed, as the model reads it
-  readonly readSummaries: () => Promise<McpServerSummary[]>;
 
   // the connector of a proxied tool that the action runners run once you approve a call, or
   // undefined for a tool the proxy does not serve
@@ -249,7 +237,6 @@ export function startMcp(options: McpOptions): Mcp {
     return {
       kind: 'open' as const,
       url: bindings.facts.url,
-      isTrusted: bindings.facts.trusted,
       send: options.store.fetcher(
         bindings.grant,
         [new URL(bindings.facts.url).origin],
@@ -299,7 +286,6 @@ export function startMcp(options: McpOptions): Mcp {
       { context, ...(options.onPinMoved === undefined ? {} : { onPinMoved: options.onPinMoved }) },
       {
         serverID,
-        isTrusted: opened.isTrusted,
         forms: outcome.forms,
         takenModelNames: options.takenModelNames(),
         overrides: Object.hasOwn(inForce.servers, serverID)
@@ -500,7 +486,12 @@ export function startMcp(options: McpOptions): Mcp {
       }),
     start: async () => {
       const steps = await runServerStart(context, {
-        config: options.servers,
+        config: Object.fromEntries(
+          Object.entries(options.servers).map(([serverID, entry]) => [
+            serverID,
+            pickServerFacts(entry),
+          ]),
+        ),
         removeCredentials,
       });
 
@@ -545,31 +536,6 @@ export function startMcp(options: McpOptions): Mcp {
         signIns,
         getHealth: health.read,
       }),
-    readSummaries: async () => {
-      const [servers, rows] = await Promise.all([
-        readServerRows(options.log.writer.db),
-        readToolRows(options.log.writer.db),
-      ]);
-
-      return servers.flatMap((server) =>
-        server.state === 'removed'
-          ? []
-          : [
-              {
-                server: server.server_id,
-                state: server.state,
-                signIn:
-                  server.state === 'held'
-                    ? ('not_added' as const)
-                    : (signIns.get(server.server_id) ?? 'ok'),
-                health: health.read(server.server_id).isUnhealthy
-                  ? ('unhealthy' as const)
-                  : ('healthy' as const),
-                tools: countTools(rows.filter((row) => row.server_id === server.server_id)),
-              },
-            ],
-      );
-    },
     findConnector: (tool) => {
       const declared = tools.findDeclaration(tool);
 
@@ -579,6 +545,7 @@ export function startMcp(options: McpOptions): Mcp {
             reconcile: declared.reconcile,
             serverID: tool.split('.')[0] ?? '',
             definitionsHash: declared.definitionsHash,
+            findPinHash: () => tools.findDeclaration(tool)?.pinnedHash ?? null,
             runCheck: runCheckTool,
           });
     },
@@ -593,10 +560,13 @@ function buildSignInRefusal(serverID: string) {
   return { kind: 'refused' as const, text: `${serverID} needs you to sign in again` };
 }
 
-function countTools(rows: readonly McpToolRow[]) {
+// The facts of a config entry. The entry may hold more keys, and the facts in use and their hash
+// never cover them.
+function pickServerFacts(entry: ServerFacts): ServerFacts {
   return {
-    exposed: rows.filter((row) => row.state === 'exposed').length,
-    stopped: rows.filter((row) => row.state.startsWith('stopped_')).length,
-    hidden: rows.filter((row) => row.state === 'hidden_new').length,
+    url: entry.url,
+    clientID: entry.clientID,
+    scope: entry.scope,
+    privateRange: entry.privateRange,
   };
 }

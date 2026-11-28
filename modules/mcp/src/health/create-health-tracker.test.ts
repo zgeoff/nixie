@@ -109,25 +109,25 @@ test('it reads the need for a sign-in from the grant, and takes the unhealthy ma
   await ctx.mcp.list('tracker');
   await ctx.mcp.list('tracker');
 
-  const unhealthy = await ctx.mcp.readSummaries();
+  const unhealthy = await ctx.mcp.readServerViews();
 
   ctx.site.failListings(false);
   ctx.site.refuseRefresh(true);
   ctx.site.expireAccessTokens();
 
   const listed = await ctx.mcp.list('tracker');
-  const summaries = await ctx.mcp.readSummaries();
+  const views = await ctx.mcp.readServerViews();
   const changes = await ctx.test.readHealthChanges();
 
   expect([
-    unhealthy.map((summary) => [summary.signIn, summary.health]),
+    unhealthy.map((view) => [view.signIn, view.health]),
     listed,
-    summaries.map((summary) => [summary.signIn, summary.health]),
+    views.map((view) => [view.signIn, view.health]),
     changes.map((change) => change.isUnhealthy),
   ]).toStrictEqual([
     [['ok', 'unhealthy']],
     { status: 'skipped', reason: 'needs_sign_in' },
-    [['needs_sign_in', 'healthy']],
+    [['needs_consent', 'healthy']],
     [true, false],
   ]);
 });
@@ -142,14 +142,14 @@ test('it counts no failed listing for a server whose grant ended, so no backoff 
   await ctx.mcp.list('tracker');
   await ctx.mcp.list('tracker');
 
-  const summaries = await ctx.mcp.readSummaries();
+  const views = await ctx.mcp.readServerViews();
   const changes = await ctx.test.readHealthChanges();
 
   expect([
-    summaries.map((summary) => [summary.signIn, summary.health]),
+    views.map((view) => [view.signIn, view.health]),
     ctx.mcp.readHealth('tracker').failures,
     changes,
-  ]).toStrictEqual([[['needs_sign_in', 'healthy']], 0, []]);
+  ]).toStrictEqual([[['needs_consent', 'healthy']], 0, []]);
 });
 
 test('it keeps the grant signed in and backs off when a listing gets 401 after a refresh that worked', async () => {
@@ -158,13 +158,13 @@ test('it keeps the grant signed in and backs off when a listing gets 401 after a
   ctx.site.rejectTokens(true);
 
   const listed = await ctx.mcp.list('tracker');
-  const summaries = await ctx.mcp.readSummaries();
+  const views = await ctx.mcp.readServerViews();
 
   const health = ctx.mcp.readHealth('tracker');
 
   expect([
     listed.status,
-    summaries.map((summary) => summary.signIn),
+    views.map((view) => view.signIn),
     health.failures,
     health.nextTryAtMs === null,
   ]).toStrictEqual(['failed', ['ok'], 1, false]);

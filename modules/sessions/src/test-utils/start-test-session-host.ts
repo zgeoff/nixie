@@ -20,7 +20,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
+import type { ToolDefinition, ToolEndpoint, ToolSource } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -61,6 +61,9 @@ export interface TestSessionHostOptions {
   // the tools the endpoint serves, each allowed by the starter's rules; with none, every call is
   // denied
   readonly tools?: readonly ToolDefinition[];
+
+  // the sources the registry reads besides its own tools, such as a proxy's servers
+  readonly sources?: readonly ToolSource[];
 }
 
 export async function startTestSessionHost(
@@ -112,7 +115,7 @@ export async function startTestSessionHost(
   };
 
   const socketDir = join(dataDir, 'tools');
-  const registry = buildToolRegistry(options.tools ?? []);
+  const registry = buildToolRegistry(options.tools ?? [], options.sources ?? []);
 
   const endpoint = await startToolEndpoint({
     logger: () => {},

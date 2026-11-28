@@ -28,7 +28,6 @@ test.each<{ title: string; asked: Partial<ServerFacts> }>([
   { title: 'a new URL', asked: { url: 'https://tracker.example.org/v2/mcp' } },
   { title: 'a new client ID', asked: { clientID: 'nixie-9' } },
   { title: 'one more scope', asked: { scope: 'read write admin' } },
-  { title: 'trusted switched on', asked: { trusted: true } },
   { title: 'a range where there was none', asked: { privateRange: '10.0.0.0/24' } },
 ])('it proposes the facts of an added server whose entry has $title', (row) => {
   const held: HeldServer = {
@@ -58,7 +57,6 @@ test.each<{
   dropsGrant?: true;
 }>([
   { title: 'fewer scopes', inUse: {}, asked: { scope: 'read' }, dropsGrant: true },
-  { title: 'trusted switched off', inUse: { trusted: true }, asked: { trusted: false } },
   {
     title: 'a narrower range',
     inUse: { privateRange: '10.0.0.0/16' },
@@ -95,13 +93,13 @@ test('it replaces the open proposal of a server whose entry widened again', () =
     proposalID: 'proposal-1',
   };
 
-  const steps = planServerStart({ tracker: buildServerFacts({ trusted: true }) }, [held]);
+  const steps = planServerStart({ tracker: buildServerFacts({ scope: 'read admin' }) }, [held]);
 
   expect(steps).toStrictEqual([
     {
       action: 'propose',
       serverID: 'tracker',
-      facts: buildServerFacts({ trusted: true }),
+      facts: buildServerFacts({ scope: 'read admin' }),
       replacesProposalID: 'proposal-1',
     },
   ]);
@@ -145,7 +143,7 @@ test('it restores a held server whose entry returned to the facts in use', () =>
     serverID: 'tracker',
     state: 'held',
     inUse: buildServerFacts(),
-    requested: buildServerFacts({ trusted: true }),
+    requested: buildServerFacts({ scope: 'read admin' }),
     proposalID: 'proposal-1',
   };
 
