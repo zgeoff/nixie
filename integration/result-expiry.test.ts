@@ -87,6 +87,12 @@ test('it expires the tool result and the connector result of a past run at the n
   const statusOf = (sequence: number) =>
     second.records.find((record) => record.sequence === sequence)?.erasable.status;
 
+  expect(
+    first.records
+      .filter(isForgetOutcome)
+      .map((record) => [record.payload['status'], record.erasable.status]),
+  ).toStrictEqual([['done', 'readable']]);
+
   expect(new Set(expirable.map((record) => record.kind))).toStrictEqual(
     new Set(['tool_result', 'action.outcome']),
   );
