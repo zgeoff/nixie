@@ -34,8 +34,8 @@ Every call runs the same steps on the host:
 1. The endpoint checks the input against the input schema, and a failure returns an error without
    reaching policy.
 2. The tool asks the policy decision point.
-3. A denied call returns the rule and its sentence as an error, and an ask returns "pending approval
-   as <id>".
+3. A denied call returns the rule and its sentence as an error, and an ask returns "Waiting for
+   approval as `<shortID>`".
 4. An allowed `direct` call runs, and an allowed `queued` call joins the action queue.
 5. nixie writes the call, the decision and the result as records, with the source of content on
    every result field.
@@ -53,7 +53,7 @@ declaration lives in nixie's registry.
 | ---------------------- | ---------------------------------------------------- | ----- | ------------------------- | ------------------- |
 | Allowed, direct        | The tool's typed result                              | No    | No                        | Each field's source |
 | Allowed, queued        | The action's outcome, or "queued as <id>" after 10 s | No    | No; the action queue does | Each field's source |
-| Ask                    | "pending approval as <id>"                           | No    | No                        | nixie               |
+| Ask                    | "Waiting for approval as `<shortID>`"                | No    | No                        | nixie               |
 | Deny                   | The rule's ID and sentence                           | Yes   | No                        | nixie               |
 | Invalid input          | The schema errors                                    | Yes   | No                        | The model's input   |
 | Connection unavailable | `connection_unavailable`, with the status            | Yes   | No                        | nixie               |
@@ -68,7 +68,11 @@ own data, and the model's input and the provider's text count as untrusted, as t
 failed direct call retries and what the model reads. Two parts are not built yet, and
 [GEO-2775](https://linear.app/zgeoff/issue/GEO-2775/nixie-connectors-build-or-cut-what-the-tools-design-still-lacks)
 tracks them: the connectors outside Google, search and images that still return their own error
-text, and the fields of `connection_unavailable` for a connection whose status stops its tools.
+text, and the fields of `connection_unavailable` for a connection whose status stops its tools. To
+build either, start from that issue.
+
+Until the fields are built, a `connection_unavailable` error carries only `origin` and `kind`. The
+design below is what the issue builds.
 
 A `connection_unavailable` error carries 4 fields, with the values that the
 [status line](#what-the-model-learns-about-a-connection) holds for the connection:

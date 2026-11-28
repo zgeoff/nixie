@@ -54,8 +54,8 @@ A refusal of nixie's own check is a result with a `refusalCode`, never a thrown 
 reads it and chooses. What the provider says goes by the
 [connector error codes](tool-calls.md#a-failed-direct-call): a refusal is `refused`, an error answer
 or a reply that is too big or does not decode is `failed`, and a draw that passes its time limit or
-throws is `no_answer`. Each one is an error whose message holds the code as JSON. A charge that the
-provider did not bill is credited, and nixie never retries a draw by itself.
+throws is `no_answer`. Each of these 3 is an error whose message holds the code as JSON. A charge
+that the provider did not bill is credited, and nixie never retries a draw by itself.
 
 | Code                               | Cause                                                                      |
 | ---------------------------------- | -------------------------------------------------------------------------- |
@@ -63,8 +63,6 @@ provider did not bill is credited, and nixie never retries a draw by itself.
 | `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                |
 | `NO_EDIT`                          | The profile's provider takes no source or no references                    |
 | `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0 |
-
-The tool's description lists every configured profile, so the model can pick another to retry on.
 
 `image.import` also returns `UNKNOWN_FILE`, `FILE_FORGOTTEN`, `UNKNOWN_PHOTO` and `NOT_IMAGE`.
 `image.name`, `image.pin`, `image.unpin` and `image.read` return `UNKNOWN_IMAGE` or
