@@ -1,4 +1,4 @@
-import { featurePaths } from './feature-paths';
+import { featureFiles } from './feature-files';
 
 // The features that run a call on the fake speech layer, which the registry lists after the coding
 // session.
@@ -6,17 +6,17 @@ export const callFeatures = [
   {
     name: 'call-hand-off',
     summary: 'Hand a question off in a call',
-    paths: featurePaths['call-hand-off'],
+    ...featureFiles['call-hand-off'],
   },
   {
     name: 'call-screen',
     summary: 'Start a call, see its proposal card, and hang up',
-    paths: featurePaths['call-screen'],
+    ...featureFiles['call-screen'],
   },
   {
     name: 'call-device-show',
     summary: "Show an answer on the call's device",
-    paths: featurePaths['call-device-show'],
+    ...featureFiles['call-device-show'],
   },
 ];
 

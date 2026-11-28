@@ -1,6 +1,6 @@
-# Runs the `verify / gate` check: it fails a pull request that changes a feature's paths with no
-# fresh verdict for that feature in the pull request's body, or that changes a path no feature maps
-# and no ignore glob matches. It also lints the verify skill against the CLI. A workflow of its own,
+# Runs the `verify / gate` check: it fails a pull request that changes a file a feature owns, through
+# its entries or its extra files, with no fresh verdict for that feature in the pull request's body,
+# or that changes a path no feature owns and no ignore glob matches. It also lints the verify skill against the CLI. A workflow of its own,
 # because the checks in pr.yml have no `edited` trigger, and a body edit there would rerun every
 # static check.
 name: verify
@@ -21,7 +21,7 @@ jobs:
   gate:
     name: verify / gate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

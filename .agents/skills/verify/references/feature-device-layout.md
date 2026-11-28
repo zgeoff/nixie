@@ -10,9 +10,9 @@ Run this journey on `local` only. It needs the scripted model and the `layout-on
 which the harness that runs nixie on `local` serves. On `preview`, list the feature as not verified,
 and run no `bun verify done`.
 
-Run this journey last in a pass, after every other journey, `live-updates` included, even though the
-features table lists `live-updates` after it. Enrolling a device replaces the browser's session, so
-to run another journey after this one, restart and run `sign-in-enrol` again.
+Run this journey last in a pass, after every other journey, `live-updates` included. Enrolling a
+device replaces the browser's session, so to run another journey after this one, restart and run
+`sign-in-enrol` again.
 
 Start from a browser with no session, because the device page shows the enrolment form only to such
 a browser. Before step 1, run `bun verify up --restart` and `bun verify doctor`, and run no

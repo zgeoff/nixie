@@ -1,4 +1,4 @@
-import { featurePaths } from './feature-paths';
+import { featureFiles } from './feature-files';
 
 // The features that browse a page of what the assistant keeps, which the registry lists after the
 // calls.
@@ -6,31 +6,31 @@ export const pageFeatures = [
   {
     name: 'drawing',
     summary: 'Draw a picture, edit it, and list both',
-    paths: featurePaths.drawing,
+    ...featureFiles.drawing,
   },
   {
     name: 'images-page',
     summary: 'Browse and forget images',
-    paths: featurePaths['images-page'],
+    ...featureFiles['images-page'],
   },
   {
     name: 'notebook-pages',
     summary: 'Browse notes, open a private one, forget one',
-    paths: featurePaths['notebook-pages'],
+    ...featureFiles['notebook-pages'],
   },
   {
     name: 'google-connections',
     summary: 'Connect a Google account and forget it',
-    paths: featurePaths['google-connections'],
+    ...featureFiles['google-connections'],
   },
   {
     name: 'google-off',
     summary: 'Turn Google off',
-    paths: featurePaths['google-off'],
+    ...featureFiles['google-off'],
   },
   {
     name: 'mcp-servers',
     summary: 'Connect an MCP server, and call its tool',
-    paths: featurePaths['mcp-servers'],
+    ...featureFiles['mcp-servers'],
   },
 ] as const;
