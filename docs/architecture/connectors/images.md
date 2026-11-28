@@ -19,21 +19,27 @@ them.
 | `image.pin`    | `note`  | Marks an image so `image.list` can filter on it. `image.unpin` clears the mark.           |
 
 All 7 run [direct](./tool-calls.md#a-tool-definition), except a draw that sends a photo of the user,
-as [photos of the user](#photos-of-the-user) says. An image tool is present only when the deployment
-config has an `images` block.
+as [photos of the user](#photos-of-the-user) says.
+
+To turn images on, add an `images` section to the deployment config, as
+[feature switches](../deployment/server.md#feature-switches) explains. With no `images` section,
+nixie offers no image tool, `nixie.read` leaves `images` out of its features, and each `images`
+procedure of the gallery answers `FEATURE_OFF`. The web client then hides the Images page, and shows
+each stored image that a note embeds as unavailable. The stored images stay, and once the section is
+back, the gallery and the notes show them again.
 
 `image.draw` takes a prompt of 1 to 4,000 characters, and optionally:
 
-- `size`, one of `1024x1024`, `1536x1024` and `1024x1536`, for a new image. An edit comes back at
-  the size of its source, so `from` and `size` never appear together.
+- `size`, one of `1024x1024`, `1536x1024` and `1024x1536`, for a new image. An edit takes its size
+  from its source, so the tool refuses a call that sets both `from` and `size`.
 - `from`, the image to edit.
 - `references`, up to 4 image IDs that the provider sees beside the prompt, so a subject stays the
   same.
 - `profile`, a key of `images.profiles`. The `images.default` profile answers when it is absent.
 
-A stored image whose size is not one of the 3 sizes, such as an import, is padded with transparent
-pixels to the size nearest its shape before it goes to the provider, and the edit comes back at that
-size. The price follows that size.
+When the source of an edit is not one of the 3 sizes, such as an import, nixie scales it to fit the
+size nearest its shape and pads it to that size with transparent pixels before it goes to the
+provider. The edit comes back at that size, and the price follows that size.
 
 The tool's description lists every configured profile with its model, one line each, and names the
 default. A result names the image by its short ID, its `from`, the `profile` and `model` that drew
@@ -46,15 +52,15 @@ false on `image.read` and `image.import` when the caps leave no room.
 
 A refusal is a result with a `refusalCode`, never a thrown error. The model reads it and chooses.
 
-| Code                               | Cause                                                                               |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot                      |
-| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                         |
-| `NO_EDIT`                          | The profile's provider takes no source or no references                             |
-| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0          |
-| `IMAGE_REFUSED`                    | The provider refused the prompt                                                     |
-| `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
-| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
+| Code                               | Cause                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
+| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot                |
+| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                   |
+| `NO_EDIT`                          | The profile's provider takes no source or no references                       |
+| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0    |
+| `IMAGE_REFUSED`                    | The provider refused the prompt                                               |
+| `IMAGE_FAILED`                     | The provider failed, or its reply is over `maxStoredBytes` or does not decode |
+| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                             |
 
 Every refusal and failure of `image.draw` sets `profiles` to every configured profile, so the model
 can pick one to retry on. Each entry holds the profile's key and its `model`.
@@ -76,9 +82,9 @@ it checks the input. The call runs in this order:
    frees the hold when it reserves its picture, and when it ends without running.
 2. The call charges `image.draw-day` ($2) and `image.draw-month` ($20) in the transaction that
    writes its `tool_called` record, then runs.
-3. A refusal or a failure credits the charge, in the transaction that writes its `tool_result`
-   record, unless the provider billed the call. An unbilled refusal is credited; a billed one
-   stands.
+3. A refusal or a failure other than a timeout credits the charge, in the transaction that writes
+   its `tool_result` record, unless the provider billed the call. An unbilled refusal is credited; a
+   billed one stands.
 4. A timeout keeps the charge, because the image may exist at the provider.
 
 Image calls bypass the model gateway, so the [spending stop](../policy/model-gateway.md) never
@@ -121,17 +127,17 @@ returns. The tool never keeps the text of a thrown error.
 | `image-openai` | `images/generations` as JSON, or `images/edits` as multipart with each `image[]`                                             | Error code `moderation_blocked`; billed only when the moderation stage is output |
 | `image-gemini` | `interactions` with an image `response_format` for JPEG, the one image type the API gives; the aspect ratio follows the size | A reply with no image block, billed; a 400 that names a safety block, not billed |
 
-Any other HTTP error, and an unreachable host, return `failed` unbilled. A 200 reply with no
-readable image returns `failed` billed, because the provider answered.
+On any other HTTP error, or when the host is unreachable, the adapter returns `failed` unbilled. On
+a 200 reply that it cannot read, it returns `failed` billed, because the provider answered.
 
 ## The config
 
 ```yaml
 images:
-  default: openai # optional; openai is the default
+  default: openai # the profile a draw with no profile uses
   profiles:
     openai:
-      provider: openai # openai or gemini
+      provider: openai # the ID of an image adapter: openai or gemini
       model: gpt-image-1
       credential: deployment:openai-images # a connector_credentials entry
       prices: { '1024x1024': 42000, '1536x1024': 63000, '1024x1536': 63000 } # micros per image
@@ -142,13 +148,14 @@ images:
       prices: { '1024x1024': 39000, '1536x1024': 39000, '1024x1536': 39000 }
 ```
 
-`default` names the profile that answers a draw with no `profile`, and is `openai` when the config
-leaves it out. The shipped configs of the Compose recipe, the Kubernetes manifests and the preview
-set an OpenAI profile there, and keep a Gemini profile beside it for the model to retry a refused
-prompt on, so their secrets file needs an `openai-images` and a `gemini-images` entry under
+`default` names the profile that answers a draw with no `profile`, and the section needs it. The
+shipped configs of the Compose recipe, the Kubernetes manifests and the preview set an OpenAI
+profile there, and keep a Gemini profile beside it for the model to retry a refused prompt on, so
+their secrets file needs an `openai-images` and a `gemini-images` entry under
 `connector_credentials`. nixie refuses to start when a profile names a credential that the secrets
-file lacks, when `prices` lacks a size, or when `default` names no profile. The adapters use each
-provider's public API address, and the model IDs come from the config alone.
+file lacks, when `prices` lacks a size, when `default` names no profile, or when `provider` names no
+image adapter. Each adapter holds its provider's public API address and where the key goes, and the
+model IDs come from the config alone.
 
 ## Storage
 
@@ -165,10 +172,10 @@ and a row in the `images` table, which the call writes in the same transaction a
 | `profile`, `model`                               | The profile and model of a draw; null for an import                   |
 | `media_type`, `size`, `byte_count`, `created_at` | The stored PNG                                                        |
 
-nixie stores every image as PNG, converting a provider's reply first, and refuses a reply over 8
-MiB. The prompt and the references sit among the call record's erasable fields, never in the table.
-An image ID resolves on every thread, and [`file.send`](./code-tool.md#sending-a-file) takes one to
-show the image under a reply.
+nixie stores every image as PNG, converting a provider's reply first, and refuses a reply over
+`maxStoredBytes` in `image-limits.ts`. The prompt and the references sit among the call record's
+erasable fields, never in the table. An image ID resolves on every thread, and
+[`file.send`](./code-tool.md#sending-a-file) takes one to show the image under a reply.
 
 `image.name` writes an `image.named` record, whose name is erasable, and `image.pin` and
 `image.unpin` write `image.pinned` and `image.unpinned` records.

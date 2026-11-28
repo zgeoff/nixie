@@ -1,16 +1,18 @@
 import { z } from 'zod';
 import { galleryImageSchema } from '../image/gallery-image-schema';
+import { featureOffErrors } from './feature-off-errors';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-const checkedAction = signedIn.errors(reusedIDErrors);
+const imagesProcedure = signedIn.errors(featureOffErrors);
+const checkedAction = imagesProcedure.errors(reusedIDErrors);
 const imageIDSchema = z.string().min(1).max(100);
 const unknownImage = { message: 'No stored image has this ID', status: 404 } as const;
 const imageForgotten = { message: 'A forget made this image unreadable', status: 410 } as const;
 
 export const imagesContract = {
-  list: signedIn
+  list: imagesProcedure
     .input(
       z.object({
         // true lists only pinned images; absent or false lists all
@@ -30,12 +32,12 @@ export const imagesContract = {
       }),
     ),
 
-  read: signedIn
+  read: imagesProcedure
     .errors({ UNKNOWN_IMAGE: unknownImage })
     .input(z.object({ image: imageIDSchema }))
     .output(galleryImageSchema),
 
-  readBytes: signedIn
+  readBytes: imagesProcedure
     .errors({ UNKNOWN_IMAGE: unknownImage, IMAGE_FORGOTTEN: imageForgotten })
     .input(
       z.object({

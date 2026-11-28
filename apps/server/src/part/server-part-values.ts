@@ -11,6 +11,7 @@ import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions'
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ServerCoding } from '../coding/build-server-coding';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
+import type { ConversationImages, ConversationSearch } from '../conversation/types';
 import type { ServerMail } from '../mail/create-server-mail';
 import type { PhonePart } from '../phone/start-phone-part';
 import type { ServerResetControl } from '../server/build-server-reset';
@@ -37,6 +38,8 @@ export interface ServerPartValues {
   readonly phone: PhonePart;
   readonly render: RenderSandbox | null;
   readonly code_run: CodeRunPart;
+  readonly web_search: ConversationSearch;
+  readonly image_tools: ConversationImages;
   readonly worker: WorkerTool | null;
   readonly actions: Tools['actions'];
   readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'> & {

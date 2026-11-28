@@ -4,6 +4,7 @@ import { ORPCError } from '@orpc/server';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { requireFeature } from '../utils/require-feature';
 import { createThumbnail } from './create-thumbnail';
 import { readImageForgetBackup } from './read-image-forget-backup';
 import { toContractGalleryImage } from './to-contract-gallery-image';
@@ -13,6 +14,8 @@ export function createImagesProcedures(context: APIContext) {
   return {
     list: apiImplementer.images.list.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      requireFeature(context, 'images', options.errors.FEATURE_OFF);
 
       const page = await readGalleryPage(context.log, {
         isPinnedOnly: options.input.pinnedOnly === true,
@@ -25,6 +28,8 @@ export function createImagesProcedures(context: APIContext) {
     read: apiImplementer.images.read.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
+      requireFeature(context, 'images', options.errors.FEATURE_OFF);
+
       const image = await readGalleryImage(context.log, options.input.image);
 
       if (image === null) {
@@ -36,6 +41,8 @@ export function createImagesProcedures(context: APIContext) {
 
     readBytes: apiImplementer.images.readBytes.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      requireFeature(context, 'images', options.errors.FEATURE_OFF);
 
       const entry = await readImageEntry(context.log, options.input.image);
 
@@ -62,6 +69,8 @@ export function createImagesProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
+      requireFeature(context, 'images', options.errors.FEATURE_OFF);
 
       const result = await writeImageForget(context, caller, {
         clientActionID: options.input.clientActionID,

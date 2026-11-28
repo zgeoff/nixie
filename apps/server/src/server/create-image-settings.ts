@@ -1,7 +1,7 @@
 import type { ImagesConfig, ProviderFetch } from '@heynixie/connectors';
 import type { CredentialAccess } from '@heynixie/credentials';
 import invariant from 'tiny-invariant';
-import { imageProviderAPI } from '../part/image-provider-api';
+import { imageProviderAPI, isImageProviderID } from '../part/image-provider-api';
 
 export interface ImageSettings {
   readonly config: ImagesConfig;
@@ -28,6 +28,7 @@ export function createImageSettings(
     });
 
     invariant(ref !== null, 'the resolver stops at a missing connector entry');
+    invariant(isImageProviderID(profile.provider), 'the config load refuses an unknown provider');
 
     const api = imageProviderAPI[profile.provider];
 

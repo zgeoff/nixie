@@ -24,7 +24,7 @@ export const computerFeatures = [
   },
   {
     name: 'computer-off',
-    summary: 'See that a nixie with no computer offers none',
+    summary: 'Turn the computer off',
     paths: featurePaths['computer-off'],
   },
   {

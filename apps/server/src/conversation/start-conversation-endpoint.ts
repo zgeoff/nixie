@@ -1,13 +1,7 @@
 import { join } from 'node:path';
 import type { ErasureStuckPort } from '@heynixie/api';
 import { buildProposalCoreDeps } from '@heynixie/api';
-import type {
-  ActionConnector,
-  ImageProvider,
-  ImagesConfig,
-  RenderSandbox,
-  SearchProvider,
-} from '@heynixie/connectors';
+import type { ActionConnector, RenderSandbox } from '@heynixie/connectors';
 import {
   buildImageTools,
   buildSearchTool,
@@ -88,17 +82,7 @@ import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
 import type { DeviceFetchingOptions } from './make-device-fetching';
 import { makeDeviceFetching } from './make-device-fetching';
-
-interface ConversationSearch {
-  readonly provider: SearchProvider;
-  readonly dailyCallCap: number;
-  readonly priceMicros: number;
-}
-
-interface ConversationImages {
-  readonly config: ImagesConfig;
-  readonly providers: Readonly<Record<string, ImageProvider>>;
-}
+import type { ConversationImages, ConversationSearch } from './types';
 
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;

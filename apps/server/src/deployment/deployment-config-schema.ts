@@ -30,6 +30,7 @@ import { z } from 'zod';
 import { erasureConfigSchema } from '../config/erasure-config-schema';
 import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
+import { imageProviderAPI, isImageProviderID } from '../part/image-provider-api';
 import { phoneSectionSchema } from '../phone/phone-section-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
 import { displayConfigSchema } from '../spend/display-config-schema';
@@ -48,7 +49,7 @@ export const deploymentConfigSchema = z
     web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
     computer: computerConfigSchema.optional(),
     code: codeConfigSchema.optional(),
-    search: searchConfigSchema.default(searchConfigSchema.parse({})),
+    search: searchConfigSchema.optional(),
     images: imagesConfigSchema.nullable().default(null),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),
     tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
@@ -85,6 +86,16 @@ export const deploymentConfigSchema = z
         path: ['imp'],
         message: 'the imp section is unset, and the imp sandbox adapter needs it',
       });
+    }
+
+    for (const [key, profile] of Object.entries(config.images?.profiles ?? {})) {
+      if (!isImageProviderID(profile.provider)) {
+        issues.addIssue({
+          code: 'custom',
+          path: ['images', 'profiles', key, 'provider'],
+          message: `the provider ${profile.provider} is no image provider of this nixie; use one of ${Object.keys(imageProviderAPI).join(', ')}`,
+        });
+      }
     }
 
     // Without a gateway, a task counts its model calls against its dollar limit by the profile's

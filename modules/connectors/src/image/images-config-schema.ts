@@ -4,7 +4,8 @@ import { z } from 'zod';
 const priceSchema = z.number().int().positive();
 
 const imageProfileSchema = z.strictObject({
-  provider: z.enum(['openai', 'gemini']),
+  // the ID of an image adapter; the server refuses an ID that no adapter has
+  provider: z.string().min(1),
   model: z.string().min(1),
   credential: deploymentReference,
 
@@ -18,7 +19,7 @@ const imageProfileSchema = z.strictObject({
 
 export const imagesConfigSchema = z
   .strictObject({
-    default: z.string().min(1).default('openai'),
+    default: z.string().min(1),
     profiles: z.record(z.string().min(1), imageProfileSchema),
   })
   .refine((images) => Object.hasOwn(images.profiles, images.default), {

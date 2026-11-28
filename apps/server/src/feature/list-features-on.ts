@@ -13,7 +13,7 @@ export interface FeatureConfig {
   readonly phone?: unknown;
   readonly coding?: { readonly atc?: unknown } | undefined;
   readonly spendStop?: unknown;
-  readonly search: { readonly credential: unknown };
+  readonly search?: unknown;
 }
 
 // The one place that works out which features a deployment has on, from its config. A feature with
@@ -30,7 +30,7 @@ export function listFeaturesOn(config: FeatureConfig): readonly FeatureID[] {
     mail: config.mail !== undefined,
     coding: config.coding?.atc !== undefined,
     spend: config.spendStop !== undefined,
-    search: config.search.credential !== null,
+    search: config.search !== undefined,
     phone: config.phone !== undefined,
   };
 
