@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.126.0](https://github.com/zgeoff/nixie/compare/v0.125.0...v0.126.0) (2026-11-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **server:** switch search and images by config ([#1549](https://github.com/zgeoff/nixie/issues/1549))
+
+### Features
+
+* **policy:** trust a place from a card and propose, narrow, list places ([#1558](https://github.com/zgeoff/nixie/issues/1558)) ([b015751](https://github.com/zgeoff/nixie/commit/b015751308a7b0cb8678d8577a5b5b737e709427))
+* **server:** switch search and images by config ([#1549](https://github.com/zgeoff/nixie/issues/1549)) ([f4e3781](https://github.com/zgeoff/nixie/commit/f4e37815d2a08ecb500066bc283a41eec6340d4f))
+
+
+### Bug Fixes
+
+* **computer:** keep the desktop disk across a release ([#1559](https://github.com/zgeoff/nixie/issues/1559)) ([a79b0e3](https://github.com/zgeoff/nixie/commit/a79b0e32587a787b39d62ed21d515834c4b4853f))
+* **definitions:** ignore retired memory prompt keys with a warning ([#1547](https://github.com/zgeoff/nixie/issues/1547)) ([98c0d8c](https://github.com/zgeoff/nixie/commit/98c0d8cd5b091f4793efe021d51587c225fa1ebc))
+* **tasks:** fire the next slot of a definition whose run failed ([#1550](https://github.com/zgeoff/nixie/issues/1550)) ([c3675f9](https://github.com/zgeoff/nixie/commit/c3675f9efbd5cbe805bd4a14b6b3a3fe7282b50f))
+
 ## [0.125.0](https://github.com/zgeoff/nixie/compare/v0.124.0...v0.125.0) (2026-11-27)
 
 
