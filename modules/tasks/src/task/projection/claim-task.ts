@@ -10,7 +10,8 @@ import { claimLease } from '../../lease/claim-lease';
 import { RunEndUnsettledError } from '../../run/run-end-unsettled-error';
 import { settleRunEnd } from '../../run/settle-run-end';
 import { writeRunOpenInTransaction } from '../../run/write-run-open-in-transaction';
-import { buildStepWake } from '../../step/build-step-wake';
+import { buildCarriedWake } from '../../step/build-step-wake';
+import { pickWakeSource } from '../../step/pick-wake-source';
 import { taskStepStartedCodec } from '../../step/task-step-started-codec';
 import type {
   ClaimCandidate,
@@ -166,7 +167,8 @@ async function writeStepStart(
     payload: parseJSONObject(record.payload),
   }));
 
-  const wake = buildStepWake(unreadRecords, task.step_hop);
+  const source = pickWakeSource(unreadRecords);
+  const wake = source?.wake ?? buildCarriedWake(task.step_hop);
   const stepKey = `${taskID}:${task.committed_steps + 1}`;
   const definitions = context.definitions();
 
@@ -210,6 +212,7 @@ async function writeStepStart(
         generation: lease.generation,
         hop: wake.hop,
         cause: wake.cause,
+        ...(source === null ? {} : { source: source.record.sequence }),
       }),
     },
   ]);

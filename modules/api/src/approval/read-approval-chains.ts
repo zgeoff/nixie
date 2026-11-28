@@ -46,7 +46,7 @@ export async function readApprovalChains(
 
   const directory = new Map(context.settings.taskDirectory.map((task) => [task.taskID, task.name]));
 
-  const started = await readTaskNames(context);
+  const started = await readTaskNames(context, { taskIDs: chains.flatMap((chain) => chain.ids) });
 
   const steps = await Promise.all(
     chains.map(async (chain) => {
@@ -54,28 +54,33 @@ export async function readApprovalChains(
 
       return [
         chain.ask.proposalID,
-        chain.ids.map((id): ApprovalChainStep => {
-          const session = sessions.get(id);
+        [
+          ...buildOutsideOrigin(links, chain.ids, starting),
+          ...chain.ids.map((id): ApprovalChainStep => {
+            const session = sessions.get(id);
 
-          if (session !== undefined) {
-            return {
-              kind: 'coding',
-              id: session,
-              name: directory.get(id) ?? started.get(id) ?? id,
-            };
-          }
+            if (session !== undefined) {
+              return {
+                kind: 'coding',
+                id: session,
+                name: directory.get(id) ?? started.get(id) ?? id,
+              };
+            }
 
-          if (links.get(id)?.isConversation === true) {
-            return { kind: 'message', id, name: formatStartingMessage(starting) };
-          }
+            if (links.get(id)?.isConversation === true) {
+              return { kind: 'message', id, name: formatStartingMessage(starting) };
+            }
 
-          return { kind: 'task', id, name: directory.get(id) ?? started.get(id) ?? id };
-        }),
+            return { kind: 'task', id, name: directory.get(id) ?? started.get(id) ?? id };
+          }),
+        ],
       ] as const;
     }),
   );
 
-  return new Map(steps);
+  return new Map<string, ApprovalChainStep[]>(
+    steps.map(([proposalID, chain]) => [proposalID, [...chain]]),
+  );
 }
 
 async function readTaskLinks(
@@ -115,9 +120,8 @@ function collectUnread(ids: readonly string[], links: ReadonlyMap<string, TaskLi
   return [...new Set(ids)].filter((id) => !links.has(id));
 }
 
-// What woke the conversation step that started the work, and the owner's text when it was the
-// owner, when the chain starts at the conversation. A task the conversation started was started by
-// the step that ran just before it was created.
+// What woke the step that started the work, and the owner's text when it was the owner. A task the
+// conversation started was started by the step that ran just before it was created.
 async function readStartingMessage(
   context: APIContext,
   links: ReadonlyMap<string, TaskLink>,
@@ -125,8 +129,9 @@ async function readStartingMessage(
   ids: readonly string[],
 ): Promise<StartingMessage> {
   const [root, next] = ids;
+  const rootLink = root === undefined ? undefined : links.get(root);
 
-  if (root === undefined || links.get(root)?.isConversation !== true) {
+  if (root === undefined || rootLink === undefined || rootLink.startedBy !== null) {
     return { cause: null, ownerText: null };
   }
 
@@ -142,4 +147,24 @@ async function readStartingMessage(
     ownerText:
       cause?.kind === 'owner' ? await readStepOwnerText(context, root, beforeSequence) : null,
   };
+}
+
+// The message step for outside content that woke a task that nothing started, such as a
+// definition's task that a trigger woke.
+function buildOutsideOrigin(
+  links: ReadonlyMap<string, TaskLink>,
+  ids: readonly string[],
+  starting: StartingMessage,
+): ApprovalChainStep[] {
+  const [root] = ids;
+
+  if (
+    root === undefined ||
+    links.get(root)?.isConversation !== false ||
+    starting.cause?.kind !== 'event'
+  ) {
+    return [];
+  }
+
+  return [{ kind: 'message', id: 'outside-content', name: formatStartingMessage(starting) }];
 }

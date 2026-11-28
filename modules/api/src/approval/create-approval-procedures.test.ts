@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ApprovedCall } from '@heynixie/actions';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
+import { writeTaskSessionNames } from '@heynixie/coding';
 import { seedJoinedSession } from '@heynixie/coding/test-utils';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { encodeTestImage, seedImage } from '@heynixie/connectors/test-utils';
@@ -28,8 +29,15 @@ import {
   runProposalLapses,
   runProposalReturns,
 } from '@heynixie/proposals';
-import { createConversationTask, readInbox, writeTaskControl } from '@heynixie/tasks';
-import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
+import {
+  claimTask,
+  createConversationTask,
+  readInbox,
+  triggerTaskInputCodec,
+  writeInboxRecords,
+  writeTaskControl,
+} from '@heynixie/tasks';
+import { buildTaskSeeder, seedDefinitionTask } from '@heynixie/tasks/test-utils';
 import { toolCalledCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
@@ -1403,12 +1411,65 @@ test('#approvals.listItems names the coding session that a task in the chain bin
     state: 'idle',
   });
 
+  const sessionNames = await writeTaskSessionNames(ctx.api.context, [codingTaskID]);
   const shortID = await ctx.proposeMailSend(codingTaskID);
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
+  const sessionShortID = sessionNames.get(codingTaskID);
+
+  invariant(item && sessionShortID);
+
+  expect(item.chain).toStrictEqual([
+    { kind: 'message', id: 'conversation', name: 'Your message: Join my session.' },
+    { kind: 'coding', id: sessionShortID, name: 'login fix' },
+  ]);
+});
+
+test('#approvals.listItems starts the chain of a definition task that outside content woke with the outside content', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(
+    {
+      context: ctx.api.context,
+      definitionStore: ctx.api.definitionStore,
+      writer: ctx.api.context.log.writer,
+    },
+    {
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+      version: { name: 'Water the tomatoes' },
+    },
+  );
+
+  await writeInboxRecords(ctx.api.context, [
+    {
+      kind: 'trigger.task_input',
+      definitions: ctx.api.context.definitions(),
+      thread: taskID,
+      payload: triggerTaskInputCodec.encode({
+        taskID,
+        source: 'schedule',
+        dedupeKey: 'water-the-tomatoes:1',
+        occurredAt: '2027-03-11T21:00:00.000Z',
+        hop: 0,
+        wake: true,
+        facts: {},
+      }),
+    },
+  ]);
+
+  await claimTask(ctx.api.context, { holder: 'seed-runner', leaseMs: 60_000, taskID });
+
+  const shortID = await ctx.proposeMailSend(taskID);
   const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.proposal.shortID === shortID);
 
   invariant(item);
 
-  expect(item.chain.map((step) => step.kind)).toStrictEqual(['message', 'coding']);
+  expect(item.chain).toStrictEqual([
+    { kind: 'message', id: 'outside-content', name: 'Outside content' },
+    { kind: 'task', id: taskID, name: 'Water the tomatoes' },
+  ]);
 });

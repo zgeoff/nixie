@@ -28,16 +28,15 @@ async function setupTest() {
   };
 }
 
-test('#readStepOwnerText gives the text of the message that came before the step', async () => {
+test('#readStepOwnerText gives the text of the first of 2 unread messages, the one that woke the step', async () => {
   const ctx = await setupTest();
 
   await ctx.writeOwnerMessage('Book a ferry');
+  await ctx.writeOwnerMessage('Find a cabin');
 
   const claim = await ctx.claim();
 
   invariant(claim);
-
-  await ctx.writeOwnerMessage('Find a cabin');
 
   const text = await readStepOwnerText(ctx.context, conversationTaskID, claim.startSequence + 1);
 

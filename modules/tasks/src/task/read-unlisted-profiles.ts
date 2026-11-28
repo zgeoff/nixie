@@ -1,6 +1,7 @@
 import type { TaskProfile, TasksContext, TasksTables } from '../types';
 import { readDefinitionTaskVersions } from './read-definition-task-versions';
 import { readEndedProfiles } from './read-ended-profiles';
+import type { TaskDirectoryQuery } from './read-task-directory';
 
 // The profiles of the definition tasks that the directory leaves out: a task whose shown version
 // is not in force, and a task with no open task run, whose profile comes from its newest ended
@@ -8,8 +9,11 @@ import { readEndedProfiles } from './read-ended-profiles';
 export async function readUnlistedProfiles(
   context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   directory: readonly TaskProfile[],
+  query: TaskDirectoryQuery = {},
 ): Promise<TaskProfile[]> {
-  const versions = await readDefinitionTaskVersions(context);
+  const versionQuery = query.taskIDs === undefined ? {} : { taskIDs: query.taskIDs };
+
+  const versions = await readDefinitionTaskVersions(context, versionQuery);
 
   const outOfForce = versions
     .filter((entry) => !entry.isInForce)
@@ -26,6 +30,9 @@ export async function readUnlistedProfiles(
     .selectFrom('tasks')
     .select('task_id')
     .where('definition_id', 'is not', null)
+    .$if(query.taskIDs !== undefined, (builder) =>
+      builder.where('task_id', 'in', query.taskIDs ?? []),
+    )
     .execute();
 
   const known = new Set([
