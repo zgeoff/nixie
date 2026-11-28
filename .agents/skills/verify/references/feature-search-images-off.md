@@ -6,9 +6,9 @@ A nixie whose config has no `search` section has no web search, and one with no 
 no image tools. nixie then offers the model no `search` tool and no `image.` tool, answers each
 `images` procedure with `FEATURE_OFF`, and leaves both features out of the features that
 `nixie.read` reports. Search has no page in the web client. For images, the web client hides the
-Images entry of its menu, and a direct visit to `/images` shows the page that says the feature is
-off in this nixie. The search-off and images-off e2e suites check `nixie.read`, and that nixie
-refuses to start with a `search` section that has no `credential`.
+Images entry of its menu, and a direct visit to `/images` shows the text "This feature is off in
+this nixie". The search-off and images-off e2e suites check `nixie.read`. They also check that nixie
+refuses to start when its `search` section has no `credential`.
 
 Run this journey on `local` only, on an `up` of its own, because [drawing](feature-drawing.md) and
 [images-page](feature-images-page.md) need images on:
@@ -63,10 +63,10 @@ Before you start, run that `up` and `bun verify doctor`, then do
 Once the end state matches, run `bun verify done`. When a command fails, follow its row in
 [Exit codes](exit-codes.md), and skip `done`. When every command exits 0 but the end state differs,
 such as a menu that still shows the Images entry or a tool list that holds an `image.` or a `search`
-tool, skip `done` and follow step 5 of Check a change in [SKILL.md](../SKILL.md). Fix the app's code
-when your change broke the feature. Otherwise list the feature in your reply with the end state you
-expected and the `data` you got. When `done` itself fails, follow its row in Exit codes and run the
-journey again.
+tool, skip `done` and follow step 5 of "Check a change" in [SKILL.md](../SKILL.md). Fix the app's
+code when your change broke the feature. Otherwise list the feature in your reply with the end state
+you expected and the `data` you got. When `done` itself fails, follow its row in Exit codes and run
+the journey again.
 
 Whether the journey passed or failed, run `bun verify up --restart` without
 `NIXIE_VERIFY_NO_IMAGES`, then `bun verify doctor`, so the next journey has images on. When either
