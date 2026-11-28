@@ -338,9 +338,9 @@ The web fetch tool gates every `url` and `link` fetch with [the secret scan](#th
 server of this release on a fetch image of an older release fails every page that redirects. Update
 the fetch image with the server. The skill file reader gates none.
 
-Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
-fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and
-destroys the sandbox after, which keeps the destroy off the reply's path.
+Each caller's fetches run one at a time, and its next fetch starts only once its last fetch's
+destroy ends, so 2 fetchers of one caller never run side by side. nixie returns the reply as soon as
+the fetcher sends it and destroys the sandbox after, which keeps the destroy off the reply's path.
 
 A fetch that does not end in a page destroys its sandbox the same way: a refusal, a failure the
 fetcher reports, a fetcher that exits non-zero or sends no reply, a reply nixie cannot decode, or a
@@ -348,12 +348,13 @@ fetcher that outlives the fetch's time limit, which nixie stops. Every call nixi
 sandbox adapter has a time limit as well, so a create or a destroy that never ends fails one fetch
 and never blocks the fetches after it.
 
-Every fetch sandbox has the same owner. The first fetch after nixie starts removes every fetch
-sandbox of that owner, which clears what an earlier process left. The next fetch after a failed
-create or a destroy that fails or passes its time limit does the same, because a create can fail
-after the runtime made the sandbox and then fail to remove it. After a create passes its time limit,
-the fetch uses no sandbox from it; when the create still returns one, nixie's only call on it is the
-destroy, as soon as it arrives.
+Each caller's fetch sandboxes have an owner of their own: the default owner for the web fetch tool,
+`skill_fetch` for the skill file reader and `device_fetch` for a device's declared fetches. A
+caller's first fetch after nixie starts removes every fetch sandbox of its owner, which clears what
+an earlier process left. The next fetch after a failed create or a destroy that fails or passes its
+time limit does the same, because a create can fail after the runtime made the sandbox and then fail
+to remove it. After a create passes its time limit, the fetch uses no sandbox from it; when the
+create still returns one, nixie's only call on it is the destroy, as soon as it arrives.
 
 ## The secret scan
 
@@ -418,8 +419,8 @@ The `web_fetch` section of the deployment config takes 3 keys for the scan:
 - A value shorter than `secret_own_value_min_chars` is left out, because a short value matches an
   ordinary URL by chance, and a site that redirects to a URL with its guess of an own value learns
   one yes or no per fetch.
-- `modules/connectors` defines the entry names once, and a compile-time check in `apps/server` fails
-  the build when they differ from the keys of the secrets file.
+- `modules/credentials` defines the entry names once, in `secrets-entry-names.ts`, and a
+  compile-time check beside it fails the build when they differ from the keys of the secrets file.
 
 ### What the scan leaves out
 
@@ -458,16 +459,17 @@ IPv6 address whose embedded IPv4 address is not public, and every range the depl
 internal, whatever its class. The embedded forms it reads are IPv4-mapped, IPv4-compatible,
 IPv4-translated, NAT64, 6to4 and Teredo.
 
-nixie runs the fetcher for 2 callers, the web fetch tool and the reader of a skill's files, and
-sends each fetch these limits:
+nixie runs the fetcher for 3 callers, the web fetch tool, the reader of a skill's files and a
+device's [declared fetches](../channels/devices.md#declared-fetches), and sends each fetch these
+limits:
 
-| Limit                                           | Web fetch tool         | Skill files                                                           |
-| ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- |
-| the body bytes read                             | the deployment config  | the file size limit of the [definitions repo](../core/definitions.md) |
-| the body bytes of an image                      | the deployment config  | 0, since a skill holds only text                                      |
-| the time for the whole call, redirects included | the deployment config  | the deployment config                                                 |
-| the number of redirects                         | the deployment config  | the deployment config                                                 |
-| the bytes of text returned                      | 3 times the body limit | the file size limit                                                   |
+| Limit                                           | Web fetch tool         | Skill files                                                           | Declared fetches                   |
+| ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- | ---------------------------------- |
+| the body bytes read                             | the deployment config  | the file size limit of the [definitions repo](../core/definitions.md) | a constant in `start-web-fetch.ts` |
+| the body bytes of an image                      | the deployment config  | 0, since a skill holds only text                                      | 0                                  |
+| the time for the whole call, redirects included | the deployment config  | the deployment config                                                 | the deployment config              |
+| the number of redirects                         | the deployment config  | the deployment config                                                 | a constant in `start-web-fetch.ts` |
+| the bytes of text returned                      | 3 times the body limit | the file size limit                                                   | 3 times the body limit             |
 
 The fetcher asks for markdown first, with the header
 `text/markdown, text/html;q=0.9, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.7`. A site

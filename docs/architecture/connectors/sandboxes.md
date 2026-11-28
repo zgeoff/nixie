@@ -191,8 +191,8 @@ and the secrets.
   the adapter refuses a grant whose secret the broker would send to any host but its own one.
 - **Public egress.** Public egress reaches the internet and nothing inside the deployment: not the
   host, not impd's API, not another sandbox. The deployment's operator lists the host's own
-  addresses and the deployment's private address ranges, in `IMP_HOST_ADDRESSES` and
-  `IMP_EGRESS_DENY`, and the same lists go to impd and to nixie. The adapter refuses public egress
+  addresses and the deployment's private address ranges, in the config keys `imp.host_addresses` and
+  `imp.egress_deny`, and the same lists go to impd and to nixie. The adapter refuses public egress
   when the list of host addresses is empty, or when impd cannot enforce public egress, because a
   public imp can reach any host address the list leaves out.
 - **Closed egress.** A sandbox with no egress, a worker's included, has no internet route except its

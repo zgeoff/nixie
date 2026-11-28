@@ -13,7 +13,8 @@ steps and their commits, [model profiles](./model-profiles.md) covers the profil
 `modules/sessions` holds the host side, `guests/conversation` holds the guest, and the turn frames
 between them live in `libs/wire`. The sessions package runs every model loop's sessions, the
 conversation's and the memory roles' alike, and takes each loop's profile from the models package,
-which holds only the profiles and the call cost.
+which holds the profiles, the call cost, the harness definitions and the codecs of the `model.*`
+session records.
 
 ## The guest and its sandbox
 

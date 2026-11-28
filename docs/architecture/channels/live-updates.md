@@ -26,7 +26,7 @@ flowchart LR
   stream -->|"opened, record, changed, device"| client[web client]
   client -->|"invalidates by topic"| reads[TanStack Query reads]
   client -->|"sessions.shown"| registry[client registry]
-  stream -->|"device stream opens and closes"| registry
+  stream -->|"device stream opens and closes"| devices[device streams, in the devices module]
 ```
 
 ## The stream
@@ -86,20 +86,22 @@ topics are the entries of `liveTopicSchema` in the contract, in
 topic, and the contract test keeps a list of those unfollowed roots, `erasure` among them. The test
 fails when a topic matches no root, or when a root has neither a topic nor a place on that list.
 
-| Topic         | Reads under the root                                           |
-| ------------- | -------------------------------------------------------------- |
-| `nixie`       | `nixie.read`, which holds the pause                            |
-| `spend`       | `spend.read`                                                   |
-| `backups`     | `backups.readNotice`                                           |
-| `approvals`   | `approvals.listItems`, `approvals.readProposals`               |
-| `calls`       | `calls.get`                                                    |
-| `computer`    | `computer.readHandover`                                        |
-| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`                  |
-| `triggers`    | `triggers.report`                                              |
-| `definitions` | `definitions.listTasks`                                        |
-| `memory`      | every read under the `memory` root, which the memory page uses |
-| `notebook`    | every read under the `notebook` root, which the notebook uses  |
-| `images`      | `images.list`                                                  |
+| Topic         | Reads under the root                                                |
+| ------------- | ------------------------------------------------------------------- |
+| `nixie`       | `nixie.read`, which holds the pause                                 |
+| `spend`       | `spend.read`                                                        |
+| `backups`     | `backups.readNotice`                                                |
+| `approvals`   | `approvals.listItems`, `approvals.readProposals`                    |
+| `calls`       | `calls.get`                                                         |
+| `computer`    | `computer.readHandover`                                             |
+| `tasks`       | `tasks.list`, `tasks.read`, `tasks.listEnded`                       |
+| `triggers`    | `triggers.report`                                                   |
+| `definitions` | `definitions.listTasks`                                             |
+| `memory`      | every read under the `memory` root, which the memory page uses      |
+| `notebook`    | every read under the `notebook` root, which the notebook uses       |
+| `images`      | `images.list`                                                       |
+| `connections` | every read under the `connections` root, such as `connections.list` |
+| `mcp`         | every read under the `mcp` root, such as `mcp.listServers`          |
 
 Each module that owns record kinds declares the topics each kind changes, and the server registers
 them with the log through `registerRecordTopics` when it starts the writer. Every kind has an entry,
@@ -140,18 +142,20 @@ still mark `memory` and `notebook`.
 
 ## The client registry
 
-The API holds one registry in memory, and a restart forgets it. It keeps two facts apart:
+The API holds one registry in memory, and a restart forgets it. The registry holds presence alone,
+and the devices module holds the open device streams, so the two facts stay apart:
 
 - Presence comes only from `sessions.shown` beats. An open stream never counts as present, because a
   background tab holds a stream open. The push notifier reads `presence.isPresent(withinMs)`.
 - A device is online while one or more of its device-form streams are open, and for
   `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as offline. The
-  devices module reads the registry's `DeviceStreams`. A device-form stream of a device session
-  keeps its session's last seen time fresh. A page stream never does, and neither does the
-  device-form stream of a full session, so an idle tab's session lapses on schedule.
+  devices module keeps these streams in the `DeviceStreams` that `createDeviceStreams` builds, and
+  the API opens each one through `readFeatureProcedures().deviceStream`. A device-form stream of a
+  device session keeps its session's last seen time fresh. A page stream never does, and neither
+  does the device-form stream of a full session, so an idle tab's session lapses on schedule.
 
 When a client goes away, the server ends its stream within 2 keepalive intervals and drops a
-device-form stream from the registry in the same step.
+device-form stream from the device streams in the same step.
 
 ## The web client's side
 

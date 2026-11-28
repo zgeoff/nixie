@@ -186,10 +186,11 @@ reaches the step at once.
 - **Close** ends a task for good, from any state but closed. It frees the lease, withdraws the
   pending timers and releases every message wait that names the task, on either side, and the inbox
   refuses later input. nixie refuses to close the conversation, because every deployment needs it to
-  answer, but the conversation takes a stop and a restart. The `closedBy` field of the `task.closed`
-  record holds who closed the task: `owner` for the user's close control, `nixie` for the
-  `task.close` tool, and `disposable` for the commit that closes a disposable task after its report.
-  A record with no `closedBy` reads as `owner`. The
+  answer, but the conversation takes a stop and a restart. nixie also refuses to close a
+  definition's task, as [task definitions](definitions.md#task-definitions) describes. The
+  `closedBy` field of the `task.closed` record holds who closed the task: `owner` for the user's
+  close control, `nixie` for the `task.close` tool, and `disposable` for the commit that closes a
+  disposable task after its report. A record with no `closedBy` reads as `owner`. The
   [started tasks](./started-tasks.md#the-mark-and-closing) doc describes the tool and the
   auto-close. A close sends the closer no report message when the closer is the task run's report
   target: the report stays on the `task.run_ended` record, as a kept report does. A close by any

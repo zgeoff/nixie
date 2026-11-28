@@ -10,12 +10,12 @@ a snapshot of the definitions in force, usually one it has just read from the re
 [rules design](../../design/platform/policy/rules.md) holds the parts not built yet, and
 [the decision point](decision-point.md) covers the stages that decide a call.
 
-An allow rule can allow any call, with 2 exceptions. A call that widens the policy or raises a
+An allow rule can allow any call, with 3 exceptions. A call that widens the policy or raises a
 budget always asks, so no rule can give the assistant more room than the user approved. A seed
 applies a widening from the definitions without asking, because the user wrote them, as
-[rules in force](#rules-in-force) describes. A call that spends passes only an allow rule with a
-[lift](budgets.md#lifts), which caps each purchase and charges a budget. A new tool never adds a
-third exception.
+[rules in force](#rules-in-force) describes. A call that installs a package always asks, as
+[packages](../channels/devices.md#packages) describes. A call that spends passes only an allow rule
+with a [lift](budgets.md#lifts), which caps each purchase and charges a budget.
 
 ## The rule format
 
@@ -347,20 +347,21 @@ in force with its sentence, outcome, destinations and revision.
 
 The host commands read and answer the rule store, and each prints JSON:
 
-| Command                                       | Does                                                               |
-| --------------------------------------------- | ------------------------------------------------------------------ |
-| `nixie rules list`                            | Lists each rule in force, its sentence, revision and origin        |
-| `nixie rules conflicts`                       | Lists each conflict with nixie's, the repo's and the base versions |
-| `nixie rules resolve <id> --keep nixie\|repo` | Resolves the conflict on that rule                                 |
-| `nixie proposals list`                        | Lists each pending rule change proposal                            |
-| `nixie proposals approve <id>`                | Puts the proposal's widenings in force                             |
-| `nixie proposals reject <id> --reason <why>`  | Closes the proposal with your reason                               |
-| `nixie mandates list`                         | Lists each active mandate, its rules and its end                   |
-| `nixie mandates end <id>`                     | Ends the mandate, as End now does                                  |
+| Command                                        | Does                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| `nixie rules list`                             | Lists each rule in force, its sentence, revision and origin        |
+| `nixie rules conflicts`                        | Lists each conflict with nixie's, the repo's and the base versions |
+| `nixie rules resolve <id> --keep nixie\|repo`  | Resolves the conflict on that rule                                 |
+| `nixie proposals list`                         | Lists each pending rule change proposal and action proposal        |
+| `nixie proposals approve <id>`                 | Puts a rule change's widenings in force, or approves an action     |
+| `nixie proposals reject <id> [--reason <why>]` | Closes the proposal; a rule change needs your reason               |
+| `nixie mandates list`                          | Lists each active mandate, its rules and its end                   |
+| `nixie mandates end <id>`                      | Ends the mandate, as End now does                                  |
 
-The `nixie proposals` commands answer only the rule change proposals that the log holds, because a
-seed never writes one. The next seed withdraws each one that is still pending, and leaves a pending
-proposed rule or mandate as it is.
+The `nixie proposals` commands answer the rule change proposals that the log holds, and the action
+proposals that [the decision point](decision-point.md) describes. A seed never writes a rule change
+proposal. The next seed withdraws each one that is still pending, and leaves a pending proposed rule
+or mandate as it is.
 
 The approvals page in the web client, at `/proposals`, lists the same pending proposals among every
 other kind, each change as the sentence before and after it, and answers them through

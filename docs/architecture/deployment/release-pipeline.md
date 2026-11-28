@@ -53,12 +53,16 @@ flowchart LR
     rp --> fetch[fetch image]
   rp --> code[code image]
   rp --> codex[codex image]
+  rp --> computer[computer image]
+  rp --> render[render image]
   rp --> backup[backup image]
 
   conv --> nixie[nixie image]
   fetch --> nixie
   code --> nixie
   codex --> nixie
+  computer --> nixie
+  render --> nixie
     nixie --> web[web image]
   web --> notes[release notes]
   backup --> notes
@@ -149,7 +153,9 @@ built.
 
 A deployment reads two assets of the GitHub release and nothing else of nixie's: no copy of a file
 from the repo, and no parse of the release notes. Each release publishes both, and their shape is a
-contract that changes only in step with the readers.
+contract that changes only in step with the readers. Each release also publishes
+`model-gateway-linux-x64`, the model gateway's binary, which a host that runs the gateway outside a
+container pins by its sha256.
 
 - **`release.json`** holds the version, its tag and its commit; the server, web and backup images
   and the sandbox images, each by version tag and digest; the migrations the release adds since the
@@ -186,7 +192,7 @@ impd pulls without credentials, and the check-pulls stage fails the release unti
 
 The Images workflow rehearses the image stages against a registry that lives only for the job. It
 runs on each push to main, and on each pull request that changes a file the images or the stages
-read. It builds all 5 images, writes the sandbox manifest, checks that the backup image runs the
+read. It builds all 9 images, writes the sandbox manifest, checks that the backup image runs the
 pinned restic, runs the job's restic tests against that binary, checks that the nixie image carries
 it, pulls the sandbox images with no credentials, and tags every image twice to prove the tag stage
 keeps each digest and repeats safely. It then builds `release.json` from those digests, as the

@@ -370,17 +370,19 @@ sit in the gateway's own config, so code in the deployment cannot lower a limit 
 code can only raise a day's limit within the cap, with `POST /raise`.
 
 ```yaml
+listen: { hostname: 127.0.0.1, port: 8789 } # the model listener
+store: /var/lib/model-gateway/counts.json
 periods:
   zone: Europe/London
 providers:
-  anthropic:
+  openai-plan:
     limits: { day: 200, month: 3000 } # dollars; dayCap defaults to twice day
   openrouter:
     limits: { day: 10, month: 100, dayCap: 20 }
 routes:
   codex-plan:
     # api, upstream, model and prices as in the routes above
-    provider: anthropic # required; a key of providers
+    provider: openai-plan # required; a key of providers
   router:
     provider: openrouter
     limits: { day: 5, month: 50 } # optional; caps this route inside its provider
@@ -391,17 +393,18 @@ countBySandbox: true # default false
 override: /var/lib/model-gateway/override.json # no path, no override
 ```
 
-The schema requires `periods`, `control` and `providers`, and refuses a top-level `limits` key,
-because no limit spans providers. It refuses a route with no `provider`, a `provider` that is no key
-of `providers`, and a `dayCap` below its `day`. Provider and route IDs are lowercase slugs. The
-store is a file of its own, in version 4: the lost mark, for each provider and each route its day
-and its month, and a count and a limit per sandbox. A period holds its start, the instant it ends,
-its count in whole micros of a dollar, the raise and the trip time. A reply adds its dollars to its
-route's and its provider's periods in one write. A sandbox's count is in whole micros too. The count
-is an integer, so a long run of replies adds no drift, whatever the size of the total. A reply that
-costs less than half a micro still adds one micro, so small replies always accumulate, and a limit
-under half a micro counts as one micro. A period's trip time is the instant the gateway first found
-its count at the limit in force, and a reset or a raise that lifts the limit clears it.
+The schema requires `listen`, `store`, `periods`, `control`, and at least one entry in each of
+`providers` and `routes`. It refuses a top-level `limits` key, because no limit spans providers. It
+refuses a route with no `provider`, a `provider` that is no key of `providers`, and a `dayCap` below
+its `day`. Provider and route IDs are lowercase slugs. The store is a file of its own, in version 4:
+the lost mark, for each provider and each route its day and its month, and a count and a limit per
+sandbox. A period holds its start, the instant it ends, its count in whole micros of a dollar, the
+raise and the trip time. A reply adds its dollars to its route's and its provider's periods in one
+write. A sandbox's count is in whole micros too. The count is an integer, so a long run of replies
+adds no drift, whatever the size of the total. A reply that costs less than half a micro still adds
+one micro, so small replies always accumulate, and a limit under half a micro counts as one micro. A
+period's trip time is the instant the gateway first found its count at the limit in force, and a
+reset or a raise that lifts the limit clears it.
 
 At start, the gateway rewrites a store file of an earlier shape, a count of one total, a version 2
 store or a version 3 store, as a version 4 store in one write. A count of one total or a version 2

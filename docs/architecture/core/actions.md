@@ -76,15 +76,17 @@ the record's erasable fields, and the decision sits on its envelope.
 
 A step that crashed is run again from its start, and the rerun makes the same tool calls. Each call
 arrives with an action hash that its caller builds from the call, and the queue compares calls by
-that hash alone, never by their arguments. A call whose action hash matches an earlier action of the
-same task returns that action and queues nothing, when the earlier action came from the same step or
-is still pending or unknown. A later step that repeats a call whose action is done or failed queues
-a new action, because the model asked for it again. The same action can then never run twice,
-however many times its step reruns.
+that hash, never by their arguments. An action queued before the hash covered the destinations holds
+the older hash of the tool and its arguments, and the queue matches that hash too. A call whose
+action hash matches an earlier action of the same task returns that action and queues nothing, when
+the earlier action came from the same step or is still pending or unknown. A later step that repeats
+a call whose action is done or failed queues a new action, because the model asked for it again. The
+same action can then never run twice, however many times its step reruns.
 
-The action hash covers the tool, the arguments, the destinations and the deadline, and is the same
-hash that the approval binds. A repeat of a call whose action is pending or unknown returns that
-action's status and never queues, so a model that asks again cannot start a second send.
+The action hash covers the tool, the arguments, the destinations, the deadline, and the URL and
+window that a prepared call expects when it runs, and is the same hash that the approval binds. A
+repeat of a call whose action is pending or unknown returns that action's status and never queues,
+so a model that asks again cannot start a second send.
 
 ## Actions a runner queues
 

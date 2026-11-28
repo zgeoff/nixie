@@ -121,8 +121,9 @@ stages:
    a key.
 4. One write transaction, behind the writer epoch check, defers its foreign key checks to the
    commit, drops the triggers, and deletes every row of every table but the writer epoch, the schema
-   version, the identity record and the log's last record. It deletes the revoked and lapsed
-   identities.
+   version, the log's last record, the `identities`, `devices` and `passkeys` tables, and the rule
+   store's tables, which `rule-store-tables.ts` in `modules/definitions` lists. It deletes the
+   revoked and lapsed identities.
 5. The same transaction writes the first records of the new log: a definitions seed record that
    repeats the seed in force, with the skills nixie wrote that stay in force over the definitions
    and the versions beneath them, a `log_reset` record on the conversation thread, and a

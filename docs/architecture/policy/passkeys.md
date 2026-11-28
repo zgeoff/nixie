@@ -90,11 +90,12 @@ order as below. A retry of a routine action takes none.
 
 ## The answer check
 
-The passkey step runs after step 4 and before step 5 of the
-[answer checks](approvals.md#the-answer), in the transaction that applies the answer. Every path
-that takes a passkey calls the one function `checkPasskey` in `modules/api/src/passkey/`: the
-answers, the retry of an unknown outcome, the registration options while a passkey is live, and the
-revoke. It refuses in this order:
+The passkey step is step 5 of the [answer checks](approvals.md#the-answer), after the choice check
+and before the kind's handler, in the transaction that applies the answer. Every path that takes a
+passkey reaches `checkPasskey` in `modules/api/src/passkey/`: the answers, the retry of an unknown
+outcome, the registration options while a passkey is live, and the revoke. The answers reach it
+through the `checkPasskey` in `modules/proposals/src/answer/`, which passes a choice that takes no
+passkey untouched. It refuses in this order:
 
 1. No passkey is live: `NO_PASSKEY`.
 2. The answer carries no assertion and no [window](#the-window) covers it: `PASSKEY_REQUIRED`. A

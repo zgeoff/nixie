@@ -70,10 +70,14 @@ watchdog to fire.
   call. The CLI makes no further model call and writes no nudge for a missing reply into the
   session, and its result is a success whose stop reason is `tool_use`. A
   [silent turn](conversation-turns.md#a-turn-that-ends-with-nothing-sent) relies on it.
-- `model-grant`: a turn whose only credential is the placeholder that `buildModelGrant` sets, in
-  either auth header's variable, gets its answer through the broker, because the broker replaces the
-  header on each request it carries. [Model profiles](model-profiles.md) give each model loop that
-  grant.
+- `report-fields`: a report call whose `fields` argument is an object reaches an HTTP tool as the
+  model wrote it. A task's [report](started-tasks.md#reports) with a `reportShape` relies on it.
+- `start-tools`: the tool list that the SDK reports at init holds both the task start tool and the
+  [coding](coding-tasks.md) start tool from the conversation's own tool list.
+- `model-grant`: a turn whose only credential is the placeholder `nixie-broker-placeholder`, which
+  the Agent SDK harness's `buildGrant` sets, in either auth header's variable, gets its answer
+  through the broker, because the broker replaces the header on each request it carries.
+  [Model profiles](model-profiles.md) give each model loop that grant.
 
 ## Run it
 

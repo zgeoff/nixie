@@ -161,9 +161,9 @@ The device form of [`live.follow`](./live-updates.md#the-stream) takes the scree
 its `pixelRatio`, device pixels per CSS pixel, and the browser's IANA time zone, which the device
 sends again on each reconnect and in each `devices.resize`. A page that sends no time zone gets the
 deployment's default in a preview. The server keeps each open stream and its size in memory in
-`createDeviceStreams`, which the API's client registry holds. A device is online while it has a
-stream open, and for `deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as
-offline.
+`createDeviceStreams`, which the devices module holds, and the API opens each stream through
+`readFeatureProcedures().deviceStream`. A device is online while it has a stream open, and for
+`deviceOfflineGraceMs` after its last one closes, so a reconnect never reads as offline.
 
 For an offline device, `devices.list` gives the time its last stream closed, unless the process
 restarted since. `devices.resize(pixels)`, which takes the fields that `live.follow` opens with,

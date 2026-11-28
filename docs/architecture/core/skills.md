@@ -52,11 +52,11 @@ The catalog changes only when the pin moves or when a restart changes its cap, s
 
 ## The skill tools
 
-The conversation's tool endpoint serves five skill tools. It serves a sixth, `skill_vendor`, when
-the deployment exports to a definitions repo, as
-[the export](./definitions.md#the-export-to-the-definitions-repo) describes. `skill_read`,
-`skill_reload` and `skill_reload_all` act only on a skill that the calling task's list or pin holds,
-so they read no skill for a task other than the conversation.
+The conversation's tool endpoint serves four skill tools: `skill_read`, `skill_reload`,
+`skill_reload_all` and `skill_write`. It serves a fifth, `skill_vendor`, when the deployment exports
+to a definitions repo, as [the export](./definitions.md#the-export-to-the-definitions-repo)
+describes. `skill_read`, `skill_reload` and `skill_reload_all` act only on a skill that the calling
+task's list or pin holds, so they read no skill for a task other than the conversation.
 
 The Effect column gives the effect each tool declares, which rules match on, as
 [effects and declarations](../policy/decision-point.md#effects-and-declarations) describes.

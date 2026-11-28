@@ -12,13 +12,15 @@ random, see [the database](../core/database.md#key-store-ids).
 
 ## Tables and keys
 
-The connections module owns three tables and writes every one of them.
+The connections module owns five tables and writes every one of them.
 
-| Table           | Holds                                                                           | Sealed under                             |
-| --------------- | ------------------------------------------------------------------------------- | ---------------------------------------- |
-| `oauth_clients` | the client's public ID, its secret, its removal counter                         | a key of the client's own                |
-| `connections`   | the account, the refresh token, the status, the binding and the removal counter | the account key, and a token key         |
-| `key_marks`     | each key ID that may belong to no row                                           | nothing: a mark holds an ID and no value |
+| Table                  | Holds                                                                                                                                                  | Sealed under                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| `oauth_clients`        | the client's public ID, its secret, its removal counter                                                                                                | a key of the client's own                |
+| `connections`          | the account, the label, the refresh token, its fingerprint and expiry, the granted and missing scopes, the status, the binding and the removal counter | the account key, and a token key         |
+| `consent_requests`     | each consent that began and has not finished or lapsed: the state's hash and the PKCE verifier                                                         | a key of the consent's own               |
+| `connection_addresses` | each address of a connection's account, under its own reference                                                                                        | the account key                          |
+| `key_marks`            | each key ID that may belong to no row                                                                                                                  | nothing: a mark holds an ID and no value |
 
 Each sealed value binds its key ID, its table and its column as additional data, so a value copied
 to another row or column fails to open. The account and the refresh token of a connection sit under
@@ -73,7 +75,9 @@ removal counter, sets the binding to `removing`, and captures the account key an
 store refuses every fetch and refresh from then on, and a fetch in flight is aborted with the
 removal's error.
 
-The forget cleans no session and removes no logged request, because no token enters either.
+No token enters a session or a logged request, but a wake's mail does. The forget cleans the
+sessions on each thread that a wake of the connection reached, and removes every logged request on
+those threads, as [forgetting in the Gmail tools](gmail-tools.md#forgetting) describes.
 
 The runner then calls the connection's revoke step, after the sandboxes are destroyed and before any
 key is deleted:

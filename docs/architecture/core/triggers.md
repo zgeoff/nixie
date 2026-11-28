@@ -4,8 +4,9 @@ A definition with a `schedule` trigger fires at repeating times in a time zone, 
 trigger fires once. Every trigger source hands its fires to one piece of code, the trigger core,
 which takes each fire at most once. It writes the fire's record, wakes the task and stores the
 source's cursor in one write transaction, so a crash leaves either all of that or none of it. The
-triggers module holds the core, the arming hook, the pure time code and the schedule source, the one
-trigger source the server starts.
+triggers module holds the core, the arming hook, the pure time code and the schedule source. The
+server always starts the schedule source, and starts the coding, mail and phone sources when their
+features are on.
 
 The `target` column of a `trigger_definitions` row and the `target` field of an armed entry name the
 thread a fire lands on: `task` for a definition, `conversation` for a reminder.

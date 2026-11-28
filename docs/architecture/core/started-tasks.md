@@ -130,11 +130,13 @@ list in a registry on its context, and each definition gives the registry its ke
 [controls](./tasks.md#pause-stop-and-close) it offers, the start tool that picks it (or none), the
 fixed tasks it owns, and whether the restart sweep keeps the sandboxes of its open tasks.
 
-| Key            | Controls | Start tool   | Fixed task   | Keeps sandboxes |
-| -------------- | -------- | ------------ | ------------ | --------------- |
-| `conversation` | all 6    | none         | conversation | yes             |
-| `sandbox`      | all 6    | `task.start` | none         | yes             |
-| `queue-check`  | all 6    | none         | queue check  | no              |
+| Key            | Controls                   | Start tool     | Fixed task   | Keeps sandboxes |
+| -------------- | -------------------------- | -------------- | ------------ | --------------- |
+| `conversation` | all 6                      | none           | conversation | yes             |
+| `sandbox`      | all 6                      | `task.start`   | none         | yes             |
+| `queue-check`  | all 6                      | none           | queue check  | no              |
+| `call`         | stop, close, interrupt     | none           | none         | yes             |
+| `atc`          | pause, resume, stop, close | `coding.start` | none         | no              |
 
 A start record names its task's runner in `runner`, and the registry finds the runner of a task in
 this order:

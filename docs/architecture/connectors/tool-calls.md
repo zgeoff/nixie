@@ -52,10 +52,13 @@ session.
 ## A tool definition
 
 The registry refuses a tool definition that breaks one of its rules. A definition holds the name,
-the description, the input and output JSON Schemas, the effect declaration, how the tool runs, and
-its code. The effect declaration lists what the tool does, such as read, send or spend, and gives
-each field of the tool's result a source of content, the origin of what the field holds: the user's
-own words (`owner`), the user's own data (`owner_data`), or `untrusted` content.
+the description, the input and output JSON Schemas, the effect declaration, how the tool runs, its
+code, and the optional hooks and fields that `ToolDefinition` in
+[`types.ts`](../../../modules/tools/src/types.ts) explains, such as `resolveInput`, `clear`,
+`resolveDestinations`, `resolvePolicyFacts`, `outsideErrors`, `pinHash` and `variants`. The effect
+declaration lists what the tool does, such as read, send or spend, and gives each field of the
+tool's result a source of content, the origin of what the field holds: the user's own words
+(`owner`), the user's own data (`owner_data`), or `untrusted` content.
 [Effects and declarations](../policy/decision-point.md#effects-and-declarations) covers the
 declaration. The rules are:
 
