@@ -234,6 +234,7 @@ export { taskStepCommittedCodec } from './utils/task-step-committed-codec';
 export { taskStepErroredCodec } from './utils/task-step-errored-codec';
 export { taskStepInterruptedCodec } from './utils/task-step-interrupted-codec';
 export { taskStepStartedCodec } from './step/task-step-started-codec';
+export { readStepOwnerText } from './step/read-step-owner-text';
 export { readStepWakeCause } from './step/read-step-wake-cause';
 export type { TasksConfig, WorkerRunsConfig } from './task/tasks-config-schema';
 export { tasksConfigSchema } from './task/tasks-config-schema';

@@ -113,9 +113,10 @@ Before you start:
    ```
 
    Expect: both clicks exit 0. The snapshot of the expanded item holds the list "How this came
-   about" with one entry, "Message conversation: Your message": the conversation made the call
-   itself, in the turn that your message woke, so the chain is that message alone. The list has no
-   entry for a task.
+   about" with one entry, "Message conversation: Your message: Export my memory, please.". The
+   conversation made this call itself, in the turn that your message woke, so the chain is that
+   message alone, with no entry for a task. [coding-session](feature-coding-session.md#held-spawn)
+   checks a chain that runs through a task.
 
 7. Check the answer. `proposals --waiting none` checks once, with no wait, and exits 0 when nixie
    holds no call of the tool.

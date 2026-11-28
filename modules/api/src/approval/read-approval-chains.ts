@@ -1,9 +1,10 @@
 import { writeTaskSessionNames } from '@heynixie/coding';
-import type { TasksTables, WakeCause } from '@heynixie/tasks';
-import { readStepWakeCause, readTaskNames } from '@heynixie/tasks';
+import type { TasksTables } from '@heynixie/tasks';
+import { readStepOwnerText, readStepWakeCause, readTaskNames } from '@heynixie/tasks';
 import type { APIContext } from '../types';
 import type { TaskLink } from './collect-approval-chain';
 import { collectApprovalChain } from './collect-approval-chain';
+import type { StartingMessage } from './format-starting-message';
 import { formatStartingMessage } from './format-starting-message';
 
 export interface ApprovalChainStep {
@@ -49,7 +50,7 @@ export async function readApprovalChains(
 
   const steps = await Promise.all(
     chains.map(async (chain) => {
-      const cause = await readStartingCause(context, links, chain.ask, chain.ids);
+      const starting = await readStartingMessage(context, links, chain.ask, chain.ids);
 
       return [
         chain.ask.proposalID,
@@ -65,7 +66,7 @@ export async function readApprovalChains(
           }
 
           if (links.get(id)?.isConversation === true) {
-            return { kind: 'message', id, name: formatStartingMessage(cause) };
+            return { kind: 'message', id, name: formatStartingMessage(starting) };
           }
 
           return { kind: 'task', id, name: directory.get(id) ?? started.get(id) ?? id };
@@ -114,18 +115,19 @@ function collectUnread(ids: readonly string[], links: ReadonlyMap<string, TaskLi
   return [...new Set(ids)].filter((id) => !links.has(id));
 }
 
-// What woke the conversation step that started the work, when the chain starts at the conversation.
-// A task the conversation started was started by the step that ran just before it was created.
-function readStartingCause(
+// What woke the conversation step that started the work, and the owner's text when it was the
+// owner, when the chain starts at the conversation. A task the conversation started was started by
+// the step that ran just before it was created.
+async function readStartingMessage(
   context: APIContext,
   links: ReadonlyMap<string, TaskLink>,
   ask: ApprovalAsk,
   ids: readonly string[],
-): Promise<WakeCause | null> {
+): Promise<StartingMessage> {
   const [root, next] = ids;
 
   if (root === undefined || links.get(root)?.isConversation !== true) {
-    return Promise.resolve(null);
+    return { cause: null, ownerText: null };
   }
 
   const beforeSequence =
@@ -133,5 +135,11 @@ function readStartingCause(
       ? ask.createdSequence
       : (links.get(next)?.createdSequence ?? ask.createdSequence);
 
-  return readStepWakeCause(context, root, beforeSequence);
+  const cause = await readStepWakeCause(context, root, beforeSequence);
+
+  return {
+    cause,
+    ownerText:
+      cause?.kind === 'owner' ? await readStepOwnerText(context, root, beforeSequence) : null,
+  };
 }

@@ -1358,7 +1358,11 @@ test('#approvals.readProposals and #approvals.listItems give the chain from the 
   });
 
   const expected = [
-    { kind: 'message' as const, id: 'conversation', name: 'Your message' },
+    {
+      kind: 'message' as const,
+      id: 'conversation',
+      name: 'Your message: Please look into this for me.',
+    },
     { kind: 'task' as const, id: parentID, name: 'Read the inbox' },
     { kind: 'task' as const, id: askingID, name: 'Check the sender' },
   ];
@@ -1383,7 +1387,9 @@ test('#approvals.listItems gives the starting message alone for a call that the 
 
   invariant(item);
 
-  expect(item.chain).toStrictEqual([{ kind: 'message', id: 'conversation', name: 'Your message' }]);
+  expect(item.chain).toStrictEqual([
+    { kind: 'message', id: 'conversation', name: 'Your message: Please look into this for me.' },
+  ]);
 });
 
 test('#approvals.listItems names the coding session that a task in the chain binds by its short ID', async () => {
