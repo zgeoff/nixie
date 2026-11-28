@@ -12,10 +12,12 @@ import invariant from 'tiny-invariant';
 import { isDefinitionMoved } from './call-record/is-definition-moved';
 import type { DefinitionVersion } from './call-record/is-definition-moved';
 import { makeCallRecorder } from './call-record/make-call-recorder';
-import type { CallRecorder } from './call-record/make-call-recorder';
 import { renderChangedSentence } from './call-record/render-changed-sentence';
 import type { ToolCallOptions } from './call-record/tool-call-options';
 import { writeDirectActs } from './call-record/write-direct-acts';
+import { writeDirectResult } from './call-record/write-direct-result';
+import { writeInvalidCall } from './call-record/write-invalid-call';
+import { writeRefusedCall } from './call-record/write-refused-call';
 import { renderCallCapRefusal } from './cap/render-call-cap-refusal';
 import { findToolPins } from './connection/find-tool-pins';
 import { runChargedCall, withCreditBeside } from './paid/run-charged-call';
@@ -292,18 +294,6 @@ export async function runToolCall(
     : { ...result, content: [...result.content, { type: 'text', text: notice }] };
 }
 
-// A refusal is nixie's own sentence, so it reaches the model as plain error text.
-async function writeRefusedCall(recorder: CallRecorder, refusal: string): Promise<CallToolResult> {
-  const written = await recorder.writeCall(null);
-
-  const refused = await recorder.writeSettled(
-    written.sequence,
-    buildMessage('error', refusal, { source: 'owner_data' }),
-  );
-
-  return toCallToolResult(refused.settled);
-}
-
 // A tool missing from the run's list skips the schema, so its errors never show the tool to the
 // model, and the decision point denies the call.
 function checkListedInput(
@@ -316,18 +306,6 @@ function checkListedInput(
     : { isValid: true };
 }
 
-async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
-  const written = await recorder.writeCall(null);
-
-  // the errors repeat the input's own keys, which the model chose
-  const invalid = await recorder.writeSettled(
-    written.sequence,
-    buildMessage('invalid', errors, { source: 'untrusted' }),
-  );
-
-  return toCallToolResult(invalid.settled);
-}
-
 function isPrepareRefusal(
   value: Prepared | DirectResult | PrepareRefusal,
 ): value is PrepareRefusal {
@@ -336,21 +314,6 @@ function isPrepareRefusal(
 
 function isPrepared(value: Prepared | DirectResult | PrepareRefusal): value is Prepared {
   return 'destinations' in value;
-}
-
-// A prepare step that ends the call, such as a refusal, records the call with no decision.
-async function writeDirectResult(
-  recorder: CallRecorder,
-  registered: RegisteredTool,
-  result: DirectResult,
-): Promise<CallToolResult> {
-  const written = await recorder.writeCall(null);
-
-  const settled = buildTypedResult(registered, result, null);
-
-  const recorded = await recorder.writeSettled(written.sequence, settled);
-
-  return toCallToolResult(recorded.settled);
 }
 
 // A prepared amount stands in for the argument the declaration names as the call's amount.
