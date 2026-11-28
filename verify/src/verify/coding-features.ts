@@ -5,7 +5,7 @@ import { featurePaths } from './feature-paths';
 export const codingFeatures = [
   {
     name: 'coding-supervision',
-    summary: 'Supervise a coding session from the live view',
+    summary: 'Supervise a coding session',
     paths: featurePaths['coding-supervision'],
   },
 ];

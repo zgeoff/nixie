@@ -144,6 +144,7 @@ export const featurePaths = {
     ],
   }),
   'live-updates': buildFeatureGlobs(workspace, coreOnly),
+  'job-skills': buildFeatureGlobs(workspace, coreOnly),
   'spend-routes': buildFeatureGlobs(workspace, {
     packages: ['apps/model-gateway', 'adapters/spend-model-gateway', 'adapters/rates-frankfurter'],
     paths: ['apps/web/src/routes/spend.tsx'],

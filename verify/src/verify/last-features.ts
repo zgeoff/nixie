@@ -4,6 +4,11 @@ import { featurePaths } from './feature-paths';
 // registry lists after the others.
 export const lastFeatures = [
   {
+    name: 'job-skills',
+    summary: 'Give a job its skills',
+    paths: featurePaths['job-skills'],
+  },
+  {
     name: 'calls-off',
     summary: 'Turn calls off',
     paths: featurePaths['calls-off'],

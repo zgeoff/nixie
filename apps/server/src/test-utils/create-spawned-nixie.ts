@@ -198,6 +198,9 @@ export interface SpawnedNixieOptions {
   // task definitions that the boot files hold, so the first seed arms their triggers
   readonly taskDefinitions?: BootFileExtras['taskDefinitions'];
 
+  // skills that the boot files hold, which a task definition may list
+  readonly skills?: BootFileExtras['skills'];
+
   // leaves the computer or the code tool's section out of the config, which turns the feature off
   readonly isComputerOff?: boolean;
   readonly isCodeOff?: boolean;
@@ -374,6 +377,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),
     ...(options.taskDefinitions === undefined ? {} : { taskDefinitions: options.taskDefinitions }),
+    ...(options.skills === undefined ? {} : { skills: options.skills }),
     ...(options.isComputerOff === true ? { isComputerOff: true } : {}),
     ...(options.isCodeOff === true ? { isCodeOff: true } : {}),
     ...(options.isGoogleOff === true ? { isGoogleOff: true } : {}),

@@ -5,7 +5,7 @@ import { featurePaths } from './feature-paths';
 export const callFeatures = [
   {
     name: 'call-hand-off',
-    summary: 'Hand a question off in a call, and hear the answer',
+    summary: 'Hand a question off in a call',
     paths: featurePaths['call-hand-off'],
   },
   {

@@ -59,7 +59,7 @@ export const corePaths = {
     // the server's package files, its entry points, and its startup and composition root
     'apps/server/*',
     'apps/server/src/*',
-    'apps/server/src/{action,backup,budget,cli,config,conversation,credential,definition,deployment,erasure,feature,forget,leak,mocks,pause,place,prompt,proposal,queue,release,reminder,rule,sandbox,seed,server,spend,task,test,triggers,turn,utils}/**',
+    'apps/server/src/{action,backup,budget,cli,config,conversation,credential,definition,deployment,erasure,feature,forget,leak,mocks,pause,place,prompt,proposal,queue,release,reminder,rule,sandbox,seed,server,skill,spend,task,test,triggers,turn,utils}/**',
 
     // the part graph that starts every part, and the parts that no one feature owns
     'apps/server/src/part/{build-nixie-operation-schemas,build-seeding-connections,collect-host-held-names,front-part-declarations,get-sandbox-root-dir,has-breaking-marker,list-image-needs,load-start-state,make-lazy-tool-source,make-retried-start,make-step-error-logger,memory-part-declarations,missing-part-error,part-cycle-error,part-not-started-error,part-plan-error,plan-parts,register-harness-operations,register-server-record-topics,remove-swept-sandboxes,restart-sweep-part-declarations,run-restart-sweep-steps,server-inputs,server-part-declarations,server-part-values,server-record-kind,server-record-topics,start-checker,start-code-run-part,start-control-socket,start-held-credentials-part,start-host-commands,start-part-graph,start-proposal-sweeps,start-runners,start-sandbox-adapter-part,start-web-fetch-part,start-web-fetch,start-worker-part,tool-part-declarations,tools,warn-without-owner-rules,work-part-declarations}.ts',
