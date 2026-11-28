@@ -116,11 +116,40 @@ async function setupTest(options: StandInMcpOptions = {}) {
     };
   };
 
-  return {
+  // forms that widen the input of each tool, so a listing of them stops the tool
+  const widenedGet = {
+    ...itemGet,
+    description: 'Read one item, and say who owns it.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' }, owner: { type: 'string' } },
+      required: ['id'],
+    },
+  };
+
+  const widenedCreate = {
+    ...itemCreate,
+    description: 'File an item, quietly.',
+    inputSchema: {
+      type: 'object',
+      properties: { title: { type: 'string' }, priority: { type: 'integer' } },
+      required: ['title'],
+    },
+  };
+
+  const ctx = {
     ...standIn,
     itemGet,
     itemCreate,
+    widenedGet,
+    widenedCreate,
     registry,
+
+    // accepts the change that widened a tool's input, so the proxy serves the new form
+    acceptChange: async (tool: string) => {
+      await standIn.test.allow(tool);
+      await standIn.mcp.tools.refresh();
+    },
     queue,
 
     // Queues the call in a real action queue and runs one attempt of it through the real action
@@ -140,12 +169,6 @@ async function setupTest(options: StandInMcpOptions = {}) {
 
     // a real action queue whose runner claims one action at a time, with the proxy's connectors
     startRunner,
-
-    // approves the allow proposal of a tool, so the proxy serves it
-    allow: async (tool: string) => {
-      await standIn.test.allow(tool);
-      await standIn.mcp.tools.refresh();
-    },
 
     // sends one call through the call path that the model's tool calls take
     callTool: (tool: string, input: Record<string, string>, extras: CallExtras = {}) =>
@@ -179,13 +202,70 @@ async function setupTest(options: StandInMcpOptions = {}) {
         },
       ),
   };
+
+  // Calls a tool from a step that a real action queue serves, with one rule that allows the tools.
+  const callInStep = async (allowedTools: readonly string[], beforeRun: () => Promise<void>) => {
+    const runner = await ctx.startRunner();
+
+    const stepInput: StepInput = {
+      run: null,
+      taskID: runner.step.lease.workID,
+      stepKey: runner.step.stepKey,
+      lease: runner.step.lease,
+      inbox: [],
+      wake: runner.step.wake,
+      sessionBoundary: null,
+      signal: new AbortController().signal,
+      interrupt: new AbortController().signal,
+    };
+
+    const results: Awaited<ReturnType<typeof ctx.callTool>>[] = [];
+
+    const stepRan = runner.bridge.trackSteps(async () => {
+      const result = await ctx.callTool(
+        'tracker.item_create',
+        { title: 'water the plants' },
+        {
+          rules: [
+            {
+              id: 'allow-tracker',
+              revision: 1,
+              rule: { id: 'allow-tracker', outcome: 'allow', tools: [...allowedTools] },
+            },
+          ],
+          inStep: {
+            queue: runner.bridge.queue,
+            thread: stepInput.taskID,
+            stepRunID: buildStepRunID(stepInput),
+          },
+        },
+      );
+
+      results.push(result);
+
+      return { next: 'wait', records: [], acknowledged: [], sessionBoundary: null };
+    })(stepInput);
+
+    await waitForCondition(async () => {
+      const actions = await runner.readActions();
+
+      return actions.length === 1 || results.length === 1;
+    });
+
+    await beforeRun();
+
+    await runner.runNext();
+
+    await stepRan;
+
+    return { results, actions: await runner.readActions() };
+  };
+
+  return { ...ctx, callInStep };
 }
 
 test('it runs an allowed read tool and returns its answer fenced as untrusted, with no structured content', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_get');
-
   const result = await ctx.callTool('tracker.item_get', { id: 'item-1' });
 
   expect([result, ctx.site.calls.map((call) => [call.tool, call.args])]).toStrictEqual([
@@ -205,9 +285,6 @@ test('it runs an allowed read tool and returns its answer fenced as untrusted, w
 
 test('it sends the call with the access token of the server, which no result repeats', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_get');
-
   const result = await ctx.callTool('tracker.item_get', { id: 'item-1' });
 
   const token = ctx.site.readLatestAccessToken() ?? 'none';
@@ -220,9 +297,6 @@ test('it sends the call with the access token of the server, which no result rep
 
 test('it holds a call of a writing tool for your approval and sends nothing to the server', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_create');
-
   const result = await ctx.callTool('tracker.item_create', { title: 'water the plants' });
 
   expect([result, ctx.site.calls.length]).toStrictEqual([
@@ -236,8 +310,6 @@ test('it holds a call of a writing tool for your approval and sends nothing to t
 
 test('it returns the text of a server error fenced, with isError set', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_get');
 
   ctx.site.setTools([
     {
@@ -290,12 +362,7 @@ test('it hides a tool whose annotations name no effects, and denies a call to it
 test('it refuses a call to a tool that changed and waits, and never asks you to approve it', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_get');
-
-  ctx.site.setTools([
-    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
-    ctx.itemCreate,
-  ]);
+  ctx.site.setTools([ctx.widenedGet, ctx.itemCreate]);
 
   await ctx.mcp.list('tracker');
   await ctx.mcp.tools.refresh();
@@ -315,8 +382,6 @@ test('it refuses a call to a tool that changed and waits, and never asks you to 
 test('it keeps the pinned tools on the list when the server fails its listing, and a call names the server and the next try', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_get');
-
   ctx.site.failListings(true);
 
   const listed = await ctx.mcp.list('tracker');
@@ -329,7 +394,7 @@ test('it keeps the pinned tools on the list when the server fails its listing, a
     ctx.site.calls.length,
   ]).toStrictEqual([
     'failed',
-    ['tracker.item_get'],
+    ['tracker.item_create', 'tracker.item_get'],
     { content: [{ type: 'text', text: 'tracker is unreachable, next try 09:01' }], isError: true },
     0,
   ]);
@@ -337,8 +402,6 @@ test('it keeps the pinned tools on the list when the server fails its listing, a
 
 test('it tries the listing itself when a call finds the next try due, and runs the call once the listing passes', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_get');
 
   ctx.site.failListings(true);
 
@@ -363,8 +426,6 @@ test('it tries the listing itself when a call finds the next try due, and runs t
 
 test('it makes the try that a call finds due and returns the next try when that listing fails too', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_get');
 
   ctx.site.failListings(true);
 
@@ -446,14 +507,12 @@ test('it lists a server before a task run reads its tool list, and leaves the ba
 test('it runs an approved call of a queued tool through the connector, and refuses it once the tool is stopped', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_create');
-
   const connector = ctx.mcp.findConnector('tracker.item_create');
   const attempt = buildActionAttempt();
 
   const done = await connector?.run(attempt);
 
-  ctx.site.setTools([ctx.itemGet, { ...ctx.itemCreate, description: 'File an item, quietly.' }]);
+  ctx.site.setTools([ctx.itemGet, ctx.widenedCreate]);
 
   await ctx.mcp.list('tracker');
 
@@ -469,16 +528,13 @@ test('it runs an approved call of a queued tool through the connector, and refus
 test('it finds no connector for a tool the proxy does not serve', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.mcp.findConnector('tracker.item_get')).toBeUndefined();
+  expect(ctx.mcp.findConnector('tracker.item_missing')).toBeUndefined();
 });
 
 test('it tells the model each server with its sign-in, health and tool counts', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_get');
-  await ctx.allow('tracker.item_create');
-
-  ctx.site.setTools([ctx.itemGet, { ...ctx.itemCreate, description: 'File an item, quietly.' }]);
+  ctx.site.setTools([ctx.itemGet, ctx.widenedCreate]);
 
   await ctx.mcp.list('tracker');
 
@@ -492,6 +548,18 @@ test('it tells the model each server with its sign-in, health and tool counts', 
         signIn: 'ok',
         health: 'healthy',
         tools: { exposed: 1, stopped: 1, hidden: 0 },
+        toolList: [
+          {
+            tool: expect.stringContaining('"tracker.item_create"'),
+            state: 'stopped_changed',
+            hiddenReason: null,
+          },
+          {
+            tool: expect.stringContaining('"tracker.item_get"'),
+            state: 'exposed',
+            hiddenReason: null,
+          },
+        ],
       },
     ],
   });
@@ -514,7 +582,6 @@ test('it fences the output of a tool whose schema names no field, and sends no s
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_tags');
 
   const result = await ctx.callTool('tracker.item_tags', { id: 'item-1' });
 
@@ -547,7 +614,6 @@ test('it leaves the pictures of a result out when the turn has no image budget l
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
 
   const result = await ctx.callTool(
     'tracker.item_get',
@@ -575,7 +641,6 @@ test('it returns the pictures of a result when the turn has room for them', asyn
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
 
   const result = await ctx.callTool(
     'tracker.item_get',
@@ -588,8 +653,6 @@ test('it returns the pictures of a result when the turn has room for them', asyn
 
 test('it tells a call and the model that the grant ended, when the refresh was refused for good during the call', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_get');
 
   ctx.site.expireAccessTokens();
   ctx.site.refuseRefresh(true);
@@ -606,7 +669,19 @@ test('it tells a call and the model that the grant ended, when the refresh was r
           state: 'added',
           signIn: 'needs_sign_in',
           health: 'healthy',
-          tools: { exposed: 1, stopped: 0, hidden: 1 },
+          tools: { exposed: 2, stopped: 0, hidden: 0 },
+          toolList: [
+            {
+              tool: expect.stringContaining('"tracker.item_create"'),
+              state: 'exposed',
+              hiddenReason: null,
+            },
+            {
+              tool: expect.stringContaining('"tracker.item_get"'),
+              state: 'exposed',
+              hiddenReason: null,
+            },
+          ],
         },
       ],
     },
@@ -616,22 +691,19 @@ test('it tells a call and the model that the grant ended, when the refresh was r
 test('it refuses an approved call whose arguments the form pinned since no longer accepts', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_create');
-
   ctx.site.setTools([
     ctx.itemGet,
     {
       ...ctx.itemCreate,
       inputSchema: {
         type: 'object',
-        properties: { title: { type: 'string' }, priority: { type: 'integer' } },
-        required: ['title', 'priority'],
+        properties: { title: { type: 'string', enum: ['other'] } },
+        required: ['title'],
       },
     },
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
 
   const connector = ctx.mcp.findConnector('tracker.item_create');
 
@@ -656,7 +728,6 @@ test('it refuses the approved call of a server error, and keeps the server text 
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
 
   const connector = ctx.mcp.findConnector('tracker.item_create');
 
@@ -681,7 +752,6 @@ test('it accepts a result that fits the pin the call loaded, when the pin moves 
   ctx.site.setTools([counted, ctx.itemCreate]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
 
   const before = await ctx.mcp.readTools('tracker');
 
@@ -696,7 +766,6 @@ test('it accepts a result that fits the pin the call loaded, when the pin moves 
     ]);
 
     await ctx.mcp.list('tracker');
-    await ctx.allow('tracker.item_get');
   });
 
   const result = await ctx.callTool('tracker.item_get', { id: 'item-1' });
@@ -724,7 +793,6 @@ test('it accepts a result that fits the pin the call loaded, when the pin moves 
 test('it keeps the pin hash and the definitions snapshot in the record of each call', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_get');
   await ctx.callTool('tracker.item_get', { id: 'item-1' });
 
   const rows = await ctx.mcp.readTools('tracker');
@@ -742,14 +810,11 @@ test('it keeps the pin hash and the definitions snapshot in the record of each c
 test('it runs an approved call under the form that the pin moved to, when that form accepts its arguments', async () => {
   const ctx = await setupTest();
 
-  await ctx.allow('tracker.item_create');
-
   const connector = ctx.mcp.findConnector('tracker.item_create');
 
   ctx.site.setTools([ctx.itemGet, { ...ctx.itemCreate, description: 'File an item, quietly.' }]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
 
   const result = await connector?.run(buildActionAttempt());
 
@@ -774,7 +839,6 @@ test('it returns the server text of a queued call that the action runner settled
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
 
   const runner = await ctx.startRunner();
 
@@ -843,9 +907,7 @@ test('it returns the server text of a queued call that the action runner settled
 });
 
 test('it refuses an approved call when the listing that its clearance makes moves the pin to a form that rejects the arguments', async () => {
-  const ctx = await setupTest({ facts: { trusted: true } });
-
-  await ctx.allow('tracker.item_create');
+  const ctx = await setupTest();
 
   ctx.site.failListings(true);
 
@@ -855,7 +917,11 @@ test('it refuses an approved call when the listing that its clearance makes move
     ctx.itemGet,
     {
       ...ctx.itemCreate,
-      inputSchema: { type: 'object', properties: { title: { type: 'integer' } } },
+      inputSchema: {
+        type: 'object',
+        properties: { title: { type: 'string', enum: ['other'] } },
+        required: ['title'],
+      },
     },
   ]);
 
@@ -876,16 +942,18 @@ test('it refuses an approved call when the listing that its clearance makes move
   ]);
 });
 
-test('it refuses a call when a trusted listing moves the pin to a form that rejects its input while the session opens', async () => {
-  const ctx = await setupTest({ facts: { trusted: true } });
-
-  await ctx.allow('tracker.item_get');
+test('it refuses a call when a listing moves the pin to a form that rejects its input while the session opens', async () => {
+  const ctx = await setupTest();
 
   ctx.site.onInitialize(async () => {
     ctx.site.setTools([
       {
         ...ctx.itemGet,
-        inputSchema: { type: 'object', properties: { id: { type: 'integer' } } },
+        inputSchema: {
+          type: 'object',
+          properties: { id: { type: 'string', enum: ['other'] } },
+          required: ['id'],
+        },
       },
       ctx.itemCreate,
     ]);
@@ -925,7 +993,6 @@ test('it refuses a call whose declaration came from an older snapshot than the o
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
 
   ctx.setOverrides(
     {
@@ -974,7 +1041,6 @@ test('it records the snapshot that supplied the declaration once the proxy serve
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
 
   ctx.setOverrides(
     {
@@ -1018,7 +1084,6 @@ test('it leaves a queued write unknown when the server answers outside its outpu
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
 
   const outcome = await ctx.runActionAsRunner('tracker.item_create', { title: 'water the plants' });
 
@@ -1058,8 +1123,6 @@ test('it leaves a write unknown when the read tool of its check answers outside 
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
-  await ctx.allow('tracker.item_create');
 
   const runner = await ctx.startRunner();
 
@@ -1110,8 +1173,6 @@ test('it leaves a write unknown and sends nothing again when its check finds onl
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
-  await ctx.allow('tracker.item_create');
 
   const runner = await ctx.startRunner();
 
@@ -1163,7 +1224,7 @@ test('it sends no second request for a scheduled retry once its idempotency over
   ctx.site.setTools([ctx.itemGet, keyedCreate]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
+  await ctx.acceptChange('tracker.item_create');
 
   const runner = await ctx.startRunner();
   const queued = await runner.queue('tracker.item_create', { title: 'water the plants' });
@@ -1215,8 +1276,7 @@ test('it sends no second request for a scheduled retry once its idempotency over
   ctx.site.setTools([ctx.itemGet, keyedCreate]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_get');
-  await ctx.allow('tracker.item_create');
+  await ctx.acceptChange('tracker.item_create');
 
   const runner = await ctx.startRunner();
   const queued = await runner.queue('tracker.item_create', { title: 'water the plants' });
@@ -1285,7 +1345,7 @@ test('it runs a queued call whose required idempotency key the proxy fills, thou
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_create');
+  await ctx.acceptChange('tracker.item_create');
 
   const runner = await ctx.startRunner();
 
@@ -1361,4 +1421,32 @@ test('it runs a queued call whose required idempotency key the proxy fills, thou
     ['done'],
     [{ title: 'water the plants', requestID: actions.at(0)?.actionID }],
   ]);
+});
+
+test('it lets one rule on the whole server run a write of the server, and asks nothing', async () => {
+  const ctx = await setupTest();
+  const ran = await ctx.callInStep(['tracker.*'], () => Promise.resolve());
+
+  expect([
+    ran.actions.map((action) => action.status),
+    ctx.site.calls.map((call) => call.tool),
+  ]).toStrictEqual([['done'], ['item_create']]);
+});
+
+test('it runs no queued call once its tool has another pin, and tells the model to call again', async () => {
+  const ctx = await setupTest();
+
+  const ran = await ctx.callInStep(['tracker.*'], async () => {
+    ctx.site.setTools([ctx.itemGet, { ...ctx.itemCreate, description: 'File an item, quietly.' }]);
+
+    await ctx.mcp.list('tracker');
+    await ctx.mcp.tools.refresh();
+  });
+
+  expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
+    ['failed'],
+    0,
+  ]);
+
+  expect(JSON.stringify(ran.results)).toContain('call it again');
 });

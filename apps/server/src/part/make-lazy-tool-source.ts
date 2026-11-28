@@ -5,6 +5,7 @@ import type { ToolSource } from '@heynixie/tools';
 export function makeLazyToolSource(pickSource: () => ToolSource | null): ToolSource {
   return {
     toolNames: () => pickSource()?.toolNames() ?? [],
+    serverIDs: () => pickSource()?.serverIDs?.() ?? [],
     findTool: (name) => pickSource()?.findTool(name) ?? null,
     prepareTaskRun: async (names) => {
       await pickSource()?.prepareTaskRun?.(names);

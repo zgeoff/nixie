@@ -34,6 +34,17 @@ async function setupTest() {
     ...ctx,
     itemGet,
     itemNotify,
+
+    // the form of item_get that accepts an argument it did not accept before
+    widenedGet: {
+      ...itemGet,
+      description: 'Read one item, and say who owns it.',
+      inputSchema: {
+        type: 'object',
+        properties: { id: { type: 'string' }, owner: { type: 'string' } },
+        required: ['id'],
+      },
+    },
     readTool: (tool: string) => readToolRow(ctx.test.log.writer.db, tool),
     readServer: async () => {
       const rows = await readServerRows(ctx.test.log.writer.db);
@@ -43,7 +54,7 @@ async function setupTest() {
   };
 }
 
-test('it signs in through the credential store and lists the tools as hidden until allowed', async () => {
+test('it signs in through the credential store and pins and exposes the tools it lists', async () => {
   const ctx = await setupTest();
   const finished = await ctx.signIn(ctx.mcp);
   const tools = await ctx.mcp.readTools('tracker');
@@ -51,8 +62,8 @@ test('it signs in through the credential store and lists the tools as hidden unt
   expect([finished, tools.map((tool) => [tool.tool, tool.state])]).toStrictEqual([
     { status: 'ok', server: 'tracker' },
     [
-      ['tracker.item_get', 'hidden_new'],
-      ['tracker.item_notify', 'hidden_new'],
+      ['tracker.item_get', 'exposed'],
+      ['tracker.item_notify', 'exposed'],
     ],
   ]);
 });
@@ -97,7 +108,6 @@ test('it keeps the pinned tool in its pinned form when the next listing fails', 
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
 
   ctx.site.failListings(true);
 
@@ -111,18 +121,14 @@ test('it keeps the pinned tool in its pinned form when the next listing fails', 
   ]);
 });
 
-test('it stops a tool that stays listed with a changed form until you allow it', async () => {
+test('it stops a tool that stays listed with a form that widens its input until you accept it', async () => {
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
 
   const pinned = await ctx.readTool('tracker.item_get');
 
-  ctx.site.setTools([
-    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
-    ctx.itemNotify,
-  ]);
+  ctx.site.setTools([ctx.widenedGet, ctx.itemNotify]);
 
   await ctx.mcp.list('tracker');
 
@@ -135,17 +141,13 @@ test('it stops a tool that stays listed with a changed form until you allow it',
   ]).toStrictEqual(['stopped_changed', true, false]);
 });
 
-test('it lists the old pinned form of a changed tool to the caller until you allow it', async () => {
+test('it lists the old pinned form of a widened tool to the caller until you accept the change', async () => {
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
   await ctx.mcp.tools.refresh();
 
-  ctx.site.setTools([
-    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
-    ctx.itemNotify,
-  ]);
+  ctx.site.setTools([ctx.widenedGet, ctx.itemNotify]);
 
   await ctx.mcp.list('tracker');
 
@@ -162,34 +164,31 @@ test('it lists the old pinned form of a changed tool to the caller until you all
   ]);
 });
 
-test('it lists a stopped tool to the caller in its pinned form, and leaves a hidden tool off the list', async () => {
+test('it lists a stopped tool to the caller in its pinned form, beside the tool that stays exposed', async () => {
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
   await ctx.mcp.tools.refresh();
 
-  ctx.site.setTools([
-    { ...ctx.itemGet, description: 'Read one item, and say who owns it.' },
-    ctx.itemNotify,
-  ]);
+  ctx.site.setTools([ctx.widenedGet, ctx.itemNotify]);
 
   await ctx.mcp.list('tracker');
 
   const listed = await readListedTools(ctx, ['tracker.item_get', 'tracker.item_notify']);
 
-  expect(listed).toStrictEqual([{ name: 'tracker.item_get', description: 'Read one item.' }]);
+  expect(listed).toStrictEqual([
+    { name: 'tracker.item_get', description: 'Read one item.' },
+    { name: 'tracker.item_notify', description: 'Tell the assignee about an item.' },
+  ]);
 });
 
-test('it shows the caller the new form of a changed tool on a trusted server and tells the owner', async () => {
+test('it shows the caller the new form of a changed tool and tells the owner', async () => {
   const ctx = await startStandInMcp({
     tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
-    facts: { trusted: true },
   });
 
   await ctx.approveServer();
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
 
   ctx.site.setTools([
     { name: 'item_get', description: 'Read one item, newly.', inputSchema: { type: 'object' } },
@@ -207,12 +206,11 @@ test('it shows the caller the new form of a changed tool on a trusted server and
   ]);
 });
 
-test('it leaves a note in the inbox of the conversation when a trusted server changes a tool, with no read of the notices', async () => {
+test('it leaves a note in the inbox of the conversation when a server changes a tool, with no read of the notices', async () => {
   const holder: { log: Log | null } = { log: null };
 
   const ctx = await startStandInMcp({
     tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
-    facts: { trusted: true },
     onPinMoved: async (tx, move) => {
       const note = buildToolChangeNote(move, {
         definitions: { snapshotHash: 'sha256:test' },
@@ -231,7 +229,6 @@ test('it leaves a note in the inbox of the conversation when a trusted server ch
 
   await ctx.approveServer();
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
 
   const pinned = await readToolRow(ctx.test.log.writer.db, 'tracker.item_get');
 
@@ -260,7 +257,6 @@ test('it drops a tool that the next listing lacks and tells you', async () => {
   const ctx = await setupTest();
 
   await ctx.signIn(ctx.mcp);
-  await ctx.test.allow('tracker.item_get');
 
   ctx.site.setTools([ctx.itemNotify]);
 
@@ -419,4 +415,56 @@ test('it forgets the grant when the config drops a scope, so the server shows no
   const listed = await restarted.list('tracker');
 
   expect(listed).toStrictEqual({ status: 'skipped', reason: 'no_grant' });
+});
+
+test('it fails a listing that holds two forms of one tool name, and keeps the pins it had', async () => {
+  const ctx = await setupTest();
+
+  await ctx.signIn(ctx.mcp);
+
+  ctx.site.setTools([
+    ctx.itemGet,
+    { ...ctx.itemGet, description: 'Another form.' },
+    ctx.itemNotify,
+  ]);
+
+  const listed = await ctx.mcp.list('tracker');
+  const tool = await ctx.readTool('tracker.item_get');
+
+  expect([listed, tool?.state, tool?.latest_hash === tool?.pinned_hash]).toStrictEqual([
+    { status: 'failed', message: 'the listing holds two forms of the tool item_get' },
+    'exposed',
+    true,
+  ]);
+});
+
+test('it fails a listing of more than 200 tools whole, and pins none of them', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.setTools(
+    Array.from({ length: 201 }, (_item, index) => ({
+      name: `item_${index}`,
+      inputSchema: { type: 'object' },
+    })),
+  );
+
+  await ctx.signIn(ctx.mcp);
+
+  const tools = await ctx.mcp.readTools('tracker');
+
+  expect([ctx.mcp.readHealth('tracker').failures, tools]).toStrictEqual([1, []]);
+});
+
+test('it fails a listing with a tool schema over 64 KiB', async () => {
+  const ctx = await setupTest();
+
+  ctx.site.setTools([
+    { name: 'item_huge', inputSchema: { type: 'object', description: 'x'.repeat(70_000) } },
+  ]);
+
+  await ctx.signIn(ctx.mcp);
+
+  const tools = await ctx.mcp.readTools('tracker');
+
+  expect([ctx.mcp.readHealth('tracker').lastError, tools]).toStrictEqual(['unparsable', []]);
 });

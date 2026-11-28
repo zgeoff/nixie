@@ -8,7 +8,7 @@ export function buildServerRow(overrides: Partial<McpServerRow> = {}): McpServer
     url: 'https://tracker.example.org/mcp',
     client_id: 'nixie-1',
     scope: 'read',
-    trusted: 0,
+    trusted: null,
     private_range: null,
     requested: null,
     proposal_id: null,

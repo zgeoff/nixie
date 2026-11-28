@@ -26,7 +26,9 @@ export interface SeedTools {
 }
 
 export function buildSeedInputs(
-  config: Pick<DeploymentConfig, 'definitions' | 'models' | 'owner'>,
+  config: Pick<DeploymentConfig, 'definitions' | 'models' | 'owner'> & {
+    readonly mcp?: Pick<DeploymentConfig['mcp'], 'servers'>;
+  },
   tools: SeedTools,
 ): SeedInputs {
   const policy = buildSnapshotPolicy(
@@ -40,8 +42,13 @@ export function buildSeedInputs(
 
   const conversationTools = tools.definitions.map((tool) => tool.name);
 
+  // A definition of a file may name `<server>.*` or one tool of a configured server, whose tools
+  // register only after the server lists them.
+  const serverTools = Object.keys(config.mcp?.servers ?? {}).map((serverID) => `${serverID}.*`);
+
   const toolNames = [
     ...conversationTools,
+    ...serverTools,
     tools.actions.logConnector.tool.name,
     ...tools.actions.queuedTools.map((tool) => tool.name),
   ];

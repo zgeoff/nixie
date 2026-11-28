@@ -9,8 +9,10 @@ export interface McpServerRow {
   readonly url: string | null;
   readonly client_id: string | null;
   readonly scope: string | null;
-  readonly trusted: number | null;
   readonly private_range: string | null;
+
+  // unused: a server has no trust fact, and no fold writes the column
+  readonly trusted: number | null;
 
   // JSON of the facts the open or the declined proposal asks for
   readonly requested: string | null;

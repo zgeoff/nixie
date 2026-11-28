@@ -17,7 +17,6 @@ import { startMcpPart } from './start-mcp-part';
 async function setupTest() {
   const standIn = await startStandInMcp({
     tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
-    facts: { trusted: true },
     extraProjections: tasksProjections,
   });
 
@@ -86,13 +85,12 @@ async function setupTest() {
   };
 }
 
-test('it leaves a change note in the conversation and in each task whose run holds the tool, when a listing that the part started moves a trusted pin', async () => {
+test('it leaves a change note in the conversation and in each task whose run holds the tool, when a listing that the part started moves a pin', async () => {
   const ctx = await setupTest();
   const chase = await ctx.startRun('chase-items', ['tracker.*']);
 
   await ctx.startRun('water-plants', ['notes_read']);
   await ctx.part.list('tracker');
-  await ctx.test.allow('tracker.item_get');
 
   ctx.site.setTools([
     { name: 'item_get', description: 'Read one item, newly.', inputSchema: { type: 'object' } },
@@ -105,8 +103,18 @@ test('it leaves a change note in the conversation and in each task whose run hol
   expect(notes).toStrictEqual(['conversation', chase]);
 });
 
-test('it lapses an allow proposal of a tool after the days that the config sets for the family', async () => {
+test('it lapses an accept proposal of a tool after the days that the config sets for the family', async () => {
   const ctx = await setupTest();
+
+  await ctx.part.list('tracker');
+
+  ctx.site.setTools([
+    {
+      name: 'item_get',
+      description: 'Read one item.',
+      inputSchema: { type: 'object', properties: { owner: { type: 'string' } } },
+    },
+  ]);
 
   await ctx.part.list('tracker');
 

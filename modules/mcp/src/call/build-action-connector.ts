@@ -19,6 +19,9 @@ export interface ConnectorReconcile {
   // the definitions snapshot that held the declaration, or null for a declaration by annotations
   readonly definitionsHash: string | null;
 
+  // the pin hash of the tool as it stands now, or null when the proxy serves the tool no more
+  readonly findPinHash: () => string | null;
+
   // runs the read tool of a check, named as `<serverID>.<tool>`, with the call's input
   readonly runCheck: (tool: string, input: JSONObject) => Promise<ProxiedCallResult | null>;
 }
@@ -27,6 +30,7 @@ const noReconcile: ConnectorReconcile = {
   reconcile: null,
   serverID: '',
   definitionsHash: null,
+  findPinHash: () => null,
   runCheck: () => Promise.resolve(null),
 };
 
@@ -44,8 +48,10 @@ export function buildActionConnector(
 
     return {
       run: async (attempt) => {
-        if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
-          return { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) };
+        const moved = pickMovedResponse(reconcile, attempt);
+
+        if (moved !== null) {
+          return moved;
         }
 
         const result = await call(attempt.arguments);
@@ -54,7 +60,7 @@ export function buildActionConnector(
       },
       reconcile: { kind: 'check', tool, onNotFound: 'retry' },
       check: async (attempt) => {
-        if (isRecoveryMoved(reconcile, attempt)) {
+        if (isRecoveryMoved(reconcile, attempt) || isPinMoved(reconcile, attempt)) {
           return { kind: 'inconclusive' };
         }
 
@@ -68,6 +74,12 @@ export function buildActionConnector(
   if (declared === null) {
     return {
       run: async (attempt) => {
+        const moved = pickMovedResponse(reconcile, attempt);
+
+        if (moved !== null) {
+          return moved;
+        }
+
         // A call that declares nothing to settle an unknown outcome is never tried again, so a
         // second attempt means an earlier version of the declaration scheduled it.
         if (attempt.attempt > 1) {
@@ -89,8 +101,10 @@ export function buildActionConnector(
 
   return {
     run: async (attempt) => {
-      if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
-        return { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) };
+      const moved = pickMovedResponse(reconcile, attempt);
+
+      if (moved !== null) {
+        return moved;
       }
 
       const result = await call({ ...attempt.arguments, [key]: attempt.actionID });
@@ -101,12 +115,40 @@ export function buildActionConnector(
   };
 }
 
-function isRecoveryMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
-  return reconcile.definitionsHash !== null && reconcile.definitionsHash !== attempt.snapshotHash;
+// What a call answers once its tool has another pin than the one it was decided on, or its
+// declaration moved after a first attempt. A first attempt sent nothing, so it is refused and the
+// model asks again; a later attempt may have sent, so it comes to you.
+function pickMovedResponse(
+  reconcile: ConnectorReconcile,
+  attempt: ActionAttempt,
+): ProviderResponse | null {
+  if (isPinMoved(reconcile, attempt)) {
+    return attempt.attempt > 1
+      ? { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) }
+      : { kind: 'refused', reason: renderChangedBeforeRunReason(attempt.tool) };
+  }
+
+  if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
+    return { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) };
+  }
+
+  return null;
+}
+
+function isPinMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
+  return attempt.pinHash !== undefined && attempt.pinHash !== reconcile.findPinHash();
 }
 
 function renderMovedReason(tool: string): string {
   return `${tool} changed its declaration after the first attempt, so nothing was retried`;
+}
+
+function renderChangedBeforeRunReason(tool: string): string {
+  return `${tool} changed after you approved this call, so nothing ran; call it again`;
+}
+
+function isRecoveryMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {
+  return reconcile.definitionsHash !== null && reconcile.definitionsHash !== attempt.snapshotHash;
 }
 
 function toProviderResponse(result: ProxiedCallResult): ProviderResponse {

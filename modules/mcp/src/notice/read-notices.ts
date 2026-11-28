@@ -12,8 +12,8 @@ export interface McpNotice {
   readonly toHash: string | null;
 }
 
-// The newest notices of changes that applied with no allow, newest first: a trusted server's
-// changed tool, and a tool that a listing dropped.
+// The newest notices of changes that applied with no allow, newest first: a tool whose form changed, and a
+// tool that a listing dropped.
 export async function readNotices(context: McpContext, limit: number): Promise<McpNotice[]> {
   const records = await readRecords(context.log, {
     afterSequence: 0,

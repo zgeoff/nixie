@@ -6,7 +6,6 @@ export function buildServerFacts(overrides: Partial<ServerFacts> = {}): ServerFa
     url: 'https://tracker.example.org/mcp',
     clientID: 'nixie-7f3a',
     scope: 'read write',
-    trusted: false,
     privateRange: null,
     ...overrides,
   };

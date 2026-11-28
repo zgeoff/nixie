@@ -1,7 +1,7 @@
 import type { McpToolOverride } from '@heynixie/policy';
 import { pickFitFault } from '../declaration/pick-fit-fault';
 import type { PinMoveCause, PinState, ToolForm } from '../types';
-import { hasAddedProperty } from './has-added-property';
+import { hasWidenedInput } from './has-widened-input';
 
 export interface ExistingPin {
   readonly pinnedHash: string | null;
@@ -10,8 +10,6 @@ export interface ExistingPin {
 }
 
 export interface PinInput {
-  readonly isTrusted: boolean;
-
   // null for a tool that no server listing has held
   readonly existing: ExistingPin | null;
 
@@ -32,8 +30,8 @@ export interface PinInput {
   readonly serverToolNames?: ReadonlySet<string>;
 }
 
-// A change the owner learns of after the fact: a trusted server's tool changed, or a listing dropped
-// a tool.
+// A change the owner learns of after the fact: a tool's form changed with the same input shape, or a
+// listing dropped a tool.
 interface PinNotice {
   readonly kind: 'tool_changed' | 'tool_removed';
   readonly fromHash: string | null;
@@ -60,9 +58,9 @@ export interface PinDecision {
   readonly hiddenReason: string | null;
 }
 
-// Decides what one tool of a passed server listing becomes. The pin only moves in two cases: an
-// allow, which another function applies, and a trusted server's change that adds no input property.
-// A new tool stays hidden on every server until you allow it.
+// Decides what one tool of a passed server listing becomes. A tool with no pin is pinned at its
+// first listing. A change that keeps the input's shape moves the pin and leaves a notice, and one
+// that widens the input stops the tool until you accept it.
 export function decidePin(input: PinInput): PinDecision {
   const decision = decideBasePin(input);
   const override = input.override ?? null;
@@ -113,22 +111,22 @@ function decideBasePin(input: PinInput): PinDecision {
   if (input.pinnedForm === null) {
     // a forget erased the form the pin names, so there is nothing to compare the change with
     return {
-      state: 'hidden_new',
-      pinnedHash: null,
+      state: 'exposed',
+      pinnedHash: hash,
       latestHash: hash,
-      move: { fromHash: pinnedHash, toHash: null, cause: 'forgotten' },
-      propose: { fromHash: null, hash },
+      move: { fromHash: pinnedHash, toHash: hash, cause: 'forgotten' },
+      propose: null,
       notice: null,
       hiddenReason: null,
     };
   }
 
-  if (input.isTrusted && !hasAddedProperty(input.pinnedForm.inputSchema, input.form.inputSchema)) {
+  if (!hasWidenedInput(input.pinnedForm.inputSchema, input.form.inputSchema)) {
     return {
       state: 'exposed',
       pinnedHash: hash,
       latestHash: hash,
-      move: { fromHash: pinnedHash, toHash: hash, cause: 'trusted_change' },
+      move: { fromHash: pinnedHash, toHash: hash, cause: 'changed' },
       propose: null,
       notice: { kind: 'tool_changed', fromHash: pinnedHash, toHash: hash },
       hiddenReason: null,
@@ -147,17 +145,12 @@ function decideBasePin(input: PinInput): PinDecision {
 }
 
 function decideUnpinned(input: PinInput): PinDecision {
-  const isChanged = input.existing === null || input.existing.latestHash !== input.hash;
-
   return {
-    state: 'hidden_new',
-    pinnedHash: null,
+    state: 'exposed',
+    pinnedHash: input.hash,
     latestHash: input.hash,
-    move: null,
-    propose:
-      isChanged || input.existing?.state !== 'hidden_new'
-        ? { fromHash: null, hash: input.hash }
-        : null,
+    move: { fromHash: null, toHash: input.hash, cause: 'listed' },
+    propose: null,
     notice: null,
     hiddenReason: null,
   };

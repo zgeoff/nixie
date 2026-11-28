@@ -72,6 +72,7 @@ async function runCheck(
       tool: claimed.action.tool,
       arguments: call.queued.arguments,
       snapshotHash: call.queued.snapshotHash,
+      ...(call.queued.pinHash === undefined ? {} : { pinHash: call.queued.pinHash }),
       attempt: claimed.action.attempt_count,
       idempotencyKey: buildAttemptKey(claimed.action),
       destinations: [],

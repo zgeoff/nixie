@@ -14,6 +14,19 @@ async function setupTest() {
   await mcp.addServer('tracker', buildServerFacts());
   await mcp.list('tracker', { forms: [buildToolForm()] });
 
+  // a form that widens the input stops the tool and waits for an accept
+  await mcp.list('tracker', {
+    forms: [
+      buildToolForm({
+        inputSchema: {
+          type: 'object',
+          properties: { id: { type: 'string' }, owner: { type: 'string' } },
+          required: ['id'],
+        },
+      }),
+    ],
+  });
+
   return {
     mcp,
     readToolProposals: async () => {
@@ -41,7 +54,7 @@ test('it shows no proposal on a tool once its proposal lapsed', async () => {
 
   const proposalID = row?.proposal_id ?? null;
 
-  invariant(proposalID !== null, 'the tool waits for an allow');
+  invariant(proposalID !== null, 'the tool waits for an accept');
 
   const before = await ctx.readToolProposals();
 

@@ -15,7 +15,6 @@ export type { ConnectResult, FinishInput, FinishResult } from './signin/create-s
 export type { ListResult, Mcp, McpOptions, McpPort } from './start-mcp';
 export { startMcp } from './start-mcp';
 export { buildMcpServersTool } from './tool/build-mcp-servers-tool';
-export type { McpServerSummary } from './start-mcp';
 export { buildToolChangeNote } from './notice/build-tool-change-note';
 export { makeToolChangeNotifier } from './notice/make-tool-change-notifier';
 export type { McpNotice } from './notice/read-notices';

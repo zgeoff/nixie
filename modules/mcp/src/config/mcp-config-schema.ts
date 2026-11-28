@@ -40,8 +40,11 @@ function buildServerSchema(isTestBuild: boolean) {
       url: z.string().min(1),
       clientID: z.string().min(1),
       scope: z.string().min(1),
-      trusted: z.boolean().default(false),
       privateRange: z.string().nullable().default(null),
+
+      // A config written for an earlier release holds this key. It decides nothing, because every
+      // tool pins at its first listing, and the server's facts leave it out.
+      trusted: z.boolean().optional(),
     })
     .superRefine((server, issues) => {
       const reason = findUnfitURL(server.url, isTestBuild);

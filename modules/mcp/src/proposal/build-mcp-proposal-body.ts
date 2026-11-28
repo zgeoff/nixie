@@ -4,8 +4,8 @@ import { buildToolDeclaration } from '../declaration/build-tool-declaration';
 import { formatCanonicalJSON } from '../pin/format-canonical-json';
 import type { McpOperation, ToolForm } from '../types';
 
-// The forms an allow card shows: the form the tool is allowed in now, when it has one, and the form
-// it would be allowed in. A form that no listing record can give back any more is null.
+// The forms an accept card shows: the form the tool is pinned in now, when it has one, and the form
+// it would be pinned in. A form that no listing record can give back any more is null.
 export interface AllowForms {
   readonly allowed: ToolForm | null;
   readonly proposed: ToolForm | null;
@@ -27,7 +27,6 @@ export function buildMcpProposalBody(operation: McpOperation, forms: AllowForms)
         url: operation.facts.url,
         clientID: operation.facts.clientID,
         scopes: operation.facts.scope,
-        trusted: operation.facts.trusted ? 'yes' : 'no',
         ...(operation.facts.privateRange === null
           ? {}
           : { privateRange: operation.facts.privateRange }),
@@ -38,7 +37,7 @@ export function buildMcpProposalBody(operation: McpOperation, forms: AllowForms)
   }
 
   return {
-    sentence: `Allow the tool ${operation.tool} in the form the server lists now.`,
+    sentence: `Accept the change to the tool ${operation.tool}, which now takes input it did not take before.`,
     fields: {
       ...(operation.fromHash === null
         ? {}
@@ -51,7 +50,7 @@ export function buildMcpProposalBody(operation: McpOperation, forms: AllowForms)
         : describeDeclaration(forms.proposed, forms.override ?? null)),
     },
     ruleSentence: null,
-    approveLabel: 'Allow the tool',
+    approveLabel: 'Accept the change',
   };
 }
 

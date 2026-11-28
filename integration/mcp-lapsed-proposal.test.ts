@@ -6,8 +6,13 @@ import invariant from 'tiny-invariant';
 
 async function setupTest() {
   const standIn = await startStandInMcp({
-    tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
-    facts: { trusted: true },
+    tools: [
+      {
+        name: 'item_get',
+        description: 'Read one item.',
+        inputSchema: { type: 'object', properties: { id: { type: 'string' } } },
+      },
+    ],
   });
 
   await standIn.approveServer();
@@ -26,12 +31,26 @@ async function setupTest() {
 
       return tools.map((tool) => describeToolState(tool));
     },
+    widenTool: async () => {
+      standIn.site.setTools([
+        {
+          name: 'item_get',
+          description: 'Read one item.',
+          inputSchema: {
+            type: 'object',
+            properties: { id: { type: 'string' }, recipient: { type: 'string' } },
+          },
+        },
+      ]);
+
+      await standIn.mcp.list('tracker');
+    },
     lapseToolProposal: async () => {
       const [tool] = await readTools();
 
       const proposalID = tool?.proposalID ?? null;
 
-      invariant(proposalID !== null, 'the tool waits for an allow');
+      invariant(proposalID !== null, 'the tool waits for you to accept the change');
 
       const proposal = await readProposal(standIn.test.log.writer.db, proposalID);
 
@@ -45,8 +64,11 @@ async function setupTest() {
   };
 }
 
-test('it stops labelling a tool as waiting for approval once its proposal lapsed', async () => {
+test('it stops labelling a stopped tool as waiting for you once its proposal lapsed', async () => {
   const ctx = await setupTest();
+
+  await ctx.widenTool();
+
   const before = await ctx.readToolLabels();
 
   await ctx.lapseToolProposal();
@@ -54,7 +76,7 @@ test('it stops labelling a tool as waiting for approval once its proposal lapsed
   const after = await ctx.readToolLabels();
 
   expect([before, after]).toStrictEqual([
-    ['Hidden: waits for your approval'],
-    ['Hidden: not allowed'],
+    ['Stopped: takes new input, waits for you to accept the change'],
+    ['Stopped: takes new input since the last form you accepted'],
   ]);
 });

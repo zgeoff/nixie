@@ -10,7 +10,6 @@ export interface ServerFacts {
 
   // space-separated scopes
   readonly scope: string;
-  readonly trusted: boolean;
 
   // one CIDR range, or null when the host resolves to a public address
   readonly privateRange: string | null;
@@ -54,7 +53,9 @@ export interface ToolForm {
 
 export type PinState = 'exposed' | 'stopped_changed' | 'stopped_unfit' | 'hidden_new' | 'removed';
 
-export type PinMoveCause = 'allowed' | 'trusted_change' | 'forgotten';
+// listed: a tool pinned at its first listing; changed: a form that keeps its input shape; allowed:
+// your accept of a change that widens the input
+export type PinMoveCause = 'allowed' | 'listed' | 'changed' | 'forgotten';
 
 // What the module's writes need: the log, the snapshot the records name, and the clock.
 export interface McpContext {

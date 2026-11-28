@@ -47,7 +47,10 @@ export async function startConversationImp(
     credentials: parts.credentials,
     sandboxes: parts.tools.adapter,
     tools: parts.tools.endpoint,
-    toolNames: parts.tools.definitions.map((definition) => definition.name),
+    toolNames: [
+      ...parts.tools.definitions.map((definition) => definition.name),
+      ...Object.keys(parts.config.mcp.servers).map((serverID) => `${serverID}.*`),
+    ],
     images: toImageNames(parts.images),
     getDefinitions: () => toSessionDefinitions(parts.inForce.read()),
     readTurnNote: makeTurnNoteReader(

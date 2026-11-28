@@ -270,6 +270,7 @@ async function runConnector(
       tool: attempt.action.tool,
       arguments: call.queued.arguments,
       snapshotHash: call.queued.snapshotHash,
+      ...(call.queued.pinHash === undefined ? {} : { pinHash: call.queued.pinHash }),
       attempt: attempt.attempt,
       idempotencyKey: buildAttemptKey(attempt.action),
       destinations: call.destinations,

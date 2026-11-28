@@ -9,19 +9,17 @@ async function setupTest() {
 
   const standIn = await startStandInMcp({
     tools: [{ name: 'item_get', description: 'Read one item.', inputSchema: { type: 'object' } }],
-    facts: { trusted: true },
   });
 
   await standIn.approveServer();
   await standIn.signIn(standIn.mcp);
-  await standIn.test.allow('tracker.item_get');
 
   api.setMcp(standIn.mcp);
 
   return { ...api, standIn };
 }
 
-test('#mcp.readNotices tells the owner about a trusted server that changed a tool', async () => {
+test('#mcp.readNotices tells the owner about a tool whose form changed', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 

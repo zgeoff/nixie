@@ -129,17 +129,15 @@ export function registerHarnessOperations(
     return installs.length;
   });
 
-  link.registerOperation('approveMcp', schemas.approveMcp, async (request) => {
-    const answers = await runMcpProposalAnswer(context, request.change);
+  link.registerOperation('approveMcp', schemas.approveMcp, async () => {
+    const answers = await runMcpProposalAnswer(context);
 
     if (answers.refused.length > 0) {
-      throw new Error(
-        `an MCP ${request.change} proposal was refused: ${answers.refused.join(', ')}`,
-      );
+      throw new Error(`an MCP server proposal was refused: ${answers.refused.join(', ')}`);
     }
 
     if (answers.approved === 0) {
-      throw new Error(`no MCP ${request.change} proposal waits for an answer`);
+      throw new Error('no MCP server proposal waits for an answer');
     }
 
     return answers.approved;

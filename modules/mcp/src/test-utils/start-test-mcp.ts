@@ -23,7 +23,6 @@ import type { McpContext, PinMove, ServerFacts, ToolForm } from '../types';
 
 export interface ListInput {
   readonly forms: readonly ToolForm[];
-  readonly isTrusted?: boolean;
 
   // the server's override file, by the tool's own name
   readonly overrides?: Readonly<Record<string, McpToolOverride>>;
@@ -61,7 +60,7 @@ export interface TestMcp {
   // One passed listing of the server, with the pin moves it made.
   readonly list: (serverID: string, input: ListInput) => Promise<readonly PinMove[]>;
 
-  // Approves the open allow proposal of the tool.
+  // Approves the open allow proposal of the tool, which waits only for a change that widened its input.
   readonly allow: (tool: string) => Promise<void>;
 
   // the notices that listings wrote, oldest first
@@ -188,7 +187,6 @@ export async function startTestMcp(options: TestMcpOptions = {}): Promise<TestMc
         },
         {
           serverID,
-          isTrusted: input.isTrusted ?? false,
           forms: input.forms,
           takenModelNames: new Set(),
           ...(input.overrides === undefined ? {} : { overrides: input.overrides }),

@@ -8,8 +8,8 @@ export function createMcpCommands(host: HostTransport): readonly (readonly [stri
   ];
 }
 
-// Writes the allow proposal of a tool that waits for one. A listing never proposes the same form
-// twice, so this is the way back after you declined a proposal or it lapsed.
+// Writes the accept proposal of a tool that a change stopped. A listing never proposes the same
+// form twice, so this is the way back after you declined a proposal or it lapsed.
 async function runMcpAllow(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   const tool = flags.tool;
 
@@ -29,7 +29,7 @@ async function runMcpAllow(host: HostTransport, flags: CLIFlags, io: CLIIO): Pro
 const defaultNoticeLimit = 20;
 
 // Prints the newest notices of changes that applied with no allow, one JSON line each, newest first:
-// a trusted server's changed tool, and a tool that a listing dropped.
+// a tool whose form changed, and a tool that a listing dropped.
 async function runMcpNotices(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   const socketPath = await host.resolveSocketPath(flags.config);
 

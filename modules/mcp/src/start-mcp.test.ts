@@ -14,7 +14,6 @@ async function setupTest() {
 
   await standIn.approveServer();
   await standIn.signIn(standIn.mcp);
-  await standIn.test.allow('tracker.item_get');
 
   return {
     hold,

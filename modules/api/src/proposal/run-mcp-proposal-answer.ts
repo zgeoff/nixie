@@ -7,19 +7,15 @@ export interface McpProposalAnswers {
   readonly refused: readonly string[];
 }
 
-const causes = { server: 'mcp_config', tool: 'mcp_allow' } as const;
-
-// Approves each open MCP proposal of the change, as the host's own answer does: it takes no
-// passkey, so a test build can answer the server proposals that the approvals page gates behind
-// one. Returns how many the answers accepted, and the error of each one the answer refused.
+// Approves each open MCP server proposal, as the host's own answer does: it takes no passkey, so a
+// test build can answer the server proposals that the approvals page gates behind one. Returns how many the answers accepted, and the error of each one the answer refused.
 export async function runMcpProposalAnswer(
   context: ProposalAPIContext,
-  change: keyof typeof causes,
 ): Promise<McpProposalAnswers> {
   const open = await readOpenProposals(context.log.writer.db, context.clock.now());
 
   const held = open.filter(
-    (proposal) => proposal.family === 'mcp' && proposal.cause === causes[change],
+    (proposal) => proposal.family === 'mcp' && proposal.cause === 'mcp_config',
   );
 
   let approved = 0;

@@ -40,15 +40,21 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
         throw new Error(`the run ${run.runID} already has a tool endpoint`);
       }
 
-      const names = collectHeldToolNames(run.tools, options.registry.toolNames);
+      const names = collectHeldToolNames(
+        run.tools,
+        options.registry.toolNames,
+        options.registry.serverIDs,
+      );
 
-      // The endpoint lists only registered tools, so a name it drops would vanish from the run.
+      // The endpoint keeps the names as listed and reads the registry again at each request, so a
+      // name that holds no tool now holds it once it registers. The warning marks a name that
+      // holds nothing yet.
       for (const tool of names.unknown) {
         options.logger('tools.run_tool_unknown', { runID: run.runID, tool }, 'warn');
       }
 
       const endpoint = startRunEndpoint({
-        run: { ...run, tools: [...names.held] },
+        run,
         socketPath: getSocketPath(run.runID),
         options: callOptions,
         onStop: () => {
@@ -120,7 +126,13 @@ function startRunEndpoint(spec: RunEndpointSpec): RunEndpoint {
 
       const { toolUseMetaKey: _key, parent: _parent, ...run } = stepRun;
 
-      return runApprovedCall(request, run, spec.options);
+      const names = collectHeldToolNames(
+        run.tools,
+        spec.options.registry.toolNames,
+        spec.options.registry.serverIDs,
+      );
+
+      return runApprovedCall(request, { ...run, tools: [...names.held] }, spec.options);
     },
     stop: async () => {
       if (state.isRevoked) {

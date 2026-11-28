@@ -76,7 +76,7 @@ export function buildNixieOperationSchemas() {
     approvePackage: z.null(),
 
     // the owner's approval of each open MCP proposal of one change, which takes a passkey on the page
-    approveMcp: z.object({ change: z.enum(['server', 'tool']) }),
+    approveMcp: z.null(),
 
     // the owner's approval of each open mandate proposal, which takes a passkey on the page
     approveMandate: z.null(),

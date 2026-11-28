@@ -25,6 +25,10 @@ export interface ActionAttempt {
   // recorded under before an attempt has started. A connector whose declaration comes from the
   // definitions compares it with the snapshot of its own.
   readonly snapshotHash: string;
+
+  // The version of the tool that the call was decided on. A connector whose tool has versions
+  // refuses to send once the tool has another one.
+  readonly pinHash?: string;
   readonly attempt: number;
   readonly idempotencyKey: string;
 

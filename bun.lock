@@ -1012,6 +1012,7 @@
         "@heynixie/retry": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "@modelcontextprotocol/client": "catalog:",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildCodingActionTools } from '@heynixie/coding';
 import { buildDefinitionsSnapshot } from '@heynixie/definitions';
+import { mcpConfigSchema } from '@heynixie/mcp';
 import { buildMockTaskStartBounds } from '@heynixie/tasks/test-utils';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
@@ -211,4 +212,27 @@ test('it lets a file definition list a registered tool that a definition from ch
   expect(inputs.tasks.toolNames).toStrictEqual(['actions.log']);
   expect(inputs.tasks.checkTaskStart(input, 'file')).toStrictEqual({ status: 'planned' });
   expect(inputs.tasks.checkTaskStart(input, 'conversation').status).toBe('refused');
+});
+
+test('it lists a configured MCP server as one task tool entry, and no conversation tool holds it', () => {
+  const config = {
+    definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
+    owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
+    mcp: mcpConfigSchema.parse({
+      servers: {
+        tracker: { url: 'https://tracker.example.org/mcp', clientID: 'a', scope: 'read' },
+      },
+    }),
+  } as const;
+
+  const tool = buildLogConnector(() => {}).tool;
+
+  const inputs = buildSeedInputs(config, {
+    definitions: [],
+    actions: { logConnector: { tool }, queuedTools: [] },
+    taskBounds: buildMockTaskStartBounds(),
+  });
+
+  expect(inputs.tasks.toolNames).toStrictEqual(['tracker.*', 'actions.log']);
 });

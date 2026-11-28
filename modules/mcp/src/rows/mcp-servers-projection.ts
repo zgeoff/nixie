@@ -19,7 +19,6 @@ export const mcpServersProjection: Projection = {
       url: facts?.url ?? null,
       client_id: facts?.clientID ?? null,
       scope: facts?.scope ?? null,
-      trusted: facts === null ? null : Number(facts.trusted),
       private_range: facts?.privateRange ?? null,
       requested: changed.requested === null ? null : JSON.stringify(changed.requested),
       proposal_id: changed.proposalID,

@@ -1093,3 +1093,80 @@ test('it refuses an approved call under the token of a step that stopped', async
 
   expect(settled).toMatchObject([{ status: 'rejected', reason: expect.any(Error) }]);
 });
+
+test('it lists and runs a tool that a server exposes after the run starts, when the run names the server', async () => {
+  const state = { names: ['boxxy.item_get'] };
+
+  const served = buildToolRegistry(
+    ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'].map((name) =>
+      buildMockToolDefinition({ name }),
+    ),
+  );
+
+  const source: ToolSource = {
+    toolNames: () => state.names,
+    serverIDs: () => ['boxxy', 'boxxy2'],
+    findTool: (name) => (state.names.includes(name) ? served.findTool(name) : null),
+  };
+
+  const ctx = await setupTest({ tools: [], sources: [source] });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['boxxy.*'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const before = await client.listTools();
+
+  state.names = ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'];
+
+  const after = await client.listTools();
+  const result = await client.callTool({ name: 'boxxy.item_list', arguments: { query: 'milk' } });
+
+  expect([
+    before.tools.map((tool) => tool.name),
+    after.tools.map((tool) => tool.name),
+    result.structuredContent,
+  ]).toStrictEqual([['boxxy.item_get'], ['boxxy.item_get', 'boxxy.item_list'], { text: 'a note' }]);
+});
+
+test('it refuses a call to a tool of a server that the run does not name', async () => {
+  const state = { names: ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'] };
+
+  const served = buildToolRegistry(
+    ['boxxy.item_get', 'boxxy.item_list', 'boxxy2.other'].map((name) =>
+      buildMockToolDefinition({ name }),
+    ),
+  );
+
+  const source: ToolSource = {
+    toolNames: () => state.names,
+    serverIDs: () => ['boxxy', 'boxxy2'],
+    findTool: (name) => (state.names.includes(name) ? served.findTool(name) : null),
+  };
+
+  const ctx = await setupTest({ tools: [], sources: [source] });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['boxxy.item_get'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+  const result = await client.callTool({ name: 'boxxy.item_list', arguments: { query: 'milk' } });
+
+  expect([listed.tools.map((tool) => tool.name), result.isError]).toStrictEqual([
+    ['boxxy.item_get'],
+    true,
+  ]);
+});

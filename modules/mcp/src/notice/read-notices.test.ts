@@ -13,15 +13,14 @@ async function setupTest() {
   return { mcp, readNotices: (limit: number) => readNotices(mcp.context, limit) };
 }
 
-test('it reads the notice of a trusted server changing a tool, with the old and new hash', async () => {
+test('it reads the notice of a tool whose form changed, with the old and new hash', async () => {
   const ctx = await setupTest();
 
   const first = buildToolForm();
   const changed = buildToolForm({ description: 'Read one item, and say who owns it.' });
 
-  await ctx.mcp.list('tracker', { forms: [first], isTrusted: true });
-  await ctx.mcp.allow('tracker.item_get');
-  await ctx.mcp.list('tracker', { forms: [changed], isTrusted: true });
+  await ctx.mcp.list('tracker', { forms: [first] });
+  await ctx.mcp.list('tracker', { forms: [changed] });
 
   const notices = await ctx.readNotices(10);
 
@@ -44,8 +43,6 @@ test('it reads the newest notice first and stops at the limit', async () => {
   const form = buildToolForm();
 
   await ctx.mcp.list('tracker', { forms: [form, buildToolForm({ name: 'item_put' })] });
-  await ctx.mcp.allow('tracker.item_get');
-  await ctx.mcp.allow('tracker.item_put');
   await ctx.mcp.list('tracker', { forms: [] });
 
   const notices = await ctx.readNotices(1);

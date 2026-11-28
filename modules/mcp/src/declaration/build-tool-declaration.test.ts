@@ -50,7 +50,9 @@ async function setupTest() {
 
       return found?.state ?? null;
     },
-    allow: async (tool: string) => {
+
+    // accepts the change that widened a tool's input, so the proxy serves the new form
+    acceptChange: async (tool: string) => {
       await standIn.test.allow(tool);
       await standIn.mcp.tools.refresh();
     },
@@ -59,8 +61,6 @@ async function setupTest() {
 
 test('it declares a tool by its annotations when the definitions hold no override', async () => {
   const ctx = await setupTest();
-
-  await ctx.allow('tracker.item_notify');
 
   expect(ctx.mcp.tools.findDeclaration('tracker.item_notify')).toStrictEqual({
     tool: 'tracker.item_notify',
@@ -93,7 +93,6 @@ test('it declares a tool by its override, and names the snapshot that held it', 
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   expect([
     ctx.mcp.tools.findDeclaration('tracker.item_notify'),
@@ -132,7 +131,6 @@ test('it leaves a tool stopped as unfit when its override names an argument the 
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   expect([
     await ctx.readState('tracker.item_notify'),
@@ -156,7 +154,6 @@ test('it stops a tool whose override checks with a tool the server lacks', async
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   const state = await ctx.readState('tracker.item_notify');
 
@@ -167,7 +164,6 @@ test('it stops a pinned tool when a new seed brings an override that no longer f
   const ctx = await setupTest();
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   ctx.setOverrides({
     tracker: {
@@ -210,7 +206,6 @@ test('it serves a pinned tool under the override of a seed that arrives after th
   const ctx = await setupTest();
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   const before = ctx.mcp.tools.findDeclaration('tracker.item_notify')?.declaration.effects;
 
@@ -249,7 +244,6 @@ test('it fills the idempotency key argument with the action ID of an approved ca
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   const connector = ctx.mcp.findConnector('tracker.item_notify');
 
@@ -283,8 +277,6 @@ test('it settles an interrupted call by what the check tool finds, with the inpu
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_find');
-  await ctx.allow('tracker.item_notify');
 
   const connector = ctx.mcp.findConnector('tracker.item_notify');
 
@@ -328,8 +320,6 @@ test('it counts a check that finds nothing as not done', async () => {
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_find');
-  await ctx.allow('tracker.item_notify');
 
   const connector = ctx.mcp.findConnector('tracker.item_notify');
 
@@ -367,8 +357,6 @@ test('it runs no check tool that declares more than a read', async () => {
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_find');
-  await ctx.allow('tracker.item_notify');
 
   const connector = ctx.mcp.findConnector('tracker.item_notify');
 
@@ -399,8 +387,6 @@ test('it settles no interrupted call by a check that a later snapshot declares',
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_find');
-  await ctx.allow('tracker.item_notify');
 
   const connector = ctx.mcp.findConnector('tracker.item_notify');
 
@@ -431,7 +417,6 @@ test('it retries no earlier attempt under a key argument that a later snapshot d
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   const connector = ctx.mcp.findConnector('tracker.item_notify');
 
@@ -482,7 +467,7 @@ test('it accepts a call that leaves out a required argument which the idempotenc
   ]);
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
+  await ctx.acceptChange('tracker.item_notify');
 
   const tool = ctx.mcp.tools.findTool('tracker.item_notify');
 
@@ -508,7 +493,6 @@ test('it leaves a tool stopped as unfit when its override names the idempotency 
   });
 
   await ctx.mcp.list('tracker');
-  await ctx.allow('tracker.item_notify');
 
   const state = await ctx.readState('tracker.item_notify');
 

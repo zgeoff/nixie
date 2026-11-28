@@ -94,6 +94,10 @@ export interface QueuedCall {
 
   // epoch ms when the queue recorded the action
   readonly queuedAtMs: number;
+
+  // The version of the tool that the call was decided on, which the record of the call holds. Absent
+  // for a tool that has no version, and for a call whose record is gone.
+  readonly pinHash?: string;
 }
 
 export async function readQueuedCall(
@@ -115,11 +119,30 @@ export async function readQueuedCall(
   const firstAttempt =
     action.attempt_count === 0 ? null : await readFirstAttemptSnapshot(context, action);
 
+  const pinHash = await readCallPinHash(context, entry.record.payload['callSequence']);
+
   return {
     arguments: args,
     snapshotHash: firstAttempt ?? entry.record.definitions.snapshotHash,
     queuedAtMs: entry.record.recordedAt.getTime(),
+    ...(pinHash === null ? {} : { pinHash }),
   };
+}
+
+// The pin hash that the record of a call holds, or null when it holds none.
+async function readCallPinHash(
+  context: TasksContext,
+  callSequence: unknown,
+): Promise<string | null> {
+  if (typeof callSequence !== 'number') {
+    return null;
+  }
+
+  const [call] = await readRecords(context.log, { afterSequence: callSequence - 1, limit: 1 });
+
+  const pinHash = call?.record.sequence === callSequence ? call.record.payload['pinHash'] : null;
+
+  return typeof pinHash === 'string' ? pinHash : null;
 }
 
 // The snapshot the record of the action's first attempt holds, which names the declaration that the
