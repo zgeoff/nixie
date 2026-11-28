@@ -3080,6 +3080,47 @@ test('it gives a definition task that lists no skill no skill tool, no catalog a
   expect(ctx.guest.turns[0]?.systemPrompt).not.toInclude('<skills>');
 });
 
+test("it starts a definition task's tool run with the pins of the version its task run pins", async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: {
+      tools: ['tasks.list', 'gmail.search'],
+      connections: { 'gmail.search': ['k3x9m2p7qa'] },
+    },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-pins');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.connectionPins)).toStrictEqual([
+    { 'gmail.search': ['k3x9m2p7qa'] },
+  ]);
+});
+
+test('it starts a definition task whose version pins nothing with no pins on its tool run', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { tools: ['tasks.list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-no-pins');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.connectionPins)).toStrictEqual([undefined]);
+});
+
 test('it adds the memory tools that only read to the tool list of a definition task with memory read', async () => {
   const ctx = await setupTest();
 

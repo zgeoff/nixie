@@ -153,7 +153,11 @@ async function planStart(
 
   const plan = await start.runner.start.plan(
     input,
-    { tools: tool.run.tools, ...access },
+    {
+      tools: tool.run.tools,
+      ...access,
+      ...(tool.run.connectionPins === undefined ? {} : { connectionPins: tool.run.connectionPins }),
+    },
     start.bounds,
   );
 

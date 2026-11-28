@@ -15,6 +15,32 @@ function setupTest() {
   };
 }
 
+test('it keeps the connections a definition pins in its form', () => {
+  const ctx = setupTest();
+
+  const pinned = ctx.parse({
+    'tasks/rain-gauge/task.yaml': [
+      'name: Check the rain gauge',
+      'brief: Read the gauge and note the total.',
+      'tools:',
+      '  - time.now',
+      'connections:',
+      '  time.now:',
+      '    - k3x9m2p7qa',
+      'trigger:',
+      '  schedule:',
+      '    every: week',
+      '    on: fri',
+      '    at: "08:00"',
+      '',
+    ].join('\n'),
+  });
+
+  expect(pinned.definitions[0]?.form['connections']).toStrictEqual({
+    'time.now': ['k3x9m2p7qa'],
+  });
+});
+
 test('it accepts a definition and fills the defaults of the keys it leaves out', () => {
   const ctx = setupTest();
 

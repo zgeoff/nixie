@@ -1,3 +1,4 @@
+import type { Connections } from '@heynixie/connections';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { buildMomentStatus, buildPinnedCoreStatus } from '@heynixie/memory';
 import { bindHarness, resolveRoleProfile } from '@heynixie/models';
@@ -12,6 +13,8 @@ import type { RunStep } from '@heynixie/tasks';
 import { getTaskName } from '@heynixie/tasks';
 import { makeInStepActions } from '../action/make-in-step-actions';
 import { makeSkillCatalogLoader } from '../cli/make-skill-catalog-loader';
+import { buildConnectionStatus } from '../connection/build-connection-status';
+import { pickModelCredentialExpiry } from '../connection/pick-model-credential-expiry';
 import { toImageNames } from '../sandbox/to-image-names';
 import { makeTurnNoteReader } from '../turn/make-turn-note-reader';
 import type { ServerParts } from '../types';
@@ -33,6 +36,7 @@ export interface ConversationImp {
 export async function startConversationImp(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
+  connections: () => Connections | null,
 ): Promise<ConversationImp> {
   const messaging = buildTaskMessaging(parts.config);
   const conversationHarness = bindHarness(resolveRoleProfile(parts.config.models, 'conversation'));
@@ -55,6 +59,11 @@ export async function startConversationImp(
         compaction: parts.config.compaction,
         getTaskName: (taskID) => getTaskName(messaging, taskID),
         forgetNotices: parts.config.forget_notices,
+        readConnectionEvents: async (range) => {
+          const events = await connections()?.readStatusEvents(range);
+
+          return events ?? [];
+        },
       },
       memory,
     ),
@@ -71,6 +80,17 @@ export async function startConversationImp(
       buildModelStatus(),
       ...buildPinnedCoreStatus(() => memory().readPinnedCoreUse()),
       buildMomentStatus((at) => memory().moments.readWeekCount(at), parts.config.owner.name),
+      buildConnectionStatus({
+        readAttention: async () => {
+          const attention = await connections()?.readAttention();
+
+          return attention ?? [];
+        },
+        readModelCredential: () =>
+          Promise.resolve(
+            pickModelCredentialExpiry(parts.config.model_credential, parts.context.clock.now()),
+          ),
+      }),
     ]),
     memory,
     memorySettings: {

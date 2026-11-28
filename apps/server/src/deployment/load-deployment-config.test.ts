@@ -591,12 +591,17 @@ test.each([
   {
     title: 'turns google on with the default gmail poll when its section is empty',
     sections: ['google: {}'],
-    google: { gmail: { poll_interval: 120_000 } },
+    google: { gmail: { poll_interval: 120_000 }, break_notice: 172_800_000 },
   },
   {
     title: 'reads the gmail poll interval from under the google section',
     sections: ['google: { gmail: { poll_interval: 30s } }'],
-    google: { gmail: { poll_interval: 30_000 } },
+    google: { gmail: { poll_interval: 30_000 }, break_notice: 172_800_000 },
+  },
+  {
+    title: 'reads the time a broken connection waits before the model hears of it again',
+    sections: ['google: { break_notice: 3d }'],
+    google: { gmail: { poll_interval: 120_000 }, break_notice: 259_200_000 },
   },
 ])('it $title', async (row) => {
   const ctx = await setupTest();

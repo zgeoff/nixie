@@ -1,6 +1,10 @@
 import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
 import { Server } from '@modelcontextprotocol/server';
 import type { ToolCallOptions } from './call-record/tool-call-options';
+import { buildListedInput } from './connection/build-listed-input';
+import { collectReachableConnections } from './connection/collect-reachable-connections';
+import { collectReachableTools } from './connection/collect-reachable-tools';
+import { findToolPins } from './connection/find-tool-pins';
 import { runToolCall } from './run-tool-call';
 import type { GuestToolRun } from './types';
 
@@ -15,29 +19,55 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
   );
 
   // the run's tools minus the ones held back at the moment of the request
-  const readLiveTools = async (): Promise<readonly string[]> => {
+  const readLiveTools = async () => {
     const heldBackNames = await options.readHeldBackTools?.();
 
     const heldBack = new Set(heldBackNames);
 
-    return run.tools.filter((name) => !heldBack.has(name));
+    const liveConnections = await options.readLiveConnections?.();
+
+    const connections = liveConnections ?? null;
+
+    const liveIDs =
+      connections === null ? null : new Set(connections.map((choice) => choice.connection));
+
+    return {
+      names: collectReachableTools(
+        run.tools.filter((name) => !heldBack.has(name)),
+        run.connectionPins,
+        liveIDs,
+      ),
+      connections,
+    };
   };
 
   server.setRequestHandler('tools/list', async () => {
     const live = await readLiveTools();
 
-    const tools = live.flatMap((name) => {
+    const tools = live.names.flatMap((name) => {
       const registered = options.registry.findTool(name);
 
-      return registered === null
-        ? []
-        : [
-            {
-              name,
-              description: registered.definition.description,
-              inputSchema: { ...registered.definition.input, type: 'object' as const },
-            },
-          ];
+      if (registered === null) {
+        return [];
+      }
+
+      const pinned = findToolPins(run.connectionPins, name);
+
+      const input =
+        pinned === undefined || live.connections === null
+          ? registered.definition.input
+          : buildListedInput(
+              registered.definition.input,
+              collectReachableConnections(pinned, live.connections),
+            );
+
+      return [
+        {
+          name,
+          description: registered.definition.description,
+          inputSchema: { ...input, type: 'object' as const },
+        },
+      ];
     });
 
     return { tools };
@@ -55,7 +85,7 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
         toolUseID: findToolUseID(request.params._meta, toolUseMetaKey),
         ...(parent === undefined ? {} : { parent }),
       },
-      { ...run, tools: live },
+      { ...run, tools: live.names },
       options,
     );
   });

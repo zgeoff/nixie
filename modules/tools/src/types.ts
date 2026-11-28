@@ -26,6 +26,9 @@ export interface ToolCall {
 // What a tool reads before its call has a record.
 export interface ToolResolveContext {
   readonly run: ToolRun;
+
+  // the connections the run pins this tool to; absent when the run pins none
+  readonly pinned?: readonly string[];
 }
 
 export interface ToolContext extends ToolResolveContext {
@@ -346,6 +349,10 @@ export interface ToolRun {
   readonly logThread: string;
 
   readonly tools: readonly string[];
+
+  // The short IDs of the connections each connector tool of the list may use, for the life of the
+  // run. A tool the map leaves out reaches every live connection.
+  readonly connectionPins?: Readonly<Record<string, readonly string[]>>;
 
   readonly model: ToolRunModel;
 

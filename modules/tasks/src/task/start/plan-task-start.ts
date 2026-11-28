@@ -1,4 +1,4 @@
-import { findHeldToolName } from '@heynixie/tools';
+import { findHeldToolName, findToolPins } from '@heynixie/tools';
 import type { HarnessCapability } from '@heynixie/wire';
 import { checkReportShape } from '../../report/check-report-shape';
 import { taskReportToolName } from '../../report/task-report-tool-name';
@@ -68,6 +68,9 @@ export interface TaskStarter {
   readonly memory: TaskMemory;
   readonly persona: TaskPersona;
   readonly log: TaskLog;
+
+  // the pins of the run that starts the task; the task keeps those of each tool it gets
+  readonly connectionPins?: Readonly<Record<string, readonly string[]>> | undefined;
 }
 
 export function planTaskStart(
@@ -176,6 +179,12 @@ export function planTaskStart(
     ...defaultMemoryTools.filter((tool) => starterTools.includes(tool)),
   ];
 
+  const kept = [...new Set(tools)].filter(
+    (tool) => tool === taskReportToolName || starterTools.includes(tool),
+  );
+
+  const connectionPins = pickStartedPins(starter.connectionPins, kept);
+
   return {
     status: 'planned',
     options: {
@@ -184,12 +193,11 @@ export function planTaskStart(
       persona,
       memory,
       log,
-      tools: [...new Set(tools)].filter(
-        (tool) => tool === taskReportToolName || starterTools.includes(tool),
-      ),
+      tools: kept,
       report: pickReportMode(choice.report, 'start', bounds),
       limits,
       ...(shape === null ? {} : { reportShape: shape.shape }),
+      ...(connectionPins === null ? {} : { connectionPins }),
     },
   };
 }
@@ -224,4 +232,18 @@ function pickToolRefusal(
   }
 
   return null;
+}
+
+// The pins of each tool the task gets, or null when its starter pins none of them.
+function pickStartedPins(
+  pins: TaskStarter['connectionPins'],
+  tools: readonly string[],
+): Readonly<Record<string, readonly string[]>> | null {
+  const kept = tools.flatMap((tool) => {
+    const found = findToolPins(pins, tool);
+
+    return found === undefined ? [] : [[tool, found] as const];
+  });
+
+  return kept.length === 0 ? null : Object.fromEntries(kept);
 }

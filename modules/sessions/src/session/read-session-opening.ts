@@ -135,9 +135,11 @@ export async function readSessionOpening(
 
   const facts = { ...query, openedAt };
 
-  const status = await Promise.all(
+  const read = await Promise.all(
     query.status.map(async (entry) => ({ name: entry.name, line: await entry.read(facts) })),
   );
+
+  const status = read.filter((entry) => entry.line.text !== '');
 
   const replayed = await readReplayedNote(context, query, recent);
 
@@ -157,7 +159,7 @@ export async function readSessionOpening(
   const statusBlock = renderOpeningMessage(
     'status',
     at,
-    allStatus.map((read) => `- ${read.line.text}`).join('\n'),
+    allStatus.map((entry) => `- ${entry.line.text}`).join('\n'),
     mint,
   );
 
@@ -198,7 +200,7 @@ export async function readSessionOpening(
       recentEvents: replayed?.eventCount ?? 0,
       recalledThrough,
       briefSequence: brief.briefSequence,
-      status: Object.fromEntries(allStatus.map((read) => [read.name, read.line.value])),
+      status: Object.fromEntries(allStatus.map((entry) => [entry.name, entry.line.value])),
     },
     sources: replayed?.sources ?? [],
   };

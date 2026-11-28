@@ -26,7 +26,6 @@ what is still to build.
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                       |
 | Policy          | [the decision point cutover](decision-point-cutover.md)                                       |
 | Mail            | [the assistant's mail host](mail-host.md)                                                     |
-| Connections     | [Google connections](google-connections.md)                                                   |
 | Google tools    | [the Google tool rules and the Gmail tools not built yet](gmail-calendar-drive-tools.md)      |
 | Channels        | [the push notice](push-notice.md)                                                             |
 | Devices         | [the camera, the speaker and the microphone](devices.md)                                      |

@@ -23,7 +23,23 @@ export const taskDefineInputSchema = z.strictObject({
         'task gets. Name each tool as nixie names it, such as web_fetch, or as your tool list shows ' +
         'it, such as mcp__nixie__web_fetch.',
     ),
+  connections: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'The connections the task may use, by the short IDs of the `connection` argument. Leave it ' +
+        'out to let it use every connection you can use now.',
+    ),
   report: z.enum(['wake', 'next_turn', 'none']).optional(),
+});
+
+// What the call holds once the host resolved its connections: the short IDs each connector tool is
+// pinned to, in place of the list the model wrote, so the approval covers the pins that get saved.
+const namedSchema = z.array(z.string());
+const pinsSchema = z.record(z.string(), namedSchema);
+
+export const resolvedTaskDefineInputSchema = taskDefineInputSchema.extend({
+  connections: z.union([namedSchema, pinsSchema]).optional(),
 });
 
 export const taskUndefineInputSchema = z.strictObject({ definitionID: z.string().min(1) });

@@ -21,3 +21,4 @@ export { fetchImageArgv, startWebFetch } from './part/start-web-fetch';
 export type { ServerRecordKind } from './part/server-record-kind';
 export { buildMailPorts } from './mail/build-mail-ports';
 export { makeAttemptCheck } from './action/make-attempt-check';
+export { runJobConnectionStatus } from './connection/run-job-connection-status';

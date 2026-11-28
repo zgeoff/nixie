@@ -11,6 +11,8 @@ export interface SessionFacts {
 
 export interface StatusLine {
   readonly value: string | number;
+
+  // the line the model reads; empty text leaves the entry out of the status
   readonly text: string;
 }
 

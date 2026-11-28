@@ -6,6 +6,7 @@ import { readConnectionRowByID } from '../connection/read-connection-rows';
 import { writeAddressVersion } from '../connection/write-address-version';
 import { connectedCodec } from '../record/connected-codec';
 import type { ServiceContext } from '../service-context';
+import { pickRowAttention } from '../status/pick-row-attention';
 import type { ConnectionRow, ConnectionTables } from '../types';
 import type { FinishedConsent } from './write-new-connection';
 
@@ -33,6 +34,8 @@ export async function writeRenewedConnection(
   }
 
   const isAddressNew = await probeAddressNew(context, target, finished.account);
+
+  const wasAttending = pickRowAttention(target, context.now()) !== null;
 
   const written = await withWriteTransaction(context.log.writer, async (tx) => {
     const tables = tx.$extendTables<ConnectionTables>();
@@ -133,6 +136,9 @@ export async function writeRenewedConnection(
           missing: [...finished.missing],
           fingerprint: finished.fingerprint,
           again: true,
+          wasAttending,
+          endsAtMs: finished.refreshExpiresAtMs,
+          endedAtMs: target.refresh_expires_at,
         }),
       },
     ]);

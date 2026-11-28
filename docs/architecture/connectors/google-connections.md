@@ -18,8 +18,11 @@ consent, setup steps and scope check through the module's
 
 Add a `google` section to the config to turn Google on, and write `google: {}` for the defaults.
 `google.gmail.poll_interval` sets how often the Gmail arrival source polls, and takes a duration
-such as `30s` or `2m`. The section holds the `gmail` section of earlier releases, and a config that
-still has `gmail` at the top level fails to load. With no `google` section, nixie has no Google:
+such as `30s` or `2m`. `google.break_notice` sets how long a broken connection stays broken before
+[the events block](../core/conversation-turns.md#the-events-block) tells the model once more, and
+takes a duration; it defaults to `2d`. The section holds the `gmail` section of earlier releases,
+and a config that still has `gmail` at the top level fails to load. With no `google` section, nixie
+has no Google:
 
 - the `google_tools`, `connections` and `gmail_source` server parts never start, so the model is
   offered no Gmail, Calendar or Drive tool, no mailbox is polled and the daily scope check runs
@@ -115,6 +118,158 @@ that changes it.
 The fetcher the store hands to tools refuses the token, revoke and authorize hosts and every
 `/oauth2/` path, so a tool never reaches an endpoint that issues or ends a grant. The store's own
 token requests are not affected.
+
+## What a tool gets from a connection
+
+The connections module hands a tool, an attempt or a check one value for each live connection:
+
+```ts
+interface ConnectorContext {
+  connectionID: string;
+  connection: string; // the short ID
+  account: string; // the ID token's email, decrypted at each call
+  fetch: typeof fetch; // the credential store's fetcher for this connection, limited to the connector's origins
+}
+```
+
+`connections.readContext` takes the connection ID, a UUID, as the Gmail arrival source passes it,
+and answers null when the connection is not live. The tool endpoint maps a short ID to the
+connection ID before it calls. The Google connector holds the actions of every Google tool, so a new
+tool adds its actions there. The default label of a Google connection is the ID token's `email`.
+
+## Scopes and tools
+
+| Scope                            | Tools that need it                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| `gmail.modify`                   | every `gmail.*` tool                                                           |
+| `calendar.events`                | every `calendar.*` tool except `calendar.list_calendars`                       |
+| `calendar.calendarlist.readonly` | `calendar.list_calendars` (`calendar.events` does not cover the calendar list) |
+| `drive.file`                     | every `drive.*` tool, and the Drive picker                                     |
+
+Each action lists its scopes in `ConnectorAction.scopes`, and the held-back filter drops an action
+whose scope is missing. A connection with only the identity scopes still connects and lists no
+tools, and the user can add scopes later.
+
+## Tasks in flight
+
+The conversation's endpoint builds its tool list at each turn from the live connections, so a new
+connection, a Forget or a change in `missing` reaches the conversation at its next turn. A worker
+run keeps its list for its life. Every call checks the connection at the time of the call. A call to
+a forgotten connection fails with the error for a `forgotten` credential, which never holds the
+connection's label or status, because Forget erases them.
+
+Forget erases a connection's Gmail wake rules and held arrivals as children of the connection,
+through the `readChildren` of its erasable.
+
+## Job pins
+
+A task run of a definition keeps the connections its definition names for its life.
+
+- The version of a definition holds `connections`, a map from a connector tool, such as
+  `gmail.search`, to the short IDs of the connections that tool may use. A tool the map leaves out
+  reaches every live connection. A definition with no `connections` key pins nothing.
+- `task.define` takes `connections`, a list of short IDs, and pins each connector tool the task
+  holds to those connections that hold the tool's scopes, so a job never reaches an account that
+  lacks a tool's scope now and gains it later. An account holds a tool's scope only when the last
+  check found every scope of the tool granted, so a tool that a release added after the account
+  consented pins to no account until the account consents again. Before the decision point, the
+  call's input is rewritten so `connections` holds the short IDs each listed connector tool is
+  pinned to, whether the call named connections or not. A call that names a connection no listed
+  tool can use ends there as an error, before it asks for any approval, because a list approved
+  unresolved could resolve to other pins at save time. A call that reaches the save with pins the
+  host never resolved, such as an approval written before the host resolved pins, is refused with
+  `connections_unresolved` and saves nothing. The approval shows those pins and the saved job holds
+  the same pins, so an account that connects, or gains another tool's scope, while the approval
+  waits never joins the job. A `task.yaml` may carry the same map under `connections`.
+- A Google tool resolves its call against the pinned connections only. A call whose `connection`
+  argument falls outside the pins fails with `NOT_PINNED` and lists the connections the task may
+  use. With no argument, the tool picks among the pinned connections that are live.
+- When the pins of a tool leave one live connection, the tool list drops the `connection` argument
+  from that tool's schema. When they leave two or more, the schema lists each as one allowed value
+  described by its label and account, and requires the argument.
+- A tool whose pins all name forgotten connections is not listed, and a call to it fails.
+- A worker run takes the pins of the run that started it, for the tools it holds, matched by the
+  tool's registered name or the name the model sees. A task that a pinned run starts with
+  `task.start` takes the pins of the tools it gets in its options, so it never reaches a connection
+  its starter could not. A task that the user started, or that a run with no pins started, pins
+  nothing.
+
+## The status line
+
+The first message of a session lists each connection that is `needs_consent`, `failing` or
+`expiring`, and never one that is `forgotten`. A connection is `forgotten` from the moment its
+Forget begins, so a Forget that waits on its revocation never lists the connection. A connection's
+line holds its connector, label, account, status, reason, the time the status began, its last
+success, the removed tools and where to reconnect, which is Settings → Connections. The removed
+tools are the tools whose calls the status stops: a `needs_consent` connection stops every tool of
+its connector whose scopes it holds, and a `failing` or `expiring` one stops none. The line names up
+to 5 by name and counts the rest. Under the list, the message adds a rule for when to raise each
+kind of line.
+
+- The entry renders nothing, and the session opens with no connections line, while every connection
+  works.
+- An `expiring` status starts a set time before the grant ends, and reaches `needs_consent` at its
+  end. Neither moves the credential store's status, so a sweep, `runStatusWatch`, writes a
+  `connection.status_reached` record the first time the clock takes a connection into either. The
+  sweep runs every hour, or 4 times in `google.break_notice` when a quarter of it is shorter than an
+  hour, and never more often than every millisecond. It compares the status the clock reads with the
+  one the store holds, so a failing connection whose grant ends still gets its record. A connection
+  that the store marks `needs_consent` after its grant ended lists from the end of the grant.
+- A task run of a definition reads the same entry, limited to the pinned connections and with no
+  model credential, as an `<input name="connections">` block after the trigger. The block renders
+  with the run's other blocks, in a new session or at the first step of a task run that nothing
+  carries on.
+- An expiring model credential joins the conversation's entry. A token from `claude setup-token`
+  never refreshes, so the deployment's `model_credential` section names its `expires_at`, and the
+  line appears `warn_before` ahead of that time. The rule under the list tells the model to mention
+  it once, unprompted.
+- A connection whose account holds no address lists with its label alone. The removed tools are
+  those whose scopes the last check found granted, so a tool whose scope the account never held is
+  not listed as removed.
+
+A change into or out of `needs_consent`, `failing` or `expiring` reaches the model through the first
+message and the events block, and leaves the system prompt and the tool list as they were, so the
+cached prefix of the session holds. The status stops calls, and the tool list keeps listing the
+tools. A Forget removes the connection's tools at the next turn, as
+[Tasks in flight](#tasks-in-flight) says.
+
+## Status events
+
+[The events block](../core/conversation-turns.md#the-events-block) carries one line for each change
+a connection makes, read from the log:
+
+- a change into `needs_consent`, `failing` or `expiring`, from a `credential.status_changed` or a
+  `connection.status_reached` record. The line gives the last success, the tools the status removed
+  and where to reconnect;
+- a return to `active` from any of them, from a `credential.status_changed` record or from the
+  `connection.connected` record of a reconnect that renewed the connection. The line counts the tool
+  calls that failed during the break, from the `connection.call_failed` records, and the job runs
+  that started with the connection broken, from the `connection.run_without` records. Each count
+  covers the calls that began, and the runs that started, from the break's start to the return, by
+  their own times. A break that the clock began starts when the grant ended, not when the sweep
+  wrote its record, and a reconnect that renews a grant that had ended counts from that end when no
+  record of the break exists. A return from `expiring` alone counts none. A reconnect that renews a
+  grant already within its window, before the sweep wrote the `expiring` record, still counts as a
+  return. A reconnect whose new grant ends within the window is no return: it is a change into
+  `expiring`, or no line when the connection was `expiring` and its grant had not ended. It still
+  ends a break, so a later break counts its own calls and gets its own notice;
+- a break that passes `google.break_notice`, once per break, from the `connection.break_lasted`
+  record that the sweep writes. A break begins at its earliest failing or consent step after the
+  last return, or at the end of the grant when the store marked the connection later, and a consent
+  step that the clock took counts from the end of the grant, so the notice falls due at that end
+  plus the notice time whenever the sweep runs. A refresh that fails again never moves the start or
+  repeats the record.
+
+A change into the status and reason that the connection already holds writes no line. Each line
+leaves out its own time, because the events block puts the time before every line.
+
+A model-originated call through a connection writes one `connection.call_failed` record, holding the
+time the call began, when the call fails or answers a non-ok status while the connection is
+`failing` or `needs_consent`, however many requests the call sends. A job run writes one
+`connection.run_without` record for each pinned connection that is broken when the run opens. The
+label and account of a line are read at render time, because no record holds them, so a forgotten
+connection has no line. The events block never caps the entry, so no notice falls off a block that
+the next turn moves past.
 
 ## The web client
 

@@ -16,6 +16,7 @@ const formSchema = z.looseObject({
   skills: z.string().array().optional(),
   context: z.enum(['fresh', 'continuing']),
   wakeable: z.boolean(),
+  connections: z.record(z.string(), z.string().array()).optional(),
   trigger: triggerSchema.nullish(),
 });
 
@@ -55,6 +56,7 @@ export async function readDefinitionVersion(
     skills: form.skills ?? [],
     context: form.context,
     wakeable: form.wakeable,
+    connections: form.connections ?? {},
     trigger: form.trigger ?? null,
   };
 }

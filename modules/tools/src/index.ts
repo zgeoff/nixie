@@ -18,7 +18,7 @@ export type {
 } from './approved-call/run-approved-call';
 
 export { runApprovedCall } from './approved-call/run-approved-call';
-export type { ToolCallOptions } from './call-record/tool-call-options';
+export type { ConnectionChoice, ToolCallOptions } from './call-record/tool-call-options';
 export type { ToolCallRequest } from './run-tool-call';
 export { runToolCall } from './run-tool-call';
 export type { ToolEndpointOptions } from './start-tool-endpoint';
@@ -29,6 +29,7 @@ export { relatedMemoryOutput } from './related/related-memory-output';
 export type { RelatedMemoryItem, RelatedMemoryLookup } from './related/types';
 export { toolCalledCodec } from './tool-called-codec';
 export { toolResultCodec } from './tool-result-codec';
+export { findToolPins } from './connection/find-tool-pins';
 export { toSDKToolName } from './tool-name/to-sdk-tool-name';
 
 export type {

@@ -892,6 +892,42 @@ test('it hashes the action proposal of an ask over the whole input, whatever the
   });
 });
 
+test('it proposes the action of an ask with the input its tool resolved on the host', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'files_delete',
+        execution: 'queued',
+        declaration: { effects: ['delete'] },
+        resolveInput: (input) =>
+          Promise.resolve({ status: 'ok', input: { ...input, pins: { files_delete: ['k3x9'] } } }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['files_delete'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[2]?.record).toMatchObject({
+    kind: 'policy.action_proposed',
+    erasable: {
+      status: 'readable',
+      fields: { input: { query: 'old', pins: { files_delete: ['k3x9'] } } },
+    },
+  });
+});
+
 test('it gives the record form the input the model sent when the input fails the schema', async () => {
   const ctx = await setupTest({
     tools: [

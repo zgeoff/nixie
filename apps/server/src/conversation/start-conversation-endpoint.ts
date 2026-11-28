@@ -59,6 +59,7 @@ import {
 } from '@heynixie/tasks';
 import type {
   ActionQueue,
+  ConnectionChoice,
   ToolDefinition,
   ToolEndpoint,
   ToolRegistry,
@@ -151,6 +152,13 @@ export interface ConversationEndpointTools {
 
   // the tools that a run leaves out of its list; none before the connections start
   readonly readHeldBackTools: () => Promise<readonly string[]>;
+
+  // the connections that are not forgotten; none before the connections start
+  readonly readLiveConnections: () => Promise<readonly ConnectionChoice[]>;
+
+  // the short IDs of the connections that hold every scope of each connector tool, by tool name;
+  // none before the connections start
+  readonly readToolConnections: () => Promise<Readonly<Record<string, readonly string[]>>>;
 
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
@@ -264,6 +272,7 @@ export async function startConversationEndpoint(
   const definitionToolOptions = {
     relatedMemory,
     readDefinitions: tools.readDefinitions,
+    connections: { readUsable: tools.readToolConnections },
     readZone: makeReadZone(
       options.context.log.writer,
       options.context.log.writer.db,
@@ -473,6 +482,7 @@ export async function startConversationEndpoint(
     queue: tools.queue,
     readOwnValues: tools.readOwnValues,
     readHeldBackTools: tools.readHeldBackTools,
+    readLiveConnections: tools.readLiveConnections,
     proposalConfig: buildProposalConfig(options.config),
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });

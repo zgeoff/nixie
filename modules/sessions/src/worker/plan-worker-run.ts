@@ -2,7 +2,7 @@ import type { WorkerRunLimits } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import { taskReportToolName } from '@heynixie/tasks';
 import type { ToolRun } from '@heynixie/tools';
-import { toSDKToolName } from '@heynixie/tools';
+import { findToolPins, toSDKToolName } from '@heynixie/tools';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
 import type { WorkerPlan, WorkerTargets } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
@@ -157,6 +157,9 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
         thread: facts.run.thread,
         logThread: facts.run.logThread,
         ...(facts.run.taskRun === undefined ? {} : { taskRun: facts.run.taskRun }),
+        ...(facts.run.connectionPins === undefined
+          ? {}
+          : { connectionPins: pickWorkerPins(facts.run.connectionPins, tools) }),
       },
     },
   };
@@ -178,4 +181,19 @@ function renderUnknownModel(name: string, names: readonly string[]): string {
   return names.length === 0
     ? `This deployment offers no model choice, so there is no model ${name} to run a worker on, and nixie started none.`
     : `There is no model ${name} to run a worker on; choose one of ${names.join(', ')}, so nixie started none.`;
+}
+
+// A worker keeps the pins of each tool it holds, so delegation never reaches a connection that the
+// caller could not.
+function pickWorkerPins(
+  pins: Readonly<Record<string, readonly string[]>>,
+  tools: readonly string[],
+): Readonly<Record<string, readonly string[]>> {
+  return Object.fromEntries(
+    tools.flatMap((tool) => {
+      const found = findToolPins(pins, tool);
+
+      return found === undefined ? [] : [[tool, found] as const];
+    }),
+  );
 }

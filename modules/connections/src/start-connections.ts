@@ -13,6 +13,7 @@ import { readConnectionStates } from './connection/read-connection-states';
 import { readHeldBackTools } from './connection/read-held-back-tools';
 import { readLiveContexts } from './connection/read-live-contexts';
 import { readSetup } from './connection/read-setup';
+import { readToolConnections } from './connection/read-tool-connections';
 import { runConnectionCheck, runDailyChecks } from './connection/run-connection-check';
 import type { Connector } from './connector/types';
 import { finishConsent } from './consent/finish-consent';
@@ -29,6 +30,11 @@ import type { ProviderEndpoints } from './provider/provider-endpoints';
 import { buildProviderEndpoints } from './provider/provider-endpoints';
 import { writeLostRevocations } from './revocation/write-lost-revocations';
 import type { ServiceContext } from './service-context';
+import { readAttentionConnections } from './status/read-attention-connections';
+import { readStatusEvents } from './status/read-status-events';
+import { runStatusWatch } from './status/run-status-watch';
+import type { AttentionConnection, StatusEvent, StatusEventRange } from './status/types';
+import { writeRunsWithout } from './status/write-runs-without';
 import type {
   ConnectionContext,
   ConnectionState,
@@ -71,6 +77,9 @@ export interface ConnectionsOptions {
 
   // how long a consent request lives, in ms; 10 minutes by default
   readonly consentLifetimeMs?: number;
+
+  // how long a break lasts before the model is told once more, in ms; 2 days by default
+  readonly breakNoticeMs?: number;
 
   // how long a consent waits for the Forget of its account, and how often it looks, in ms
   readonly forgetWaitMs?: number;
@@ -126,6 +135,9 @@ export interface Connections extends ConnectionsPort {
   // each connection that is not forgotten, with its status and granted scopes
   readonly readStates: () => Promise<ConnectionState[]>;
 
+  // the short IDs of the connections that hold every scope of each connector tool, by tool name
+  readonly readToolConnections: () => Promise<Record<string, string[]>>;
+
   // the tools that the connector holds
   readonly actions: Connector['actions'];
 
@@ -139,6 +151,20 @@ export interface Connections extends ConnectionsPort {
   // scopes they need.
   readonly readHeldBackTools: () => Promise<readonly string[]>;
 
+  // each connection that is needs_consent, failing or expiring, limited to the short IDs in `scope`
+  // when it is set
+  readonly readAttention: (scope?: ReadonlySet<string>) => Promise<AttentionConnection[]>;
+
+  // the status events of a log range, with the label and account of each connection read now
+  readonly readStatusEvents: (range: StatusEventRange) => Promise<StatusEvent[]>;
+
+  // writes the records that only the clock owes, and returns how many it wrote
+  readonly runStatusWatch: () => Promise<number>;
+
+  // Notes a job run that started while a connection it is pinned to was broken, and returns how many
+  // notes it wrote. The return to active counts them.
+  readonly writeRunsWithout: (pinned: ReadonlySet<string>) => Promise<number>;
+
   // deletes lapsed consent requests and abandoned consent credentials
   readonly sweepConsents: () => Promise<{
     readonly requests: number;
@@ -146,6 +172,7 @@ export interface Connections extends ConnectionsPort {
   }>;
 }
 
+const defaultBreakNoticeMs = 2 * 24 * 60 * 60 * 1000;
 const defaultConsentLifetimeMs = 10 * 60 * 1000;
 const defaultForgetWaitMs = 30_000;
 const defaultForgetPollMs = 250;
@@ -194,6 +221,10 @@ export function startConnections(options: ConnectionsOptions): Connections {
   return {
     forget,
     writeLostRevocations: () => writeLostRevocations(writer),
+    readAttention: (scope) => readAttentionConnections(context, scope ?? null),
+    readStatusEvents: (range) => readStatusEvents(context, range),
+    runStatusWatch: () => runStatusWatch(context, options.breakNoticeMs ?? defaultBreakNoticeMs),
+    writeRunsWithout: (pinned) => writeRunsWithout(context, pinned),
     readSetup: (pageOrigin) => readSetup(context, pageOrigin),
     registerClient: (input, attempt) => registerClient(context, input, attempt),
     setPicker: (client, picker, attempt) => setPicker(context, client, picker, attempt),
@@ -208,6 +239,7 @@ export function startConnections(options: ConnectionsOptions): Connections {
     runDailyChecks: () => runDailyChecks(context),
     readHeldBackTools: () => readHeldBackTools(context),
     readStates: () => readConnectionStates(context),
+    readToolConnections: () => readToolConnections(context),
     readLiveContexts: (connection) => readLiveContexts(context, connection ?? null),
     actions: connector.actions,
     sweepConsents: () => sweepConsents(context),

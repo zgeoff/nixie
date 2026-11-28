@@ -28,6 +28,13 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
   readonly memoryReadTools: readonly string[];
   readonly compaction: CompactionSettings;
   readonly defaultZone: string;
+
+  // The status of the connections a definition's task run is pinned to, as text for the run's blocks,
+  // in the zone the times show in; empty while each of them works. Absent, a run reads none.
+  readonly readConnectionStatus?: (
+    pinned: ReadonlySet<string>,
+    timeZone: string,
+  ) => Promise<string>;
   readonly messaging: TaskMessaging;
 
   // empties the web fetch pause of every host when a forget cleans a task's session

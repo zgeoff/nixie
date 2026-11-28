@@ -222,9 +222,14 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'sandbox_runner',
     needs: ['server_parts', 'add_images'],
-    uses: ['memory', 'calls'],
+    uses: ['memory', 'calls', 'connections'],
     start: makeRetriedStart('sandbox_runner', (parts, reader) =>
-      startSandboxTaskRunner(parts, () => reader.get('memory'), reader.find('calls')),
+      startSandboxTaskRunner(
+        parts,
+        () => reader.get('memory'),
+        reader.find('calls'),
+        reader.find('connections') ?? null,
+      ),
     ),
   },
   {

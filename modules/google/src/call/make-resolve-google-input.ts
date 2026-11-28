@@ -2,6 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
 import { parseItemID } from '../gmail/parse-item-id';
 import type { GmailAccess } from '../gmail/types';
+import { pickPinnedContexts } from './pick-pinned-contexts';
 
 // Names the connection of a Calendar or Drive call before anything else reads it, as the Gmail tools
 // do: the prefix of each item ID in `itemKeys`, or the `connection` argument, or the only live Google
@@ -10,7 +11,7 @@ export function makeResolveGoogleInput(
   access: GmailAccess,
   itemKeys: readonly string[],
 ): (input: JSONObject, context: ToolResolveContext) => Promise<InputResolution> {
-  return async (input) => {
+  return async (input, context) => {
     const prefixes = collectPrefixes(input, itemKeys);
 
     if (prefixes === 'bad_id') {
@@ -34,7 +35,16 @@ export function makeResolveGoogleInput(
 
     const [wanted] = connections;
 
-    const live = await access.readLiveContexts(wanted);
+    if (wanted !== undefined && context.pinned !== undefined && !context.pinned.includes(wanted)) {
+      return {
+        status: 'error',
+        message: `NOT_PINNED: this task may use only these connections: ${context.pinned.join(', ')}`,
+      };
+    }
+
+    const reachable = await access.readLiveContexts(wanted);
+
+    const live = pickPinnedContexts(reachable, context.pinned);
 
     if (wanted !== undefined) {
       return live.length === 0

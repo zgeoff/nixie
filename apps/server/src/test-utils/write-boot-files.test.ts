@@ -340,7 +340,7 @@ test.each([
     extras: {},
     computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
     code: {},
-    google: { gmail: { poll_interval: 120_000 } },
+    google: { gmail: { poll_interval: 120_000 }, break_notice: 172_800_000 },
     features: ['computer', 'code', 'devices', 'google', 'mcp'],
   },
   {
@@ -356,7 +356,7 @@ test.each([
     extras: { isComputerOff: true },
     computer: undefined,
     code: {},
-    google: { gmail: { poll_interval: 120_000 } },
+    google: { gmail: { poll_interval: 120_000 }, break_notice: 172_800_000 },
     features: ['code', 'devices', 'google', 'mcp'],
   },
   {
@@ -364,7 +364,7 @@ test.each([
     extras: { isCodeOff: true },
     computer: { idle_hand_back_minutes: 30, handover_expiry_minutes: 60 },
     code: undefined,
-    google: { gmail: { poll_interval: 120_000 } },
+    google: { gmail: { poll_interval: 120_000 }, break_notice: 172_800_000 },
     features: ['computer', 'devices', 'google', 'mcp'],
   },
 ])('it writes a configuration with $title, and these features on: $features', async (row) => {

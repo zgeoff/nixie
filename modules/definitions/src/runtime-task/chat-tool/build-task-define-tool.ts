@@ -1,17 +1,21 @@
 import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
-import type { ToolDefinition } from '@heynixie/tools';
+import type { InputResolution, ToolDefinition } from '@heynixie/tools';
 import { addRelatedMemory, relatedMemoryOutput } from '@heynixie/tools';
 import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
 import type { ScheduleFacts } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
+import { buildConnectionPins } from './build-connection-pins';
+import type { UsableConnections } from './build-connection-pins';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
-import { taskDefineInputSchema } from './task-define-input-schema';
+import { pickSavedPins } from './pick-saved-pins';
+import { resolvedTaskDefineInputSchema, taskDefineInputSchema } from './task-define-input-schema';
 
 const jsonSchema = z.toJSONSchema(taskDefineInputSchema, {
   io: 'input',
@@ -62,9 +66,10 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       },
     },
     execution: 'direct',
+    resolveInput: (input) => resolveDefineConnections(options, input),
     prepare: (input) => Promise.resolve(prepareDefine(input)),
     run: async (call) => {
-      const parsed = taskDefineInputSchema.safeParse(call.input);
+      const parsed = resolvedTaskDefineInputSchema.safeParse(call.input);
 
       if (!parsed.success) {
         return { status: 'error', message: z.prettifyError(parsed.error) };
@@ -77,7 +82,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         return { status: 'error', message: notReadyMessage };
       }
 
-      const { definitionID, trigger: givenTrigger, ...rest } = given;
+      const { definitionID, trigger: givenTrigger, connections: named, ...rest } = given;
 
       const ownerZone = await options.readZone('owner');
 
@@ -97,9 +102,29 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 
       const trigger = checked.trigger;
 
+      const usable = await options.connections?.readUsable();
+
+      const pinned = pickSavedPins({ tools: rest.tools, connections: named, usable: usable ?? {} });
+
+      if (pinned.status === 'unresolved') {
+        const refused = {
+          code: 'connections_unresolved',
+          path: 'connections',
+          sentence:
+            'The connections of this call were not resolved before its approval. Call again.',
+        };
+
+        return { status: 'ok', result: { refused }, refusalCode: refused.code };
+      }
+
       const result = await requestDefinitionChange(context, {
         kind: 'define',
-        input: { ...rest, trigger, definitionID },
+        input: {
+          ...rest,
+          trigger,
+          definitionID,
+          ...(Object.keys(pinned.pins).length === 0 ? {} : { connections: pinned.pins }),
+        },
       });
 
       if (result.status === 'refused') {
@@ -140,11 +165,55 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
   };
 }
 
+// Pins each listed connector tool before the decision point reads the call, so the approval covers
+// the pins the saved job holds. A call that names a connection it cannot use ends here, because a
+// list approved unresolved could resolve to other pins at save time.
+async function resolveDefineConnections(
+  options: ChatToolOptions,
+  input: JSONObject,
+): Promise<InputResolution> {
+  const parsed = taskDefineInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { status: 'ok', input };
+  }
+
+  const usable = await options.connections?.readUsable();
+
+  return pickDefineResolution(input, parsed.data, usable ?? {});
+}
+
+// A call that lists no connector tool and names no connection keeps its input as it is.
+function pickDefineResolution(
+  input: JSONObject,
+  given: Pick<z.output<typeof taskDefineInputSchema>, 'tools' | 'connections'>,
+  usable: UsableConnections,
+): InputResolution {
+  const pinned = buildConnectionPins({ tools: given.tools, named: given.connections, usable });
+
+  return match(pinned)
+    .returnType<InputResolution>()
+    .with({ status: 'refused' }, (refused) => ({
+      status: 'error',
+      message: renderUnusableSentence(refused.unusable),
+    }))
+    .with({ status: 'pinned' }, (found) =>
+      Object.keys(found.pins).length === 0 && given.connections === undefined
+        ? { status: 'ok', input }
+        : { status: 'ok', input: { ...input, connections: found.pins } },
+    )
+    .exhaustive();
+}
+
+function renderUnusableSentence(unusable: readonly string[]): string {
+  return `You cannot use ${unusable.join(', ')}, so the task cannot be pinned to it.`;
+}
+
 // A define that sets `memory` to `self_notes` hands the task the self-note write tools, so the call
 // adds `policy_widen` to the tool's effects: stage 4 then asks before it applies, and a deny rule on
 // any effect of the tool still denies at stage 3.
 function prepareDefine(input: JSONObject) {
-  const parsed = taskDefineInputSchema.safeParse(input);
+  const parsed = resolvedTaskDefineInputSchema.safeParse(input);
 
   return parsed.success && parsed.data.memory === 'self_notes'
     ? { destinations: [], effects: ['policy_widen'] as const }

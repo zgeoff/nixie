@@ -22,8 +22,8 @@ Build the rest of this design's work items from it and the built
 [configuration and secrets](../../../architecture/deployment/configuration.md) it replaces.
 Disconnect, the statuses, `pairing`, `stream` and a fetcher with no credential come with their first
 callers; the database backend comes with the
-[Google connections](../../queue/google-connections.md), and the vault backend with the
-[vault](../../queue/accounts.md).
+[Google connections](../../../architecture/connectors/google-connections.md), and the vault backend
+with the [vault](../../queue/accounts.md).
 
 ## Shape
 
@@ -201,9 +201,10 @@ interface FetchOptions {
   process memory only. No backend reads the environment. You rotate a value in the deployment, and
   nixie reads it at its next start.
 - **Database.** Plain tables in `nixie.db`, owned by the module that owns the connection, as the
-  [Google connections](../../queue/google-connections.md) design sets out. Each value is sealed
-  under a key of its own. `exchange` runs an OAuth token exchange and `refresh` a refresh: each puts
-  the client secret and any PKCE verifier in the request body itself, so no connector holds either.
+  [Google connections](../../../architecture/connectors/google-connections.md) doc sets out. Each
+  value is sealed under a key of its own. `exchange` runs an OAuth token exchange and `refresh` a
+  refresh: each puts the client secret and any PKCE verifier in the request body itself, so no
+  connector holds either.
 - **Vault.** The vault's records and projection, as the [vault](../../queue/accounts.md) design sets
   out. `fill` types a value into the browser guest's fill frame, and `reveal` returns a value to a
   signed-in device after a passkey check. A vault value leaves the server through these 2 methods

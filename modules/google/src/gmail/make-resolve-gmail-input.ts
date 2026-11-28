@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { InputResolution, ToolResolveContext } from '@heynixie/tools';
+import { pickPinnedContexts } from '../call/pick-pinned-contexts';
 import { parseItemID } from './parse-item-id';
 import type { GmailAccess } from './types';
 
@@ -9,7 +10,7 @@ import type { GmailAccess } from './types';
 export function makeResolveGmailInput(
   access: GmailAccess,
 ): (input: JSONObject, context: ToolResolveContext) => Promise<InputResolution> {
-  return async (input) => {
+  return async (input, context) => {
     const prefixes = collectPrefixes(input);
 
     if (prefixes === 'bad_id') {
@@ -33,7 +34,16 @@ export function makeResolveGmailInput(
 
     const [wanted] = connections;
 
-    const live = await access.readLiveContexts(wanted);
+    if (wanted !== undefined && context.pinned !== undefined && !context.pinned.includes(wanted)) {
+      return {
+        status: 'error',
+        message: `NOT_PINNED: this task may use only these connections: ${context.pinned.join(', ')}`,
+      };
+    }
+
+    const reachable = await access.readLiveContexts(wanted);
+
+    const live = pickPinnedContexts(reachable, context.pinned);
 
     if (wanted !== undefined) {
       return live.length === 0

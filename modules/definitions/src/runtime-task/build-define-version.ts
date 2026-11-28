@@ -20,6 +20,9 @@ export interface TaskDefineInput {
   readonly memory?: 'none' | 'read' | 'self_notes' | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly report?: 'wake' | 'next_turn' | 'none' | undefined;
+
+  // the short IDs that each connector tool of the list is pinned to
+  readonly connections?: Readonly<Record<string, readonly string[]>> | undefined;
 }
 
 export interface DefineVersionContext {
@@ -104,6 +107,7 @@ function buildTaskMapping(input: TaskDefineInput): Record<string, unknown> {
     ...(input.memory === undefined ? {} : { memory: input.memory }),
     ...(input.tools === undefined ? {} : { tools: [...input.tools] }),
     ...(input.report === undefined ? {} : { report: input.report }),
+    ...(input.connections === undefined ? {} : { connections: input.connections }),
   };
 }
 

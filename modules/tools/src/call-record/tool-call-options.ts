@@ -30,4 +30,16 @@ export interface ToolCallOptions {
   // owner left out. Each list and each call reads it again, so a conversation follows a consent
   // that changes it.
   readonly readHeldBackTools?: () => Promise<readonly string[]>;
+
+  // The connections that are not forgotten. A run lists no tool whose pins all name other
+  // connections. Without it, a pin never hides a tool.
+  readonly readLiveConnections?: () => Promise<readonly ConnectionChoice[]>;
+}
+
+export interface ConnectionChoice {
+  // the short ID
+  readonly connection: string;
+
+  readonly label: string;
+  readonly account: string;
 }

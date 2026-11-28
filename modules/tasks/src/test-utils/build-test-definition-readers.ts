@@ -54,6 +54,7 @@ export function buildTestDefinitionStore(): TestDefinitionStore {
         skills: [],
         context: 'fresh',
         wakeable: false,
+        connections: {},
         trigger: null,
         ...entry.version,
       });

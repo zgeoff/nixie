@@ -2341,6 +2341,7 @@ test('it stores each accepted version under its hash and reads it back', async (
     skills: [],
     context: 'fresh',
     wakeable: false,
+    connections: {},
     trigger: null,
   });
 });

@@ -636,3 +636,41 @@ test('it refuses self notes with the instruction to define the task, whatever pe
 
   expect(plan).toStrictEqual({ status: 'refused', refusal: { reason: 'self_notes_start' } });
 });
+
+test('it gives a task the pins of each tool it gets and none of the tools it leaves out', () => {
+  const plan = planTaskStart(
+    { tools: ['gmail.search'] },
+    {
+      tools: ['tasks.list', 'task.message', 'time.now', 'gmail.search', 'gmail.read'],
+      memory: 'none',
+      persona: 'default',
+      log: 'own',
+      connectionPins: {
+        mcp__nixie__gmail_search: ['k3x9m2p7qa'],
+        'gmail.read': ['p8d2v6n4rc'],
+      },
+    },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(plan).toMatchObject({
+    status: 'planned',
+    options: { connectionPins: { 'gmail.search': ['k3x9m2p7qa'] } },
+  });
+});
+
+test('it gives a task no pins when its starter pins none of its tools', () => {
+  const plan = planTaskStart(
+    {},
+    {
+      tools: ['tasks.list', 'task.message', 'time.now', 'gmail.search'],
+      memory: 'none',
+      persona: 'default',
+      log: 'own',
+      connectionPins: { 'gmail.search': ['k3x9m2p7qa'] },
+    },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(plan).not.toHaveProperty('options.connectionPins');
+});

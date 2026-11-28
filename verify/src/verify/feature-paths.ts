@@ -66,8 +66,9 @@ const search: FeatureReach = {
 const google: FeatureReach = {
   packages: ['modules/google', 'adapters/connector-google'],
   paths: [
+    'apps/server/src/connection/**',
     'apps/server/src/google/**',
-    'apps/server/src/part/{collect-owner-addresses,read-mail-html,start-connections-part,start-google-tools-part}.ts',
+    'apps/server/src/part/{collect-owner-addresses,pick-watch-interval-ms,read-mail-html,start-connections-part,start-google-tools-part}.ts',
     'apps/web/src/connection/**',
     'apps/web/src/routes/settings.connections.*.tsx',
   ],
@@ -84,11 +85,15 @@ const computer: FeatureReach = {
 
 const coreOnly: FeatureReach = { packages: [], paths: [] };
 
+// The conversation's status line and its events block, and a job run's blocks, render through these
+// files, so the chat turn and the task pages that show a run read them too.
+const connectionStatus = 'apps/server/src/connection/**';
+
 // Each feature holds the core list, the folders of its packages and of the workspace packages
 // they depend on, from each `package.json` as this file loads, and its own server and web files.
 export const featurePaths = {
   'sign-in-enrol': buildFeatureGlobs(workspace, coreOnly),
-  'chat-turn': buildFeatureGlobs(workspace, coreOnly),
+  'chat-turn': buildFeatureGlobs(workspace, { packages: [], paths: [connectionStatus] }),
   'memory-approval': buildFeatureGlobs(workspace, {
     packages: [],
     paths: ['apps/web/src/routes/{memory,moments,moments_.$momentID}.tsx'],
@@ -98,7 +103,10 @@ export const featurePaths = {
     packages: [],
     paths: ['apps/web/src/mandate/**', 'apps/web/src/routes/mandates.tsx'],
   }),
-  'task-control': buildFeatureGlobs(workspace, { packages: [], paths: [taskPages] }),
+  'task-control': buildFeatureGlobs(workspace, {
+    packages: [],
+    paths: [taskPages, connectionStatus],
+  }),
   'coding-session': buildFeatureGlobs(workspace, coding),
   'coding-supervision': buildFeatureGlobs(workspace, coding),
   'call-hand-off': buildFeatureGlobs(workspace, calls),

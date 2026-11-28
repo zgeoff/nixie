@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { CompactionSettings } from '@heynixie/compaction';
+import type { StatusEvent, StatusEventRange } from '@heynixie/connections';
 import type { Log } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import {
@@ -17,6 +18,7 @@ import {
 } from '@heynixie/sessions';
 import { buildSkillReloadKind } from '@heynixie/skills';
 import { conversationTaskID } from '@heynixie/tasks';
+import { buildConnectionStatusKind } from '../connection/build-connection-status-kind';
 import { buildPromptProposalAnswerKind } from '../prompt/build-prompt-proposal-answer-kind';
 import { buildMandateEndedKind } from './build-mandate-ended-kind';
 import { buildMandateStartedKind } from './build-mandate-started-kind';
@@ -39,6 +41,10 @@ export interface TurnNoteReaderOptions {
 
   // which kinds of forget the events block lists
   readonly forgetNotices: { readonly note: boolean };
+
+  // reads the status events of the connections in a range of the log; without it the block lists
+  // none
+  readonly readConnectionEvents?: (range: StatusEventRange) => Promise<readonly StatusEvent[]>;
 }
 
 export function makeTurnNoteReader(
@@ -65,9 +71,17 @@ export function makeTurnNoteReader(
     buildPageEventKind(options.log),
   ]);
 
-  const events = options.forgetNotices.note
+  const noted = options.forgetNotices.note
     ? [...kinds, ...buildEventRegistry([buildNoteForgottenKind(options.log)])]
     : kinds;
+
+  const events =
+    options.readConnectionEvents === undefined
+      ? noted
+      : [
+          ...noted,
+          ...buildEventRegistry([buildConnectionStatusKind(options.readConnectionEvents)]),
+        ];
 
   return (request) => readTurnNotes({ ...options, events }, request);
 }

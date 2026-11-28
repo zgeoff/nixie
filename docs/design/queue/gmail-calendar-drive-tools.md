@@ -1,10 +1,10 @@
 # Google tools
 
 - **Status:** agreed
-- **Built on:** the [Google connection](google-connections.md) and the built
-  [Gmail tools](../../architecture/connectors/gmail-tools.md). The Calendar and Drive tools are
-  built, so nothing is left to build for them. The parts of the Gmail tools still to build are under
-  "Not built yet".
+- **Built on:** the [Google connection](../../architecture/connectors/google-connections.md) and the
+  built [Gmail tools](../../architecture/connectors/gmail-tools.md). The Calendar and Drive tools
+  are built, so nothing is left to build for them. The parts of the Gmail tools still to build are
+  under "Not built yet".
 
 nixie reads, searches and labels your Gmail, sends mail, and reads and changes your calendar and the
 Drive files you give it, through one Google connection. Every read asks Google live, inside the
@@ -25,8 +25,8 @@ follow these rules; their per-tool contracts are in that doc. The Google tools a
 [mail design](https://github.com/zgeoff/nixie/pull/1420). That design also defines `gmail.wake_set`,
 `gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
 `gmail.reply`. Build those in the mail polls work item. For the tokens, the consent and the scopes,
-see the [Google connection](google-connections.md). For how a call and its errors reach the model,
-see [tool calls](../../architecture/connectors/tool-calls.md).
+see the [Google connection](../../architecture/connectors/google-connections.md). For how a call and
+its errors reach the model, see [tool calls](../../architecture/connectors/tool-calls.md).
 
 ## Shape
 
@@ -75,9 +75,6 @@ will.
 
 These parts of the Gmail tools are not built yet:
 
-- The connection argument's job pins and the model's status line, set out in the connector design
-  and in
-  [serving nixie's tools](../platform/connectors/tools.md#what-the-model-learns-about-a-connection).
 - You can edit the subject and the text body on a mail card before you approve it. nixie sends
   exactly what you approved, and the result's `edited` field holds the final subject and text for
   the model, or `null`. When you edit the text body of a mail that has an HTML body, nixie drops the

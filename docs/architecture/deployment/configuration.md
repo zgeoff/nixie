@@ -49,6 +49,9 @@ Read each part's doc for the meaning of its settings. The sections cover:
 - `forget_notices`, which turns the line that the events block shows for each kind of forget on or
   off: `forget_notices: false` turns every kind off, and the `note` key turns the line for a note
   that the user forgot off
+- `model_credential`, which names when the model token that the deployment holds expires
+  (`expires_at`), and how long before it the session's status tells the model once (`warn_before`, 3
+  days by default). A token from `claude setup-token` never refreshes, so nixie cannot read its end
 - `erasure.stuck_after_minutes`, which sets how long a forget stays open before nixie logs it as
   stuck, shows it to the user and the model, and retries it on a fixed interval (5 by default)
 

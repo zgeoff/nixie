@@ -7,10 +7,12 @@ import type { ErasureRegistry } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
 import { eraseConnectionMailbox, readConnectionWakeRecords } from '@heynixie/triggers';
 import type { ServerParts } from '../types';
+import { pickWatchIntervalMs } from './pick-watch-interval-ms';
 import type { GoogleToolsPart } from './start-google-tools-part';
 
 const sweepIntervalMs = 60 * 60 * 1000;
 const checkIntervalMs = 24 * 60 * 60 * 1000;
+const defaultBreakNoticeMs = 2 * 24 * 60 * 60 * 1000;
 
 // Registers the connection's erasable on the runner and starts the Google connections on the
 // credential store's backend. Each start sweeps lapsed consents, and records `unknown` for a forget
@@ -25,6 +27,7 @@ export async function startConnectionsPart(
   const definitions = parts.context.definitions;
   const now = () => parts.context.clock.now();
   const store = parts.credentials.store;
+  const breakNoticeMs = parts.config.google?.break_notice ?? defaultBreakNoticeMs;
 
   const connections = startConnections({
     log,
@@ -33,6 +36,7 @@ export async function startConnectionsPart(
     backend,
     erasure,
     now,
+    breakNoticeMs,
     connector: buildGoogleConnector(createGoogleProvider(google.hosts), [...google.actions]),
     eraseDependents: (connectionID) =>
       eraseConnectionMailbox(
@@ -80,6 +84,18 @@ export async function startConnectionsPart(
     },
   });
 
+  const watch = startSweep({
+    clock: parts.context.clock,
+    intervalMs: pickWatchIntervalMs(breakNoticeMs),
+    run: async () => {
+      await connections.runStatusWatch();
+    },
+    onError: (error) => {
+      parts.log('connections.status_watch_failed', toErrorFields(error), 'warn');
+    },
+  });
+
+  await parts.cleanup.defer(() => watch.stop());
   await parts.cleanup.defer(() => sweep.stop());
   await parts.cleanup.defer(() => check.stop());
 

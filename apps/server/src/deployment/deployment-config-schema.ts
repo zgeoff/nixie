@@ -29,6 +29,7 @@ import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
 import { erasureConfigSchema } from '../config/erasure-config-schema';
 import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
+import { modelCredentialConfigSchema } from '../config/model-credential-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
 import { imageProviderAPI, isImageProviderID } from '../part/image-provider-api';
 import { phoneSectionSchema } from '../phone/phone-section-schema';
@@ -58,6 +59,7 @@ export const deploymentConfigSchema = z
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     notebook: notebookConfigSchema.default(notebookConfigSchema.parse({})),
     forget_notices: forgetNoticesConfigSchema.default(forgetNoticesConfigSchema.parse({})),
+    model_credential: modelCredentialConfigSchema.optional(),
     erasure: erasureConfigSchema.default(erasureConfigSchema.parse({})),
     mcp: mcpConfigSchema.default(mcpConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
