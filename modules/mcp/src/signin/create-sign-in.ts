@@ -96,8 +96,7 @@ export function createSignIn(options: SignInOptions): SignIn {
       const bound = await readBindings(options.runtime, server);
 
       if (bound.kind === 'failed') {
-        // The reason can name the host and the address it resolved to, so the line holds neither.
-        options.logger('mcp.sign_in_discovery_failed', { serverID }, 'warn');
+        options.logger('mcp.sign_in_discovery_failed', { serverID, reason: bound.reason }, 'warn');
 
         return { status: 'discovery_failed', reason: bound.reason };
       }

@@ -14,7 +14,7 @@ async function setupTest() {
   return { lines, logger: makeLogger() };
 }
 
-test('#connect logs a warning with the server ID and no host or address when discovery refuses a private address', async () => {
+test('#connect logs a warning with the server ID and the reason, host and address when discovery refuses a private address', async () => {
   const ctx = await setupTest();
 
   const standIn = await startStandInMcp({
@@ -37,9 +37,6 @@ test('#connect logs a warning with the server ID and no host or address when dis
     event: 'mcp.sign_in_discovery_failed',
     level: 'warn',
     serverID: 'tracker',
+    reason: 'mcp.test resolves to 127.0.0.1, which is not a public address',
   });
-
-  expect(ctx.lines[0]).not.toContain('mcp.test');
-  expect(ctx.lines[0]).not.toContain('127.0.0.1');
-  expect(ctx.lines[0]).not.toContain('public address');
 });
