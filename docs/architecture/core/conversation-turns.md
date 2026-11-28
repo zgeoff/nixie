@@ -545,8 +545,8 @@ records it reads.
   and the ID that the model sees, which is the short ID of an item or a moment and the log sequence
   of a message, and nothing the forget erased. A forget that the assistant or nixie began adds no
   line, and neither does a forget that another forget started, such as the messages that a forgotten
-  image or a reset reaches. Memory owns the entry. The server registers it for the kinds whose
-  `forget_notices` key is on, which each is by default.
+  image or a reset reaches. Memory owns the entry. The server registers it for each kind whose
+  `forget_notices` key is on, and every key is on by default.
 - **A memory change** and a merge into one of the conversation's proposals are memory's own kinds. A
   memory change is an item that anything but the conversation itself wrote, such as an edit in the
   memory view. Each item lists once, at its latest version in the block's range, with its current
