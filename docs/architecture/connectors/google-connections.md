@@ -221,8 +221,8 @@ kind of line.
   carries on.
 - An expiring model credential joins the conversation's entry. A token from `claude setup-token`
   never refreshes, so the deployment's `model_credential` section names its `expires_at`, and the
-  line appears from `warn_before` (3 days by default) before that time. The rule under the list
-  tells the model to mention it once, unprompted.
+  line appears `warn_before` ahead of that time. The rule under the list tells the model to mention
+  it once, unprompted.
 - A connection whose account holds no address lists with its label alone. The removed tools are
   those whose scopes the last check found granted, so a tool whose scope the account never held is
   not listed as removed.
