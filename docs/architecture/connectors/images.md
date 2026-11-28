@@ -30,8 +30,8 @@ back, the gallery and the notes show them again.
 
 `image.draw` takes a prompt of 1 to 4,000 characters, and optionally:
 
-- `size`, one of `1024x1024`, `1536x1024` and `1024x1536`, for a new image. An edit comes back at
-  the size of its source, so `from` and `size` never appear together.
+- `size`, one of `1024x1024`, `1536x1024` and `1024x1536`, for a new image. An edit takes its size
+  from its source, so `from` and `size` never appear together.
 - `from`, the image to edit.
 - `references`, up to 4 image IDs that the provider sees beside the prompt, so a subject stays the
   same.
@@ -52,15 +52,15 @@ false on `image.read` and `image.import` when the caps leave no room.
 
 A refusal is a result with a `refusalCode`, never a thrown error. The model reads it and chooses.
 
-| Code                               | Cause                                                                               |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot                      |
-| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                         |
-| `NO_EDIT`                          | The profile's provider takes no source or no references                             |
-| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0          |
-| `IMAGE_REFUSED`                    | The provider refused the prompt                                                     |
-| `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
-| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
+| Code                               | Cause                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot             |
+| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                |
+| `NO_EDIT`                          | The profile's provider takes no source or no references                    |
+| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0 |
+| `IMAGE_REFUSED`                    | The provider refused the prompt                                            |
+| `IMAGE_FAILED`                     | The provider failed, its reply is over 8 MiB, or the bytes do not decode   |
+| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                          |
 
 Every refusal and failure of `image.draw` sets `profiles` to every configured profile, so the model
 can pick one to retry on. Each entry holds the profile's key and its `model`.
@@ -127,8 +127,8 @@ returns. The tool never keeps the text of a thrown error.
 | `image-openai` | `images/generations` as JSON, or `images/edits` as multipart with each `image[]`                                             | Error code `moderation_blocked`; billed only when the moderation stage is output |
 | `image-gemini` | `interactions` with an image `response_format` for JPEG, the one image type the API gives; the aspect ratio follows the size | A reply with no image block, billed; a 400 that names a safety block, not billed |
 
-Any other HTTP error, and an unreachable host, return `failed` unbilled. A 200 reply with no
-readable image returns `failed` billed, because the provider answered.
+Any other HTTP error, and an unreachable host, return `failed` unbilled. A 200 reply that nixie
+cannot read returns `failed` billed, because the provider answered.
 
 ## The config
 
