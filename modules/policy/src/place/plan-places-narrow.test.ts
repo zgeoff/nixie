@@ -189,3 +189,31 @@ test('#planPlacesNarrow refuses a remove that raises a mail address when a block
     reason: 'raises_destination',
   });
 });
+
+test('#planPlacesNarrow refuses a remove that raises a site when a blocked raw entry sits on its domain', () => {
+  const entries: PlaceEntry[] = [
+    {
+      placeID: 'w',
+      shortID: 'w',
+      key: { kind: 'site', domain: 'example.org', subdomains: true },
+      trust: 'read',
+    },
+    {
+      placeID: 's',
+      shortID: 's',
+      key: { kind: 'site', domain: 'shop.example.org', subdomains: false },
+      trust: 'known',
+    },
+    {
+      placeID: 'c',
+      shortID: 'c',
+      key: { kind: 'raw', value: 'shop.example.org' },
+      trust: 'blocked',
+    },
+  ];
+
+  expect(planPlacesNarrow(entries, 's', { kind: 'remove' })).toStrictEqual({
+    status: 'refused',
+    reason: 'raises_destination',
+  });
+});

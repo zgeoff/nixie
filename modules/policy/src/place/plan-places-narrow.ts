@@ -50,11 +50,25 @@ export function planPlacesNarrow(
     return { status: 'refused', reason: 'not_lower' };
   }
 
-  const isRaised = collectSamples(entries, target, pickSampleLabel(entries)).some(
-    (sample) => rankTrust(readLevel(after, sample)) > rankTrust(readLevel(entries, sample)),
-  );
+  const sampleLabel = pickSampleLabel(entries);
+
+  const isRaised = collectSamples(entries, target, sampleLabel)
+    .map((sample) => unmaskSample(sample, sampleLabel))
+    .some((sample) => rankTrust(readLevel(after, sample)) > rankTrust(readLevel(entries, sample)));
 
   return isRaised ? { status: 'refused', reason: 'raises_destination' } : { status: 'ok' };
+}
+
+// A label that no entry names, so no entry sits on a sample and masks it.
+function pickSampleLabel(entries: readonly PlaceEntry[]): string {
+  const held = JSON.stringify(entries.map((entry) => entry.key));
+  let label = 'nixie-sample';
+
+  while (held.includes(label)) {
+    label += 'x';
+  }
+
+  return label;
 }
 
 // The destinations the entry covers, as far as the other entries tell them apart: its own place, a
@@ -133,16 +147,12 @@ function toMailDomain(address: string): string {
   return address.slice(address.lastIndexOf('@') + 1);
 }
 
-// A label that no entry names, so no entry sits on a sample and masks it.
-function pickSampleLabel(entries: readonly PlaceEntry[]): string {
-  const held = JSON.stringify(entries.map((entry) => entry.key));
-  let label = 'nixie-sample';
-
-  while (held.includes(label)) {
-    label += 'x';
-  }
-
-  return label;
+// A parsed sample keeps no raw string an entry could equal, so a blocked raw entry such as a
+// contact never masks it. A sample with no parsed form is a raw key itself and keeps its raw.
+function unmaskSample(sample: DestinationText, sampleLabel: string): DestinationText {
+  return sample.parsed === null
+    ? sample
+    : { parsed: sample.parsed, raw: `${sampleLabel}:${sample.raw}` };
 }
 
 function readLevel(entries: readonly PlaceEntry[], sample: DestinationText): Trust | null {
