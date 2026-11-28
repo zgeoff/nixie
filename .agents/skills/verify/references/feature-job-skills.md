@@ -54,10 +54,11 @@ Before you start, run `NIXIE_VERIFY_JOB_SKILLS=1 bun verify up --restart` and `b
    Expect: both exit 0. The one row of the first query has `pins` 1, and the one row of the second
    has `pins` 0.
 
-5. Read the outcome of each skill call, in the order the job run made them:
+5. Read the outcome of each skill call, in the order the job run made them. The query leaves out the
+   results of the queue check that nixie runs at each start:
 
    ```bash
-   bun verify db query "select json_extract(payload, '$.outcome') as outcome from records where kind = 'tool_result' order by sequence"
+   bun verify db query "select json_extract(payload, '$.outcome') as outcome from records where kind = 'tool_result' and thread = (select thread from records where kind = 'trigger.fired' order by sequence limit 1) order by sequence"
    ```
 
    Expect: exit 0, and 2 rows. The first has `outcome` `result`, for `tide-tables`, and the second
