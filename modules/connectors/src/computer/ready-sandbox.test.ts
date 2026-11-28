@@ -252,3 +252,34 @@ test('it copies again over a new sandbox that a failed copy left behind', async 
   expect(disk).toStrictEqual([['/home/stub/files/note.txt', 'tide times']]);
   expect(ctx.adapter.destroyed).toStrictEqual([old.id]);
 });
+
+test('it keeps the good disk when a newer release follows a failed copy over a replacement that once passed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.desktopDisk({
+    image: 'computer-old',
+    files: { '/home/stub/files/note.txt': 'tide times' },
+  });
+
+  ctx.adapter.failNextDestroy('impd is down');
+
+  await ctx.computer.settleMove();
+
+  ctx.lost.path = 'home/stub/files/note.txt';
+
+  await ctx.computer.settleMove();
+
+  ctx.lost.path = null;
+
+  await ctx.startImage('computer-newer').settleMove();
+
+  const survivors = await ctx.adapter.list(computerOwner);
+
+  const [survivor] = survivors;
+
+  invariant(survivor);
+
+  const disk = await readDiskFiles(ctx.root, survivor.id);
+
+  expect(disk).toStrictEqual([['/home/stub/files/note.txt', 'tide times']]);
+});

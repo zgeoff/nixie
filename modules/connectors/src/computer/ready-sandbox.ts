@@ -5,8 +5,7 @@ import { computerFolders, copyComputerFolder } from './copy-computer-folder';
 import { wakeOld } from './move-old-sandboxes';
 import { probeCopyIncomplete } from './probe-copy-incomplete';
 import type { ComputerContext, DesktopState } from './types';
-import { writeCopyFinished } from './write-copy-finished';
-import { writeCopyStarted } from './write-copy-started';
+import { writeCopyState } from './write-copy-state';
 import { writeDiskUsedMarker } from './write-disk-used-marker';
 
 // The computer's sandbox: the kept one that holds today's spec, or a new one that replaces older
@@ -44,7 +43,7 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox | 
 
   if (!isReplaced) {
     if (kept === undefined) {
-      await discardCreated(context, created);
+      await removeCreated(context, created);
     }
 
     return null;
@@ -76,8 +75,8 @@ function buildComputerSpec(context: ComputerContext) {
 }
 
 // Copies each old sandbox's folders into the new one and destroys the old ones only when every
-// copy passed its check. An old sandbox with a started mark and no finished mark is a failed
-// replacement: it is no source, and it goes with the others. It returns false when a copy failed.
+// copy passed its check. An old sandbox whose last copy never finished is no source, and it goes
+// with the others. It returns false when a copy failed.
 async function replaceOld(
   context: ComputerContext,
   old: readonly Sandbox[],
@@ -88,8 +87,6 @@ async function replaceOld(
   const unverified: Sandbox[] = [];
 
   try {
-    await writeCopyStarted(created, homeEnv);
-
     for (const sandbox of old) {
       await wakeOld(sandbox);
 
@@ -98,23 +95,24 @@ async function replaceOld(
       (isIncomplete ? unverified : sources).push(sandbox);
     }
 
-    for (const sandbox of sources) {
-      for (const folder of computerFolders) {
-        await copyComputerFolder({
-          from: sandbox,
-          fromEnv: homeEnv,
-          to: created,
-          toEnv: homeEnv,
-          folder,
-        });
-      }
-    }
-
     if (sources.length > 0) {
-      await writeDiskUsedMarker(created, homeEnv);
-    }
+      await writeCopyState(created, homeEnv, 'started');
 
-    await writeCopyFinished(created, homeEnv);
+      for (const sandbox of sources) {
+        for (const folder of computerFolders) {
+          await copyComputerFolder({
+            from: sandbox,
+            fromEnv: homeEnv,
+            to: created,
+            toEnv: homeEnv,
+            folder,
+          });
+        }
+      }
+
+      await writeDiskUsedMarker(created, homeEnv);
+      await writeCopyState(created, homeEnv, 'finished');
+    }
   } catch (error) {
     context.options.logger('computer.copy_failed', { reason: String(error) }, 'warn');
 
@@ -129,7 +127,7 @@ async function replaceOld(
 }
 
 // The half-copied sandbox goes, so the next call does not take its partial disk for a kept one.
-async function discardCreated(context: ComputerContext, created: Sandbox): Promise<void> {
+async function removeCreated(context: ComputerContext, created: Sandbox): Promise<void> {
   try {
     await created.destroy();
   } catch (error) {

@@ -36,13 +36,14 @@ the inbox kinds of take-over and handover records in the tasks module, which als
 each wakes, and the policy's tool shapes, which tell it that `computer.run` holds a command line and
 that the two screen acts share one always-allow rule. When the computer is off, both lists hold none
 of its entries, and the log registers the topics of its records only when it is on. Turning it off
-keeps its records, and the restart sweep keeps the desktop sandbox whatever its image, whether the
-computer is on or off, so both are as they were when the computer is turned on again.
+keeps its records, and the restart sweep keeps the desktop sandbox while the computer is off, as
+[the sandbox](#the-sandbox) says, so both are as they were when the computer is turned on again.
 
 ## The sandbox
 
 The kind `computer` has public egress, no grant and no tool route. A deployment holds one, owned by
-`computer-desktop`, and the restart sweep keeps it, whatever its image. The
+`computer-desktop`. The restart sweep keeps it whatever its image, and whether the computer is on or
+off, so a call on the next release can copy its disk into a sandbox on that release's image. The
 [sandbox sizes](sandboxes.md#sizes) hold its memory and disk. The image `nixie-computer` comes from
 `guests/computer`.
 
@@ -78,10 +79,11 @@ in `modules/connectors` owns the sandbox:
   call and copies the `profile` and `files` folders into it, then marks the new disk as used, so
   `isDiskNew` stays false. It destroys the old sandbox only when every copy passed its check. When a
   copy fails, nixie destroys the new sandbox, keeps the old one, logs `computer.copy_failed`, and
-  answers `COMPUTER_MOVING` until a later call copies the disk. A new sandbox gets a started mark
-  before its first copy and a finished mark after the last check. One that holds only the started
-  mark is never a source: the next call copies into it again or, after a newer release, destroys it
-  once the other disks are copied.
+  answers `COMPUTER_MOVING` until a later call copies the disk. Before each copy into a new sandbox,
+  nixie marks its disk as started, which replaces any finished mark from an earlier copy. After the
+  last check passes, nixie marks it as finished. A sandbox whose mark says started is never a
+  source: the next call copies into it again or, after a newer release, destroys it once the other
+  disks are copied.
 - Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
   the first result from a disk that started empty, so the assistant knows what it held before is
   gone.

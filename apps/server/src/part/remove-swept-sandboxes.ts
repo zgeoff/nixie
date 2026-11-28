@@ -6,9 +6,8 @@ import type { TasksContext } from '@heynixie/tasks';
 
 type SweptSandboxesOptions = Omit<StaleSandboxesOptions, 'log' | 'keptOwners'>;
 
-// The restart sweep removes the sandboxes of every owner that no runner keeps and the checker does not own.
-// It spares the computer and the earlier release's browser and shell sandboxes, whatever their
-// image: the computer's next call copies each disk before it destroys the sandbox.
+// The computer's next call copies each desktop disk into a sandbox on the current image, and only
+// then destroys the old sandbox, so an old image is no reason to remove one here.
 export async function removeSweptSandboxes(
   context: Pick<TasksContext, 'log' | 'runners'>,
   options: SweptSandboxesOptions,

@@ -1,2 +1,2 @@
-export const copyStartedMarker = '.nixie-copy-started';
-export const copyFinishedMarker = '.nixie-copy-finished';
+// the file on a replacement disk that holds its copy's state, started or finished
+export const copyMarker = '.nixie-copy';
