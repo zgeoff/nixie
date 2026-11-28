@@ -59,7 +59,8 @@ search spend from the log reads both places.
 ## The budgets
 
 Search is a [paid tool](../policy/budgets.md#paid-tools). Set the price of one search, in micros,
-with `search.price_micros` in the server config. The default is 12,000 ($0.012), the price on Kagi's
+with `search.price_micros` in the server config. When the config leaves it out, the `search-kagi`
+adapter's price applies: 12,000 ($0.012), the price on Kagi's
 [price list](https://kagi.com/api/pricing). The tool's hidden `costUSD` comes from the same number.
 Each search charges that price to the built-in budgets `search-day` ($5) and `search-month` ($50)
 before the provider sees it. At a limit, the model reads
@@ -94,10 +95,11 @@ tool. The provider holds its own key, and its failure reason must never hold tha
 tool passes the reason to the model as it is.
 
 Kagi is the one provider, in the `search-kagi` adapter. The adapter sends the sites and the
-freshness in Kagi's lens, the set of filters Kagi applies to one search. The adapter sets no price:
-[the search budgets](#the-budgets) charge the configured price. The fetcher that adds the key, as
-[settings and the key](#settings-and-the-key) says, removes it from every failure, so an error in
-which Kagi repeats the key still reaches the model without it.
+freshness in Kagi's lens, the set of filters Kagi applies to one search. The adapter holds Kagi's
+API URL, the label of its key and the price of one search, and the composition root uses each one
+that the config leaves out. [The search budgets](#the-budgets) charge that price. The fetcher that
+adds the key, as [settings and the key](#settings-and-the-key) says, removes it from every failure,
+so an error in which Kagi repeats the key still reaches the model without it.
 
 Kagi marks the query's words in a title or a snippet with tags such as `<strong>`, and escapes
 characters as entities such as `&#39;`, so the adapter strips the tags and decodes the entities. The
@@ -108,19 +110,22 @@ drops the time of day.
 
 ## Settings and the key
 
-The deployment config's `search` section holds the tool's settings:
+Search is on only when the deployment config has a `search` section, as
+[feature switches](../deployment/server.md#feature-switches) says. A deployment with no `search`
+section gets no search tool, and `nixie.read` leaves `search` out of its features. The section holds
+the tool's settings:
 
-| Setting          | Default                   | What it sets                                            |
-| ---------------- | ------------------------- | ------------------------------------------------------- |
-| `daily_call_cap` | 200                       | the most searches in one day                            |
-| `credential`     | none                      | the key, as a reference of the form `deployment:<name>` |
-| `price_micros`   | 12,000                    | what one search costs, in millionths of a dollar        |
-| `api_url`        | `https://kagi.com/api/v1` | the base URL of Kagi's API                              |
+| Setting          | Default                         | What it sets                                            |
+| ---------------- | ------------------------------- | ------------------------------------------------------- |
+| `daily_call_cap` | 200                             | the most searches in one day                            |
+| `credential`     | none; the section needs it      | the key, as a reference of the form `deployment:<name>` |
+| `price_micros`   | the adapter's, 12,000           | what one search costs, in millionths of a dollar        |
+| `api_url`        | the adapter's, Kagi's `/api/v1` | the base URL of Kagi's API                              |
 
 Put the key in the [secrets file](../deployment/server.md#configuration-and-secrets) under
 `connector_credentials`, with the name the reference uses. After the secrets load at start, the
-server resolves the reference, and refuses to start when the secrets file lacks the entry. A
-deployment whose config sets no credential gets no search tool.
+server resolves the reference, and refuses to start when the secrets file lacks the entry. The
+server also refuses to start with a `search` section that sets no `credential`.
 
 The key stays in the server's memory. The adapter holds no key: it calls the API URL through a
 [credential store](credentials.md#the-fetcher) fetcher, which adds the key in the `Authorization`

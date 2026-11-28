@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { collectModuleRecordTopicMaps } from '@heynixie/api';
 import { callRecordTopics } from '@heynixie/calls';
 import { connectionRecordTopics } from '@heynixie/connections';
-import { computerTakeoverRecordTopics } from '@heynixie/connectors';
+import { computerTakeoverRecordTopics, imagesRecordTopics } from '@heynixie/connectors';
 import { credentialRecordTopics } from '@heynixie/credentials';
 import { devicesRecordTopics } from '@heynixie/devices';
 import { getRecordTopics } from '@heynixie/log';
@@ -19,6 +19,7 @@ async function setupTest() {
     [
       ...collectModuleRecordTopicMaps(),
       computerTakeoverRecordTopics,
+      imagesRecordTopics,
       callRecordTopics,
       devicesRecordTopics,
       phoneRecordTopics,
@@ -133,7 +134,7 @@ test('it registers every module on one writer without two owners for a kind', as
   const testLog = await startTestLog();
 
   expect(() => {
-    registerServerRecordTopics(testLog.writer, ['computer', 'voice', 'devices']);
+    registerServerRecordTopics(testLog.writer, ['computer', 'voice', 'devices', 'images']);
   }).not.toThrow();
 });
 
@@ -186,4 +187,20 @@ test('it leaves the device topics out when devices are off', async () => {
   registerServerRecordTopics(testLog.writer, ['computer', 'voice']);
 
   expect(getRecordTopics(testLog.writer, 'device.status_changed')).toStrictEqual([]);
+});
+
+test('it registers the image topics when images are on', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['images']);
+
+  expect(getRecordTopics(testLog.writer, 'image.pinned')).toStrictEqual(['images']);
+});
+
+test('it leaves the image topics out when images are off', async () => {
+  const testLog = await startTestLog();
+
+  registerServerRecordTopics(testLog.writer, ['computer', 'voice']);
+
+  expect(getRecordTopics(testLog.writer, 'image.pinned')).toStrictEqual([]);
 });

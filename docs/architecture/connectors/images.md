@@ -19,8 +19,13 @@ them.
 | `image.pin`    | `note`  | Marks an image so `image.list` can filter on it. `image.unpin` clears the mark.           |
 
 All 7 run [direct](./tool-calls.md#a-tool-definition), except a draw that sends a photo of the user,
-as [photos of the user](#photos-of-the-user) says. An image tool is present only when the deployment
-config has an `images` block.
+as [photos of the user](#photos-of-the-user) says.
+
+Images are on only when the deployment config has an `images` section, as
+[feature switches](../deployment/server.md#feature-switches) says. With no `images` section, nixie
+offers no image tool, `nixie.read` leaves `images` out of its features, and each `images` procedure
+of the gallery answers `FEATURE_OFF`. The web client then hides the Images page. The stored images
+stay, and the gallery shows them again once the section is back.
 
 `image.draw` takes a prompt of 1 to 4,000 characters, and optionally:
 
@@ -128,10 +133,10 @@ readable image returns `failed` billed, because the provider answered.
 
 ```yaml
 images:
-  default: openai # optional; openai is the default
+  default: openai # the profile a draw with no profile uses
   profiles:
     openai:
-      provider: openai # openai or gemini
+      provider: openai # the ID of an image adapter: openai or gemini
       model: gpt-image-1
       credential: deployment:openai-images # a connector_credentials entry
       prices: { '1024x1024': 42000, '1536x1024': 63000, '1024x1536': 63000 } # micros per image
@@ -142,13 +147,14 @@ images:
       prices: { '1024x1024': 39000, '1536x1024': 39000, '1024x1536': 39000 }
 ```
 
-`default` names the profile that answers a draw with no `profile`, and is `openai` when the config
-leaves it out. The shipped configs of the Compose recipe, the Kubernetes manifests and the preview
-set an OpenAI profile there, and keep a Gemini profile beside it for the model to retry a refused
-prompt on, so their secrets file needs an `openai-images` and a `gemini-images` entry under
+`default` names the profile that answers a draw with no `profile`, and the section needs it. The
+shipped configs of the Compose recipe, the Kubernetes manifests and the preview set an OpenAI
+profile there, and keep a Gemini profile beside it for the model to retry a refused prompt on, so
+their secrets file needs an `openai-images` and a `gemini-images` entry under
 `connector_credentials`. nixie refuses to start when a profile names a credential that the secrets
-file lacks, when `prices` lacks a size, or when `default` names no profile. The adapters use each
-provider's public API address, and the model IDs come from the config alone.
+file lacks, when `prices` lacks a size, when `default` names no profile, or when `provider` names no
+image adapter. Each adapter holds its provider's public API address and where the key goes, and the
+model IDs come from the config alone.
 
 ## Storage
 

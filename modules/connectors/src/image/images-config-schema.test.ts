@@ -65,16 +65,10 @@ test('it refuses a credential that is not a deployment entry', () => {
   expect(parsed.success).toBe(false);
 });
 
-test('it picks the profile named openai as the default when the config names none', () => {
-  const parsed = imagesConfigSchema.parse({
+test('it refuses a config that names no default profile', () => {
+  const parsed = imagesConfigSchema.safeParse({
     profiles: {
-      google: {
-        provider: 'gemini',
-        model: 'model-b',
-        credential: 'deployment:key-b',
-        prices: { '1024x1024': 40_000, '1536x1024': 60_000, '1024x1536': 60_000 },
-      },
-      openai: {
+      main: {
         provider: 'openai',
         model: 'model-a',
         credential: 'deployment:key-a',
@@ -83,5 +77,21 @@ test('it picks the profile named openai as the default when the config names non
     },
   });
 
-  expect(parsed.profiles[parsed.default]?.provider).toBe('openai');
+  expect(parsed.success).toBe(false);
+});
+
+test('it takes any provider ID, which the server checks against its adapters', () => {
+  const parsed = imagesConfigSchema.safeParse({
+    default: 'main',
+    profiles: {
+      main: {
+        provider: 'brushwork',
+        model: 'model-a',
+        credential: 'deployment:key-a',
+        prices: { '1024x1024': 40_000, '1536x1024': 60_000, '1024x1536': 60_000 },
+      },
+    },
+  });
+
+  expect(parsed.success).toBe(true);
 });

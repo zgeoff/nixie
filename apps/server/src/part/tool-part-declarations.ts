@@ -1,6 +1,5 @@
 import { buildHangUpTool } from '@heynixie/calls';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
-import { buildKagiSearch } from '@heynixie/search-kagi';
 import { addCodingConnectors } from '../coding/add-coding-connectors';
 import { buildServerCodingStart } from '../coding/build-server-coding-start';
 import { buildServerCodingTools } from '../coding/build-server-coding-tools';
@@ -20,19 +19,19 @@ import { addPhoneConnectors } from '../phone/add-phone-connectors';
 import { startPhonePart } from '../phone/start-phone-part';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
-import { buildStubImageProviders } from '../test/build-stub-image-providers';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
 import { buildDeviceFetch } from './build-device-fetch';
-import { buildImageProviders } from './build-image-providers';
 import { collectHostHeldNames } from './collect-host-held-names';
 import { makeLazyToolSource } from './make-lazy-tool-source';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startComputerPart } from './start-computer-part';
 import { startGoogleToolsPart } from './start-google-tools-part';
+import { startImagesPart } from './start-images-part';
 import { startRenderPart } from './start-render-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
+import { startSearchPart } from './start-search-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 import { startWorkerPart } from './start-worker-part';
 
@@ -124,6 +123,24 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    // The web search tool's provider.
+    name: 'web_search',
+    feature: 'search',
+    needs: ['inputs'],
+    start: (parts) => startSearchPart(parts.get('inputs').options.search),
+  },
+  {
+    // The image tools' providers.
+    name: 'image_tools',
+    feature: 'images',
+    needs: ['inputs'],
+    start: (parts) =>
+      startImagesPart({
+        imageSettings: parts.get('inputs').options.imageSettings,
+        isHarnessed: parts.get('inputs').options.harness !== undefined,
+      }),
+  },
+  {
     name: 'code_run',
     feature: 'code',
     needs: ['inputs', 'context', 'sandbox_adapter'],
@@ -197,6 +214,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'erasure',
       'connections',
       'mcp',
+      'web_search',
+      'image_tools',
     ],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -238,27 +257,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           deviceStreams: parts.find('device_streams'),
           deviceFetch: buildDeviceFetch(parts.get('web_fetch')),
           worker: parts.get('worker'),
-          search:
-            options.search === null
-              ? null
-              : {
-                  provider: buildKagiSearch({
-                    fetch: options.search.fetch,
-                    apiURL: options.search.apiURL,
-                  }),
-                  dailyCallCap: options.search.dailyCallCap,
-                  priceMicros: options.search.priceMicros,
-                },
-          images:
-            options.imageSettings === null
-              ? null
-              : {
-                  config: options.imageSettings.config,
-                  providers:
-                    NIXIE_TEST_BUILD && options.harness !== undefined
-                      ? buildStubImageProviders(options.imageSettings.config)
-                      : buildImageProviders(options.imageSettings),
-                },
+          search: parts.find('web_search'),
+          images: parts.find('image_tools'),
           readOwnValues: () => options.secrets.ownValues.read({ minChars: 1 }),
           testTools:
             NIXIE_TEST_BUILD && options.harness !== undefined

@@ -19,10 +19,13 @@ import { deriveSecretHash } from '../utils/derive-secret-hash';
 async function setupTest() {
   const readOnlyToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
 
-  const api = await startTestAPI({
-    ...defaultAPISettings,
-    readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
-  });
+  const api = await startTestAPI(
+    {
+      ...defaultAPISettings,
+      readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
+    },
+    { features: ['images'] },
+  );
 
   const laptop = await createDeviceSession(api.context, 'laptop');
   const png = await encodeTestImage({ width: 4, height: 3 }, 'png');
@@ -757,3 +760,27 @@ test('#images.forget answers UNKNOWN_IMAGE for an ID that names no image', async
     }),
   ).rejects.toMatchObject({ code: 'UNKNOWN_IMAGE' });
 });
+
+test.each(['list', 'read', 'readBytes', 'forget'] as const)(
+  'it answers FEATURE_OFF to images.%s when images are off',
+  async (procedure) => {
+    const api = await startTestAPI();
+    const owner = await createDeviceSession(api.context, 'laptop');
+
+    const client = buildTestClient(api.url, owner.token, 'https://nixie.example.org');
+
+    const answers = {
+      list: () => client.images.list({}),
+      read: () => client.images.read({ image: 'a1b2c3d4e5' }),
+      readBytes: () => client.images.readBytes({ image: 'a1b2c3d4e5', size: 'full' }),
+      forget: () =>
+        client.images.forget({ image: 'a1b2c3d4e5', clientActionID: crypto.randomUUID() }),
+    };
+
+    const answer = answers[procedure]();
+
+    await Promise.allSettled([answer]);
+
+    expect(answer).rejects.toMatchObject({ code: 'FEATURE_OFF', data: { feature: 'images' } });
+  },
+);

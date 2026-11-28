@@ -89,12 +89,6 @@ test('it reads every section, with the default of each setting the file leaves o
       secretOwnValueMinChars: 8,
     },
     images: null,
-    search: {
-      daily_call_cap: 200,
-      credential: null,
-      price_micros: 12_000,
-      api_url: 'https://kagi.com/api/v1',
-    },
     time: { default_zone: 'Australia/Sydney' },
     tasks: { runners: 3, startedClaimLoops: 2, callClaimLoops: 1, messaging: { hopLimit: 20 } },
     reminders: { min_gap_minutes: 15 },
@@ -649,4 +643,75 @@ test('it refuses a gmail section outside the google section, and says where it m
   );
 
   expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(/under google/u);
+});
+
+test('it refuses a search section with no credential', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'search: { daily_call_cap: 50 }',
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(/search\.credential/u);
+});
+
+test('it reads a search section with its credential, and fills no URL or price the file leaves out', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'search: { credential: "deployment:finder" }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.search).toStrictEqual({ daily_call_cap: 200, credential: 'deployment:finder' });
+});
+
+test('it refuses an image profile whose provider no image adapter has, and names the ones it has', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
+      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'images:',
+      '  default: easel',
+      '  profiles:',
+      '    easel: { provider: brushwork, model: easel-1, credential: "deployment:easel",',
+      "      prices: { '1024x1024': 1, '1536x1024': 1, '1024x1536': 1 } }",
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
+    'images.profiles.easel.provider: the provider brushwork is no image provider of this nixie; use one of openai, gemini',
+  );
 });

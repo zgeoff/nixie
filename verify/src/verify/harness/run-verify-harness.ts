@@ -127,6 +127,9 @@ export async function runVerifyHarness(): Promise<void> {
   // A start with NIXIE_VERIFY_NO_DEVICES=1 leaves the devices section out of the config.
   const isDevicesOff = process.env['NIXIE_VERIFY_NO_DEVICES'] === '1';
 
+  // A start with NIXIE_VERIFY_NO_IMAGES=1 leaves the images section out of the config.
+  const isImagesOff = process.env['NIXIE_VERIFY_NO_IMAGES'] === '1';
+
   // A start with NIXIE_VERIFY_NO_GOOGLE=1 connects the fake Google account, then takes the google
   // section out of the config and starts nixie again on the same data, so a stored connection meets
   // a nixie that has no Google.
@@ -164,14 +167,18 @@ export async function runVerifyHarness(): Promise<void> {
           },
         }),
     extraConfig: [
-      'images:',
-      '  default: openai',
-      '  profiles:',
-      '    openai:',
-      '      provider: openai',
-      '      model: image-test-1',
-      '      credential: deployment:images',
-      '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+      ...(isImagesOff
+        ? []
+        : [
+            'images:',
+            '  default: openai',
+            '  profiles:',
+            '    openai:',
+            '      provider: openai',
+            '      model: image-test-1',
+            '      credential: deployment:images',
+            '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+          ]),
       'web_fetch:',
       '  package_registry: https://registry.test',
       ...(gateway === null ? [] : buildCodingConfigLines()),
