@@ -13,6 +13,7 @@ import { makeReadErasureStuckPort } from '../erasure/make-read-erasure-stuck-por
 import { listFeaturesOn } from '../feature/list-features-on';
 import { createServerMail } from '../mail/create-server-mail';
 import { listChatChannels } from '../place/list-chat-channels';
+import { readPlaceContext } from '../place/read-place-context';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -211,6 +212,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
         readDefinitions: () =>
           readDefinitionsContext(parts.find('server_parts'), parts.find('definitions_exports')),
+        readPlaces: () =>
+          readPlaceContext(parts.find('server_parts'), parts.find('definitions_exports')),
         findPrompts: () => ({
           readInForce: () => parts.find('server_parts')?.inForce.read() ?? null,
           checkProposal: checkPromptProposal,

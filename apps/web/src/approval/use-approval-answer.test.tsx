@@ -11,10 +11,21 @@ import { useApprovalAnswer } from './use-approval-answer';
 function setupTest() {
   const outcomes: ApprovalOutcome[] = [];
   const clientActionIDs: string[] = [];
+  const answers: unknown[] = [];
+  const windows: unknown[] = [];
 
   network.use(
+    http.post('https://nixie.test/rpc/passkeys/window', async (info) => {
+      const raw: unknown = await info.request.clone().json();
+
+      windows.push(raw);
+
+      return HttpResponse.json({ json: { isOpen: true }, meta: [] });
+    }),
     http.post('https://nixie.test/rpc/approvals/answerProposal', async (info) => {
       const raw: unknown = await info.request.clone().json();
+
+      answers.push(raw);
 
       const schema = z.object({ json: z.object({ clientActionID: z.string() }) });
       const body = schema.parse(raw);
@@ -45,7 +56,7 @@ function setupTest() {
     }),
   );
 
-  return { hook, outcomes, clientActionIDs };
+  return { hook, outcomes, clientActionIDs, answers, windows };
 }
 
 test('it reads the refusal of a reused client action ID as its own reason', async () => {
@@ -96,4 +107,53 @@ test('it sends the next try after a reused client action ID under a new one', as
   });
 
   expect(new Set(ctx.clientActionIDs).size).toBe(2);
+});
+
+test('it sends a trust to read with its place hash and asks for no passkey', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  act(() => {
+    ctx.hook.result.current.send({
+      proposalID: 'proposal-1',
+      actionHash: 'sha256:abc',
+      choice: 'approve',
+      trust: 'read',
+      placeHash: 'sha256:place-read',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.outcomes).toHaveLength(1);
+  });
+
+  expect({ windows: ctx.windows, answers: ctx.answers }).toMatchObject({
+    windows: [],
+    answers: [{ json: { trust: 'read', placeHash: 'sha256:place-read' } }],
+  });
+});
+
+test('it takes the passkey check for a trust to act, though the row lists no passkey choice', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  act(() => {
+    ctx.hook.result.current.send({
+      proposalID: 'proposal-1',
+      actionHash: 'sha256:abc',
+      choice: 'approve',
+      trust: 'act',
+      placeHash: 'sha256:place-act',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.outcomes).toHaveLength(1);
+  });
+
+  expect(ctx.windows).toMatchObject([
+    { json: { for: { kind: 'answer', trust: 'act', placeHash: 'sha256:place-act' } } },
+  ]);
 });

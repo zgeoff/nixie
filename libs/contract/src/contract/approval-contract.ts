@@ -49,6 +49,13 @@ const proposalPackageSchema = z.object({
 });
 
 const cardConditionSchema = ruleConditionSchema.extend({ rule: z.int().nonnegative() });
+const trustAnswerLevels = z.enum(['read', 'act']);
+
+const proposedPlaceSchema = z.object({
+  words: z.string(),
+  trust: trustAnswerLevels,
+  why: z.string(),
+});
 
 const bodySchema = z.object({
   sentence: z.string(),
@@ -69,6 +76,12 @@ const bodySchema = z.object({
   // picture is read like an image
   screen: z.object({ x: z.int(), y: z.int(), picture: z.string() }).optional(),
   approveLabel: z.string(),
+
+  // the place of a held call, which the card offers to trust, with the hash of each level's answer
+  place: z.object({ words: z.string(), readHash: z.string(), actHash: z.string() }).optional(),
+
+  // the places of a proposal, which the card lists with a tick for each
+  places: z.array(proposedPlaceSchema).optional(),
   rule: z.record(z.string(), z.unknown()).optional(),
   memory: memoryProposalSchema.optional(),
   package: proposalPackageSchema.optional(),
@@ -155,6 +168,14 @@ const answerSchema = z.object({
   actionHash: z.string().min(1),
   choice: choiceSchema,
   ruleHash: z.string().optional(),
+
+  // Trusts the place of the held call beside the approval, with the place hash the card showed for
+  // that level. A trust of the place to act takes the passkey check.
+  trust: trustAnswerLevels.optional(),
+  placeHash: z.string().optional(),
+
+  // the places of a proposal card that stay ticked, by their place in its list; absent ticks all
+  tickedPlaces: z.array(z.int().nonnegative()).max(100).optional(),
   deferUntil: z.date().optional(),
   note: z.string().min(1).max(500).optional(),
   clientActionID: z.uuid(),

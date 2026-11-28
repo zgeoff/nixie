@@ -112,6 +112,10 @@ export const recordSchema = z.object({
     .object({ momentID: z.string(), shortID: z.string(), title: z.string().optional() })
     .optional(),
 
+  // set on the record of a call that an act place allowed, with the place's key and the tool; absent
+  // once a forget of an address, phone number or handle took the place's key
+  placeActed: z.object({ place: z.string(), tool: z.string() }).optional(),
+
   proposal: z.object({ proposalID: z.string(), shortID: z.string() }).optional(),
 
   recall: recallSchema.optional(),

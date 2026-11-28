@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { writePlaceActed, writePlaceAdded } from '@heynixie/policy';
 import { writeReminderVersion } from '@heynixie/reminders';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
 import { seedDefinitionTask, seedEndedDefinitionRun } from '@heynixie/tasks/test-utils';
@@ -72,6 +73,7 @@ test('it reads the actions each stop cancelled and the names of the started task
     actions: new Map(),
     cancelledActionIDs: new Set(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     reminders: new Map(),
     removedSequences: new Set(),
@@ -350,4 +352,60 @@ test('it reads the reason that a void gives for each reply on the page', async (
   const lookups = await readRecordLookups(ctx.context, [reply, otherReply]);
 
   expect([...lookups.voidedReplies]).toStrictEqual([[reply.sequence, 'attempt_failed']]);
+});
+
+test('it reads the key of the place that each act record names, for a site and for an address', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const placeContext = {
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    runInForce: () => Promise.resolve(),
+  };
+
+  const site = await writePlaceAdded(placeContext, {
+    key: { kind: 'site', domain: 'tickets.example.com', subdomains: false },
+    trust: 'act',
+    name: null,
+    addedBy: 'you',
+  });
+
+  const address = await writePlaceAdded(placeContext, {
+    key: { kind: 'address', address: 'sam@example.org' },
+    trust: 'act',
+    name: null,
+    addedBy: 'you',
+  });
+
+  invariant(site.status === 'added' && address.status === 'added');
+
+  await writePlaceActed(placeContext, {
+    placeID: site.placeID,
+    shortID: site.shortID,
+    callID: 'call-1',
+    tool: 'computer.browser_click',
+    thread: 'conversation',
+  });
+
+  await writePlaceActed(placeContext, {
+    placeID: address.placeID,
+    shortID: address.shortID,
+    callID: 'call-2',
+    tool: 'mail.send',
+    thread: 'conversation',
+  });
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['places.acted'],
+  });
+
+  const lookups = await readRecordLookups(
+    ctx.context,
+    entries.map((entry) => entry.record),
+  );
+
+  expect([...lookups.placeActs.values()]).toStrictEqual(['tickets.example.com', 'sam@example.org']);
 });

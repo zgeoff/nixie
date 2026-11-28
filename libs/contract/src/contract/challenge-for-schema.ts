@@ -9,6 +9,8 @@ export const challengeForSchema = z.discriminatedUnion('kind', [
     actionHash: z.string().min(1),
     choice: choiceSchema,
     ruleHash: z.string().optional(),
+    trust: z.enum(['read', 'act']).optional(),
+    placeHash: z.string().optional(),
   }),
   z.object({
     kind: z.literal('unknown_outcome'),

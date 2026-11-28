@@ -10,6 +10,8 @@ export function toBindingPayload(binding: ChallengeFor): JSONObject {
       actionHash: binding.actionHash,
       choice: binding.choice,
       ruleHash: binding.ruleHash ?? null,
+      ...(binding.trust === undefined ? {} : { trust: binding.trust }),
+      ...(binding.placeHash === undefined ? {} : { placeHash: binding.placeHash }),
     };
   }
 

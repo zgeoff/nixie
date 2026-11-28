@@ -26,6 +26,8 @@ export function createPasskeyAnswerGate(
           actionHash: answer.actionHash ?? '',
           choice: answer.choice,
           ...(answer.ruleHash === undefined ? {} : { ruleHash: answer.ruleHash }),
+          ...(answer.trust === undefined ? {} : { trust: answer.trust }),
+          ...(answer.placeHash === undefined ? {} : { placeHash: answer.placeHash }),
         },
       });
 

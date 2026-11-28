@@ -2,6 +2,7 @@ import { forgettableKinds } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { StepActivity, ToolActivity } from '../conversation/build-activity';
+import { formatPlaceAct } from '../conversation/format-place-act';
 import { formatStepSummary } from '../conversation/format-step-summary';
 import { useWholePayloads } from '../conversation/use-whole-payloads';
 import { css } from '../styled-system/css';
@@ -56,6 +57,11 @@ export function StepGroup(props: StepGroupProps): ReactNode {
           )}
         </div>
       </details>
+      {step.placeActs?.map((act) => (
+        <section aria-label="places acted" key={act.place}>
+          <h3 className={css({ fontWeight: 'semibold' })}>{formatPlaceAct(act)}</h3>
+        </section>
+      ))}
       {step.compactions?.map((compaction) => (
         <CompactionMarker compaction={compaction} key={compaction.sequence} />
       ))}

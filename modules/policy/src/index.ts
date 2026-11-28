@@ -67,7 +67,7 @@ export { readActedPlaceIDs } from './place/read-acted-place-ids';
 export { readPlaceRefs } from './place/read-place-refs';
 export type { ReadPlacesOptions, StoredPlace } from './place/read-places';
 export { readPlaces } from './place/read-places';
-export { placeAddedByValues, trustLevels } from './place/types';
+export { placeAddedByValues, placeKeyKinds, trustLevels } from './place/types';
 
 export type {
   Destination,
@@ -200,6 +200,17 @@ export type {
 
 export { makeActionProposalHandler } from './action/make-action-proposal-handler';
 export { mapActionProposalRecord } from './action/map-action-proposal-record';
+export type { PlacesListInput, PlacesList, ListedPlace } from './place/collect-places-list';
+export { collectPlacesList } from './place/collect-places-list';
+export type { NarrowPlan, NarrowRefusal, NarrowRequest } from './place/plan-places-narrow';
+export { planPlacesNarrow } from './place/plan-places-narrow';
+export type { ProposedPlace, ProposedPlaces } from './place/parse-proposed-places';
+export { parseProposedPlaces } from './place/parse-proposed-places';
+export { rankTrust } from './place/rank-trust';
+export { formatPlaceWords } from './place/format-place-words';
+export { buildCardPlaceOffer } from './place/build-card-place-offer';
+export type { PlaceTrust, PlaceTrustResult } from './place/write-place-trusted-in-transaction';
+export { writePlaceTrustedInTransaction } from './place/write-place-trusted-in-transaction';
 export { buildActionHash } from './action/build-action-hash';
 export { alwaysAskEffects } from './effect/always-ask-effects';
 export type { SuggestedRuleGroupKey } from './action/build-suggested-rule-group-hash';

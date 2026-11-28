@@ -66,7 +66,7 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
             ...(passkey === undefined ? {} : { passkey }),
           });
 
-        if (!options.passkeyChoices.includes(input.choice)) {
+        if (!options.passkeyChoices.includes(input.choice) && input.trust !== 'act') {
           return { status: 'answered', result: await answer(undefined) };
         }
 
@@ -78,6 +78,8 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
             actionHash: input.actionHash,
             choice: input.choice,
             ...(input.ruleHash === undefined ? {} : { ruleHash: input.ruleHash }),
+            ...(input.trust === undefined ? {} : { trust: input.trust }),
+            ...(input.placeHash === undefined ? {} : { placeHash: input.placeHash }),
           },
           answer,
         );

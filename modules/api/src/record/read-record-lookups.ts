@@ -7,6 +7,7 @@ import type { DefinitionNotice } from '@heynixie/contract';
 import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
 import { modelReplyCodec, readVoidedReplies } from '@heynixie/models';
+import { formatPlaceKey, placesActedCodec, readPlaces } from '@heynixie/policy';
 import { readProposalsBySequence } from '@heynixie/proposals';
 import { readReminderVersion } from '@heynixie/reminders';
 import {
@@ -73,6 +74,7 @@ export async function readRecordLookups(
     actions: await readActionCalls(context, outcomeActionIDs),
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
     definitionNotices: await readNoticesBySequence(context, records),
+    placeActs: await readPlaceActs(context, records),
     proposals: await readProposalsBySequence(
       context.log.writer.db,
       records.map((record) => record.sequence),
@@ -146,6 +148,47 @@ async function readNoticesBySequence(
       const notice = notices.get(entry.changeID);
 
       return notice === undefined ? [] : [[entry.sequence, notice] as const];
+    }),
+  );
+}
+
+// The key of the place that each places.acted record names. A place's IDs sit in the payload for a
+// site and in the erasable fields for an address, phone number or handle, so a forgotten place
+// leaves no line.
+async function readPlaceActs(
+  context: Pick<APIContext, 'log'>,
+  records: readonly LogRecord[],
+): Promise<RecordLookups['placeActs']> {
+  const named = records.flatMap((record) => {
+    if (record.kind !== placesActedCodec.kind) {
+      return [];
+    }
+
+    const payload = placesActedCodec.tryDecodePartial(record.payload);
+
+    const erasableID =
+      record.erasable.status === 'readable' ? record.erasable.fields['placeID'] : undefined;
+
+    const placeID = payload?.placeID ?? (typeof erasableID === 'string' ? erasableID : undefined);
+
+    return placeID === undefined ? [] : [{ sequence: record.sequence, placeID }];
+  });
+
+  if (named.length === 0) {
+    return new Map();
+  }
+
+  const places = await readPlaces(context.log, {
+    placeIDs: named.map((entry) => entry.placeID),
+  });
+
+  const keys = new Map(places.map((place) => [place.placeID, formatPlaceKey(place.key)]));
+
+  return new Map(
+    named.flatMap((entry) => {
+      const key = keys.get(entry.placeID);
+
+      return key === undefined ? [] : [[entry.sequence, key] as const];
     }),
   );
 }

@@ -2,7 +2,12 @@ import type { Transaction } from 'kysely';
 import type { ProposalFamily } from '../rows/proposal-tables';
 import { readProposal } from '../rows/read-proposal';
 import { pickProposalChoices } from './pick-proposal-choices';
-import type { ProposalAnswerInput, ProposalRefusal, SharedProposal } from './proposal-kind-handler';
+import type {
+  ProposalAnswerInput,
+  ProposalHashes,
+  ProposalRefusal,
+  SharedProposal,
+} from './proposal-kind-handler';
 import type { Checked, ProposalCoreDeps } from './types';
 import { writeFoldedProposal } from './write-folded-proposal';
 
@@ -49,6 +54,17 @@ export async function checkAnswer(
     });
   }
 
+  const placeRefusal = checkPlaceAnswer(answer, current.place ?? null);
+
+  if (placeRefusal !== null) {
+    const refusal: ProposalRefusal =
+      placeRefusal === 'stale'
+        ? { error: 'CONFLICT', current: { actionHash: current.action, ruleHash: current.rule } }
+        : { error: 'NOT_ALLOWED', reason: placeRefusal };
+
+    return refuse(refusal);
+  }
+
   const reason = findNotAllowedReason(row, answer, now);
 
   return reason === null
@@ -78,6 +94,31 @@ async function readOrBuildProposal(
 
 function refuse(refusal: ProposalRefusal): Checked {
   return { status: 'refused', refusal };
+}
+
+// A trust answer needs the place hash of its level, which only a card that offered the place
+// carries. An answer with the action hash alone is refused.
+function checkPlaceAnswer(
+  answer: ProposalAnswerInput,
+  place: ProposalHashes['place'],
+): 'trust_choice' | 'no_place_offer' | 'place_hash' | 'stale' | null {
+  if (answer.trust === undefined) {
+    return answer.placeHash === undefined ? null : 'trust_choice';
+  }
+
+  if (answer.choice !== 'approve') {
+    return 'trust_choice';
+  }
+
+  if (place === undefined || place === null) {
+    return 'no_place_offer';
+  }
+
+  if (answer.placeHash === undefined) {
+    return 'place_hash';
+  }
+
+  return answer.placeHash === place[answer.trust] ? null : 'stale';
 }
 
 const minDeferMs = 60_000;

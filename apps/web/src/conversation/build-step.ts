@@ -1,4 +1,5 @@
 import type { StepActivity, ToolActivity } from './build-activity';
+import { collectPlaceActs } from './collect-place-acts';
 import { collectSentFiles } from './collect-sent-files';
 import { collectSentMessages } from './collect-sent-messages';
 import { collectWorkers } from './collect-workers';
@@ -44,6 +45,7 @@ export function buildStep(
     (call) => isOwned(call.callID) && (call.runID === undefined || !workerRunIDs.has(call.runID)),
   );
 
+  const placeActs = collectPlaceActs(records);
   const sentMessages = collectSentMessages(calls);
   const sentFiles = collectSentFiles(calls);
 
@@ -58,6 +60,7 @@ export function buildStep(
     ...(isSilentStep(records) ? { isSilent: true } : {}),
     key: records[0]?.sequence ?? 0,
     kind: 'step',
+    ...(placeActs.length === 0 ? {} : { placeActs }),
     ...(recalls.length === 0
       ? {}
       : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),

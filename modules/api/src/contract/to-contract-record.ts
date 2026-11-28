@@ -12,6 +12,7 @@ import {
   modelTurnEndedCodec,
 } from '@heynixie/models';
 import type { ReplyVoidReason } from '@heynixie/models';
+import { placesActedCodec } from '@heynixie/policy';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { skillsWriteAppliedCodec } from '@heynixie/skills';
 import type { TaskProfile } from '@heynixie/tasks';
@@ -45,6 +46,9 @@ export interface RecordLookups {
 
   // the notice of each definition.changed record, keyed by its record's sequence
   readonly definitionNotices: ReadonlyMap<number, DefinitionNotice>;
+
+  // the key of the place that each places.acted record names, keyed by its record's sequence
+  readonly placeActs: ReadonlyMap<number, string>;
   readonly proposals: ReadonlyMap<
     number,
     { readonly proposalID: string; readonly shortID: string }
@@ -64,6 +68,7 @@ const noLookups: RecordLookups = {
   actions: new Map(),
   cancelledActionIDs: new Set(),
   definitionNotices: new Map(),
+  placeActs: new Map(),
   proposals: new Map(),
   reminders: new Map(),
   removedSequences: new Set(),
@@ -92,6 +97,7 @@ export function toContractRecord(
   const reminder = toReminder(record, lookups);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
+  const placeActed = record.kind === 'places.acted' ? toPlaceActed(record, lookups) : undefined;
   const proposal = lookups.proposals.get(record.sequence);
   const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
   const definitionNotice = lookups.definitionNotices.get(record.sequence);
@@ -110,6 +116,7 @@ export function toContractRecord(
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(moment === undefined ? {} : { moment }),
+    ...(placeActed === undefined ? {} : { placeActed }),
     ...(proposal === undefined ? {} : { proposal }),
     ...(reminder === undefined ? {} : { reminder }),
     ...(recall === undefined ? {} : { recall }),
@@ -393,6 +400,18 @@ function toKeptMoment(record: LogRecord): KeptMoment | undefined {
     shortID: kept.shortID,
     ...(typeof title === 'string' ? { title } : {}),
   };
+}
+
+function toPlaceActed(
+  record: LogRecord,
+  lookups: RecordLookups,
+): NonNullable<ContractRecord['placeActed']> | undefined {
+  const place = lookups.placeActs.get(record.sequence);
+  const acted = placesActedCodec.tryDecodePartial(record.payload);
+
+  return place === undefined || typeof acted?.tool !== 'string'
+    ? undefined
+    : { place, tool: acted.tool };
 }
 
 const removalOutcome = z.object({ actionID: z.string(), status: z.literal('done') });

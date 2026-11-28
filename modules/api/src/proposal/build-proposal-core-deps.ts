@@ -14,6 +14,7 @@ import { makeMcpProposalHandler } from '@heynixie/mcp';
 import type { McpPort } from '@heynixie/mcp';
 import { makeMemoryProposalHandler } from '@heynixie/memory';
 import { makeActionProposalHandler } from '@heynixie/policy';
+import type { PlaceContext } from '@heynixie/policy';
 import type { PromptAnswerContext } from '@heynixie/prompts';
 import { makePromptProposalHandler } from '@heynixie/prompts';
 import type { ProposalContext, ProposalCoreDeps, ProposalKindHandler } from '@heynixie/proposals';
@@ -48,6 +49,10 @@ export interface ProposalParts {
     | undefined;
 
   readonly runInForceSeed: () => Promise<unknown>;
+
+  // The directory's write context, which a trust answer and an approved places.propose write to;
+  // null before the server parts start, and absent where no directory runs
+  readonly readPlaces?: (() => PlaceContext | null) | undefined;
 }
 
 // The kinds of proposals and what each needs from the server. A kind with no part to run, such as
@@ -74,6 +79,7 @@ export function buildProposalCoreDeps(
           context.settings?.approvals?.defaultZone ?? 'UTC',
         ),
       writeThreadRecord,
+      ...(parts.readPlaces === undefined ? {} : { readPlaces: parts.readPlaces }),
       queueApproved: (tx, approved) => createApprovedAction(tx, context, approved),
       readHeldAction: (tx, request) => readHeldAction(tx, context, request),
       failHeld: (tx, row, reason) => failHeldAction(tx, context, { proposalID: row.id, reason }),

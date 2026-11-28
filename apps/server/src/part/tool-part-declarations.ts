@@ -17,6 +17,7 @@ import { buildServerMailContext } from '../mail/build-server-mail-context';
 import { buildServerMailTools } from '../mail/build-server-mail-tools';
 import { addPhoneConnectors } from '../phone/add-phone-connectors';
 import { startPhonePart } from '../phone/start-phone-part';
+import { readPlaceContext } from '../place/read-place-context';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
@@ -276,6 +277,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             parts.find('connections')?.readHeldBackTools() ?? Promise.resolve([]),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
+          readPlaces: () =>
+            readPlaceContext(parts.find('server_parts'), parts.find('definitions_exports')),
           runInForceSeed: () =>
             runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
           readDefinitions: () =>

@@ -8,6 +8,7 @@ function setupTest() {
     actions: new Map(),
     cancelledActionIDs: new Set(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map(),
@@ -419,6 +420,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
     actions: new Map(),
     cancelledActionIDs: new Set(['action-1']),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -790,6 +792,7 @@ test('it carries a task message with its sender named from the directory', () =>
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -873,6 +876,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -915,6 +919,7 @@ test('it lists the actions a stop cancelled on its record', () => {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map([
@@ -942,6 +947,7 @@ test('it marks a shredded record that a forget named as removed', () => {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set([12]),
     stopCancelledActions: new Map(),
@@ -968,6 +974,7 @@ test.each([
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences,
     stopCancelledActions: new Map(),
@@ -1209,6 +1216,7 @@ test('it marks a model reply that a void names as voided with the reason', () =>
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     definitionNotices: new Map(),
+    placeActs: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -1240,4 +1248,42 @@ test('it names the reply and the reason on a void record', () => {
     thread: 'conversation',
     voidedReply: { sequence: 9, reason: 'attempt_lost' },
   });
+});
+
+test('it names the place and the tool of a call that an act place allowed', () => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 11,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'places.acted',
+    thread: 'conversation',
+    payload: { callID: 'call-1', tool: 'computer.browser_click' },
+    erasable: { status: 'readable', fields: { placeID: 'place-1' } },
+  });
+
+  const lookups = { ...ctx.noLookups, placeActs: new Map([[11, 'tickets.example.com']]) };
+
+  expect(toContractRecord(record, lookups)).toStrictEqual({
+    kind: 'places.acted',
+    placeActed: { place: 'tickets.example.com', tool: 'computer.browser_click' },
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 11,
+    thread: 'conversation',
+  });
+});
+
+test('it leaves out the place of an act record whose place a forget took', () => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'places.acted',
+    thread: 'conversation',
+    payload: { callID: 'call-1', tool: 'mail.send' },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record, ctx.noLookups)).not.toHaveProperty('placeActed');
 });

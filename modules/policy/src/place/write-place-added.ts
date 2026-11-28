@@ -1,6 +1,6 @@
 import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { Log } from '@heynixie/log';
+import type { Log, WriteTransaction } from '@heynixie/log';
 import type { PlaceKeyFault } from './check-place-key';
 import { checkPlaceKey } from './check-place-key';
 import { formatPlaceKey } from './format-place-key';
@@ -29,42 +29,51 @@ export type PlaceAddResult =
 // back from the records. The first of a place's records takes no thread. The snapshot that holds the
 // entry goes in force in the same transaction.
 export function writePlaceAdded(context: PlaceContext, add: PlaceAdd): Promise<PlaceAddResult> {
+  return withWriteTransaction(context.log.writer, (tx) =>
+    writePlaceAddedInTransaction(tx, context, add),
+  );
+}
+
+// Adds an entry inside the caller's write transaction, which an approval's answer holds.
+export async function writePlaceAddedInTransaction(
+  tx: WriteTransaction,
+  context: PlaceContext,
+  add: PlaceAdd,
+): Promise<PlaceAddResult> {
   const fault = checkPlaceKey(add.key, add.trust, add.addedBy);
 
   if (fault !== null) {
-    return Promise.resolve({ status: 'refused', fault });
+    return { status: 'refused', fault };
   }
 
-  return withWriteTransaction(context.log.writer, async (tx) => {
-    const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
+  const inTransaction: Log = { ...context.log, writer: { ...context.log.writer, db: tx } };
 
-    const held = await readPlaces(inTransaction);
+  const held = await readPlaces(inTransaction);
 
-    const keyText = formatPlaceKey(add.key);
+  const keyText = formatPlaceKey(add.key);
 
-    if (
-      held.some((place) => place.key.kind === add.key.kind && formatPlaceKey(place.key) === keyText)
-    ) {
-      return { status: 'refused', fault: 'key_held' } as const;
-    }
+  if (
+    held.some((place) => place.key.kind === add.key.kind && formatPlaceKey(place.key) === keyText)
+  ) {
+    return { status: 'refused', fault: 'key_held' };
+  }
 
-    const placeID = crypto.randomUUID();
-    const shortID = createShortID();
-    const name = add.name?.normalize('NFC') ?? null;
+  const placeID = crypto.randomUUID();
+  const shortID = createShortID();
+  const name = add.name?.normalize('NFC') ?? null;
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: placesAddedCodec.kind,
-        definitions: context.definitions(),
-        payload: placesAddedCodec.encode(buildPayload(add, { placeID, shortID, name })),
-        ...buildErasable(add.key, name),
-      },
-    ]);
+  await writeRecordsInTransaction(tx, context.log, [
+    {
+      kind: placesAddedCodec.kind,
+      definitions: context.definitions(),
+      payload: placesAddedCodec.encode(buildPayload(add, { placeID, shortID, name })),
+      ...buildErasable(add.key, name),
+    },
+  ]);
 
-    await context.runInForce(tx);
+  await context.runInForce(tx);
 
-    return { status: 'added', placeID, shortID, trust: add.trust } as const;
-  });
+  return { status: 'added', placeID, shortID, trust: add.trust };
 }
 
 interface AddedIDs {
