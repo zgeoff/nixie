@@ -39,6 +39,8 @@ covers how nixie renders a prompt and what the seed checks.
 5. When an override replaces a `safety` part or leaves `{{ parts.safety }}` out of a template,
    expect a `prompts.safety_missing` line in the operator log that lists each such prompt. That line
    is the one sign that a prompt runs without its built-in safety rules.
+6. When a `prompts.task._template` override exists, add `{{ parts.skillCatalog }}` to it. Without
+   that line, a job run never sees the catalog of its skills.
 
 ## Answering an override that nixie proposes
 

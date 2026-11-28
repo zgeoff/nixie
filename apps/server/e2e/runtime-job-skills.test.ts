@@ -125,14 +125,15 @@ test('it gives a job run whose definition lists no skill no skill tool and no ca
 });
 
 test.each([
-  { tool: 'skill_read', input: { name: 'bird-log' }, outcome: 'error' },
-  { tool: 'skill_reload', input: { name: 'bird-log' }, outcome: 'error' },
+  { tool: 'skill_read', input: { name: 'bird-log' }, outcome: 'error', refusal: '' },
+  { tool: 'skill_reload', input: { name: 'bird-log' }, outcome: 'error', refusal: '' },
   {
     tool: 'code.run',
     input: { language: 'python', program: 'print(1)', skills: ['bird-log'] },
     outcome: 'error',
+    refusal: 'No skill bird-log is on your skill list.',
   },
-  { tool: 'skill_reload_all', input: {}, outcome: 'result' },
+  { tool: 'skill_reload_all', input: {}, outcome: 'result', refusal: '' },
 ] as const)(
   'it runs $tool of a job run only on the skills its definition lists now, though an earlier run pinned a skill it dropped',
   async (row) => {
@@ -203,14 +204,13 @@ test.each([
     const all = await ctx.nixie.readRecords();
 
     const records = all.filter((record) => record.sequence > lastSequenceBefore);
-
-    const outcomes = records
-      .filter((record) => record.kind === 'tool_result')
-      .map((record) => record.payload['outcome']);
-
+    const results = records.filter((record) => record.kind === 'tool_result');
+    const outcomes = results.map((record) => record.payload['outcome']);
     const reloaded = records.filter((record) => record.kind === 'skills.reloaded');
 
     expect(outcomes).toStrictEqual([row.outcome]);
+    expect(JSON.stringify(ctx.nixie.model.requests.at(-1)?.body?.messages)).toInclude(row.refusal);
+    expect(records.filter((record) => record.kind === 'sandbox.created')).toStrictEqual([]);
     expect(JSON.stringify(reloaded)).not.toInclude('bird-log');
   },
 );
