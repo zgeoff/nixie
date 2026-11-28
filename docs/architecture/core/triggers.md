@@ -57,8 +57,8 @@ it for an `at` trigger.
 
 ## One deliver call
 
-`deliverTriggerBatch` is one write transaction. For each event in order, the first row that fits
-decides:
+`deliverTriggerBatch` is one write transaction. For each event in order, the core takes the first
+row of this table that fits, and writes what its Written column lists.
 
 | #   | When                                                                                                                                  | Written                                                                 |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -72,15 +72,16 @@ decides:
 | 8   | `readDefinitionTask` answers `still_running`                                                                                          | `trigger.skipped` with `still_running`                                  |
 
 `readDefinitionTask` answers `wait` when nixie's pause or the spending stop holds the task. For a
-task target, a done, stopped or closed task outranks the stop and nixie's pause, so it reaches row
-4, while a failed task, a task at a limit and a task paused by the user rank below them, so row 3
-holds the fire first. A held task outranks the event's own skip, so a late fire at a paused task
-records `task_held`. A conversation target heeds only nixie's pause and the spending stop, whatever
-the conversation's state, so a reminder still lands in a conversation that the user paused. A fire
-that row 3 holds takes no key, so the source's next tick builds the same event again. The slot is
-then late, and the catch-up rule of [the schedule source](#the-schedule-source) decides: one
-catch-up within half the interval, otherwise a `too_late` skip. A one-shot leaves force only when
-its fire is written or skipped, so a one-shot that waits stays armed.
+task target, a done, stopped or closed task outranks the stop and nixie's pause, so its fire reaches
+row 4. A failed task, a task at a limit and a task paused by the user rank below them, so their fire
+waits at row 3. A held task outranks the event's own skip, so the core records `task_held` for a
+late fire at a paused task. For a conversation target, the core heeds only nixie's pause and the
+spending stop, whatever the conversation's state, so a reminder still lands in a conversation that
+the user paused. A fire that waits at row 3 takes no key, so the source's next tick builds the same
+event again. The slot is then late, and the source applies the catch-up rule of
+[the schedule source](#the-schedule-source). It fires one catch-up within half the interval, and
+otherwise skips with `too_late`. A one-shot leaves force only when its fire is written or skipped,
+so a one-shot that waits stays armed.
 
 Each record is written before the core reads for the next event, and its fold adds the key to
 `trigger_keys` at once. A second fire of one definition in one batch therefore skips with

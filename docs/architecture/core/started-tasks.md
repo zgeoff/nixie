@@ -343,12 +343,12 @@ end cause and the task's next state come from the first row that applies:
 | a first step that found no work            | `no_work`   | `waiting`                                    |
 | a quiet turn, and the task is not wakeable | `no_report` | `waiting`                                    |
 
-A commit that finds more queued work, including a turn that an interrupt cut, an open wait for a
-reply or an event, or a quiet turn on a wakeable task, leaves the task run open. The user's stop
-ends the task run with `stopped` and the close with `closed`, each in the transaction that writes
-the control, and a step error that fails the task ends it with `failed` in the error's transaction.
-The restart sweep ends no task run: the rerun of a step joins the open one. When the transaction
-that ends a task run throws, the task run stays open and the caller's retry ends it.
+A commit leaves the task run open when it finds more queued work, such as a turn that an interrupt
+cut, an open wait for a reply or an event, or a quiet turn on a wakeable task. The user's stop ends
+the task run with `stopped` and the close with `closed`, each in the transaction that writes the
+control, and a step error that fails the task ends it with `failed` in the error's transaction. The
+restart sweep ends no task run: the rerun of a step joins the open one. When the transaction that
+ends a task run throws, the task run stays open and the caller's retry ends it.
 
 A kept started task that reported is wakeable and waits with its sandbox asleep until the user or
 nixie closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. A kept
@@ -384,9 +384,6 @@ run is an ordinary message that ends nothing. nixie never treats a report as a m
 user. A definition's task run reports under `next_turn` by default, because a scheduled task run
 under `wake` would spend a conversation turn on each fire.
 
-A failed task run of a definition wakes the conversation under `next_turn` too, so the conversation
-learns of the failure when it happens, and can tell the user or end its turn silently.
-
 ## Reports
 
 A started task ends its task run with one report: a summary and, when the start declared a
@@ -399,27 +396,27 @@ repeats no value that the model sent.
 
 Every task on the sandbox runner holds `task.report`, even when its start or definition omits it,
 and the conversation never holds it. Its input schema is the same for every task and holds no report
-shape, because the registry keeps one definition per tool name, so nixie checks the fields against
-the pinned shape in code. The `tool_called` record holds an empty input, so it holds neither the
-summary nor the fields. A call that passes no `fields` counts them as an empty object, so a shape
-with no required field accepts a summary alone. nixie refuses a call, with the outcome `error`, when
-the task declares no shape and the call has fields, when the fields fail the shape, or when the
-fields pass 16,000 characters as JSON. A refusal writes and ends nothing, counts toward no call cap,
-and never repeats a value or a key that the model sent, because a forget of the report never reaches
-the refused call's result. Only the turn and dollar limits bound the tries. After the check, one
-write transaction refuses a step whose lease expired, refuses a second request in the task run with
-the first report's ID, and writes the request. Of 2 calls in one turn, only the first writes.
+shape, because the registry keeps one definition per tool name. nixie checks the fields against the
+pinned shape in code. The `tool_called` record holds an empty input, so it holds neither the summary
+nor the fields. A call that passes no `fields` counts them as an empty object, so a shape with no
+required field accepts a summary alone. nixie refuses a call, with the outcome `error`, when the
+task declares no shape and the call has fields, when the fields fail the shape, or when the fields
+pass 16,000 characters as JSON. A refusal writes and ends nothing, counts toward no call cap, and
+never repeats a value or a key that the model sent, because a forget of the report never reaches the
+refused call's result. Only the turn and dollar limits bound the tries. After the check, one write
+transaction refuses a step whose lease expired, refuses a second request in the task run with the
+first report's ID, and writes the request. Of 2 calls in one turn, only the first writes.
 
 A report shape is a closed subset of JSON Schema: a table of keywords that nixie can enforce, with
 field names that match `^[A-Za-z][A-Za-z0-9_]{0,39}$`, and every `required` name a property of its
 object. It takes at most 4,000 characters as JSON, because nixie copies it into every
 `task.run_opened`, every first message and every refusal. The start and the seed check it before
-they accept the task, and a shape that the validator cannot compile is refused. nixie stores the
-shape with sorted keys and with the object type and `additionalProperties: false` on every object,
-so one shape gives one definition hash. A shape is plain payload, so a forget never destroys a field
-name or an `enum` value. A task run carries the shape in `task.run_opened`, and a carried task run
-copies it from the one it continues. A definition file takes the same `reportShape` key, and
-`task.define` takes none.
+they accept the task, and refuse a shape that the validator cannot compile. nixie stores the shape
+with sorted keys and with the object type and `additionalProperties: false` on every object, so one
+shape gives one definition hash. A shape is plain payload, so a forget never destroys a field name
+or an `enum` value. A task run carries the shape in `task.run_opened`, and a carried task run copies
+it from the one it continues. A definition file takes the same `reportShape` key, and `task.define`
+takes none.
 
 The first turn of a task run renders the `trigger` block of a definition's task run, then a
 `report-shape` block, when the task run has a shape. The block tells the model to end with
@@ -431,23 +428,23 @@ because a prompt that changes at each fire would break the session of a task who
 turn of a carried task run renders neither, because the resumed session holds both. A rebuilt
 session of a carried task run renders both, and takes the fire from the first task run of the chain.
 
-The task run's end writes the report, once, in the transaction of the step's commit, the stop or the
-close that ended it. When the task made no report, nixie writes a code-made summary for the cause
-and lists the fields it lacks as `missing`. A forget that destroyed the request before the end
-leaves the same code-made summary. The summary of a failed task run ends with the text of the last
-step error, cut at 2,000 characters with `(cut)`, and the report message is marked as outside
-content, because the text comes from outside nixie, such as the model API. The log keeps the whole
-error on its `task.step_errored` record. The report mode decides the delivery:
+nixie writes the report once, in the transaction that ends the task run. When the task made no
+report, nixie writes a code-made summary for the end cause and lists the fields it lacks as
+`missing`. A forget that destroyed the request before the end leaves the same code-made summary. The
+summary of a failed task run ends with the text of the last step error, cut at 2,000 characters with
+`(cut)`, and the report message is marked as outside content, because the text comes from outside
+nixie, such as the model API. The log keeps the whole error on its `task.step_errored` record. nixie
+delivers the report by its report mode:
 
 - `wake`: a task message of kind `report` goes to the starter and wakes it, inside the
   [hop limit](./task-messages.md#the-hop-limit). Past the hop limit it waits for the starter's next
   turn.
 - `next_turn`: the message goes to the starter with no wake. The report of a failed task run of a
-  definition is the exception: it wakes the conversation inside the hop limit.
+  definition still wakes the conversation, inside the hop limit.
 - `none`: nixie keeps the report on the `task.run_ended` record and sends no message.
 
-A report to a starter that is done, failed or closed, the end of a task run that did no work, and
-the end that the report target caused by closing the task, are kept the same way. An end for a limit
+nixie keeps the report the same way when the starter is done, failed or closed, when the task run
+did no work, and when the report target ended the task run by closing the task. An end for a limit
 under a mode that does not wake the starter also writes a `task.limit_notice` to the starter, so the
 starter learns the task paused.
 

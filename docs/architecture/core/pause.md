@@ -80,9 +80,9 @@ too, though a conversation the user paused still takes its fires.
 
 ## The task gate
 
-`readTaskGate` in the tasks module answers whether a task may go on, in the caller's transaction. It
-gives `open`, or a hold with the first reason that applies, in this order, and `since`, the time of
-the record that put the task in that hold:
+`readTaskGate` in the tasks module checks whether a task may go on, in the caller's transaction. It
+returns `open` or a hold. A hold carries the first reason in this table that applies, and `since`,
+the time of the record that put the task in that hold:
 
 | Reason  | The task is held because                                                                                                          |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
