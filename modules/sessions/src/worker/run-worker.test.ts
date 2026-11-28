@@ -560,10 +560,11 @@ test('it starts the tool run of a worker with no skill when its call names none'
   );
 
   expect(ctx.startedRuns.map((run) => run.skills)).toStrictEqual([[]]);
+  expect(ctx.guest.turns).toHaveLength(1);
 
-  expect(ctx.guest.turns.map((turn) => turn.systemPrompt)).toStrictEqual([
-    expect.not.stringContaining('<skills>'),
-  ]);
+  expect(ctx.guest.turns.map((turn) => turn.systemPrompt)).toSatisfyAll(
+    (prompt: string) => !prompt.includes('<skills>'),
+  );
 });
 
 test('it refuses a skill outside the list of its caller, and starts no sandbox', async () => {
