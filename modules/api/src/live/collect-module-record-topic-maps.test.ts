@@ -1,5 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { computerTakeoverRecordTopics, makeHandoverRecords } from '@heynixie/connectors';
+import {
+  computerTakeoverRecordTopics,
+  imagesRecordTopics,
+  makeHandoverRecords,
+} from '@heynixie/connectors';
 import { buildStubImageProvider, startTestImages } from '@heynixie/connectors/test-utils';
 import { buildTaskChangeKind } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
@@ -83,8 +87,8 @@ async function setupTest() {
   const client = buildTestClient(api.url, laptop.token);
 
   const topicsByKind = new Map<string, readonly string[]>(
-    [...collectModuleRecordTopicMaps(), computerTakeoverRecordTopics].flatMap((topics) =>
-      Object.entries(topics),
+    [...collectModuleRecordTopicMaps(), computerTakeoverRecordTopics, imagesRecordTopics].flatMap(
+      (topics) => Object.entries(topics),
     ),
   );
 

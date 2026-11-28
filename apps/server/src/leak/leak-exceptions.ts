@@ -19,6 +19,12 @@ export const leakExceptions: LeakExceptions = {
       'modules/api/src/live/create-live-procedures.ts',
       'modules/api/src/session/create-session-procedures.ts',
     ],
+    images: [
+      'libs/contract/src/contract/contract.ts',
+      'libs/contract/src/contract/images-contract.ts',
+      'libs/contract/src/contract/live-topic-schema.ts',
+      'modules/api/src/image',
+    ],
     computer: [
       'libs/contract/src/contract/computer-contract.ts',
       'libs/contract/src/contract/contract.ts',
@@ -122,7 +128,7 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'libs/contract',
-      names: ['images', 'mcp', 'spend'],
+      names: ['mcp', 'spend'],
       removedBy: 'GEO-2881',
     },
     {
@@ -163,8 +169,14 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/api',
-      names: ['coding', 'images', 'mail', 'mcp', 'spend'],
+      names: ['coding', 'mail', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
+    },
+    {
+      where: 'modules/api/src/kept/write-owner-message.ts',
+      names: ['images'],
+      removedBy: 'never',
+      reason: 'the photos the owner attaches to a message, and not the image tools',
     },
     {
       where: 'modules/connections/src/consent',
@@ -206,8 +218,21 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/models',
-      names: ['images', 'openai'],
+      names: ['openai'],
       removedBy: 'GEO-2881',
+    },
+    {
+      where: 'modules/models/src/role/role-needs.ts',
+      names: ['images'],
+      removedBy: 'never',
+      reason: 'a model that reads the images in its input, and not the image tools',
+    },
+    {
+      where: 'modules/models/src/session/model-session-opened-codec.ts',
+      names: ['images'],
+      removedBy: 'never',
+      reason:
+        'a model session rebuilt because the images in its input filled it, and not the image tools',
     },
     {
       where: 'modules/notebook',
@@ -239,8 +264,22 @@ export const leakExceptions: LeakExceptions = {
     },
     {
       where: 'modules/sessions',
-      names: ['images', 'mail', 'mcp', 'spend'],
+      names: ['mail', 'mcp', 'spend'],
       removedBy: 'GEO-2881',
+    },
+    {
+      where: 'modules/sessions/src/turn/run-resumed-turn.ts',
+      names: ['images'],
+      removedBy: 'never',
+      reason:
+        'a model session rebuilt because the images in its input filled it, and not the image tools',
+    },
+    {
+      where: 'modules/sessions/src/types.ts',
+      names: ['images'],
+      removedBy: 'never',
+      reason:
+        'a model session rebuilt because the images in its input filled it, and not the image tools',
     },
     {
       where: 'modules/sessions/src/utils/memory-recalled-codec.ts',

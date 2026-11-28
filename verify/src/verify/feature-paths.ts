@@ -53,9 +53,14 @@ const devices: FeatureReach = {
 const images: FeatureReach = {
   packages: ['adapters/image-gemini', 'adapters/image-openai'],
   paths: [
-    'apps/server/src/part/{build-image-providers,image-provider-api}.ts',
+    'apps/server/src/part/{build-image-providers,image-provider-api,start-images-part}.ts',
     'apps/web/src/routes/images.tsx',
   ],
+};
+
+const search: FeatureReach = {
+  packages: ['adapters/search-kagi'],
+  paths: ['apps/server/src/part/start-search-part.ts'],
 };
 
 const google: FeatureReach = {
@@ -122,6 +127,7 @@ export const featurePaths = {
   'google-off': buildFeatureGlobs(workspace, google),
   'calls-off': buildFeatureGlobs(workspace, calls),
   'devices-off': buildFeatureGlobs(workspace, devices),
+  'search-images-off': buildFeatureGlobs(workspace, joinReaches(search, images)),
   'gmail-tools': buildFeatureGlobs(workspace, google),
   'gmail-wake': buildFeatureGlobs(workspace, google),
   'calendar-tools': buildFeatureGlobs(workspace, google),

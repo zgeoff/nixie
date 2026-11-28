@@ -20,12 +20,12 @@ export const startFeatures = [
   },
   {
     name: 'policy-proposal',
-    summary: 'Approve a call that an ask rule held unrun',
+    summary: 'Approve a call an ask rule held',
     paths: featurePaths['policy-proposal'],
   },
   {
     name: 'rule-condition',
-    summary: 'Approve a rule with a condition, and see it match',
+    summary: 'Approve a conditional rule, and see it match',
     paths: featurePaths['rule-condition'],
   },
 ];

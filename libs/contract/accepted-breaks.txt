@@ -163,3 +163,5 @@ GEO-2883: POST /devices/resize added the new `phone` enum value to the `oneOf[su
 GEO-2883: POST /devices/setCapability added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
 GEO-2883: POST /live/follow added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
 GEO-2883: POST /sessions/issueCode added the new `phone` enum value to the `oneOf[subschema #1]/data/feature` response property for the response status `409`
+# GEO-2881: a client of the last release still works, because images.forget answers FEATURE_OFF only on a nixie whose config has no images section, and the web client, which comes from the same build as the API, hides the images page there. The 409 answer only gains the FEATURE_OFF error.
+GEO-2881: POST /images/forget added `subschema #1` to the response body `oneOf` list for the response status `409`

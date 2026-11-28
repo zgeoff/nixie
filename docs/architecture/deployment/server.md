@@ -117,14 +117,13 @@ sidecar's first checkout can, therefore seeds within seconds.
 ## Feature switches
 
 A feature is an optional part of nixie, such as the computer, calls, devices or Google. A feature is
-on only when its section is in the deployment config: `computer`, `google` and `devices` switch the
-feature of the same name, the `voice` section switches calls, whose feature ID is `voice`, and the
-`spendStop` section switches `spend`. `apps/server/src/feature/list-features-on.ts` holds 4
+on only when its section is in the deployment config: `computer`, `google`, `devices`, `search` and
+`images` switch the feature of the same name, the `voice` section switches calls, whose feature ID
+is `voice`, and the `spendStop` section switches `spend`. A `search` section needs a `credential`,
+and an `images` section needs a `default`. `apps/server/src/feature/list-features-on.ts` holds 2
 exceptions:
 
 - `mcp` is always on.
-- `images` is off when its section is missing or null, and the schema defaults it to null.
-- `search` is on only when `search.credential` is set, and the schema defaults it to null.
 - `coding` is on only when the `coding` section holds `atc`.
 
 A deployment that already has a `voice` section keeps calls on. A feature that is off starts none of

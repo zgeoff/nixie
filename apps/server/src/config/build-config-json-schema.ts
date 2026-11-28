@@ -1,6 +1,7 @@
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { deploymentConfigSchema } from '../deployment/deployment-config-schema';
+import { imageProviderAPI } from '../part/image-provider-api';
 
 interface ReleaseRule {
   readonly path: readonly string[];
@@ -15,6 +16,20 @@ const httpURLPattern = '^[Hh][Tt][Tt][Pp][Ss]?://';
 const releaseRules: readonly ReleaseRule[] = [
   { path: ['properties', 'sandbox', 'properties', 'adapter'], keywords: () => ({ enum: ['imp'] }) },
   { path: [], keywords: (node) => ({ required: [...toStrings(node['required']), 'imp'] }) },
+  {
+    path: [
+      'properties',
+      'images',
+      'anyOf',
+      '0',
+      'properties',
+      'profiles',
+      'additionalProperties',
+      'properties',
+      'provider',
+    ],
+    keywords: () => ({ enum: Object.keys(imageProviderAPI) }),
+  },
 
   // With a gateway, the gateway prices each reply, so a profile beside the spendStop section sets
   // no prices. The anyOf reads: no spendStop section, or no profile with prices.

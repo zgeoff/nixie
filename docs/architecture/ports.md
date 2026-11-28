@@ -22,7 +22,11 @@ the rules for ports, providers and adapters, and lists where the code departs fr
   [Feature switches](deployment/server.md#feature-switches) for the switches and the two checks that
   hold the rule.
 - Search has `SearchProvider` and one real provider, so the config has no provider key for search,
-  and a credential in its `search` section turns the feature on.
+  and its `search` section turns the feature on. The `search-kagi` adapter holds Kagi's API URL, its
+  credential label and its price, and the config's `api_url` and `price_micros` override them.
+- Each image adapter holds its provider's API URL and where the key goes. An image profile's
+  `provider` is any string in the connectors module, and the composition root refuses an ID that no
+  adapter has, at config load.
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
   Agent SDK harness declares it.
 - The backup schedule and the definitions poll each run their own loop on the clock. Every other
@@ -99,24 +103,24 @@ service that the place names, and a phrase such as "the connectors module" is a 
 the place imports. Each row comes from the entries in `apps/server/src/leak/leak-exceptions.ts`.
 Remove a row and its entries together when the row's work item lands.
 
-| Place                 | Names or depends on                                                                             | Work item                                            |
-| --------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `libs/contract`       | `images`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/actions`     | the connectors module                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/api`         | `coding`, `images`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/budgets`     | `spend`                                                                                         | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/credentials` | `atc`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/definitions` | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/log`         | `coding`, `spend`                                                                               | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/models`      | `images`, `openai`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/policy`      | `coding`, `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/proposals`   | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/sandbox`     | `coding`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/sessions`    | `images`, `mail`, `mcp`, `spend`; the connectors and spend modules                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/skills`      | `github`                                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/tasks`       | `mail`, `spend`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/tools`       | `mcp`                                                                                           | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
-| `modules/triggers`    | `mail`                                                                                          | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| Place                 | Names or depends on                                                                   | Work item                                            |
+| --------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `libs/contract`       | `mcp`, `spend`                                                                        | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/actions`     | the connectors module                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/api`         | `coding`, `mail`, `mcp`, `spend`; the coding, connectors, mail, MCP and spend modules | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/budgets`     | `spend`                                                                               | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/credentials` | `atc`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/definitions` | `mcp`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/log`         | `coding`, `spend`                                                                     | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/models`      | `openai`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/policy`      | `coding`, `mcp`, `spend`                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/proposals`   | `mcp`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/sandbox`     | `coding`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/sessions`    | `mail`, `mcp`, `spend`; the connectors and spend modules                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/skills`      | `github`                                                                              | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/tasks`       | `mail`, `spend`                                                                       | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/tools`       | `mcp`                                                                                 | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
+| `modules/triggers`    | `mail`                                                                                | [GEO-2881](https://linear.app/zgeoff/issue/GEO-2881) |
 
 The connections module owns the core `Connector` interface. The `google` feature module builds
 Google's connector, with its tools, its record reads and writes and its Gmail poll, and owns the
@@ -127,7 +131,11 @@ The memory, notebook and skills modules reach a feature module only through anot
 such as the sessions module. They have no import entry, and carry the `leaking` tag until the
 entries of the modules they depend on go.
 
-These ordinary words match a feature ID, but none of them means the code feature or the web search
+The images feature's own code holds its name in 2 core packages, as the computer's does: the images
+procedures in `modules/api/src/image`, and the images contract, the contract's `images` key and the
+`images` live topic in `libs/contract`. The exceptions file lists each path under `owned`.
+
+These ordinary words match a feature ID, but none of them means the code, web search or images
 feature. Each one stays, with its reason in the exceptions file:
 
 - `code` for the sign-in and enrolment codes in `libs/contract` and `modules/api`, the OAuth code
@@ -135,4 +143,7 @@ feature. Each one stays, with its reason in the exceptions file:
   check of a policy decision in `modules/log` and `modules/policy`, and the code-made summary of a
   run end in `modules/tasks`;
 - `search` for the search mode of the memory view, of memory recall in `modules/memory` and
-  `modules/sessions`, and of the note index in `modules/notebook`.
+  `modules/sessions`, and of the note index in `modules/notebook`;
+- `images` for the photos the user attaches to a message in `modules/api`, a model that reads images
+  in `modules/models`, and a model session rebuilt because the images in its input filled it, in
+  `modules/models` and `modules/sessions`.

@@ -8,7 +8,7 @@ import { codingProjections } from '@heynixie/coding';
 import type { WiredTestCoding } from '@heynixie/coding/test-utils';
 import { wireTestCoding } from '@heynixie/coding/test-utils';
 import type { ConnectionsPort } from '@heynixie/connections';
-import { computerTakeoverRecordTopics } from '@heynixie/connectors';
+import { computerTakeoverRecordTopics, imagesRecordTopics } from '@heynixie/connectors';
 import {
   checkPromptProposal,
   readDefinitionNotices,
@@ -157,7 +157,11 @@ export async function startTestAPI(
     ...(options.writerClock === undefined ? {} : { clock: options.writerClock }),
   });
 
-  for (const topics of [...collectModuleRecordTopicMaps(), computerTakeoverRecordTopics]) {
+  for (const topics of [
+    ...collectModuleRecordTopicMaps(),
+    computerTakeoverRecordTopics,
+    imagesRecordTopics,
+  ]) {
     registerRecordTopics(writer, topics);
   }
 

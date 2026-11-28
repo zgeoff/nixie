@@ -36,7 +36,6 @@ export const corePaths = {
     // no journey checks these
     'modules/backup',
     'adapters/definitions-repo-github',
-    'adapters/search-kagi',
     'guests/fetch',
     'guests/codex',
   ],

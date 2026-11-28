@@ -14,6 +14,11 @@ export const lastFeatures = [
     paths: featurePaths['devices-off'],
   },
   {
+    name: 'search-images-off',
+    summary: 'Turn search and images off',
+    paths: featurePaths['search-images-off'],
+  },
+  {
     name: 'spend-routes',
     summary: "Read each route's counts",
     paths: featurePaths['spend-routes'],
@@ -65,7 +70,7 @@ export const lastFeatures = [
   },
   {
     name: 'calendar-tools',
-    summary: 'Read the calendar, and approve an invitation the assistant writes',
+    summary: 'Read the calendar, and approve an invitation',
     paths: featurePaths['calendar-tools'],
   },
   {

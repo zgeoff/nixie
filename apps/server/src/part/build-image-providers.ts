@@ -1,9 +1,7 @@
 import type { ImageProvider } from '@heynixie/connectors';
-import { buildGeminiImages } from '@heynixie/image-gemini';
-import { buildOpenAIImages } from '@heynixie/image-openai';
 import invariant from 'tiny-invariant';
 import type { ImageSettings } from '../server/create-image-settings';
-import { imageProviderAPI } from './image-provider-api';
+import { imageProviderAPI, isImageProviderID } from './image-provider-api';
 
 // One provider for each profile, on the API of the profile's provider and with its own fetcher.
 export function buildImageProviders(settings: ImageSettings): Record<string, ImageProvider> {
@@ -13,11 +11,11 @@ export function buildImageProviders(settings: ImageSettings): Record<string, Ima
     const fetcher = settings.fetches[key];
 
     invariant(fetcher, 'every profile has a fetcher after the start checks');
+    invariant(isImageProviderID(profile.provider), 'the config load refuses an unknown provider');
 
-    providers[key] =
-      profile.provider === 'openai'
-        ? buildOpenAIImages({ fetch: fetcher, apiURL: imageProviderAPI.openai.url })
-        : buildGeminiImages({ fetch: fetcher, apiURL: imageProviderAPI.gemini.url });
+    const api = imageProviderAPI[profile.provider];
+
+    providers[key] = api.build({ fetch: fetcher, apiURL: api.url });
   }
 
   return providers;
