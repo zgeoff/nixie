@@ -21,6 +21,21 @@ import type { SessionGuard } from './utils/make-session-guard';
 import type { StepCapturePort } from './utils/open-step-capture';
 import type { SessionMarks } from './utils/read-session-marks';
 
+// What a run reads to build the catalog of its own skill list.
+export interface SkillCatalogInput {
+  readonly thread: string;
+  readonly list: readonly string[];
+
+  // null when the harness reports none
+  readonly contextWindow: number | null;
+}
+
+// What a run's definition asks to put on the pin of its task.
+export interface SkillJoinInput {
+  readonly thread: string;
+  readonly list: readonly string[];
+}
+
 export interface MemoryRef {
   readonly itemID: string;
   readonly version: number;

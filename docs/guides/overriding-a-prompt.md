@@ -39,6 +39,8 @@ covers how nixie renders a prompt and what the seed checks.
 5. When an override replaces a `safety` part or leaves `{{ parts.safety }}` out of a template,
    expect a `prompts.safety_missing` line in the operator log that lists each such prompt. That line
    is the one sign that a prompt runs without its built-in safety rules.
+6. When a `prompts.task._template` override exists, add `{{ parts.skillCatalog }}` to it. Without
+   that line, a job run never sees the catalog of its skills.
 
 ## Answering an override that nixie proposes
 
@@ -80,31 +82,31 @@ already answered or lapsed, a stale proposal, or an edit that fails the checks i
 A template reads `parts.<name>` for each part of its prompt, and every path in its row. A part reads
 every path in its row and the parts listed before it.
 
-| Prompt               | Parts                                                  | Paths                                                                           |
-| -------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                                       |
-| `retirement-checker` | `instruction`, `safety`                                | none                                                                            |
-| `session`            | `skillCatalog`, `output`, `safety`                     | `persona`, `skillCatalog`, `owner.name`                                         |
-| `compaction`         | `instruction`, `safety`                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                      |
-| `task`               | `persona`, `frame`, `inputs`, `instructions`, `safety` | `persona`, `owner.name`, `task.name`, `task.brief`, `task.reportTargetSentence` |
+| Prompt               | Parts                                                                  | Paths                                                                                           |
+| -------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `content-checker`    | `nameRule`, `instruction`, `safety`                                    | `owner.name`, `owner.nameAtSentenceStart`                                                       |
+| `retirement-checker` | `instruction`, `safety`                                                | none                                                                                            |
+| `session`            | `skillCatalog`, `output`, `safety`                                     | `persona`, `skillCatalog`, `owner.name`                                                         |
+| `compaction`         | `instruction`, `safety`                                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                                      |
+| `task`               | `persona`, `frame`, `skillCatalog`, `inputs`, `instructions`, `safety` | `persona`, `skillCatalog`, `owner.name`, `task.name`, `task.brief`, `task.reportTargetSentence` |
 
 Each path holds one value:
 
-| Path                        | Value                                                                        |
-| --------------------------- | ---------------------------------------------------------------------------- |
-| `persona`                   | The persona in force                                                         |
-| `skillCatalog`              | The catalog of skills the conversation may load, or empty text               |
-| `owner.name`                | Your configured name, or "the owner"                                         |
-| `owner.nameAtSentenceStart` | Your name at a sentence start, built differently by each prompt              |
-| `owner.label`               | The author label on your messages, such as `Avery (owner)`                   |
-| `owner.mention`             | The words a memory uses for you, such as `the owner "Avery"`                 |
-| `assistant.name`            | The assistant's configured name, or "the assistant"                          |
-| `assistant.label`           | The author label on the assistant's messages                                 |
-| `assistant.mention`         | The words a shared memory uses for the assistant                             |
-| `summary.words`             | The word target of a compaction summary                                      |
-| `task.name`                 | The name of the task that the prompt runs                                    |
-| `task.brief`                | The brief of the task that the prompt runs                                   |
-| `task.reportTargetSentence` | The sentence that names where the report of the task run goes, or empty text |
+| Path                        | Value                                                                         |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `persona`                   | The persona in force                                                          |
+| `skillCatalog`              | The catalog of skills the conversation or the job run may load, or empty text |
+| `owner.name`                | Your configured name, or "the owner"                                          |
+| `owner.nameAtSentenceStart` | Your name at a sentence start, built differently by each prompt               |
+| `owner.label`               | The author label on your messages, such as `Avery (owner)`                    |
+| `owner.mention`             | The words a memory uses for you, such as `the owner "Avery"`                  |
+| `assistant.name`            | The assistant's configured name, or "the assistant"                           |
+| `assistant.label`           | The author label on the assistant's messages                                  |
+| `assistant.mention`         | The words a shared memory uses for the assistant                              |
+| `summary.words`             | The word target of a compaction summary                                       |
+| `task.name`                 | The name of the task that the prompt runs                                     |
+| `task.brief`                | The brief of the task that the prompt runs                                    |
+| `task.reportTargetSentence` | The sentence that names where the report of the task run goes, or empty text  |
 
 `owner.nameAtSentenceStart` differs between the two prompts that accept it. The `content-checker`
 prompt keeps your configured name exactly as you wrote it, and falls back to "The owner". The
@@ -113,4 +115,4 @@ prompt keeps your configured name exactly as you wrote it, and falls back to "Th
 
 A part with a condition renders as empty text when its condition fails, whatever its text: `persona`
 when no persona is in force or the task runs without one, `nameRule` when no name is configured, and
-`skillCatalog` when the conversation has no skills.
+`skillCatalog` when the conversation or the job run has no skills.

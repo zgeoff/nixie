@@ -127,7 +127,7 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
     parts: Partial<
       Pick<
         SandboxRunnerOptions,
-        'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions' | 'sandboxes'
+        'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions' | 'sandboxes' | 'skills'
       >
     > = {},
   ) => {
@@ -163,6 +163,7 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
         events.push(event);
       },
       ...(parts.inStepActions === undefined ? {} : { inStepActions: parts.inStepActions }),
+      ...(parts.skills === undefined ? {} : { skills: parts.skills }),
     });
 
     host.defer(() => runner.stop());
@@ -500,6 +501,7 @@ test("it runs a started task's tool run on its own ID with the tools it is given
       thread: taskID,
       logThread: taskID,
       tools: ['tasks.list', 'task.message', 'task.report', 'time.now', 'turn.end_silently'],
+      skills: [],
       model: { model: 'claude-test-errands', profile: 'errands' },
     },
   ]);
@@ -1022,6 +1024,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
       thread: taskID,
       logThread: taskID,
       tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently', 'task.report'],
+      skills: [],
       model: { model: 'other-family-test-3', profile: 'router-b' },
     },
   ]);
@@ -2996,6 +2999,85 @@ test('it starts the tool list of a definition task from the version its task run
   expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
     ['tasks.list', 'turn.end_silently', 'task.report'],
   ]);
+});
+
+test('it gives a definition task that lists skills the skill tools that read, its list, a pin of the list and the catalog', async () => {
+  const ctx = await setupTest();
+
+  const joined: { thread: string; list: readonly string[] }[] = [];
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { tools: ['tasks.list'], skills: ['tide-tables'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-skills');
+
+  const runner = await ctx.startRunner({
+    skills: {
+      join: (input) => {
+        joined.push(input);
+
+        return Promise.resolve();
+      },
+      readCatalog: (input) => Promise.resolve(`<skills>${input.list.join(', ')}</skills>`),
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => ({ tools: run.tools, skills: run.skills }))).toStrictEqual([
+    {
+      tools: [
+        'tasks.list',
+        'skill_read',
+        'skill_reload',
+        'skill_reload_all',
+        'code.run',
+        'turn.end_silently',
+        'task.report',
+      ],
+      skills: ['tide-tables'],
+    },
+  ]);
+
+  expect(joined).toStrictEqual([{ thread: taskID, list: ['tide-tables'] }]);
+  expect(ctx.guest.turns[0]?.systemPrompt).toInclude('<skills>tide-tables</skills>');
+});
+
+test('it gives a definition task that lists no skill no skill tool, no catalog and an empty skill list', async () => {
+  const ctx = await setupTest();
+
+  const joined: unknown[] = [];
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { tools: ['tasks.list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-no-skills');
+
+  const runner = await ctx.startRunner({
+    skills: {
+      join: (input) => {
+        joined.push(input);
+
+        return Promise.resolve();
+      },
+      readCatalog: () => Promise.resolve('<skills>unexpected</skills>'),
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => ({ tools: run.tools, skills: run.skills }))).toStrictEqual([
+    { tools: ['tasks.list', 'turn.end_silently', 'task.report'], skills: [] },
+  ]);
+
+  expect(joined).toStrictEqual([]);
+  expect(ctx.guest.turns[0]?.systemPrompt).not.toInclude('<skills>');
 });
 
 test('it adds the memory tools that only read to the tool list of a definition task with memory read', async () => {

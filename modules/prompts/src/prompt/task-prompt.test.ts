@@ -7,6 +7,7 @@ test('it renders the three-paragraph frame, then the position rule and the rule 
       'task',
       {
         persona: '',
+        skillCatalog: null,
         owner: { name: 'Robin' },
         task: {
           name: 'Tide tables',
@@ -34,6 +35,7 @@ test('it names the report target in the last paragraph of the frame', () => {
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: 'Robin' },
       task: {
         name: 'Tide tables',
@@ -54,6 +56,7 @@ test('it puts a persona before the frame', () => {
     'task',
     {
       persona: 'You are calm.',
+      skillCatalog: null,
       owner: { name: null },
       task: { name: 'Tide tables', brief: 'Find the high tides.', reportTargetSentence: '' },
     },
@@ -68,6 +71,7 @@ test('it names the owner as the owner when no name is set', () => {
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: null },
       task: { name: 'Tide tables', brief: 'Find the high tides.', reportTargetSentence: '' },
     },
@@ -82,6 +86,7 @@ test('it renders the same prompt whatever the brief says, so every turn and sess
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: 'Robin' },
       task: { name: 'Tide tables', brief: 'One.', reportTargetSentence: '' },
     },
@@ -92,6 +97,7 @@ test('it renders the same prompt whatever the brief says, so every turn and sess
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: 'Robin' },
       task: { name: 'Tide tables', brief: '', reportTargetSentence: '' },
     },
@@ -106,6 +112,7 @@ test('it resolves the brief path of a prompt override to the brief, and keeps te
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: 'Robin' },
       task: {
         name: 'Tide tables',
@@ -124,6 +131,7 @@ test('it resolves the report target path of a prompt override to the sentence', 
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: 'Robin' },
       task: {
         name: 'Tide tables',
@@ -147,6 +155,7 @@ test('it renders an instructions override after the frame', () => {
     'task',
     {
       persona: '',
+      skillCatalog: null,
       owner: { name: 'Robin' },
       task: { name: 'Tide tables', brief: 'Find the high tides.', reportTargetSentence: '' },
     },
@@ -155,5 +164,22 @@ test('it renders an instructions override after the frame', () => {
 
   expect(prompt).toInclude(
     'Calling it ends the task.\n\nAnswer in one line.\n\nA `<system-message>`',
+  );
+});
+
+test('it puts the skill catalog after the frame and before the safety rules', () => {
+  const prompt = renderPrompt(
+    'task',
+    {
+      persona: '',
+      skillCatalog: '<skills>\n- tide-tables: Reads a tide table.\n</skills>',
+      owner: { name: 'Robin' },
+      task: { name: 'Tide tables', brief: 'Find the high tides.', reportTargetSentence: '' },
+    },
+    {},
+  );
+
+  expect(prompt).toMatch(
+    /Calling it ends the task\.\n\n<skills>\n- tide-tables: Reads a tide table\.\n<\/skills>\n\nA `<system-message>`/u,
   );
 });

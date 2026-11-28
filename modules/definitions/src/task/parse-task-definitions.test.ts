@@ -11,7 +11,7 @@ function setupTest() {
 
   return {
     parse: (files: Record<string, string>) =>
-      parseTaskDefinitions(new Map(Object.entries(files)), seed),
+      parseTaskDefinitions(new Map(Object.entries(files)), seed, ['tide-tables']),
   };
 }
 
@@ -385,7 +385,6 @@ test('it reports every fault of every folder', () => {
 test.each([
   ['role', 'role: helper\n', 'role'],
   ['runner', 'runner: sandbox\n', 'runner'],
-  ['skills', 'skills:\n  - pdf-forms\n', 'skills'],
   ['inputs', 'inputs:\n  gauge: text\n', 'inputs'],
   ['trigger.log', 'trigger:\n  log:\n    kind: note\n', 'trigger.log'],
   ['trigger.poll', 'trigger:\n  poll:\n    every: 5\n', 'trigger.poll'],
@@ -721,4 +720,45 @@ test('it accepts a repo definition that sets self notes', () => {
   });
 
   expect([parsed.faults, parsed.definitions[0]?.form['memory']]).toStrictEqual([[], 'self_notes']);
+});
+
+test('it keeps a definition that lists skills, as a sorted list with no repeats', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml':
+      'name: Check the rain gauge\nbrief: Read the gauge.\nskills:\n  - tide-tables\n  - tide-tables\n',
+  });
+
+  expect([parsed.faults, parsed.definitions[0]?.form['skills']]).toStrictEqual([
+    [],
+    ['tide-tables'],
+  ]);
+});
+
+test('it leaves skills out of the form of a definition that lists none, so its hash holds', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml': 'name: Check the rain gauge\nbrief: Read the gauge.\n',
+  });
+
+  expect(parsed.definitions[0]?.form).not.toHaveProperty('skills');
+});
+
+test('it refuses a definition that lists a skill the definitions lack', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml':
+      'name: Check the rain gauge\nbrief: Read the gauge.\nskills:\n  - tide-tables\n  - bird-log\n',
+  });
+
+  expect(parsed.faults).toStrictEqual([
+    {
+      path: 'tasks/rain-gauge/task.yaml',
+      fault: 'bad_definition',
+      reasons: ['skills: no skill is named bird-log'],
+    },
+  ]);
 });

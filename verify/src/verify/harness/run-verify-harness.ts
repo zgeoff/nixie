@@ -32,8 +32,9 @@ import { approveHeldRegion } from './approve-held-region';
 import { buildScriptedReplies } from './build-scripted-replies';
 import { collectActionProposals } from './collect-action-proposals';
 import { collectGuestAddresses } from './collect-guest-addresses';
+import { jobSkillDefinitions } from './job-skill-definitions';
 import { localMemoryConfig } from './local-memory-config';
-import { readLastModelInput } from './read-last-model-input';
+import { readLastModelInput, readLastSystemPrompt } from './read-last-model-input';
 import type { CallState } from './run-call-step';
 import { runCallStep } from './run-call-step';
 import { runComputerSession } from './run-computer-session';
@@ -138,7 +139,12 @@ export async function runVerifyHarness(): Promise<void> {
   // a nixie that has no Google.
   const isGoogleDropped = process.env['NIXIE_VERIFY_NO_GOOGLE'] === '1';
 
+  // A start with NIXIE_VERIFY_JOB_SKILLS=1 puts 2 skills and a job in the definitions: the job lists
+  // one skill and fires every 5 minutes.
+  const isJobSkillsOn = process.env['NIXIE_VERIFY_JOB_SKILLS'] === '1';
+
   const nixie = await createSpawnedNixie(stack, {
+    ...(isJobSkillsOn ? jobSkillDefinitions : {}),
     ...(isComputerOff ? { isComputerOff: true } : {}),
     ...(isDevicesOff ? { isDevicesOff: true } : {}),
     ...(isCallsOn ? { voicePricePerMinute: 0.05 } : { isVoiceOff: true }),
@@ -393,7 +399,10 @@ export async function runVerifyHarness(): Promise<void> {
         })),
       };
     },
-    readModelInput: () => ({ text: readLastModelInput(nixie.model.requests) }),
+    readModelInput: () => ({
+      text: readLastModelInput(nixie.model.requests),
+      system: readLastSystemPrompt(nixie.model.requests),
+    }),
     readActionProposals: async () => {
       const listed = await api.client.approvals.listItems();
       const records = await nixie.readRecords();

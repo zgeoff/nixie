@@ -1,7 +1,7 @@
 import type { SkillToolsContext, SkillVendorContext } from '@heynixie/skills';
 import { buildSkillTools, buildSkillVendorTool } from '@heynixie/skills';
 import type { ToolDefinition } from '@heynixie/tools';
-import { readConversationSkillList } from './read-conversation-skill-list';
+import { readRunSkillList } from '../skill/read-run-skill-list';
 
 export function buildConversationSkillTools(
   context: Omit<SkillToolsContext, 'readSkillList'>,
@@ -9,7 +9,7 @@ export function buildConversationSkillTools(
 ): readonly ToolDefinition[] {
   const tools = buildSkillTools({
     ...context,
-    readSkillList: readConversationSkillList,
+    readSkillList: readRunSkillList,
   });
 
   return vendor === null ? tools : [...tools, buildSkillVendorTool(vendor)];

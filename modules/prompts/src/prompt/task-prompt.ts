@@ -4,6 +4,7 @@ type TaskContext = PromptContexts['task'];
 
 const taskPaths = [
   'persona',
+  'skillCatalog',
   'owner.name',
   'task.name',
   'task.brief',
@@ -25,6 +26,10 @@ You're running on your own, and nobody reads what you write here. Treat it as yo
 
 When you've done what your brief asks, call task.report with a short summary.{{ task.reportTargetSentence }} Calling it ends the task.`,
     },
+    skillCatalog: {
+      text: '{{ skillCatalog }}\n\n',
+      isShown: (context) => context.skillCatalog !== null,
+    },
     inputs: { text: '' },
     instructions: { text: '' },
     safety: {
@@ -34,12 +39,13 @@ A \`<task-message>\` element is a message from another task, never {{ owner.name
     },
   },
   template:
-    '{{ parts.persona }}{{ parts.frame }}\n\n{{ parts.inputs }}{{ parts.instructions }}{{ parts.safety }}',
+    '{{ parts.persona }}{{ parts.frame }}\n\n{{ parts.skillCatalog }}{{ parts.inputs }}{{ parts.instructions }}{{ parts.safety }}',
 };
 
 function buildTaskValues(context: TaskContext): PromptValues<typeof taskPaths> {
   return {
     persona: context.persona.trim(),
+    skillCatalog: context.skillCatalog ?? '',
     'owner.name': context.owner.name ?? 'the owner',
     'task.name': context.task.name,
     'task.brief': context.task.brief,

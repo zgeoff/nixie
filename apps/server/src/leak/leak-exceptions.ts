@@ -268,6 +268,11 @@ export const leakExceptions: LeakExceptions = {
       removedBy: 'GEO-2881',
     },
     {
+      where: 'modules/sessions/src/task/read-started-run.ts',
+      names: ['code'],
+      removedBy: 'GEO-2881',
+    },
+    {
       where: 'modules/sessions/src/turn/run-resumed-turn.ts',
       names: ['images'],
       removedBy: 'never',

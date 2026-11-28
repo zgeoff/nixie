@@ -22,9 +22,8 @@ A code run has fixed limits: 60 s of wall time, 512 MiB of memory, 1 MiB of outp
 MiB of files out and 1 vCPU. They bound each code run, and the output limits bound how far the
 database and its backups grow. They are constants with no config key, so no rule or user raises
 them. Input files are files an earlier code run wrote and pages the web fetch stored. A `skills`
-list places each named skill's folder read-only in the sandbox, as the
-[skills design](../skills.md#scripts) sets out. To give a program outside data, fetch it with
-another tool first, because the code imp has no route out. See
+list places each named skill's folder read-only in the sandbox. To give a program outside data,
+fetch it with another tool first, because the code imp has no route out. See
 [the code tool](../../../architecture/connectors/code-tool.md) for the contracts, the limits and
 what the code image holds.
 

@@ -288,6 +288,14 @@ the definition:
 | `step`         | `{ file, api: 1 }`                                                                | none    |
 | `destinations` | a list of destination patterns, as a rule's `destinations` list takes them        | `[]`    |
 | `maxCalls`     | a map from a listed tool name to a whole-number cap of 1 or more                  | `{}`    |
+| `skills`       | a list of skill names, each a skill that the definitions hold                     | none    |
+
+List `skills` to give each job run of the definition the [skill tools](./skills.md#the-skill-tools)
+that read and reload, the skill catalog and the code tool's `/skills/<name>/`, limited to that list.
+Leave the key out to give its job runs no skills. The seed refuses a name that no skill in the
+definitions carries with `bad_definition`, as the manifest's `skills` list does. The parse stores
+the list sorted, with no repeats, and omits the key when the file leaves it out, so a definition
+that never listed skills keeps its hash.
 
 The parser takes the decoded texts of the files and never reads the source. For each folder, it
 checks in this order:
@@ -325,18 +333,18 @@ refusal is a `TaskSeedRefusedError`, a kind of definitions parse error. Its `pro
 every definitions parse error has, and its own `faults` field both list each file's path with its
 fault code:
 
-| Code                | Path              | Cause                                                                                                 |
-| ------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `bad_id`            | the folder        | an ID outside the pattern                                                                             |
-| `missing_task_yaml` | the folder        | a folder with no `task.yaml`                                                                          |
-| `unnamed_step_file` | the `.ts` file    | a `.ts` file that `step.file` does not name                                                           |
-| `bad_slot`          | `instructions.md` | a slot that the `task` prompt does not accept, which includes every `trigger.*` and `inputs.*` slot   |
-| `target_removed`    | `task.yaml`       | a `target` key, which no definition reads, because every definition runs as a task; delete the line   |
-| `bad_schedule`      | `task.yaml`       | a trigger that breaks a rule of `Schedule`                                                            |
-| `at_without_offset` | `task.yaml`       | an `at` date-time with no offset or `Z`                                                               |
-| `start_refused`     | `task.yaml`       | start keys that fail the start schema, or a start that the check refuses                              |
-| `bad_max_calls`     | `task.yaml`       | a cap below 1, or a cap on a tool that `tools` lacks                                                  |
-| `bad_definition`    | `task.yaml`       | text that is not a mapping, a wrong value in a key of the definition, or a step file the folder lacks |
+| Code                | Path              | Cause                                                                                                                                |
+| ------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `bad_id`            | the folder        | an ID outside the pattern                                                                                                            |
+| `missing_task_yaml` | the folder        | a folder with no `task.yaml`                                                                                                         |
+| `unnamed_step_file` | the `.ts` file    | a `.ts` file that `step.file` does not name                                                                                          |
+| `bad_slot`          | `instructions.md` | a slot that the `task` prompt does not accept, which includes every `trigger.*` and `inputs.*` slot                                  |
+| `target_removed`    | `task.yaml`       | a `target` key, which no definition reads, because every definition runs as a task; delete the line                                  |
+| `bad_schedule`      | `task.yaml`       | a trigger that breaks a rule of `Schedule`                                                                                           |
+| `at_without_offset` | `task.yaml`       | an `at` date-time with no offset or `Z`                                                                                              |
+| `start_refused`     | `task.yaml`       | start keys that fail the start schema, or a start that the check refuses                                                             |
+| `bad_max_calls`     | `task.yaml`       | a cap below 1, or a cap on a tool that `tools` lacks                                                                                 |
+| `bad_definition`    | `task.yaml`       | text that is not a mapping, a wrong value in a key of the definition, a skill that no skill carries, or a step file the folder lacks |
 
 A file directly under `tasks/`, a nested folder, and any `.yaml` or `.md` file other than
 `task.yaml` and `instructions.md` belong to no definition, and the seed lists them as unapplied
@@ -644,9 +652,9 @@ and `tasks.runs`, which [tasks](./tasks.md) describes, are conversation tools to
 
 A define over a definition whose version has an `instructions.md` file, a step file or a file-only
 key off its default (`context`, `wakeable`, `maxCalls`, `step`, `reportShape`, `log`,
-`destinations`) refuses with `FILE_ONLY_KEYS`. `requestDefinitionChange` reads the version in force
-inside its transaction and gives `pickDefinitionMove` a boolean for it. The check applies to a
-define only, so an undefine of such a definition goes through. The define refusals come in this
+`destinations`, `skills`) refuses with `FILE_ONLY_KEYS`. `requestDefinitionChange` reads the version
+in force inside its transaction and gives `pickDefinitionMove` a boolean for it. The check applies
+to a define only, so an undefine of such a definition goes through. The define refusals come in this
 order: `NOT_FOUND`, `ID_TAKEN`, `FILE_ONLY_KEYS`, `UNCHANGED`, `ONE_SHOT_OVER_REPO`.
 
 The ID of a defined task is the slug of its name: the lowercase name with each run of characters

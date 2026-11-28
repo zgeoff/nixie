@@ -7,6 +7,10 @@ import { silentEndToolName } from '../turn/build-silent-end-tool';
 import type { WorkerPlan, WorkerTargets } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
 
+// The one skill tool a worker holds. A worker never reloads, because its thread is its caller's,
+// and a reload there would move the caller's pin.
+const workerSkillToolName = 'skill_read';
+
 // A worker starts, messages, closes and lists no task, reports for none and starts no worker. The
 // definitions list and the tools that change reminders belong to the conversation alone.
 const neverHeldTools: ReadonlySet<string> = new Set([
@@ -36,10 +40,16 @@ export interface WorkerRunFacts {
     // the tool names as the model wrote them
     readonly tools: readonly string[];
 
+    // the skills the call names
+    readonly skills: readonly string[];
+
     // the selectable model's name, when the call chose one
     readonly model?: string;
   };
   readonly run: ToolRun;
+
+  // the skills the caller may use, which the call's skills stay within
+  readonly callerSkills: readonly string[];
 
   // whether the worker tool still runs
   readonly isRunning: boolean;
@@ -79,8 +89,26 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
     );
   }
 
+  const skills = [...new Set(facts.call.skills)].toSorted();
+  const unheldSkills = skills.filter((skill) => !facts.callerSkills.includes(skill));
+
+  if (unheldSkills.length > 0) {
+    return refuse(
+      `A worker gets only skills you may use, and you may not use ${unheldSkills.join(', ')}, so nixie started none.`,
+    );
+  }
+
+  if (skills.length > 0 && !facts.run.tools.includes(workerSkillToolName)) {
+    return refuse(
+      `A worker reads a skill with ${workerSkillToolName}, which you do not hold, so nixie started none.`,
+    );
+  }
+
+  // The call may list skill_read itself, which a worker with skills holds in any case.
   const never = tools.filter(
-    (tool) => neverHeldTools.has(tool) || facts.bounds.conversationTools.includes(tool),
+    (tool) =>
+      !(tool === workerSkillToolName && skills.length > 0) &&
+      (neverHeldTools.has(tool) || facts.bounds.conversationTools.includes(tool)),
   );
 
   if (never.length > 0) {
@@ -116,7 +144,8 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
     plan: {
       question: facts.call.question,
       target,
-      tools,
+      tools: skills.length === 0 ? tools : [...new Set([...tools, workerSkillToolName])],
+      skills,
       limits: { ...facts.limits, dollars: taskDollars ?? facts.limits.dollars },
       isTaskLimit: taskDollars !== null,
       calledAt: facts.now,

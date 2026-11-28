@@ -87,8 +87,9 @@ the caller's next step.
 The conversation follows the same rule and keeps its session. Tools sit outside the system prompt,
 so a changed tool costs one prompt-cache miss, where a persona change opens a
 [new session](../../../architecture/core/conversation-turns.md#opening-a-new-session). One cache
-miss per change matches the cost of a [skill reload](../skills.md#versions). A pending proposal for
-the tool goes stale, as [the proposal](../policy/approvals.md#the-proposal) states.
+miss per change matches the cost of a
+[skill reload](../../../architecture/core/skills.md#the-skill-tools). A pending proposal for the
+tool goes stale, as [the proposal](../policy/approvals.md#the-proposal) states.
 
 ### A failed listing
 

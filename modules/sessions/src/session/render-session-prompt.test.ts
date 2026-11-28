@@ -93,6 +93,7 @@ test("it renders the task prompt with the task's name and brief from the directo
       'task',
       {
         persona: '',
+        skillCatalog: null,
         owner: { name: 'Robin' },
         task: {
           name: 'Tide tables',

@@ -51,6 +51,7 @@ export function buildTestDefinitionStore(): TestDefinitionStore {
         memory: 'none',
         log: 'own',
         tools: [],
+        skills: [],
         context: 'fresh',
         wakeable: false,
         trigger: null,

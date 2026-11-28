@@ -71,6 +71,7 @@ test('it offers the selectable models as an optional model option with their des
     properties: {
       question: { type: 'string', minLength: 1, maxLength: 8000 },
       tools: { type: 'array', items: { type: 'string' }, maxItems: 50, uniqueItems: true },
+      skills: { type: 'array', items: { type: 'string' }, maxItems: 50, uniqueItems: true },
       model: {
         type: 'string',
         enum: ['big', 'small'],
@@ -93,6 +94,7 @@ test('it leaves the model option out when no model is selectable', async () => {
     properties: {
       question: { type: 'string', minLength: 1, maxLength: 8000 },
       tools: { type: 'array', items: { type: 'string' }, maxItems: 50, uniqueItems: true },
+      skills: { type: 'array', items: { type: 'string' }, maxItems: 50, uniqueItems: true },
     },
     required: ['question'],
     additionalProperties: false,

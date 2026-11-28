@@ -233,8 +233,6 @@ rests on.
 - [Slice plan](https://linear.app/zgeoff/document/slice-plan-f056442e64a3) — the first build in 10
   ordered slices, each with its scope, what it needs first and its acceptance checks, in Linear
 - [Platform design index](design/platform/README.md) — the design areas and their indexes
-- [Skills](design/platform/skills.md) — skills in the definitions, vendoring and the lock, versions
-  and reload, skill lists, the skill tools, the catalog, scripts and skills that nixie writes
 
 ### Core
 

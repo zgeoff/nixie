@@ -47,6 +47,7 @@ export function renderSessionPrompt(frame: SessionFrame, values: SessionPromptVa
         'task',
         {
           persona: values.persona,
+          skillCatalog: values.skillCatalog,
           owner,
           task: {
             name: profile?.name ?? values.taskID,

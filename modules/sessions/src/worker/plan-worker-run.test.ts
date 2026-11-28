@@ -28,8 +28,15 @@ function setupTest(overrides: Partial<WorkerRunFacts> = {}, left: number | null 
   });
 
   return {
-    call: { callID: 'call-1', callSequence: 7, question: 'Which?', tools: ['notes_read'] },
+    call: {
+      callID: 'call-1',
+      callSequence: 7,
+      question: 'Which?',
+      tools: ['notes_read'],
+      skills: [],
+    },
     run: context.run,
+    callerSkills: [],
     isRunning: true,
     bounds: {
       memoryTools: { read: ['memory.recall'], write: ['memory.remember'] },
@@ -255,5 +262,85 @@ test('it refuses a model when the deployment offers none', () => {
   expect(planned).toStrictEqual({
     status: 'refused',
     sentence: expect.toInclude('This deployment offers no model choice'),
+  });
+});
+
+test('it gives a worker the subset of the caller skills that the call names, and the tool that reads them', () => {
+  const base = setupTest();
+
+  const planned = planWorkerRun({
+    ...base,
+    run: { ...base.run, tools: [...base.run.tools, 'skill_read'] },
+    callerSkills: ['bird-log', 'tide-tables'],
+    call: { ...base.call, skills: ['tide-tables'] },
+  });
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { skills: ['tide-tables'], tools: ['notes_read', 'skill_read'] },
+  });
+});
+
+test('it gives a worker its skills once when the call lists skill_read too, though the conversation tools hold it', () => {
+  const base = setupTest();
+
+  const planned = planWorkerRun({
+    ...base,
+    run: { ...base.run, tools: [...base.run.tools, 'skill_read'] },
+    bounds: { ...base.bounds, conversationTools: ['log.forget', 'skill_read'] },
+    callerSkills: ['tide-tables'],
+    call: { ...base.call, tools: ['notes_read', 'skill_read'], skills: ['tide-tables'] },
+  });
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { skills: ['tide-tables'], tools: ['notes_read', 'skill_read'] },
+  });
+});
+
+test('it gives a worker no skill when the call names none', () => {
+  const base = setupTest();
+
+  const planned = planWorkerRun({
+    ...base,
+    run: { ...base.run, tools: [...base.run.tools, 'skill_read'] },
+    callerSkills: ['bird-log', 'tide-tables'],
+  });
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { skills: [], tools: ['notes_read'] },
+  });
+});
+
+test('it refuses a skill that the caller may not use, and names it', () => {
+  const base = setupTest();
+
+  const planned = planWorkerRun({
+    ...base,
+    run: { ...base.run, tools: [...base.run.tools, 'skill_read'] },
+    callerSkills: ['tide-tables'],
+    call: { ...base.call, skills: ['tide-tables', 'bird-log'] },
+  });
+
+  expect(planned).toStrictEqual({
+    status: 'refused',
+    sentence:
+      'A worker gets only skills you may use, and you may not use bird-log, so nixie started none.',
+  });
+});
+
+test('it refuses a skill when the caller holds no tool that reads one', () => {
+  const base = setupTest();
+
+  const planned = planWorkerRun({
+    ...base,
+    callerSkills: ['tide-tables'],
+    call: { ...base.call, skills: ['tide-tables'] },
+  });
+
+  expect(planned).toStrictEqual({
+    status: 'refused',
+    sentence: expect.toInclude('skill_read'),
   });
 });

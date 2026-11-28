@@ -44,6 +44,7 @@ const systemPrompt = renderPrompt(
   'task',
   {
     persona: '',
+    skillCatalog: null,
     owner: { name: 'Sam' },
     task: {
       name: 'clock-check',

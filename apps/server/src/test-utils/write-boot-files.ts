@@ -23,6 +23,14 @@ interface BootTaskDefinition {
   readonly instructions: string;
 }
 
+interface BootSkill {
+  readonly name: string;
+  readonly description: string;
+
+  // the text under the frontmatter of SKILL.md
+  readonly body: string;
+}
+
 export interface BootFileExtras {
   readonly config: readonly string[];
 
@@ -39,6 +47,9 @@ export interface BootFileExtras {
 
   // task definitions that the first seed reads, which put the definitions at format 4
   readonly taskDefinitions?: readonly BootTaskDefinition[];
+
+  // skills that the first seed reads, which put the definitions at format 4 as well
+  readonly skills?: readonly BootSkill[];
 
   readonly isBackupOn?: boolean;
 
@@ -72,12 +83,12 @@ export async function writeBootFiles(
 
   await mkdir(dataDir);
 
-  await writeDefinitions(
-    join(directory, 'definitions'),
-    extras.hasStarterRules ?? false,
-    extras.taskDefinitions ?? [],
-    extras.voiceYaml ?? null,
-  );
+  await writeDefinitions(join(directory, 'definitions'), {
+    hasStarterRules: extras.hasStarterRules ?? false,
+    taskDefinitions: extras.taskDefinitions ?? [],
+    voiceYaml: extras.voiceYaml ?? null,
+    skills: extras.skills ?? [],
+  });
 
   await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
   await writeManifest(join(directory, 'sandbox-manifest.json'), extras);
@@ -105,29 +116,45 @@ export async function writeBootFiles(
   };
 }
 
-async function writeDefinitions(
-  definitionsDir: string,
-  hasStarterRules: boolean,
-  taskDefinitions: readonly BootTaskDefinition[],
-  voiceYaml: string | null,
-): Promise<void> {
-  const format = voiceYaml === null ? pickDefinitionsFormat(hasStarterRules, taskDefinitions) : 5;
+interface DefinitionsFiles {
+  readonly hasStarterRules: boolean;
+  readonly taskDefinitions: readonly BootTaskDefinition[];
+  readonly voiceYaml: string | null;
+  readonly skills: readonly BootSkill[];
+}
+
+async function writeDefinitions(definitionsDir: string, files: DefinitionsFiles): Promise<void> {
+  const format =
+    files.voiceYaml === null
+      ? pickDefinitionsFormat(files.hasStarterRules, files.taskDefinitions, files.skills)
+      : 5;
 
   await mkdir(definitionsDir);
   await writeFile(join(definitionsDir, 'nixie.yaml'), `format: ${String(format)}\n`);
   await writeFile(join(definitionsDir, 'persona.md'), 'You are nixie.\n');
 
-  if (hasStarterRules) {
+  if (files.hasStarterRules) {
     await mkdir(join(definitionsDir, 'rules'));
     await writeFile(join(definitionsDir, 'rules', 'starter.yaml'), readStarterRulesText());
   }
 
-  if (voiceYaml !== null) {
+  if (files.voiceYaml !== null) {
     await mkdir(join(definitionsDir, 'voice'));
-    await writeFile(join(definitionsDir, 'voice', 'voice.yaml'), voiceYaml);
+    await writeFile(join(definitionsDir, 'voice', 'voice.yaml'), files.voiceYaml);
   }
 
-  for (const definition of taskDefinitions) {
+  for (const skill of files.skills) {
+    const skillDir = join(definitionsDir, 'skills', skill.name);
+
+    await mkdir(skillDir, { recursive: true });
+
+    await writeFile(
+      join(skillDir, 'SKILL.md'),
+      `---\nname: ${skill.name}\ndescription: ${skill.description}\n---\n${skill.body}\n`,
+    );
+  }
+
+  for (const definition of files.taskDefinitions) {
     const taskDir = join(definitionsDir, 'tasks', definition.id);
 
     await mkdir(taskDir, { recursive: true });
@@ -140,8 +167,9 @@ async function writeDefinitions(
 function pickDefinitionsFormat(
   hasStarterRules: boolean,
   taskDefinitions: readonly BootTaskDefinition[],
+  skills: readonly BootSkill[],
 ): number {
-  if (taskDefinitions.length > 0) {
+  if (taskDefinitions.length > 0 || skills.length > 0) {
     return 4;
   }
 

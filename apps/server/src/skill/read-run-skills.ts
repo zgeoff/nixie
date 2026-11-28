@@ -3,10 +3,10 @@ import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import { loadOrPinTaskSkills } from '@heynixie/skills';
 import type { ToolRun } from '@heynixie/tools';
-import { readConversationSkillList } from './read-conversation-skill-list';
+import { readRunSkillList } from './read-run-skill-list';
 
 // The skills of the run's pinned list that the call names, or the first name the list lacks.
-export async function readConversationSkills(
+export async function readRunSkills(
   log: Log,
   inForce: DefinitionsInForce | null,
   run: ToolRun,
@@ -15,7 +15,8 @@ export async function readConversationSkills(
   const pinned = await loadOrPinTaskSkills(log, {
     thread: run.thread,
     inForce,
-    list: readConversationSkillList(run, inForce),
+    list: readRunSkillList(run, inForce),
+    isRestricted: run.skills !== undefined,
   });
 
   const skills = [];

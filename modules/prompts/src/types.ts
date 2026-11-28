@@ -22,6 +22,7 @@ export interface PromptContexts {
   };
   readonly task: {
     readonly persona: string;
+    readonly skillCatalog: string | null;
     readonly owner: PromptOwner;
     readonly task: {
       readonly name: string;

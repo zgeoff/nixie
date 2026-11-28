@@ -11,6 +11,7 @@ import type {
 } from '@heynixie/sandbox';
 import type { SpendContext, SpendGateway } from '@heynixie/spend';
 import type { ToolEndpoint, ToolRun, ToolStepHold } from '@heynixie/tools';
+import type { SkillCatalogInput } from '../types';
 import type { WorkerUsed } from './worker-used';
 
 // Everything about a call that runWorker needs, which planWorkerRun made from the call and the
@@ -23,6 +24,9 @@ export interface WorkerPlan {
 
   // nixie's own names of the tools the worker holds
   readonly tools: readonly string[];
+
+  // the skills the worker may use, a subset of the caller's list
+  readonly skills: readonly string[];
   readonly limits: WorkerRunLimits;
 
   // whether the dollars are what the caller had left
@@ -112,6 +116,14 @@ export interface WorkerTargets {
   readonly byModel: ReadonlyMap<string, WorkerTarget>;
 }
 
+export interface WorkerSkills {
+  // the skills the calling run may use, which a worker's list stays within
+  readonly readList: (run: ToolRun) => readonly string[];
+
+  // the catalog of the skills a worker may use, or null when the list holds none
+  readonly readCatalog: (input: SkillCatalogInput) => Promise<string | null>;
+}
+
 export interface WorkerDeps {
   readonly log: Log;
   readonly definitions: () => Definitions;
@@ -124,6 +136,9 @@ export interface WorkerDeps {
   readonly readTools: () => Pick<ToolEndpoint, 'startRun'> | null;
   readonly targets: WorkerTargets;
   readonly slots: WorkerSlots;
+
+  // set where skills are loaded; without it a worker holds none
+  readonly skills?: WorkerSkills;
 
   // the sandboxes whose destroy failed, which the next worker run tries again before its create
   readonly failedDestroys: Sandbox[];

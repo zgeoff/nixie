@@ -21,6 +21,7 @@ export interface WorkerRunToolOptions {
 const inputSchema = z.object({
   question: z.string(),
   tools: z.string().array().exactOptional(),
+  skills: z.string().array().exactOptional(),
   model: z.string().exactOptional(),
 });
 
@@ -35,7 +36,7 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
     description:
       'Runs a worker: one model call loop in a sandbox of its own, for one question, and returns its ' +
       'answer. The worker holds only the tools you name from the tools you hold, and none that ' +
-      'start tasks, send messages or touch memory. It has no history, so put everything it needs in ' +
+      'start tasks, send messages or touch memory. It reads only the skills you name from your own. It has no history, so put everything it needs in ' +
       'the question. The call waits for the answer, and it stops at its limits of minutes, turns, ' +
       'tokens and dollars. Its spend counts toward this task. It can run on a model you choose. ' +
       'Use a worker when you need the answer in this turn, and a task when the work can run on while you keep talking.',
@@ -44,6 +45,12 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
       properties: {
         question: { type: 'string', minLength: 1, maxLength: 8000 },
         tools: {
+          type: 'array',
+          items: { type: 'string' },
+          maxItems: 50,
+          uniqueItems: true,
+        },
+        skills: {
           type: 'array',
           items: { type: 'string' },
           maxItems: 50,
@@ -90,9 +97,11 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
           callSequence: tool.callSequence,
           question: input.question,
           tools: input.tools ?? [],
+          skills: input.skills ?? [],
           ...(input.model === undefined ? {} : { model: input.model }),
         },
         run: tool.run,
+        callerSkills: options.deps.skills?.readList(tool.run) ?? [],
         isRunning: options.isRunning(),
         bounds: options.bounds,
         limits: options.limits,

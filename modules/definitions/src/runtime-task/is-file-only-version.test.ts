@@ -33,6 +33,7 @@ test.each([
   ['destinations', { destinations: ['mail:*'] }],
   ['step', { step: { file: 'step.ts', api: 1 } }],
   ['reportShape', { reportShape: { type: 'object' } }],
+  ['skills', { skills: ['tide-tables'] }],
   ['log', { log: 'conversation' }],
 ])('#isFileOnlyVersion refuses a form that sets %s', (_key, overrides) => {
   const ctx = setupTest();

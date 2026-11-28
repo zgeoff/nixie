@@ -166,6 +166,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         definitions: parts.get('context').apiContext.definitions,
         readTools: () => parts.find('tool_endpoint')?.endpoint ?? null,
         spend: parts.get('context').apiContext.spend,
+        readInForce: () => parts.get('context').inForce.read(),
       }),
   },
   {

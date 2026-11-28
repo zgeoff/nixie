@@ -4,9 +4,9 @@ import type { Log } from '@heynixie/log';
 import { buildNoteBodies } from '@heynixie/notebook';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { ToolDefinition } from '@heynixie/tools';
-import { readConversationSkills } from '../conversation/read-conversation-skills';
 import { getSandboxImage } from '../sandbox/get-sandbox-image';
 import type { ServerPartsOptions } from '../server/start-server';
+import { readRunSkills } from '../skill/read-run-skills';
 
 export interface CodeRunPartInputs {
   readonly options: Pick<ServerPartsOptions, 'images' | 'config' | 'harness' | 'log'>;
@@ -35,8 +35,7 @@ export function startCodeRunPart(inputs: CodeRunPartInputs): Promise<CodeRunPart
       image: getSandboxImage(inputs.options.images, 'code').name,
       imageLongEdge: inputs.options.config.web_fetch.imageLongEdge,
       notes: buildNoteBodies(inputs.log),
-      readSkills: (run, names) =>
-        readConversationSkills(inputs.log, inputs.readInForce(), run, names),
+      readSkills: (run, names) => readRunSkills(inputs.log, inputs.readInForce(), run, names),
     }),
     sendTool: buildFileSendTool({ log: inputs.log }),
   });

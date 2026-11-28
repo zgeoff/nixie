@@ -13,7 +13,7 @@ const defaults: Readonly<Record<string, JSONValue>> = {
 
 // The keys that the task schema does not default yet: a version that sets one, or sets `log` to
 // anything but its own grant, holds a file-only key.
-const unsetKeys = ['reportShape'];
+const unsetKeys = ['reportShape', 'skills'];
 
 interface FileOnlyCandidate {
   readonly form: JSONObject;

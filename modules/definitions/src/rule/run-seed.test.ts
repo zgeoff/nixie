@@ -2254,6 +2254,50 @@ test('it writes the tasks of a format 4 seed into the snapshot, sorted by id', a
   expect(result.record.payload).toMatchObject({ unapplied: [] });
 });
 
+test('it reads back the skills a seeded definition lists, and none for a definition that lists none', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+  await mkdir(join(ctx.root, 'tasks', 'frost-watch'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\nskills:\n  - tide-tables\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'frost-watch', 'task.yaml'),
+    'name: Watch for frost\nbrief: Look.\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const rainHash = inForce?.tasks.find((task) => task.id === 'rain-gauge')?.hash;
+  const frostHash = inForce?.tasks.find((task) => task.id === 'frost-watch')?.hash;
+
+  invariant(rainHash !== undefined && frostHash !== undefined);
+
+  const rain = await readDefinitionVersion(ctx.writer.db, rainHash);
+  const frost = await readDefinitionVersion(ctx.writer.db, frostHash);
+
+  expect([rain?.skills, frost?.skills]).toStrictEqual([['tide-tables'], []]);
+});
+
 test('it stores each accepted version under its hash and reads it back', async () => {
   const ctx = await setupTest();
 
@@ -2294,6 +2338,7 @@ test('it stores each accepted version under its hash and reads it back', async (
     memory: 'read',
     log: 'own',
     tools: ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
+    skills: [],
     context: 'fresh',
     wakeable: false,
     trigger: null,

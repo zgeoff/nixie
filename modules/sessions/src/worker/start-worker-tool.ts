@@ -14,7 +14,7 @@ import type { SystemTaskOptions } from '../task/make-system-task-runner';
 import { makeSystemTaskRunner } from '../task/make-system-task-runner';
 import { buildWorkerRunTool } from './build-worker-run-tool';
 import { makeWorkerSlots } from './make-worker-slots';
-import type { WorkerDeps, WorkerTarget } from './types';
+import type { WorkerDeps, WorkerSkills, WorkerTarget } from './types';
 
 export interface WorkerToolOptions extends SystemTaskOptions {
   readonly log: Log;
@@ -30,6 +30,9 @@ export interface WorkerToolOptions extends SystemTaskOptions {
 
   // set with the spending stop, which refuses a worker while it stands
   readonly spend?: SpendContext;
+
+  // set where skills are loaded; without it a worker holds none
+  readonly skills?: WorkerSkills;
 }
 
 export interface WorkerTool {
@@ -111,6 +114,7 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
       cleanups: new Set(),
       ...(options.gateway === undefined ? {} : { gateway: options.gateway }),
       ...(options.spend === undefined ? {} : { spend: options.spend }),
+      ...(options.skills === undefined ? {} : { skills: options.skills }),
     };
 
     session.defer(async () => {

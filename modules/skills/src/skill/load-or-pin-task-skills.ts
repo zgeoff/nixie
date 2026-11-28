@@ -15,6 +15,10 @@ export interface TaskSkillsQuery {
   readonly inForce: DefinitionsInForce | null;
 
   readonly list: readonly string[];
+
+  // Set for a run whose list is its own, such as a job run or a worker run. The result then holds
+  // only the pinned skills on the list, so a skill off the list stays out whatever the thread pinned.
+  readonly isRestricted?: boolean;
 }
 
 export interface TaskSkill extends SkillVersion {
@@ -25,7 +29,12 @@ export async function loadOrPinTaskSkills(
   log: Log,
   query: TaskSkillsQuery,
 ): Promise<readonly TaskSkill[]> {
-  const pin = await readOrRecordPin(log, query);
+  const recorded = await readOrRecordPin(log, query);
+
+  const listed = new Set(query.list);
+
+  const pin =
+    query.isRestricted === true ? recorded.filter((skill) => listed.has(skill.name)) : recorded;
 
   const versions = await loadSkillVersions(
     log.writer.db,

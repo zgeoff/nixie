@@ -101,7 +101,11 @@ export function parseDefinitions(
 
   const taskDefinitions =
     tasks !== null && formatVersion >= definitionsFormats.tasks
-      ? parseTaskDefinitions(taskTexts, tasks)
+      ? parseTaskDefinitions(
+          taskTexts,
+          tasks,
+          skills.map((skill) => skill.name),
+        )
       : { definitions: [], warnings: [], faults: [], paths: new Set<string>() };
 
   if (taskDefinitions.faults.length > 0) {

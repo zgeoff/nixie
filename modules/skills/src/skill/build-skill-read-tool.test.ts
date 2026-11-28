@@ -9,6 +9,7 @@ import { buildToolRegistry } from '@heynixie/tools';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSkillReadTool } from './build-skill-read-tool';
+import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -435,3 +436,71 @@ test('it reads the version the task first loaded after a seed changes the skill'
     },
   });
 });
+
+test.each([
+  ['a job run whose definition lists the skill', ['tide-tables'], 'tide-tables', 'ok'],
+  ['a job run whose definition lists another skill', ['bird-log'], 'tide-tables', 'error'],
+  ['a job run whose definition lists no skill', [], 'tide-tables', 'error'],
+  ['a worker run that the call gave the skill', ['tide-tables'], 'tide-tables', 'ok'],
+  ['a worker run that the call gave another skill', ['bird-log'], 'tide-tables', 'error'],
+] as const)(
+  'it serves a skill to %s only when its own list names it',
+  async (_label, skills, name, status) => {
+    const ctx = await setupTest();
+
+    await mkdir(join(ctx.root, 'skills', 'tide-tables'));
+    await mkdir(join(ctx.root, 'skills', 'bird-log'));
+    await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+    await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+    await writeFile(
+      join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+      '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+    );
+
+    await writeFile(
+      join(ctx.root, 'skills', 'bird-log', 'SKILL.md'),
+      '---\nname: bird-log\ndescription: Logs a bird sighting.\n---\n# Birds\n',
+    );
+
+    const seeded = await runSeed({
+      tasks: buildTestTaskSeed(),
+      log: ctx.log,
+      source: ctx.source,
+      buildPolicy: () => ({ rules: [], tools: [] }),
+    });
+
+    // the thread already pins both skills, as a thread whose first run listed both would
+    await loadOrPinTaskSkills(ctx.log, {
+      thread: 'task-a',
+      inForce: seeded.inForce,
+      list: ['bird-log', 'tide-tables'],
+    });
+
+    const tool = buildSkillReadTool({
+      log: ctx.log,
+      clock: createFakeClock({ startMs: 0 }),
+      readInForce: () => seeded.inForce,
+      runInForceSeed: () => Promise.resolve(),
+      refreshDefinitions: () => Promise.resolve(seeded.inForce),
+      readSkillList: (run) => run.skills ?? [],
+    });
+
+    const outcome = await tool.run(
+      { callID: 'call-1', tool: 'skill_read', input: { name }, toolUseID: null },
+      {
+        callSequence: 1,
+        run: {
+          runID: 'run-1',
+          thread: 'task-a',
+          logThread: 'task-a',
+          tools: [],
+          skills,
+          model: { model: 'test-model', profile: 'standard' },
+        },
+      },
+    );
+
+    expect(outcome.status).toBe(status);
+  },
+);

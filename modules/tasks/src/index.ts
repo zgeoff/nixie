@@ -73,6 +73,7 @@ export type {
 } from './runner/types';
 
 export type { TaskStarter } from './task/start/plan-task-start';
+export { jobSkillToolNames } from './task/start/job-skill-tool-names';
 export { selfNoteToolNames } from './task/start/self-note-tool-names';
 export { buildStepRunID } from './step/build-step-run-id';
 export { readLeasedStepHop } from './step/read-leased-step-hop';

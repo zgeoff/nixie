@@ -1,3 +1,4 @@
+import { codeRunToolName } from '@heynixie/connectors';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import { bindHarness } from '@heynixie/models';
 import type { GuestCommand } from '@heynixie/sandbox';
@@ -10,6 +11,7 @@ import type {
 } from '@heynixie/tasks';
 import {
   callRunnerKey,
+  jobSkillToolNames,
   readCallTask,
   readDefinitionRunContext,
   readTaskSetup,
@@ -43,6 +45,10 @@ export interface StartedRun {
   // the self-note tools that the grant adds because the version's list leaves them out: they write
   // self-notes and nothing else
   readonly selfNoteOnlyTools: readonly string[];
+
+  // the skills the version lists, which the run's skill tools and catalog follow; none for a run
+  // with no definition
+  readonly skills: readonly string[];
 
   // set for a definition's task under a fresh context: the session reads the log after it
   readonly sinceSequence: number | null;
@@ -108,6 +114,7 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
     definitionHash: found.definitionHash,
     hasSelfNoteGrant: version.memory === 'self_notes',
     selfNoteOnlyTools: pickSelfNoteOnlyTools(version),
+    skills: version.skills,
     sinceSequence: pickSinceSequence(version.context, found),
   });
 }
@@ -119,6 +126,7 @@ type RunParts = Pick<
   | 'definitionHash'
   | 'hasSelfNoteGrant'
   | 'selfNoteOnlyTools'
+  | 'skills'
   | 'sinceSequence'
 > &
   Partial<Pick<StartedRun, 'call'>>;
@@ -146,14 +154,22 @@ function buildRunParts(runner: RunReader, parts: RunParts): StartedRun {
 // A version with memory read or the self-note grant gets the memory read tools, and the grant adds
 // the 4 self-note write tools. Each tool its list names stays, as it does at memory read.
 function pickRunTools(
-  version: Pick<DefinitionVersion, 'memory' | 'tools'>,
+  version: Pick<DefinitionVersion, 'memory' | 'tools' | 'skills'>,
   options: Pick<SandboxRunnerOptions, 'memoryReadTools'>,
 ): readonly string[] {
+  // The code tool mounts the listed skills under /skills/<name>/, so a run with skills holds it too.
+  const skillTools = version.skills.length === 0 ? [] : [...jobSkillToolNames, codeRunToolName];
+
   return match(version.memory)
-    .with('none', () => version.tools)
-    .with('read', () => [...new Set([...version.tools, ...options.memoryReadTools])])
+    .with('none', () => [...new Set([...version.tools, ...skillTools])])
+    .with('read', () => [...new Set([...version.tools, ...options.memoryReadTools, ...skillTools])])
     .with('self_notes', () => [
-      ...new Set([...version.tools, ...options.memoryReadTools, ...selfNoteToolNames]),
+      ...new Set([
+        ...version.tools,
+        ...options.memoryReadTools,
+        ...selfNoteToolNames,
+        ...skillTools,
+      ]),
     ])
     .exhaustive();
 }
@@ -206,6 +222,7 @@ async function readCallRun(
     definitionHash: null,
     hasSelfNoteGrant: false,
     selfNoteOnlyTools: [],
+    skills: [],
     sinceSequence: null,
     call,
   });
@@ -230,6 +247,7 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     definitionHash: null,
     hasSelfNoteGrant: false,
     selfNoteOnlyTools: [],
+    skills: [],
     sinceSequence: null,
   });
 }

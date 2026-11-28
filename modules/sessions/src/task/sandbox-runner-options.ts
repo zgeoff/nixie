@@ -8,6 +8,8 @@ import type {
   ConversationMemorySettings,
   InStepActions,
   SessionDefinitions,
+  SkillCatalogInput,
+  SkillJoinInput,
 } from '../types';
 import type { SystemTaskOptions } from './make-system-task-runner';
 
@@ -38,8 +40,20 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
   readonly spend?: SpendContext;
   readonly log: Logger;
 
+  // the skills of a run whose definition lists some, or absent where no skills are loaded
+  readonly skills?: RunSkills;
+
   // the calls module's side of a call's turns, or absent where calls are off
   readonly calls?: CallStepHooks;
+}
+
+export interface RunSkills {
+  // puts each listed skill on the pin of the run's task, so a task that outlives a change to its
+  // definition's list holds every skill the list names
+  readonly join: (input: SkillJoinInput) => Promise<void>;
+
+  // the catalog of the listed skills in the pin, or null when the list holds none
+  readonly readCatalog: (input: SkillCatalogInput) => Promise<string | null>;
 }
 
 export interface CallStepHooks {
