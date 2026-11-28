@@ -45,3 +45,14 @@ test('it gives a restart the full totals of the newest raise', () => {
     }),
   ).toStrictEqual({ turns: 80, dollars: 20, calls: {} });
 });
+
+test('it carries no limit on a meter that has none', () => {
+  expect(
+    pickCarriedLimits({
+      kind: 'raise',
+      first: buildTestTaskRun({ limits: { turns: 40, dollars: null } }),
+      raised: null,
+      used: { turns: 15, dollars: 400 },
+    }),
+  ).toStrictEqual({ turns: 25, dollars: null, calls: {} });
+});

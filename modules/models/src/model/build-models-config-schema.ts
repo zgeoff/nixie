@@ -45,22 +45,27 @@ const selectableSchema = z.strictObject({
 const turnsSchema = z.int().positive();
 const dollarsSchema = z.number().positive();
 
+// A task run has no limit on a meter that neither the config nor the start sets, so no key here has
+// a default.
 const taskRunSchema = z
   .strictObject({
     default: z
-      .strictObject({ turns: turnsSchema.default(25), dollars: dollarsSchema.default(2) })
-      .default({ turns: 25, dollars: 2 }),
+      .strictObject({ turns: turnsSchema.optional(), dollars: dollarsSchema.optional() })
+      .default({}),
     max: z
-      .strictObject({ turns: turnsSchema.default(100), dollars: dollarsSchema.default(10) })
-      .default({ turns: 100, dollars: 10 }),
+      .strictObject({ turns: turnsSchema.optional(), dollars: dollarsSchema.optional() })
+      .default({}),
   })
   .superRefine((limits, issues) => {
     for (const key of ['turns', 'dollars'] as const) {
-      if (limits.default[key] > limits.max[key]) {
+      const value = limits.default[key];
+      const max = limits.max[key];
+
+      if (value !== undefined && max !== undefined && value > max) {
         issues.addIssue({
           code: 'custom',
           path: ['default', key],
-          message: `the default task run limit of ${String(limits.default[key])} ${key} is above its max of ${String(limits.max[key])}`,
+          message: `the default task run limit of ${String(value)} ${key} is above its max of ${String(max)}`,
         });
       }
     }

@@ -5,7 +5,7 @@ export { getWALPath } from './wal/get-wal-path';
 export type { RecordKey } from './record/create-record-key';
 export { createRecordKey } from './record/create-record-key';
 export { claimWriterLock } from './writer/claim-writer-lock';
-export { JSON_OBJECT_SCHEMA } from './record/json-object-schema';
+export { JSON_OBJECT_SCHEMA } from './utils/json-object-schema';
 export { KeyStoreBusyError } from './key/key-store-busy-error';
 export type { WALSubscriptionOptions } from './wal/make-wal-subscription';
 export { makeWALSubscription } from './wal/make-wal-subscription';

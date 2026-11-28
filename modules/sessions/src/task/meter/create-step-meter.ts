@@ -3,7 +3,7 @@ import type { Logger } from '@heynixie/logger';
 import type { ModelPrices } from '@heynixie/models';
 import type { SpendGateway } from '@heynixie/spend';
 import { pickSandboxLimit } from '@heynixie/spend';
-import type { TaskLimits, TaskMeterReadReason, TaskRun, TasksContext } from '@heynixie/tasks';
+import type { TaskMeterReadReason, TaskRun, TaskUsage, TasksContext } from '@heynixie/tasks';
 import { readMeterReads, writeMeterRead } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { CallBudget } from '../create-call-budget';
@@ -23,7 +23,7 @@ export interface StepMeterFacts {
   readonly taskRun: TaskRun;
 
   // what the task run used when the step began
-  readonly used: TaskLimits;
+  readonly used: TaskUsage;
 
   // the profile's prices, which a task run without a gateway prices the guest's calls by
   readonly prices: ModelPrices | null;
@@ -34,7 +34,7 @@ export interface StepMeterFacts {
 type StepBegin =
   | { readonly kind: 'ready'; readonly budget: CallBudget }
   | { readonly kind: 'held' }
-  | { readonly kind: 'limit'; readonly used: TaskLimits };
+  | { readonly kind: 'limit'; readonly used: TaskUsage };
 
 interface StepEnd {
   readonly isLimitReached: boolean;
@@ -42,7 +42,7 @@ interface StepEnd {
   // whether the gateway's sandbox refused a request since the step began, which ends the step at the
   // dollar limit even when its guest turn threw
   readonly isRefused: boolean;
-  readonly used: TaskLimits;
+  readonly used: TaskUsage;
 }
 
 export interface StepMeter {
@@ -147,7 +147,7 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 
       const usage = await readRunUsage(deps.context, taskRun);
 
-      const leftDollars = limits.dollars - usage.used.dollars;
+      const leftDollars = buildLeftDollars(limits.dollars, usage.used.dollars);
 
       if (leftDollars <= 0) {
         return { kind: 'limit', used: usage.used };
@@ -198,11 +198,18 @@ function createGatewayStepMeter(deps: GatewayMeterDeps, facts: StepMeterFacts): 
 
       const usage = await readRunUsage(deps.context, taskRun);
 
-      const isRefused = isRefusedBySandbox(count, startedAtMs);
+      // A task run with no dollar limit leaves its sandbox none, so a refusal the sandbox holds is
+      // from the limit of a task run that used the sandbox before.
+      const isRefused = limits.dollars !== null && isRefusedBySandbox(count, startedAtMs);
 
       return { isLimitReached: isRefused, isRefused, used: usage.used };
     },
   };
+}
+
+// A task run with no dollar limit has all the dollars left, which Infinity states.
+function buildLeftDollars(limit: number | null, usedDollars: number): number {
+  return limit === null ? Number.POSITIVE_INFINITY : limit - usedDollars;
 }
 
 // A sandbox that reached its own limit refuses each request, so a step that the sandbox refused
@@ -262,7 +269,7 @@ function createRecordsStepMeter(
 
       await write(reason, baseMicros);
 
-      const leftDollars = taskRun.opened.limits.dollars - facts.used.dollars;
+      const leftDollars = buildLeftDollars(taskRun.opened.limits.dollars, facts.used.dollars);
 
       if (leftDollars <= 0) {
         return { kind: 'limit', used: facts.used };

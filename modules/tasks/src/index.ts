@@ -271,6 +271,7 @@ export type {
   TaskHoldReason,
   TaskHolds,
   TaskLimits,
+  TaskUsage,
   TaskLog,
   TaskMemory,
   TaskMessageKind,

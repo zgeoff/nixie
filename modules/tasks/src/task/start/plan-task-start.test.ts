@@ -674,3 +674,75 @@ test('it gives a task no pins when its starter pins none of its tools', () => {
 
   expect(plan).not.toHaveProperty('options.connectionPins');
 });
+
+test('it plans a start with no limits as a task with none when the config sets none', () => {
+  expect(
+    planTaskStart(
+      {},
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
+      buildMockTaskStartBounds({
+        limits: {
+          default: { turns: null, dollars: null },
+          max: { turns: null, dollars: null },
+        },
+      }),
+    ),
+  ).toStrictEqual({
+    status: 'planned',
+    options: {
+      model: null,
+      profile: null,
+      persona: 'default',
+      memory: 'none',
+      log: 'own',
+      tools: ['tasks.list', 'task.message', 'task.report'],
+      report: 'wake',
+      limits: { turns: null, dollars: null },
+    },
+  });
+});
+
+test('it plans the limits a start sets on a meter with no max, and leaves the other meter with none', () => {
+  expect(
+    planTaskStart(
+      { limits: { turns: 5000 } },
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
+      buildMockTaskStartBounds({
+        limits: {
+          default: { turns: null, dollars: null },
+          max: { turns: null, dollars: null },
+        },
+      }),
+    ),
+  ).toStrictEqual({
+    status: 'planned',
+    options: {
+      model: null,
+      profile: null,
+      persona: 'default',
+      memory: 'none',
+      log: 'own',
+      tools: ['tasks.list', 'task.message', 'task.report'],
+      report: 'wake',
+      limits: { turns: 5000, dollars: null },
+    },
+  });
+});
+
+test('it refuses a value above the max of one meter when the other meter has no max', () => {
+  expect(
+    planTaskStart(
+      { limits: { turns: 5000, dollars: 11 } },
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
+      buildMockTaskStartBounds({
+        limits: {
+          default: { turns: null, dollars: null },
+          max: { turns: null, dollars: 10 },
+        },
+      }),
+    ),
+  ).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'over_limit', limit: 'dollars', max: 10 },
+  });
+});

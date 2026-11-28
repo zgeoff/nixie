@@ -119,16 +119,23 @@ task.meter_read  { taskRunID, sandbox, reason, countMicros }
   run's start or at the sandbox's creation, summed, plus the dollars of its worker runs. When a read
   first names a sandbox after the task run's start, that sandbox's count began at zero. A count only
   grows, so a read that lands late never lowers the sum.
-- What a task run has left is its limit less its dollars.
+- What a task run has left is its limit less its dollars. A task run with no dollar limit has no
+  dollars left to count, and its sandbox gets no limit of its own.
 - A `task.meter_read` sets its task run's ledger row to the task run's dollars, in the transaction
   that writes the record, so a fault between the read and its row leaves both or neither. Every
   counter has one writer: the meter reads for a task run that has them, `task.run_ended` for an
   older task run with none, and `worker.run_ended` for a worker run.
 - At a task run's start, the server sets the sandbox's limit to its count plus the task run's limit,
-  with `PATCH /sandboxes/<name>`. When a worker run starts, the limit drops by the worker run's
-  planned limit. When the worker run ends, the planned limit comes back and what the worker run
-  spent comes off. A worker run's planned limit is at most what the task run has left after the
-  planned limits of the worker runs already going.
+  with `PATCH /sandboxes/<name>`. A limit past a billion dollars sets a billion, because larger
+  amounts overflow the micros that a number holds exactly. A task run with no dollar limit sets the
+  sandbox's limit to `null`, which clears the limit that an earlier task run of the task left on the
+  sandbox. When a worker run starts, the limit drops by the worker run's planned limit. When the
+  worker run ends, the planned limit comes back and what the worker run spent comes off. A worker
+  run's planned limit is at most what the task run has left after the planned limits of the worker
+  runs already going. Under a task run with no dollar limit, it is the worker run's configured
+  limit.
+- A task run with no dollar limit never ends at a refusal of its sandbox. The sandbox may still hold
+  the last refusal of an earlier task run's limit, so the server ignores it.
 - A `task-raise` patches the sandbox's limit after its commit. It retries the patch until the
   gateway takes it, or until a step has read the sandbox again and set its own limit. The next task
   run's start sets the limit too.

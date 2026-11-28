@@ -201,7 +201,9 @@ export type ErasableRecordKind = Extract<RecordKind, keyof ErasableRecordKinds>;
 
 export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = Partial<Payload>> {
   readonly kind: Kind;
-  readonly encode: (payload: Payload) => Payload;
+
+  // the payload as the log stores it, which can differ from the payload in memory
+  readonly encode: (payload: Payload) => JSONObject;
   readonly parse: (input: unknown) => Payload;
   readonly decode: (payload: JSONObject) => Payload;
   readonly tryDecodePartial: (payload: JSONObject) => PartialPayload | null;

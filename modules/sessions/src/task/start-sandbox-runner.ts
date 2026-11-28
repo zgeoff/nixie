@@ -13,7 +13,7 @@ import {
 import type { GrantSpec } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
 import { SandboxCountsUnreachableError } from '@heynixie/spend';
-import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
+import type { RunStep, StepInput, StepResult, TaskRun, TaskUsage } from '@heynixie/tasks';
 import {
   conversationTaskID,
   probePauseRequested,
@@ -391,7 +391,7 @@ interface TaskTurnParts {
   readonly run: StartedRun;
   readonly taskRun: TaskRun;
   readonly invalidated: AbortSignal;
-  readonly used: TaskLimits;
+  readonly used: TaskUsage;
 }
 
 async function runTaskTurn(

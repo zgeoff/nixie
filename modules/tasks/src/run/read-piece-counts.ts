@@ -1,7 +1,7 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { taskLimitsRaisedCodec } from '../limit/task-limits-raised-codec';
-import type { TasksContext, TasksTables } from '../types';
+import type { TaskLimits, TasksContext, TasksTables } from '../types';
 import { collectPieceRuns } from './collect-piece-runs';
 import { readRunMeters } from './read-run-meters';
 import { toTransactionContext } from './to-transaction-context';
@@ -11,7 +11,7 @@ export interface PieceCounts {
   readonly first: TaskRun;
 
   // the totals of the newest raise since the piece began, or null when it has none
-  readonly raised: { readonly turns: number; readonly dollars: number } | null;
+  readonly raised: TaskLimits | null;
 
   // the use since the piece's newest restart
   readonly used: Readonly<Record<RunMeterName, number>>;

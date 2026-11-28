@@ -200,7 +200,13 @@ export type TaskMemory = 'none' | 'read' | 'self_notes';
 
 export type TaskReport = 'wake' | 'next_turn' | 'none';
 
+// A meter's limit, or null when the task run has none on that meter.
 export interface TaskLimits {
+  readonly turns: number | null;
+  readonly dollars: number | null;
+}
+
+export interface TaskUsage {
   readonly turns: number;
   readonly dollars: number;
 }
@@ -238,6 +244,9 @@ export interface TaskModelChoice {
 
 export interface TaskStartBounds {
   readonly models: readonly TaskModelChoice[];
+
+  // the limits a start takes when it sets none, and the most it may ask for; a null meter has no
+  // default limit or no max
   readonly limits: { readonly default: TaskLimits; readonly max: TaskLimits };
 
   readonly memoryTools: {

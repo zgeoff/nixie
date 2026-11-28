@@ -45,14 +45,16 @@ minutes must fit inside that wait. The error names the selectable model.
 The schema refuses an entry whose profile the file does not define. With no `spendStop` section, the
 deployment config also refuses an entry whose profile has no price table, because the task runner
 counts the cost of a task's turns against its dollar limit
-([started tasks](./started-tasks.md#limits)). For the same reason, it refuses a config whose task
-profile or worker profile has no price table. When the `task` role is unset, tasks run on the
+([started tasks](./started-tasks.md#limits)). For the same reason, the config refuses a task profile
+or worker profile with no price table. When the `task` role is unset, tasks run on the
 conversation's profile, so that profile then needs a price table too. With a `spendStop` section,
 the gateway prices each reply from its route's prices, so the config refuses a profile that sets
 `prices`, as [metering](../policy/metering.md#prices) says.
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
-count of turns and an amount of dollars. The schema refuses a default above its max.
+count of turns and an amount of dollars, and both keys are optional with no default value. A meter
+that the config leaves unset has no default limit or no max, as [limits](./started-tasks.md#limits)
+describes. The schema refuses a default above its max on a meter that sets both.
 
 ## Harnesses
 
@@ -64,8 +66,8 @@ the profile and lists each harness that has a definition, such as `harness: agen
 The models module holds one definition for each harness that nixie runs, in a file of its own.
 `bindHarness` turns a profile into a harness record, and host code reads the record for everything
 that differs between harnesses. It never branches on a harness ID, and it reads a profile only as
-the 6 fields that every profile has. Only a definition's `bind` reads a field of its own profile
-type. The record holds:
+the 6 fields that every profile has: its ID, harness, base URL, credential, model ID and price
+table. Only a definition's `bind` reads a field of its own profile type. The record holds:
 
 - the capabilities the harness declares, and the header that carries the model secret;
 - the turn profile for a kept session and for a one-off session, which nixie never resumes, such as

@@ -39,7 +39,7 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
     roles: { conversation: 'chat-direct' },
     selectable: [],
     limits: {
-      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      taskRun: { default: {}, max: {} },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
       day: { turns: 1000, turnCap: 2000 },
       month: { turns: 20_000 },
@@ -114,7 +114,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
     },
     selectable: [],
     limits: {
-      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      taskRun: { default: {}, max: {} },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
       day: { turns: 1000, turnCap: 2000 },
       month: { turns: 20_000 },
@@ -301,7 +301,7 @@ test('it refuses a price table without the 1-hour cache write price', () => {
   });
 });
 
-test('it reads the selectable models and the task run limits into their typed shape', () => {
+test('it reads the selectable models and the task run limits that the config sets into their typed shape', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
@@ -343,7 +343,7 @@ test('it reads the selectable models and the task run limits into their typed sh
       { name: 'second-look', profile: 'router-b', description: 'Another family', isAsked: false },
     ],
     limits: {
-      taskRun: { default: { turns: 25, dollars: 1 }, max: { turns: 60, dollars: 10 } },
+      taskRun: { default: { dollars: 1 }, max: { turns: 60 } },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
       day: { turns: 1000, turnCap: 2000 },
       month: { turns: 20_000 },
@@ -375,7 +375,7 @@ test('it refuses a selectable model that names an undefined profile', () => {
 
 test.each([
   ['turns', { default: { turns: 30 }, max: { turns: 20 } }],
-  ['dollars', { default: { dollars: 12 } }],
+  ['dollars', { default: { dollars: 12 }, max: { dollars: 10 } }],
 ])('it refuses a default task run limit of %s above its max', (key, taskRun) => {
   const result = modelsConfigSchema.safeParse({
     profiles: {

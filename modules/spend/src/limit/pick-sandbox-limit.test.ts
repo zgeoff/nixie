@@ -8,6 +8,8 @@ test.each([
   { startMicros: 500_000, leftDollars: 0, dollars: 0.5 },
   { startMicros: 500_000, leftDollars: -0.3, dollars: 0.5 },
   { startMicros: 0, leftDollars: 0.0000019, dollars: 0.000001 },
+  { startMicros: 500_000, leftDollars: 1e303, dollars: 1_000_000_000 },
+  { startMicros: 0, leftDollars: 1e15, dollars: 1_000_000_000 },
 ])(
   'it limits a sandbox at $dollars for a count of $startMicros micros and $leftDollars left',
   (row) => {
@@ -16,3 +18,9 @@ test.each([
     expect(limit).toStrictEqual({ dollars: row.dollars });
   },
 );
+
+test('it sets no sandbox limit for a task run with no dollar limit', () => {
+  expect(
+    pickSandboxLimit({ startMicros: 500_000, leftDollars: Number.POSITIVE_INFINITY }),
+  ).toBeNull();
+});

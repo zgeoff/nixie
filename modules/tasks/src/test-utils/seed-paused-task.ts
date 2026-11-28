@@ -22,6 +22,11 @@ export async function seedPausedTask(context: TasksContext, seed: PausedTaskSeed
 
   invariant(claim, 'the started task is ready to claim');
 
+  invariant(
+    seed.limits.turns !== null,
+    'a paused task seed holds the turn limit that its step reached',
+  );
+
   await writeStepCommit(context, claim, {
     next: 'continue',
     records: [],

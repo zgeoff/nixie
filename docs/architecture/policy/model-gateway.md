@@ -176,9 +176,9 @@ model requests, apart from the control listener ([the route of a request](#the-r
 - A request on a route whose login is not `active` gets a 401 in the Responses error shape, and
   nothing goes upstream.
 - The gateway counts a plan request under the route's prices, as it counts every other request. A
-  plan has no price per token, so the operator sets the route's prices and the profile's prices to
-  OpenAI's API prices for the same model. The day and month dollar limits of the route and its
-  provider then cap the credits that Codex use past the plan's own limit spends.
+  plan has no price per token, so set the route's prices to OpenAI's API prices for the same model.
+  The day and month dollar limits of the route and its provider then cap the credits that Codex use
+  past the plan's own limit spends.
 
 ### The login file and the refresh
 
@@ -558,8 +558,9 @@ Before a sandbox's first model request, the server registers it with `PUT /sandb
 A sandbox with no limit of its own still gets the limit 403 once its route's or its provider's day
 or month count reaches that period's limit. At the start of a task run, the server uses `PATCH` to
 set the limit of the task's sandbox to the sandbox's count plus the task run's dollar limit, so the
-gateway ends a turn at the task's limit. While a worker run is under way, that limit is lower by the
-run's planned dollars. The server patches the limit after a raise of the task's limit commits;
+gateway ends a turn at the task's limit. A task run with no dollar limit patches `null`, which sets
+no limit on the sandbox. While a worker run is under way, that limit is lower by the run's planned
+dollars. The server patches the limit after a raise of the task's limit commits;
 [the task meter](metering.md#the-task-meter) has the details. Once a sandbox reaches its own limit,
 the gateway refuses each of its requests, and the sandbox's last refusal names the counter
 `sandbox`.

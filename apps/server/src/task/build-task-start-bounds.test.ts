@@ -104,3 +104,38 @@ test('it names the 2 tools that change a task definition as conversation tools',
 
   expect(bounds.conversationTools).toStrictEqual(['task.define', 'task.undefine']);
 });
+
+test('it gives a task run no limit and no max when the config sets none', () => {
+  const config = buildMockModelsConfig();
+
+  const bounds = buildTaskStartBounds(
+    { ...config, limits: { ...config.limits, taskRun: { default: {}, max: {} } } },
+    [],
+    [],
+    { start: 'wake', definition: 'next_turn' },
+  );
+
+  expect(bounds.limits).toStrictEqual({
+    default: { turns: null, dollars: null },
+    max: { turns: null, dollars: null },
+  });
+});
+
+test('it keeps the limits that the config sets and leaves the other meter with none', () => {
+  const config = buildMockModelsConfig();
+
+  const bounds = buildTaskStartBounds(
+    {
+      ...config,
+      limits: { ...config.limits, taskRun: { default: { turns: 30 }, max: { dollars: 5 } } },
+    },
+    [],
+    [],
+    { start: 'wake', definition: 'next_turn' },
+  );
+
+  expect(bounds.limits).toStrictEqual({
+    default: { turns: 30, dollars: null },
+    max: { turns: null, dollars: 5 },
+  });
+});
