@@ -43,7 +43,8 @@ export async function readySandbox(context: ComputerContext): Promise<Sandbox | 
   // finished, so a copy fills it again. Alone with an unfinished copy, it holds no trusted disk.
   const kept = existing.length > 1 ? found : undefined;
   const others = existing.filter((sandbox) => sandbox.id !== kept?.id);
-  const created = kept === undefined ? await context.options.adapter.create(spec) : kept;
+
+  const created = await resolveReplacement(context, kept, spec);
 
   const isReplaced = await replaceOld(context, others, {
     sandbox: created,
@@ -87,6 +88,18 @@ async function probeCopyDone(context: ComputerContext, sandbox: Sandbox): Promis
   await wakeOld(sandbox);
 
   return !(await probeCopyIncomplete(sandbox, context.options.homeEnv ?? {}));
+}
+
+function resolveReplacement(
+  context: ComputerContext,
+  kept: Sandbox | undefined,
+  spec: ReturnType<typeof buildComputerSpec>,
+): Promise<Sandbox> {
+  if (kept !== undefined) {
+    return Promise.resolve(kept);
+  }
+
+  return context.options.adapter.create(spec);
 }
 
 interface ReplacementTarget {
