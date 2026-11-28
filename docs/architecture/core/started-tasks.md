@@ -442,7 +442,8 @@ error on its `task.step_errored` record. The report mode decides the delivery:
 - `wake`: a task message of kind `report` goes to the starter and wakes it, inside the
   [hop limit](./task-messages.md#the-hop-limit). Past the hop limit it waits for the starter's next
   turn.
-- `next_turn`: the message goes to the starter with no wake.
+- `next_turn`: the message goes to the starter with no wake. The report of a failed task run of a
+  definition is the exception: it wakes the conversation inside the hop limit.
 - `none`: nixie keeps the report on the `task.run_ended` record and sends no message.
 
 A report to a starter that is done, failed or closed, the end of a task run that did no work, and
