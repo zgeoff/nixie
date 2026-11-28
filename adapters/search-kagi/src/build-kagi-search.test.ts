@@ -380,7 +380,9 @@ test('it aborts the request of Kagi when the call is aborted', async () => {
     AbortSignal.abort(),
   );
 
-  await expect(reply).resolves.toStrictEqual({ kind: 'failed', failure: { code: 'no_answer' } });
+  const settled = await reply;
+
+  expect(settled).toStrictEqual({ kind: 'failed', failure: { code: 'no_answer' } });
 });
 
 test('it throws a refusal of the fetcher, so the call fails with an error and no reply', () => {

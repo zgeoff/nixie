@@ -274,7 +274,9 @@ test('it ends the search with a failure when Gmail answers 200 with an empty bod
 test('it sends no request once the call is aborted', async () => {
   const ctx = await setupTest();
 
-  await expect(ctx.runAbortedSearch({ query: 'figures' })).rejects.toThrow();
+  const run = ctx.runAbortedSearch({ query: 'figures' });
+
+  await expect(run).rejects.toThrow();
 });
 
 test.each([

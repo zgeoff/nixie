@@ -32,7 +32,13 @@ function setupTest(steps: readonly Step[], overrides: { maxAttempts?: number } =
     if (step === 'never') {
       const open = Promise.withResolvers<ToolOutcome>();
 
-      signal.addEventListener('abort', () => open.reject(new Error('aborted')), { once: true });
+      signal.addEventListener(
+        'abort',
+        () => {
+          open.reject(new Error('aborted'));
+        },
+        { once: true },
+      );
 
       return open.promise;
     }

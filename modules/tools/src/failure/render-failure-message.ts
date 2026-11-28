@@ -31,7 +31,17 @@ export function renderFailureMessage(failure: ConnectorFailure, time: FailureTim
 
 // Cuts on a character boundary, and marks the cut.
 function cutDetail(detail: string, limit: number): string {
-  const characters = [...detail];
+  let kept = '';
+  let count = 0;
 
-  return characters.length <= limit ? detail : `${characters.slice(0, limit).join('')}… [cut]`;
+  for (const character of detail) {
+    if (count === limit) {
+      return `${kept}… [cut]`;
+    }
+
+    kept += character;
+    count += 1;
+  }
+
+  return detail;
 }
