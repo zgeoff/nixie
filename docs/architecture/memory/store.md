@@ -600,7 +600,8 @@ so the retry begins the items that never started and joins the ones that did, a 
 included. A route replies pending when a step after the starts fails, and the retry finishes the
 forget. The page keeps its retry control on a pending reply.
 
-The model has no tool that forgets an item, as it has none that forgets a record. The model's
+The model has no tool that forgets an item. It forgets a record of its own thread only through the
+[`log.forget` tool](../channels/api.md#the-logforget-tool), under the user's rules. The model's
 `forget.retry` only finishes a forget that a checked action or the host started. The runner still
 records `by` as `assistant` for a forget whose provenance is not the owner's, so a later tool needs
 no change to the record.
@@ -621,9 +622,9 @@ A backup copied before a forget still holds the forgotten item's key. The key ba
 let nixie delete every past copy, so a store with versioning that nixie does not manage, or with
 immutable retention, cannot hold them. Staging files, restore samples and backup caches count as
 copies too. A forget also reports the state of the backups of its keys: off, pending, failed with a
-reason, or complete. A forget or a bulk forget answers with this state, and
-`memory.readForgetStatus` reads it again. nixie applies these rules in order, and the first that
-holds gives the state:
+reason, complete, or unknown when nixie cannot read the state. A forget or a bulk forget answers
+with this state, and `memory.readForgetStatus` reads it again. nixie applies these rules in order,
+and the first that holds gives the state:
 
 1. Off, when the deployment turned the backup schedule off.
 2. Pending, until a forget has deleted every item asked about. An item that no forget took, or an

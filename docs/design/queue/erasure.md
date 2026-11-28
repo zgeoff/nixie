@@ -7,7 +7,7 @@ nixie forgets each of them through one erasure runner, as
 [forgetting in the memory store](../../architecture/memory/store.md#forgetting) describes. This
 design holds what is left: the vault and locked entries, which still need a kind of their own.
 
-Once the owner approves this design, build its work items from it.
+Build the work items of this design.
 
 ## Terms
 

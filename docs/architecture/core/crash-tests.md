@@ -139,12 +139,12 @@ and checks that the purge finishes and the current text of each item still reads
 | `erasure.cleaned`           | after the session cleanup, which ends every purge      |
 
 Beside the oracle, this suite checks one more case. It starts the previous release on the data after
-each kill, and checks that it finishes the purge too, so a rollback by one release in the middle of
-a record forget loses nothing. The case covers only a forget that the previous release can read: a
-record forget now runs through the erasure runner, and a release before that runner cannot open the
-data, as [forgetting](../memory/store.md#forgetting) says. The case runs the previous release's test
-build, which the e2e lane builds from the release's tag, because the release build stops at the
-parts of a start that need a real sandbox.
+each kill, and checks that it finishes the purge too. The case runs only when the previous release
+can open the data, and the test skips it otherwise. A record forget runs through the erasure runner,
+and a release before that runner cannot open the data, as
+[forgetting](../memory/store.md#forgetting) says, so no rollback of that release is possible
+mid-forget. The case runs the previous release's test build, which the e2e lane builds from the
+release's tag, because the release build stops at the parts of a start that need a real sandbox.
 
 ## Fault points of the erasure runner
 

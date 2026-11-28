@@ -11,8 +11,9 @@ Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journe
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
 
 Run this journey on `local` only. On `local`, the test build answers each image call with a stub, so
-no image provider is called and nothing is billed. `preview` has no image provider. There, skip this
-journey and run no `done`. In your reply, list the feature as not verified on `preview`.
+no image provider is called and nothing is billed. `preview` holds only a placeholder image key, so
+no image call works there. On `preview`, skip this journey and run no `done`. In your reply, list
+the feature as not verified on `preview`.
 
 Before you start:
 

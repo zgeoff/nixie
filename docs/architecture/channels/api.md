@@ -278,9 +278,10 @@ memory forget does, and writes only `erasure.started` and `erasure.finished` of 
    [evidence](../memory/store.md#the-evidence-purge) of each listed item, and commits
    `erasure.finished`.
 
-A record that holds images forgets each image first, as a child erasure of the kind `image`, so the
-image's bytes and its row go before the record's key does. The runner revokes any grant before it
-destroys a code sandbox, and destroys every sandbox before any key goes.
+A record that holds images forgets each image first, as a child erasure of the kind `image`. That
+forgets every record that holds, names or quotes the image, and leaves the image's row, as
+[images](../connectors/images.md#storage) says. The runner revokes any grant before it destroys a
+code sandbox, and destroys every sandbox before any key goes.
 
 The key goes before the session cleanup, so the session the next turn rebuilds reads the record as a
 gap. Every step is safe to run twice. A forget that a crash cuts short stays open, and the server's

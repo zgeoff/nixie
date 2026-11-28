@@ -112,13 +112,12 @@ feature with no verdict in its description.
      the feature in your reply with the end state you expected and the `data` you got.
 6. Record the verdict:
    - Finish each edit to a file that matches the feature's `paths` first. An edit after `done` makes
-     the verdict `stale`. A commit alone leaves it as it was.
+     the verdict `stale`.
    - Once the end state matches, run `bun verify done`. Expect: `ok: true`. `done` records a verdict
      for the feature that `use --feature` set. It never reads the end state, and fails with
      `check-failed` until a journey command has succeeded after `doctor`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature you were asked to
-   check, in the order of the features table. Run the part of a journey that its feature's file
-   marks as last after every other journey.
+   check. Run the part of a journey that its feature's file marks as last after every other journey.
 8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
    step 5. Redo steps 4 to 6 for each `stale` one.
 9. Push the branch, and open a PR when none exists: `publish` fails without one.
