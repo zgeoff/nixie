@@ -52,5 +52,6 @@ export type {
   WorkerRunLimits,
 } from './types';
 
+export { buildTaskRunLimits } from './model/build-task-run-limits';
 export type { ModelsRecordKind } from './model/models-record-kind';
 export { modelsRecordTopics } from './model/models-record-topics';

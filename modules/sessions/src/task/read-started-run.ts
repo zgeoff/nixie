@@ -1,6 +1,6 @@
 import { codeRunToolName } from '@heynixie/connectors';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
-import { bindHarness } from '@heynixie/models';
+import { bindHarness, buildTaskRunLimits } from '@heynixie/models';
 import type { GuestCommand } from '@heynixie/sandbox';
 import type {
   CallTaskOptions,
@@ -113,7 +113,7 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
       log: version.log,
       tools: pickRunTools(version, runner.options),
       report: found.report.mode,
-      limits: runner.options.models.limits.taskRun.default,
+      limits: buildTaskRunLimits(runner.options.models.limits.taskRun.default),
     },
     definitionHash: found.definitionHash,
     hasSelfNoteGrant: version.memory === 'self_notes',
@@ -229,7 +229,7 @@ async function readCallRun(
       log: 'own',
       tools: pickCallTools(calls.conversationToolNames, calls.addedToolNames),
       report: 'none',
-      limits: runner.options.models.limits.taskRun.default,
+      limits: buildTaskRunLimits(runner.options.models.limits.taskRun.default),
     },
     definitionHash: null,
     hasSelfNoteGrant: false,
@@ -251,7 +251,7 @@ function buildStartedRun(runner: RunReader, setup: StartedTaskSetup): StartedRun
     log: 'own',
     tools: startedTaskDefaultTools,
     report: 'wake',
-    limits: runner.options.models.limits.taskRun.default,
+    limits: buildTaskRunLimits(runner.options.models.limits.taskRun.default),
   };
 
   return buildRunParts(runner, {

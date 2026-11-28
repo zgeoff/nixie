@@ -29,3 +29,15 @@ test.each([
     planTaskLimitRaise({ isKnown: true, heldAt: { turns: 25, dollars: 2 } }, asked),
   ).toStrictEqual({ status: 'refused', reason: 'not_raised' });
 });
+
+test('it plans a raise of the turns of a task that has no dollar limit', () => {
+  expect(
+    planTaskLimitRaise({ isKnown: true, heldAt: { turns: 25, dollars: null } }, { turns: 40 }),
+  ).toStrictEqual({ status: 'planned', limits: { turns: 40, dollars: null } });
+});
+
+test('it refuses a dollar limit for a task that has none, because a limit is no raise', () => {
+  expect(
+    planTaskLimitRaise({ isKnown: true, heldAt: { turns: 25, dollars: null } }, { dollars: 5 }),
+  ).toStrictEqual({ status: 'refused', reason: 'not_raised' });
+});

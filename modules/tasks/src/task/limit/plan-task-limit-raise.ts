@@ -30,8 +30,16 @@ export function planTaskLimitRaise(
     return { status: 'refused', reason: 'not_held' };
   }
 
+  // A meter with no limit has nothing to raise, so a value asked for it sets a limit and refuses.
   const limits = { turns: asked.turns ?? held.turns, dollars: asked.dollars ?? held.dollars };
-  const isLower = limits.turns < held.turns || limits.dollars < held.dollars;
+
+  const isLower = (['turns', 'dollars'] as const).some((meter) => {
+    const next = limits[meter];
+    const current = held[meter];
+
+    return next !== null && (current === null || next < current);
+  });
+
   const isSame = limits.turns === held.turns && limits.dollars === held.dollars;
 
   if (isLower || isSame) {

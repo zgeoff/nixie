@@ -4,6 +4,7 @@ import { readOwnerAddress } from '@heynixie/connections';
 import { makeCodeRunCleanup } from '@heynixie/connectors';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { buildDevicesFeatureProcedures } from '@heynixie/devices';
+import { buildTaskRunLimits } from '@heynixie/models';
 import { writeChatChannels } from '@heynixie/policy';
 import { buildRunSettings } from '@heynixie/sessions';
 import { buildServerCoding } from '../coding/build-server-coding';
@@ -75,7 +76,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             coding: coding?.runner.definition ?? null,
             isCallsOn: options.config.voice !== undefined,
           }),
-          taskRunLimits: options.config.models.limits.taskRun.default,
+          taskRunLimits: buildTaskRunLimits(options.config.models.limits.taskRun.default),
           defaultZone: options.config.time.default_zone,
           features: listFeaturesOn(options.config),
           ...(options.spend === null

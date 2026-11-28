@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { TaskLimits } from '../types';
+import { buildLimitSchema } from './build-limit-schema';
 
 export const taskLimitsSchema = z.object({
-  turns: z.int().positive(),
-  dollars: z.number().positive(),
+  turns: buildLimitSchema(z.int().positive()),
+  dollars: buildLimitSchema(z.number().positive()),
 }) satisfies z.ZodType<TaskLimits>;

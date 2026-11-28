@@ -1,4 +1,5 @@
-import type { TaskLimits } from '@heynixie/tasks';
+import type { TaskLimits, TaskUsage } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 
 export interface ReachedLimit {
   readonly meter: 'turns' | 'dollars';
@@ -8,8 +9,12 @@ export interface ReachedLimit {
 
 export function buildReachedLimit(
   meter: 'turns' | 'dollars',
-  used: TaskLimits,
+  used: TaskUsage,
   limits: TaskLimits,
 ): ReachedLimit {
-  return { meter, used: used[meter], limit: limits[meter] };
+  const limit = limits[meter];
+
+  invariant(limit !== null, `a task stopped at a ${meter} limit it does not have`);
+
+  return { meter, used: used[meter], limit };
 }

@@ -62,9 +62,10 @@ interface MonthLimits {
   readonly turns: number;
 }
 
+// A meter with no value has no limit.
 export interface TaskRunLimits {
-  readonly turns: number;
-  readonly dollars: number;
+  readonly turns?: number | undefined;
+  readonly dollars?: number | undefined;
 }
 
 // A profile as its schema parses it, before the config key gives it an ID. It distributes over the

@@ -1,3 +1,4 @@
+import type { TaskLimits, TaskUsage } from '../types';
 import type { RunLimits, TaskRun } from './types';
 
 export interface CarriedLimitsFacts {
@@ -7,10 +8,10 @@ export interface CarriedLimitsFacts {
   readonly first: TaskRun;
 
   // the totals of the newest raise since the piece of work began, or null when it has none
-  readonly raised: { readonly turns: number; readonly dollars: number } | null;
+  readonly raised: TaskLimits | null;
 
   // the piece of work's use since its newest restart
-  readonly used: { readonly turns: number; readonly dollars: number };
+  readonly used: TaskUsage;
 }
 
 // A raise sets a new total for the piece of work, so the carried task run gets the total less what
@@ -25,8 +26,8 @@ export function pickCarriedLimits(facts: CarriedLimitsFacts): RunLimits {
   }
 
   return {
-    turns: Math.max(0, totals.turns - facts.used.turns),
-    dollars: Math.max(0, totals.dollars - facts.used.dollars),
+    turns: totals.turns === null ? null : Math.max(0, totals.turns - facts.used.turns),
+    dollars: totals.dollars === null ? null : Math.max(0, totals.dollars - facts.used.dollars),
     calls: pinned.calls,
   };
 }

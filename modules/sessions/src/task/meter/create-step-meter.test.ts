@@ -204,3 +204,22 @@ test('it frees the dollars a worker run planned and did not spend on the records
 
   expect(begun.budget.getLeftDollars()).toBe(2.5);
 });
+
+test('it never ends a step at a dollar limit for a task run with none, whatever the sandbox refused', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readSandbox.mockResolvedValue(
+    buildCountAnswer(2, { counter: 'sandbox', route: 'router-b', provider: 'main', atMs: 1000 }),
+  );
+
+  const meter = ctx.meter({
+    ...ctx.legacyRun,
+    opened: { ...ctx.legacyRun.opened, limits: { ...ctx.legacyRun.opened.limits, dollars: null } },
+  });
+
+  await meter.begin('sandbox-1');
+
+  const ended = await meter.end('sandbox-1', 1000, 0);
+
+  expect([ended.isLimitReached, ended.isRefused]).toStrictEqual([false, false]);
+});

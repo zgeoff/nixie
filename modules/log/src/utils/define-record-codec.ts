@@ -1,7 +1,8 @@
 import type { ReadonlyDeep } from '@zgeoff/std';
 import { toReadonlyDeep } from '@zgeoff/std';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { JSONObject, RecordCodec, RecordKind } from '../types';
+import { JSON_OBJECT_SCHEMA } from './json-object-schema';
 
 export function defineRecordCodec<Kind extends RecordKind, Shape extends z.core.$ZodShape>(
   kind: Kind,
@@ -14,10 +15,11 @@ export function defineRecordCodec<Kind extends RecordKind, Shape extends z.core.
 > {
   const partial = schema.partial();
   const strict = schema.strict();
+  const encoder: z.ZodType = strict;
 
   return {
     kind,
-    encode: (payload) => toReadonlyDeep(strict.parse(payload)),
+    encode: (payload: unknown) => JSON_OBJECT_SCHEMA.parse(z.encode(encoder, payload)),
     parse: (input) => toReadonlyDeep(strict.parse(input)),
     decode: (payload) => toReadonlyDeep(schema.parse(payload)),
     tryDecodePartial: (payload) => {

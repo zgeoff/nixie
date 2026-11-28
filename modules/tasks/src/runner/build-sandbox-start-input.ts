@@ -83,10 +83,32 @@ export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
           dollars: { type: 'number', exclusiveMinimum: 0 },
         },
         additionalProperties: false,
-        description: `the task's turns and model cost in dollars; ${String(limits.default.turns)} turns and $${String(limits.default.dollars)} unless you set them, and at most ${String(limits.max.turns)} turns and $${String(limits.max.dollars)}`,
+        description: formatLimits(limits),
       },
     },
     required: ['name', 'brief'],
     additionalProperties: false,
   };
+}
+
+function formatLimits(limits: TaskStartBounds['limits']): string {
+  const defaults = [
+    limits.default.turns === null ? null : `${String(limits.default.turns)} turns`,
+    limits.default.dollars === null ? null : `$${String(limits.default.dollars)}`,
+  ].filter((part) => part !== null);
+
+  const maxes = [
+    limits.max.turns === null ? null : `${String(limits.max.turns)} turns`,
+    limits.max.dollars === null ? null : `$${String(limits.max.dollars)}`,
+  ].filter((part) => part !== null);
+
+  return [
+    "the task's turns and model cost in dollars",
+    defaults.length === 0
+      ? 'no limit on either unless you set one'
+      : `${defaults.join(' and ')} unless you set them, and no limit on a meter with no default`,
+    maxes.length === 0 ? null : `at most ${maxes.join(' and ')}`,
+  ]
+    .filter((part) => part !== null)
+    .join('; ');
 }

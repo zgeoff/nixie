@@ -23,6 +23,7 @@ async function setupTest() {
   return {
     writer,
     readPolicy: makeReadDefinitionRunPolicy({ turns: 25, dollars: 2 }),
+    readUnlimitedPolicy: makeReadDefinitionRunPolicy({ turns: null, dollars: null }),
     writeVersion: (form: JSONObject) =>
       withWriteTransaction(writer, (tx) =>
         writeTaskVersions(tx, [{ id: 'water-plants', hash: 'hash-1', form, files: {} }]),
@@ -95,4 +96,19 @@ test('it parses the report shape of the file', async () => {
     properties: { watered: { type: 'integer' } },
     type: 'object',
   });
+});
+
+test('it gives a job run no limit on a meter that neither its file nor the config sets', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeVersion({
+    name: 'Water',
+    brief: 'Water the plants.',
+    wakeable: false,
+    limits: { dollars: 3 },
+  });
+
+  const policy = await ctx.readUnlimitedPolicy(ctx.writer.db, 'task-1', 'hash-1');
+
+  expect(policy?.limits).toStrictEqual({ turns: null, dollars: 3, calls: {} });
 });

@@ -5,7 +5,7 @@ import { match } from 'ts-pattern';
 import { readLimitRecords } from '../../limit/read-limit-records';
 import { taskLimitReachedCodec } from '../../limit/task-limit-reached-codec';
 import { taskLimitsRaisedCodec } from '../../limit/task-limits-raised-codec';
-import type { TaskLimits, TasksContext } from '../../types';
+import type { TaskLimits, TaskUsage, TasksContext } from '../../types';
 
 export type TaskLimitHold = 'free' | 'held';
 
@@ -13,7 +13,7 @@ export type TaskLimitHoldMove =
   | {
       readonly kind: 'reach';
       readonly stepKey: string;
-      readonly used: TaskLimits;
+      readonly used: TaskUsage;
       readonly limits: TaskLimits;
     }
   | { readonly kind: 'raise'; readonly limits: TaskLimits };

@@ -2,13 +2,15 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readSpendLedger } from '@heynixie/budgets';
 import { readLinkTarget } from '@heynixie/connectors';
 import { createTestCredentials } from '@heynixie/credentials/test-utils';
-import type { Definitions, RecordInput } from '@heynixie/log';
+import type { Definitions, JSONObject, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
-import { modelsConfigSchema } from '@heynixie/models';
+import { buildTaskRunLimits, modelsConfigSchema } from '@heynixie/models';
 import type { SpendGateway } from '@heynixie/spend';
 import { withSandboxCounts } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import {
+  buildStepRunID,
+  buildTaskStartTool,
   claimTask,
   createConversationTask,
   readOpenRun,
@@ -20,12 +22,14 @@ import {
   writeTaskLimitRaise,
 } from '@heynixie/tasks';
 import {
+  buildMockTaskStartBounds,
   readTestTaskProgress,
   seedDefinitionTask,
   writeTestTaskMessage,
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildCountAnswer } from '../test-utils/build-count-answer';
@@ -44,7 +48,12 @@ import { readRunUsage } from './read-run-usage';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
 import { startSandboxRunner } from './start-sandbox-runner';
 
-async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) {
+async function setupTest(
+  options: {
+    readonly isGatewayMetered?: boolean;
+    readonly taskRunLimits?: { readonly default: { readonly turns: number } };
+  } = {},
+) {
   const clock = createFakeClock({ startMs: 1_000_000 });
 
   const models = modelsConfigSchema.parse({
@@ -82,6 +91,7 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
     selectable: {
       'second-look': { profile: 'router-b', description: 'Another family' },
     },
+    ...(options.taskRunLimits === undefined ? {} : { limits: { taskRun: options.taskRunLimits } }),
   });
 
   const credentials = await createTestCredentials({
@@ -180,6 +190,33 @@ async function setupTest(options: { readonly isGatewayMetered?: boolean } = {}) 
     clearFetchPauses,
     startRunner,
     seed: buildSeeder(host),
+
+    // the task.start tool, with the start bounds that the models config gives
+    startTask: async (claim: Parameters<typeof buildStepRunID>[0], input: JSONObject) => {
+      const tool = buildTaskStartTool(
+        host.context,
+        { hopLimit: 20, ownerName: 'Robin' },
+        buildMockTaskStartBounds({
+          limits: {
+            default: buildTaskRunLimits(models.limits.taskRun.default),
+            max: buildTaskRunLimits(models.limits.taskRun.max),
+          },
+        }),
+      );
+
+      const outcome = await tool.run(
+        buildMockToolCall({ tool: 'task.start', input }),
+        buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+      );
+
+      invariant(outcome.status === 'ok', 'the task starts');
+
+      const taskID = outcome.result['taskID'];
+
+      invariant(typeof taskID === 'string', 'the started task has an ID');
+
+      return taskID;
+    },
     writeDefinitionTask: (seed: Parameters<typeof seedDefinitionTask>[1]) =>
       seedDefinitionTask({ ...host, writer: host.context.log.writer }, seed),
     writeFire: (taskID: string, definitionHash: string, dedupeKey: string) =>
@@ -1619,6 +1656,101 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
       payload: { taskID, used: { turns: 1, dollars: 0 }, limits: { turns: 1, dollars: 2 } },
     },
   ]);
+});
+
+test('it runs the turns of a task with no limit and never pauses it', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { report: 'none', limits: { turns: null, dollars: null } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'And the evening tide.');
+  await ctx.runNextStep(runner);
+
+  const [paused, notices] = await Promise.all([
+    ctx.readKinds('task.paused'),
+    ctx.readKinds('task.limit_notice'),
+  ]);
+
+  expect({ turns: ctx.guest.turns.length, paused, notices }).toStrictEqual({
+    turns: 3,
+    paused: [],
+    notices: [],
+  });
+});
+
+test('it runs every turn of a task that task.start started with no limit, when the config sets no default', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.startTask(starter.claim, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    report: 'none',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const [paused, notices] = await Promise.all([
+    ctx.readKinds('task.paused'),
+    ctx.readKinds('task.limit_notice'),
+  ]);
+
+  expect({
+    limits: run?.opened.limits,
+    turns: ctx.guest.turns.length,
+    paused,
+    notices,
+  }).toStrictEqual({
+    limits: { turns: null, dollars: null, calls: {} },
+    turns: 2,
+    paused: [],
+    notices: [],
+  });
+});
+
+test('it pauses a task that task.start started with no limit before its second turn, when the config default is 1 turn', async () => {
+  const ctx = await setupTest({ taskRunLimits: { default: { turns: 1 } } });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.startTask(starter.claim, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    report: 'none',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+
+  expect({
+    turns: ctx.guest.turns.length,
+    paused: paused.map((record) => record.thread),
+  }).toStrictEqual({
+    turns: 1,
+    paused: [taskID],
+  });
 });
 
 test('it voids the replies a dead attempt left, and runs no turn, when a step reruns after its report was asked for', async () => {
