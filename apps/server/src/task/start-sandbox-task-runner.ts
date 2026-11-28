@@ -2,9 +2,11 @@ import { buildCallStepHooks } from '@heynixie/calls';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
+import { joinListedSkills } from '@heynixie/skills';
 import { makeInStepActions } from '../action/make-in-step-actions';
 import type { CallsPart } from '../part/start-calls-part';
 import { toImageNames } from '../sandbox/to-image-names';
+import { readSkillCatalog } from '../skill/read-skill-catalog';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import { toSessionDefinitions } from '../utils/to-session-definitions';
@@ -35,6 +37,23 @@ export async function startSandboxTaskRunner(
     turnInputs: parts.turnInputs,
     ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
     ...(parts.apiContext.spend === undefined ? {} : { spend: parts.apiContext.spend }),
+    skills: {
+      join: (input) =>
+        joinListedSkills(parts.context.log, {
+          thread: input.thread,
+          inForce: parts.inForce.read(),
+          list: input.list,
+        }),
+      readCatalog: (query) =>
+        readSkillCatalog(
+          {
+            log: parts.context.log,
+            readInForce: () => parts.inForce.read(),
+            skills: parts.config.skills,
+          },
+          query,
+        ),
+    },
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     inStepActions: makeInStepActions(parts),
     log: parts.log,

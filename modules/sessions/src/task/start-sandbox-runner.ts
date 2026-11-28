@@ -19,7 +19,6 @@ import {
   probePauseRequested,
   readStartedTaskIDs,
   startClaimPool,
-  taskReportToolName,
 } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
@@ -28,7 +27,6 @@ import type { TaskImp, TaskImpParts } from '../sandbox/task-imp-machine';
 import { taskImpMachine } from '../sandbox/task-imp-machine';
 import { runConversationStep } from '../step/run-conversation-step';
 import { voidLostReplies } from '../step/void-lost-replies';
-import { silentEndToolName } from '../turn/build-silent-end-tool';
 import type { SessionCleanupCause } from '../types';
 import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
@@ -38,6 +36,7 @@ import { waitForStepEnd } from '../utils/wait-for-step-end';
 import { buildLimitResult } from './build-limit-result';
 import { buildReachedLimit } from './build-reached-limit';
 import { buildTaskRun } from './build-task-run';
+import { collectEndpointTools } from './collect-endpoint-tools';
 import { getHarnessImage } from './get-harness-image';
 import { holdTaskStep } from './hold-task-step';
 import type { SystemTaskSession } from './make-system-task-runner';
@@ -273,19 +272,17 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
 
       runner.endpointHashes.set(taskID, run.definitionHash);
 
-      // The start's record lists only the tools it named, and every task also gets silent end and report.
+      if (run.skills.length > 0) {
+        await options.skills?.join({ thread: taskID, list: run.skills });
+      }
+
       return options.tools.startRun({
         runID: taskID,
         thread: taskID,
         logThread: run.options.log === 'conversation' ? conversationTaskID : taskID,
-        tools: [
-          ...new Set([
-            ...run.options.tools,
-            silentEndToolName,
-            ...(run.call === null ? [taskReportToolName] : []),
-          ]),
-        ],
+        tools: collectEndpointTools(run),
         model: run.model,
+        skills: run.skills,
         ...(run.hasSelfNoteGrant
           ? { hasSelfNoteGrant: true, selfNoteOnlyTools: run.selfNoteOnlyTools }
           : {}),

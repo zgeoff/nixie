@@ -21,6 +21,7 @@ import { pickGatewayEnd } from './pick-gateway-end';
 import type { WorkerTurnFacts } from './pick-worker-end';
 import { pickWorkerEnd } from './pick-worker-end';
 import { pickWorkerRefusal } from './pick-worker-refusal';
+import { readWorkerSystemPrompt } from './read-worker-system-prompt';
 import { removeFailedDestroys } from './remove-failed-destroys';
 import { renderWorkerEnd } from './render-worker-end';
 import { reserveWorkerDollars } from './reserve-worker-dollars';
@@ -33,7 +34,6 @@ import type {
   WorkerRunNames,
   WorkerSlotGrant,
 } from './types';
-import { workerSystemPrompt } from './worker-system-prompt';
 import type { WorkerUsed } from './worker-used';
 import { writeWorkerGatewayCharged } from './write-worker-gateway-charged';
 import { writeWorkerRunEnded } from './write-worker-run-ended';
@@ -267,6 +267,7 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
       sandbox: run.held.sandbox,
       url: route.url,
       token: run.held.endpoint.token,
+      systemPrompt: await readWorkerSystemPrompt(deps, plan),
     });
 
     state.turn = summarizeTurn(turn);
@@ -336,6 +337,7 @@ function startToolRun(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promi
     thread: plan.caller.thread,
     logThread: plan.caller.logThread,
     tools: [...plan.tools],
+    skills: plan.skills,
     model: { model: run.names.model, profile: run.names.profile },
     ...(plan.caller.taskRun === undefined ? {} : { taskRun: plan.caller.taskRun }),
     toolUseMetaKey: plan.target.harness.toolUseMetaKey,
@@ -347,6 +349,7 @@ interface GuestRoute {
   readonly sandbox: Sandbox;
   readonly url: string;
   readonly token: string;
+  readonly systemPrompt: string;
 }
 
 function runGuest(
@@ -377,7 +380,7 @@ function runGuest(
       }),
       tools: { url: route.url, token: route.token },
       ...(plan.target.harness.session === null ? {} : { resume: null }),
-      systemPrompt: workerSystemPrompt,
+      systemPrompt: route.systemPrompt,
       limits: {
         modelCalls: capabilities.has('turn-limit') ? plan.limits.turns : null,
         toolCallWaitMs: plan.target.harness.toolCallWaitMs,

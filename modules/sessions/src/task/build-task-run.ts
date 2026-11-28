@@ -28,6 +28,8 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
     sandboxName: parts.sandbox.id,
   });
 
+  const skills = options.skills;
+
   return {
     context: options.context,
     frame:
@@ -56,6 +58,16 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
         ? options.getDefinitions()
         : { ...options.getDefinitions(), persona: '', personaHash: '' },
     status: buildDefaultStatus(),
+    ...(skills === undefined || parts.run.skills.length === 0
+      ? {}
+      : {
+          loadOrPinSkillCatalog: (taskID: string) =>
+            skills.readCatalog({
+              thread: taskID,
+              list: parts.run.skills,
+              contextWindow: parts.run.harness.contextWindow,
+            }),
+        }),
     ...(parts.run.options.memory === 'none' ? {} : { memory: options.memory }),
     memorySettings: options.memorySettings,
     compaction: options.compaction,

@@ -195,6 +195,10 @@ async function setupTest(config: SetupConfig = {}) {
         };
       },
     }),
+    skills: {
+      readList: (run) => run.skills ?? [],
+      readCatalog: (input) => Promise.resolve(`<skills>${input.list.join(', ')}</skills>`),
+    },
     ...(config.workerRuns === undefined ? {} : { workerRuns: config.workerRuns }),
     ...(config.isGatewayOn === true ? { gateway } : {}),
     ...(config.spendDayTurns === undefined
@@ -263,6 +267,7 @@ async function setupTest(config: SetupConfig = {}) {
     overrides: {
       readonly hold?: Partial<ToolStepHold>;
       readonly tools?: readonly string[];
+      readonly skills?: readonly string[];
       readonly hasSelfNoteGrant?: boolean;
     } = {},
   ): Promise<ToolOutcome> =>
@@ -274,6 +279,7 @@ async function setupTest(config: SetupConfig = {}) {
           thread: 'task-1',
           logThread: 'task-1',
           tools: overrides.tools ?? ['notes_read'],
+          ...(overrides.skills === undefined ? {} : { skills: overrides.skills }),
           ...(overrides.hasSelfNoteGrant === undefined
             ? {}
             : { hasSelfNoteGrant: overrides.hasSelfNoteGrant }),
@@ -522,6 +528,60 @@ test('it starts the tool run of a worker of a task that holds the self-note gran
   ).toStrictEqual([
     { thread: 'task-1', hasSelfNoteGrant: undefined, selfNoteOnlyTools: undefined },
   ]);
+});
+
+test('it starts the tool run of a worker with the skills its call names, the tool that reads them, and their catalog', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Low tide is at noon.' });
+
+  await ctx.callWorker(
+    { question: 'When is low tide?', skills: ['tide-tables'] },
+    { tools: ['notes_read', 'skill_read'], skills: ['bird-log', 'tide-tables'] },
+  );
+
+  expect(ctx.startedRuns.map((run) => ({ tools: run.tools, skills: run.skills }))).toStrictEqual([
+    { tools: ['skill_read'], skills: ['tide-tables'] },
+  ]);
+
+  expect(ctx.guest.turns.map((turn) => turn.systemPrompt)).toStrictEqual([
+    expect.toEndWith('\n\n<skills>tide-tables</skills>'),
+  ]);
+});
+
+test('it starts the tool run of a worker with no skill when its call names none', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Three cafes are open.' });
+
+  await ctx.callWorker(
+    { question: 'Which cafes are open?' },
+    { tools: ['notes_read', 'skill_read'], skills: ['bird-log'] },
+  );
+
+  expect(ctx.startedRuns.map((run) => run.skills)).toStrictEqual([[]]);
+
+  expect(ctx.guest.turns.map((turn) => turn.systemPrompt)).toStrictEqual([
+    expect.not.stringContaining('<skills>'),
+  ]);
+});
+
+test('it refuses a skill outside the list of its caller, and starts no sandbox', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.callWorker(
+    { question: 'Which?', skills: ['bird-log'] },
+    { tools: ['notes_read', 'skill_read'], skills: ['tide-tables'] },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('you may not use bird-log'),
+  });
+
+  const owners = await ctx.readOwners();
+
+  expect(owners).toStrictEqual([]);
 });
 
 test('it refuses a tool that the caller does not hold, and starts no sandbox', async () => {

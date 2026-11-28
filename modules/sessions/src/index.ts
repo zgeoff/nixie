@@ -126,5 +126,5 @@ export { toWorkerLimit } from './worker/to-worker-limit';
 export { sessionsRecordTopics } from './session/sessions-record-topics';
 export { workerRecordTopics } from './worker/worker-record-topics';
 export { buildProposalSettledKind } from './event/build-proposal-settled-kind';
-export type { CallStep, CallStepHooks } from './task/sandbox-runner-options';
+export type { CallStep, CallStepHooks, RunSkills } from './task/sandbox-runner-options';
 export type { CallHistoryRecordKind } from './turn/call-history-record-kind';

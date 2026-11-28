@@ -1,3 +1,4 @@
+import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { Definitions, Log } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { WorkerTool } from '@heynixie/sessions';
@@ -6,6 +7,8 @@ import type { SpendContext } from '@heynixie/spend';
 import type { ToolEndpoint } from '@heynixie/tools';
 import { toImageNames } from '../sandbox/to-image-names';
 import type { ServerPartsOptions } from '../server/start-server';
+import { readRunSkillList } from '../skill/read-run-skill-list';
+import { readSkillCatalog } from '../skill/read-skill-catalog';
 
 export interface WorkerPartInputs {
   readonly options: Pick<
@@ -17,6 +20,7 @@ export interface WorkerPartInputs {
   readonly definitions: () => Definitions;
   readonly readTools: () => Pick<ToolEndpoint, 'startRun'> | null;
   readonly spend: SpendContext | undefined;
+  readonly readInForce: () => DefinitionsInForce | null;
 }
 
 // A deployment with no worker role gets no worker tool, so the model never sees a tool that every
@@ -45,6 +49,14 @@ export async function startWorkerPart(inputs: WorkerPartInputs): Promise<WorkerT
     readTools: inputs.readTools,
     ...(inputs.options.spend === null ? {} : { gateway: inputs.options.spend.gateway }),
     ...(inputs.spend === undefined ? {} : { spend: inputs.spend }),
+    skills: {
+      readList: (run) => readRunSkillList(run, inputs.readInForce()),
+      readCatalog: (query) =>
+        readSkillCatalog(
+          { log: inputs.log, readInForce: inputs.readInForce, skills: config.skills },
+          query,
+        ),
+    },
     ...(config.tasks.workerRuns === undefined ? {} : { workerRuns: config.tasks.workerRuns }),
   });
 
