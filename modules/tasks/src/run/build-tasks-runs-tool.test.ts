@@ -527,6 +527,34 @@ test('it clips a listed report to its first line, and gives the whole report for
   });
 });
 
+test('it marks the code-made report of a failed run as outside content, because it holds the last error', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startRun('Tide check');
+
+  await writeStepError(ctx.context, started.claim, {
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+    error: new Error('the tide table is unreachable'),
+  });
+
+  const listed = await ctx.callRuns({});
+
+  expect(listed).toStrictEqual({
+    status: 'ok',
+    result: {
+      runs: [
+        expect.objectContaining({
+          report:
+            'The run failed after 1 errors before it wrote a summary. The last error: the tide table is unreachable',
+          reportSource: 'outside',
+        }),
+      ],
+      nextCursor: null,
+    },
+  });
+});
+
 test('it gives the message of the failing step as the reason a failed run gives', async () => {
   const ctx = await setupTest();
   const started = await ctx.startRun('Tide check');

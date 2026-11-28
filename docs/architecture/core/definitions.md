@@ -395,7 +395,7 @@ leaves out a spent one-shot, as [Triggers](./triggers.md#which-definitions-can-f
 ### What opens a task run
 
 When a step claims a definition's task and finds no open task run and no limit hold (a task that
-reached a limit and that the user has not raised), the first of these that holds decides:
+reached a limit and that the user has not raised), the claim follows the first of these that holds:
 
 1. An unread `trigger.fired` whose dedupe key no task run of the task holds opens a task run that
    pins the fire's own hash, whatever hash is in force, so a one-shot runs although its own fire
@@ -417,28 +417,33 @@ opens no task run for it. A task run of a definition has no limit of its own on 
 decision point treats its calls as it treats the conversation's.
 
 In the transaction that delivers a fire, the [trigger core](./triggers.md) asks the tasks module
-whether the task takes the fire, before it writes the fire's record. The first answer that holds
-decides:
+whether the task takes the fire, before it writes the fire's record. The answer is the first of
+these that holds:
 
-1. `held`: the task's [gate](./pause.md#the-task-gate) answers `ended`, `limit` or `task`. The core
-   records a skip with `task_held`, and the definition fires again at the first slot after the user
-   resumes, restarts or raises the task.
+1. `held`: the task's [gate](./pause.md#the-task-gate) answers `ended` for a task that is not
+   `failed`, or answers `limit` or `task`, or the task failed while the user's pause request waited
+   on its step. The core records a skip with `task_held`, and the definition fires again at the
+   first slot after the user resumes, restarts or raises the task.
 2. `wait`: the gate answers `spend` or `nixie`. The core writes nothing and takes no key, so the
    source delivers the fire again at its next tick.
-3. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
+3. `revive`: the task is `failed`, the gate answers no other reason, and no pause request of the
+   user waited on the step that failed it. The core writes `task.revived`, which returns the task to
+   `ready` with no step errors, and then records the fire. The next claim opens a fresh task run for
+   the fire, so one failed task run never stops the schedule.
+4. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
    reply. The core records a skip with `still_running`.
-4. `take`: the task has no pending task run, and its open task run is idle or absent. The core
+5. `take`: the task has no pending task run, and its open task run is idle or absent. The core
    records the fire.
 
-The answer computes whether a task run is pending, because no table holds one. With no open task
-run, a task run is pending when item 1, 2 or 3 of the list in "What opens a task run" holds. With an
-idle open task run, it is pending when the inbox holds an unread fire whose key no task run holds. A
-task therefore holds at most one unread fire, except after a stop, when it can hold 2. nixie skips a
-fire and never queues it, because 2 task runs at once would write to one thread, and a queue would
-hide a task run that never ends. A fire that was written before a hold opens a task run after the
-hold ends, however old it is. nixie writes no record for a fire of a disabled definition. While
-nixie is paused, the core delivers no schedule fire to a paused task, and the catch-up rule decides
-the first fire after the resume.
+The tasks module computes whether a task run is pending, because no table records one. With no open
+task run, a task run is pending when item 1, 2 or 3 of the list in "What opens a task run" holds.
+With an idle open task run, it is pending when the inbox holds an unread fire whose key no task run
+holds. A task therefore holds at most one unread fire, except after a stop, when it can hold 2.
+nixie skips a fire and never queues it, because 2 task runs at once would write to one thread, and a
+queue would hide a task run that never ends. A fire that was written before a hold opens a task run
+after the hold ends, however old it is. nixie writes no record for a fire of a disabled definition.
+While nixie is paused, the core delivers no schedule fire to a paused task, and the source applies
+the catch-up rule to the first fire after the resume.
 
 The task listing and the dashboard show a definition's task while its hash in force is not null,
 with the name, brief and model of that version, and while a task run of a task out of force is
@@ -460,8 +465,7 @@ the hash that the fire pins. The next claim opens a task run for it, and the rec
 `task.run_opened` holds the hash, the fire's dedupe key as the trigger key, the report mode and
 target, the report shape, and the limits of the version's file over the defaults. An idle task run
 ends with the cause `no_report` when a fire arrives, and the new task run opens in the same
-transaction. A task that is ended, paused or held at a limit holds the fire, and a task that works
-or has a fire waiting answers `still_running`. The trigger core reads that answer with
+transaction. The trigger core reads the task's answer to a fire with
 `readDefinitionTaskInTransaction`.
 
 When a task run ends at a limit, stopped or failed, a raise of the task's limits or a restart opens
@@ -498,14 +502,14 @@ A definition never fires into the conversation. A reminder does, as [reminders](
 describes.
 
 The sandbox runner reads the version that the open task run pins, else the newest task run, else the
-hash in force. The version gives the persona, the memory, the log, the tools and the model. A
-version with memory `read` also gets each memory tool that only reads, as a `task.start` with memory
-`read` gives it, and the version's form never lists those tools. A version that names no model runs
-on the profile of the model role `task`, and a version that names a selectable model runs on that
-model's profile. A task's [tool endpoint](../connectors/tool-calls.md#one-endpoint-per-run), through
-which its model loop calls tools, keeps the tool list of the version it started with and can serve
-several task runs. A task run that pins another hash than the task's endpoint started with therefore
-gets a new endpoint, so the tool list of a version applies from its first task run.
+hash in force. It takes the persona, the memory, the log, the tools and the model from that version.
+A version with memory `read` also gets each memory tool that only reads, as a `task.start` with
+memory `read` gives it, and the version's form never lists those tools. A version that names no
+model runs on the profile of the model role `task`, and a version that names a selectable model runs
+on that model's profile. A task's [tool endpoint](../connectors/tool-calls.md#one-endpoint-per-run),
+through which its model loop calls tools, keeps the tool list of the version it started with and can
+serve several task runs. A task run that pins another hash than the task's endpoint started with
+therefore gets a new endpoint, so the tool list of a version applies from its first task run.
 
 Under `context: fresh`, each piece of work opens a session of its own: a carried task run resumes
 the session of the task run it carries, and any other task run starts one. Under `continuing`, each

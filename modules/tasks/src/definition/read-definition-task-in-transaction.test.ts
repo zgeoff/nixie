@@ -132,7 +132,82 @@ test('it answers held for a paused task', async () => {
   expect(result).toStrictEqual({ taskID, fire: 'held' });
 });
 
-test('it answers held for a failed task, and not held after a restart', async () => {
+test('it answers held for a task that failed while its pause waited on the step', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
+
+  const claim = await ctx.claim();
+
+  if (claim === null) {
+    throw new Error('the fire is claimable');
+  }
+
+  await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+
+  await writeStepError(ctx.context, claim, {
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+    error: new Error('the step broke'),
+  });
+
+  const result = await ctx.readAnswer('water-the-tomatoes');
+
+  expect(result).toStrictEqual({ taskID, fire: 'held' });
+});
+
+test('it answers revive for a failed task once a restart and a later failure follow a waiting pause', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
+
+  const first = await ctx.claim();
+
+  if (first === null) {
+    throw new Error('the fire is claimable');
+  }
+
+  await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+
+  await writeStepError(ctx.context, first, {
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+    error: new Error('the step broke'),
+  });
+
+  await writeTaskControl(ctx.context, { taskID, control: 'restart' });
+
+  const second = await ctx.claim();
+
+  if (second === null) {
+    throw new Error('the restart is claimable');
+  }
+
+  await writeStepError(ctx.context, second, {
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+    error: new Error('the step broke again'),
+  });
+
+  const result = await ctx.readAnswer('water-the-tomatoes');
+
+  expect(result).toStrictEqual({ taskID, fire: 'revive' });
+});
+
+test('it answers revive for a failed task', async () => {
   const ctx = await setupTest();
 
   const taskID = await seedDefinitionTask(ctx, {
@@ -155,14 +230,9 @@ test('it answers held for a failed task, and not held after a restart', async ()
     error: new Error('the step broke'),
   });
 
-  const failed = await ctx.readAnswer('water-the-tomatoes');
+  const result = await ctx.readAnswer('water-the-tomatoes');
 
-  await writeTaskControl(ctx.context, { taskID, control: 'restart' });
-
-  const restarted = await ctx.readAnswer('water-the-tomatoes');
-
-  expect(failed).toStrictEqual({ taskID, fire: 'held' });
-  expect(restarted).not.toMatchObject({ fire: 'held' });
+  expect(result).toStrictEqual({ taskID, fire: 'revive' });
 });
 
 test('it answers wait while nixie is paused, and held for a stopped task whatever the pause', async () => {

@@ -57,27 +57,31 @@ it for an `at` trigger.
 
 ## One deliver call
 
-`deliverTriggerBatch` is one write transaction. For each event in order, the first row that fits
-decides:
+`deliverTriggerBatch` is one write transaction. For each event in order, the core takes the first
+row of this table that fits, and writes what its Written column lists.
 
-| #   | When                                                                                                                                  | Written                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| 1   | `trigger_keys` holds the event's key, or an earlier event of the batch took it                                                        | nothing                                               |
-| 2   | the definition has no row, is withdrawn, is on another source or holds another hash; or a schedule slot is at or before the watermark | nothing                                               |
-| 3   | the task's [gate](./pause.md#the-task-gate) answers `nixie` or `spend`                                                                | nothing; the key stays free                           |
-| 4   | the event holds `skip`                                                                                                                | `trigger.skipped` with that reason                    |
-| 5   | the trigger's `target` is `conversation`, which a [reminder](./reminders.md) arms                                                     | `trigger.fired` on the conversation's thread          |
-| 6   | `readDefinitionTask` answers `take`                                                                                                   | `trigger.fired` on the task's thread                  |
-| 7   | `readDefinitionTask` answers `still_running` or `held`                                                                                | `trigger.skipped` with `still_running` or `task_held` |
+| #   | When                                                                                                                                  | Written                                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | `trigger_keys` holds the event's key, or an earlier event of the batch took it                                                        | nothing                                                                 |
+| 2   | the definition has no row, is withdrawn, is on another source or holds another hash; or a schedule slot is at or before the watermark | nothing                                                                 |
+| 3   | `readDefinitionTask` answers `wait`, or a conversation target's [gate](./pause.md#the-task-gate) answers `nixie` or `spend`           | nothing; the key stays free                                             |
+| 4   | `readDefinitionTask` answers `held`                                                                                                   | `trigger.skipped` with `task_held`                                      |
+| 5   | the event holds `skip`                                                                                                                | `trigger.skipped` with that reason                                      |
+| 6   | the trigger's `target` is `conversation`, which a [reminder](./reminders.md) arms                                                     | `trigger.fired` on the conversation's thread                            |
+| 7   | `readDefinitionTask` answers `take`, or `revive` for a failed task                                                                    | `trigger.fired` on the task's thread, after `task.revived` for `revive` |
+| 8   | `readDefinitionTask` answers `still_running`                                                                                          | `trigger.skipped` with `still_running`                                  |
 
-Row 3 reads the task's gate. For a task target, an ended task outranks the stop and nixie's pause,
-so it reaches row 7, while a task at a limit or paused by the user ranks below them, so row 3 holds
-the fire first. A conversation target heeds only nixie's pause and the spending stop, whatever the
-conversation's state, so a reminder still lands in a conversation that the user paused. A fire that
-row 3 holds takes no key, so the source's next tick builds the same event again. The slot is then
-late, and the catch-up rule of [the schedule source](#the-schedule-source) decides: one catch-up
-within half the interval, otherwise a `too_late` skip. A one-shot leaves force only when its fire is
-written or skipped, so a one-shot that waits stays armed.
+`readDefinitionTask` answers `wait` when nixie's pause or the spending stop holds the task. For a
+task target, a done, stopped or closed task outranks the stop and nixie's pause, so its fire reaches
+row 4. A failed task, a task at a limit and a task paused by the user rank below them, so their fire
+waits at row 3. A held task outranks the event's own skip, so the core records `task_held` for a
+late fire at a paused task. For a conversation target, the core heeds only nixie's pause and the
+spending stop, whatever the conversation's state, so a reminder still lands in a conversation that
+the user paused. A fire that waits at row 3 takes no key, so the source's next tick builds the same
+event again. The slot is then late, and the source applies the catch-up rule of
+[the schedule source](#the-schedule-source). It fires one catch-up within half the interval, and
+otherwise skips with `too_late`. A one-shot leaves force only when its fire is written or skipped,
+so a one-shot that waits stays armed.
 
 Each record is written before the core reads for the next event, and its fold adds the key to
 `trigger_keys` at once. A second fire of one definition in one batch therefore skips with

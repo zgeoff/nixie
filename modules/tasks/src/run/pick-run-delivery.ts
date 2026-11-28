@@ -16,6 +16,9 @@ export interface RunDeliveryFacts {
 
   // whether the report target made the close that ends the task run
   readonly isClosedByTarget: boolean;
+
+  // whether a definition's version opened the task run
+  readonly isDefinitionRun: boolean;
 }
 
 export interface RunDeliveryPlan {
@@ -24,7 +27,8 @@ export interface RunDeliveryPlan {
 }
 
 // The first row of the delivery table that applies. A message to a task that is done, failed or
-// closed would throw, so a report to one is kept.
+// closed would throw, so a report to one is kept. A failed task run of a definition wakes its target
+// under next_turn too, so the conversation hears of the failure when it happens.
 export function pickRunDelivery(facts: RunDeliveryFacts): RunDeliveryPlan {
   if (
     facts.cause === 'no_work' ||
@@ -36,7 +40,9 @@ export function pickRunDelivery(facts: RunDeliveryFacts): RunDeliveryPlan {
     return { delivery: 'kept', isMessageWritten: false };
   }
 
-  if (facts.mode === 'next_turn' || facts.hop + 1 > facts.hopLimit) {
+  const isFailedDefinitionRun = facts.cause === 'failed' && facts.isDefinitionRun;
+
+  if ((facts.mode === 'next_turn' && !isFailedDefinitionRun) || facts.hop + 1 > facts.hopLimit) {
     return { delivery: 'next_turn', isMessageWritten: true };
   }
 

@@ -1,12 +1,16 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { createConversationTask } from '../conversation/create-conversation-task';
+import { readInbox } from '../inbox/read-inbox';
 import { claimTask } from '../task/projection/claim-task';
 import { writeInboxRecords } from '../task/projection/write-inbox-records';
 import { writeTaskControl } from '../task/write-task-control';
 import { createTestClaim } from '../test-utils/create-test-claim';
 import { createTestConversationClaim } from '../test-utils/create-test-conversation-claim';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
 import type { TasksTables } from '../types';
 import { StepFailedError } from './step-failed-error';
 import { writeStepError } from './write-step-error';
@@ -427,4 +431,63 @@ test('it runs a step of a task that failed while its pause waited, once the task
 
   expect(next?.lease.workID).toBe(claim.lease.workID);
   expect(task).toStrictEqual({ state: 'running', pause_requested: 0 });
+});
+
+test('it wakes the conversation with a report that holds the last error when a task run of a definition fails', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await writeStepError(ctx.context, claim, {
+    error: new Error('429 rate limit exceeded'),
+    maxStepErrors: 1,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 1000,
+  });
+
+  const inbox = await readInbox(ctx.context, 'conversation');
+
+  expect(
+    inbox.map((record) => ({
+      kind: record.kind,
+      payload: record.payload,
+      erasable: record.erasable,
+    })),
+  ).toStrictEqual([
+    {
+      kind: 'task_message',
+      payload: {
+        messageID: expect.any(String),
+        from: taskID,
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: expect.any(Number),
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: `task:${taskID}`,
+        outside: true,
+      },
+      erasable: {
+        status: 'readable',
+        fields: {
+          body: 'report:\n  summary: "The run failed after 1 errors before it wrote a summary. The last error: 429 rate limit exceeded"',
+        },
+      },
+    },
+  ]);
 });

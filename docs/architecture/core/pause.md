@@ -80,9 +80,9 @@ too, though a conversation the user paused still takes its fires.
 
 ## The task gate
 
-`readTaskGate` in the tasks module answers whether a task may go on, in the caller's transaction. It
-gives `open`, or a hold with the first reason that applies, in this order, and `since`, the time of
-the record that put the task in that hold:
+`readTaskGate` in the tasks module checks whether a task may go on, in the caller's transaction. It
+returns `open` or a hold. A hold carries the first reason in this table that applies, and `since`,
+the time of the record that put the task in that hold:
 
 | Reason  | The task is held because                                                                                                          |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -98,13 +98,13 @@ of the turn count still pauses nixie, and the gate reports `spend` first. A rout
 nothing: it holds only the tasks on that route, and the gate reports `spend` for them. Each caller
 applies its own rule to the reasons:
 
-| Caller         | `ended`                            | `spend`, `nixie`               | `limit`, `task`                                    |
-| -------------- | ---------------------------------- | ------------------------------ | -------------------------------------------------- |
-| task claim     | skips the task                     | skips the task                 | skips a paused task; claims a task at a limit once |
-| action claim   | by the task's state, as in actions | skips every action             | skips an action with no started attempt            |
-| action attempt | by the task's state, as in actions | barred, and its lease is freed | barred when no attempt has started                 |
-| schedule fire  | `trigger.skipped` with `task_held` | writes nothing, takes no key   | `trigger.skipped` with `task_held`                 |
-| step start     | the claim skipped the task         | `spend` ends the step at once  | at a limit, writes `task.paused` and ends          |
+| Caller         | `ended`                                                          | `spend`, `nixie`               | `limit`, `task`                                    |
+| -------------- | ---------------------------------------------------------------- | ------------------------------ | -------------------------------------------------- |
+| task claim     | skips the task                                                   | skips the task                 | skips a paused task; claims a task at a limit once |
+| action claim   | by the task's state, as in actions                               | skips every action             | skips an action with no started attempt            |
+| action attempt | by the task's state, as in actions                               | barred, and its lease is freed | barred when no attempt has started                 |
+| schedule fire  | `trigger.skipped` with `task_held`; a failed task takes the fire | writes nothing, takes no key   | `trigger.skipped` with `task_held`                 |
+| step start     | the claim skipped the task                                       | `spend` ends the step at once  | at a limit, writes `task.paused` and ends          |
 
 - Every claim query, and the attempt start, read each reason on its own, so an ended task's action
   is still held while nixie is paused. A conversation target of a schedule heeds only `nixie` and
