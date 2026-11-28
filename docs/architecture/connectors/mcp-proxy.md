@@ -204,21 +204,22 @@ it is never a done action. A server's own error keeps its text and sets the call
 
 The tool's definition holds its pinned hash and the snapshot that supplied its declaration, and the
 call record keeps both. A queued call, its approval, a retry and a reconciliation check all read the
-version that the call was decided on. Before the first attempt of a call that no approval answered,
-the attempt check decides it again. When the tool has another pin or another declaration, such as an
-override that was added, replaced or removed, the call asks for approval again whatever rule allowed
-it first, and nothing is sent until the user answers. The first attempt of an approved action
-carries no version, because the approval covers the tool as it stands.
+version that the call was decided on, or that the user's last answer about it covered. Before each
+attempt, the attempt check decides the call again. When the tool has another pin or another
+declaration than that version, such as an override that was added, replaced or removed, the call
+asks for approval again whatever rule allowed it first, and nothing is sent until the user answers.
+The question records the version of the tool it asks about, so the approval covers that form and no
+other.
 
 Before an attempt or a check runs, the connector compares the version with the tool now, as a second
-guard. When it moved, a first attempt sends nothing and settles as refused with a request to call
-again. A later attempt, which an earlier one may have sent, settles as ambiguous and comes to the
-user, and a check is inconclusive. A call runs only under the form it loaded. When a listing moves
-the pin after the call loaded the tool, nothing runs and the call returns an error that asks the
-model to call again. A call checks its input and its result against the pin hash it loaded, never
-the newest one. The proxy reads the pin again once the call's session is open and before
-`tools/call` leaves, so a listing that lands while the session opens cannot move it between the
-check and the send.
+guard. When it moved, a first attempt sends nothing and settles as a refusal that can clear, so the
+next attempt meets the attempt check, which asks again. A later attempt, which an earlier one may
+have sent, settles as ambiguous and comes to the user, and a check is inconclusive. A call runs only
+under the form it loaded. When a listing moves the pin after the call loaded the tool, nothing runs
+and the call returns an error that asks the model to call again. A call checks its input and its
+result against the pin hash it loaded, never the newest one. The proxy reads the pin again once the
+call's session is open and before `tools/call` leaves, so a listing that lands while the session
+opens cannot move it between the check and the send.
 
 A tool declared by an override carries the hash of the snapshot that held the override, and a call
 that would record another snapshot runs nothing and asks the model to call again, because the

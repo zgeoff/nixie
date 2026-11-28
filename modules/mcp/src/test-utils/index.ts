@@ -1,5 +1,7 @@
 export { buildServerFacts } from './build-server-facts';
 export { buildToolForm } from './build-tool-form';
+export type { ListedTool } from './read-listed-tools';
+export { readListedTools } from './read-listed-tools';
 export { seedOldAllowProposal } from './seed-old-allow-proposal';
 export { seedTrustedServerProposal } from './seed-trusted-server-proposal';
 export type { StandInMcp, StandInMcpOptions } from './start-stand-in-mcp';

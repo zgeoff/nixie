@@ -138,6 +138,7 @@ async function runAttempt(
   const step = await readAttemptStep(options.checkAttempt, {
     action: claimed.action,
     arguments: queued.arguments,
+    version: pickCallVersion(queued),
   });
 
   if (step.kind !== 'go') {
@@ -271,7 +272,7 @@ async function runConnector(
       tool: attempt.action.tool,
       arguments: call.queued.arguments,
       snapshotHash: call.queued.snapshotHash,
-      ...pickCallVersion(attempt, call.queued),
+      ...pickCallVersion(call.queued),
       attempt: attempt.attempt,
       idempotencyKey: buildAttemptKey(attempt.action),
       destinations: call.destinations,

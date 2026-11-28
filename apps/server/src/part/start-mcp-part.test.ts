@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { startStandInMcp } from '@heynixie/mcp/test-utils';
+import { readListedTools, startStandInMcp } from '@heynixie/mcp/test-utils';
 import { defaultProposalConfig, readProposal } from '@heynixie/proposals';
 import type { TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
@@ -11,7 +11,6 @@ import {
   seedDefinitionTask,
   seedOpenDefinitionRun,
 } from '@heynixie/tasks/test-utils';
-import { buildToolRegistry, collectHeldToolNames } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { startMcpPart } from './start-mcp-part';
 
@@ -128,13 +127,9 @@ test('it lapses an accept proposal of a tool after the days that the config sets
   expect(row?.lapsesAt).toBe(ctx.test.clock.now() + 2 * 24 * 60 * 60 * 1000);
 });
 
-test('it holds the tools of a configured server for a task run that names the whole server, once the server lists them', async () => {
+test('it lists the tools of a configured server to a task run that names the whole server, as the tool endpoint serves them', async () => {
   const ctx = await setupTest();
+  const listed = await readListedTools(ctx, ['tracker.*'], ctx.part.tools);
 
-  await ctx.part.list('tracker');
-
-  const registry = buildToolRegistry([], [ctx.part.tools]);
-  const held = collectHeldToolNames(['tracker.*'], registry.toolNames, registry.serverIDs);
-
-  expect(held).toStrictEqual({ held: ['tracker.item_get'], unknown: [] });
+  expect(listed).toStrictEqual([{ name: 'tracker.item_get', description: 'Read one item.' }]);
 });

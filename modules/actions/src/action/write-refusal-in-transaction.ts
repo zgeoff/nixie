@@ -57,6 +57,7 @@ export async function writeRefusalInTransaction(
       payload: {
         actionID: request.attempt.action.action_id,
         proposalID: request.step.verdict.proposalID,
+        ...request.step.verdict.version,
       },
     },
   ]);

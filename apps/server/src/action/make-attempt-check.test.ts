@@ -152,7 +152,7 @@ async function setupTest() {
     rules,
     places,
     snapshotTools,
-    queuePinnedCall: async (version: PinnedVersion) => {
+    queuePinnedCall: async (version: PinnedVersion, covered?: PinnedVersion) => {
       const step = await createTestStep(actions.context);
 
       const [called] = await writeRecords(actions.context.log, [
@@ -208,10 +208,18 @@ async function setupTest() {
         rule: { id: 'allow-board', outcome: 'allow', tools: ['board.pin'] },
       });
 
+      const answered = covered ?? version;
+
       return check({
         action,
         arguments: { text: 'Boat is ready' },
         proposalID: action.action_id,
+        version: {
+          pinHash: answered.pinHash,
+          ...(answered.definitionsHash === null
+            ? {}
+            : { definitionsHash: answered.definitionsHash }),
+        },
       });
     },
     queueMailToActPlace: async () => {
@@ -275,6 +283,7 @@ async function setupTest() {
         action,
         arguments: { to: 'sam@example.org' },
         proposalID: action.action_id,
+        version: {},
       });
 
       invariant(verdict.kind === 'go', 'the act place allows the mail');
@@ -383,6 +392,7 @@ test('it gives the proposal of an allowed action that no rule now steers the fra
     action,
     arguments: { text: 'Boat is ready' },
     proposalID: action.action_id,
+    version: {},
   });
 
   invariant(verdict.kind === 'ask', 'no rule allows the call now');
@@ -463,6 +473,7 @@ test('it denies an allowed variant call when a rule now denies that variant', as
     action,
     arguments: { kind: 'risky', query: 'a' },
     proposalID: action.action_id,
+    version: {},
   });
 
   expect(verdict).toStrictEqual({
@@ -578,6 +589,7 @@ test('it decides a runner action under its own tool with the task as caller, and
     action,
     arguments: { session: 'atc:cloud.3f9a1c2e.7c1d0e55', origin: 'started' },
     proposalID: action.action_id,
+    version: {},
   });
 
   invariant(verdict.kind === 'ask', 'the stop asks under the ask rule');
@@ -646,6 +658,7 @@ test.each([
       action,
       arguments: parseJSONObject(JSON.stringify(args)),
       proposalID: action.action_id,
+      version: {},
     });
 
     expect(verdict).toStrictEqual({
@@ -680,6 +693,7 @@ test('it denies a runner steer under a send deny rule, even when the snapshot de
     action,
     arguments: { session: 'atc:cloud.3f9a1c2e.1', text: 'Go on.' },
     proposalID: action.action_id,
+    version: {},
   });
 
   expect(verdict).toMatchObject({ kind: 'deny', rule: { id: 'deny-sends' } });
@@ -706,6 +720,7 @@ test('it holds a steer that a step queued at the destination limits, when an all
     action,
     arguments: { session: 'atc:cloud.3f9a1c2e.1', text: 'Check the cookie expiry.' },
     proposalID: action.action_id,
+    version: {},
   });
 
   invariant(verdict.kind === 'ask', 'the steer asks');
@@ -771,4 +786,28 @@ test.each([
   invariant(verdict.kind === 'ask', 'the changed tool asks');
 
   expect(verdict.cause).toBe('always_ask');
+});
+
+test('it lets a call run that its tool changed, when the owner answered a question about the changed tool', async () => {
+  const ctx = await setupTest();
+
+  const verdict = await ctx.queuePinnedCall(
+    { pinHash: 'pin-1', definitionsHash: 'snapshot-1' },
+    { pinHash: 'pin-2', definitionsHash: 'snapshot-2' },
+  );
+
+  expect(verdict.kind).toBe('go');
+});
+
+test('it asks again about a call that its owner approved, when its tool changed after the approval', async () => {
+  const ctx = await setupTest();
+
+  const verdict = await ctx.queuePinnedCall(
+    { pinHash: 'pin-2', definitionsHash: 'snapshot-2' },
+    { pinHash: 'pin-1', definitionsHash: 'snapshot-2' },
+  );
+
+  invariant(verdict.kind === 'ask', 'the changed tool asks');
+
+  expect(verdict.version).toStrictEqual({ pinHash: 'pin-2', definitionsHash: 'snapshot-2' });
 });

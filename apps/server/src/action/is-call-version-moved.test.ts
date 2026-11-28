@@ -10,8 +10,8 @@ test.each([
   },
   {
     title: 'another pin',
-    loaded: { pinHash: 'pin-1', definitionsHash: undefined },
-    current: { pinHash: 'pin-2', definitionsHash: undefined },
+    loaded: { pinHash: 'pin-1' },
+    current: { pinHash: 'pin-2' },
     moved: true,
   },
   {
@@ -23,19 +23,19 @@ test.each([
   {
     title: 'an override that was removed',
     loaded: { pinHash: 'pin-1', definitionsHash: 'snapshot-1' },
-    current: { pinHash: 'pin-1', definitionsHash: undefined },
+    current: { pinHash: 'pin-1' },
     moved: true,
   },
   {
     title: 'an override that was added',
-    loaded: { pinHash: 'pin-1', definitionsHash: undefined },
+    loaded: { pinHash: 'pin-1' },
     current: { pinHash: 'pin-1', definitionsHash: 'snapshot-1' },
     moved: true,
   },
   {
     title: 'a tool with no version',
-    loaded: { pinHash: undefined, definitionsHash: undefined },
-    current: { pinHash: undefined, definitionsHash: undefined },
+    loaded: {},
+    current: {},
     moved: false,
   },
 ])('it finds the version moved is $moved for $title', (row) => {

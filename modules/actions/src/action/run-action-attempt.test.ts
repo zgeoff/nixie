@@ -25,6 +25,7 @@ import { runStalledAttempt } from '../test-utils/run-stalled-attempt';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
 import type { AttemptVerdict } from './attempt-check';
+import { createApprovedAction } from './create-approved-action';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -1492,5 +1493,76 @@ test('it hands a retry the snapshot that its first attempt ran under, and not th
   expect(stub.calls.map((call) => [call.attempt, call.snapshotHash])).toStrictEqual([
     [1, 'sha256:queued'],
     [2, 'sha256:first-attempt'],
+  ]);
+});
+
+test('it hands the first attempt of an approved action the version of the tool that the owner was asked about', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    callSequence: 1,
+  });
+
+  const ask: AttemptVerdict = {
+    kind: 'ask',
+    cause: 'always_ask',
+    destinations: ['team'],
+    proposalID: queued.actionID,
+    version: { pinHash: 'pin-2', definitionsHash: 'snapshot-2' },
+    proposal: {
+      definitions: ctx.definitions,
+      thread: step.lease.workID,
+      callSequence: 1,
+      tool: 'test.send',
+      effects: ['send'],
+      cause: 'always_ask',
+      input: { to: 'team' },
+      destinations: [{ value: 'team', replyTarget: false }],
+      reopen: { proposalID: queued.actionID, actionID: queued.actionID },
+    },
+  };
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const held = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, held, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () => Promise.resolve(ask),
+    proposalConfig: { lapseDays: { ...defaultProposalConfig.lapseDays, action: 7 } },
+  });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    createApprovedAction(tx, ctx.context, {
+      proposalID: queued.actionID,
+      taskID: step.lease.workID,
+      stepKey: null,
+      tool: 'test.send',
+      effects: ['send'],
+      actionHash: 'sha256:send-1',
+      arguments: { to: 'team' },
+      callSequence: 1,
+      riskClass: 'routine',
+      deadlineAt: null,
+      runsInStep: false,
+    }),
+  );
+
+  const approved = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, approved, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  expect(stub.calls.map((call) => [call.pinHash, call.definitionsHash])).toStrictEqual([
+    ['pin-2', 'snapshot-2'],
   ]);
 });

@@ -129,7 +129,7 @@ function pickMovedResponse(
   if (isPinMoved(reconcile, attempt) || isDeclarationMoved(reconcile, attempt)) {
     return attempt.attempt > 1
       ? { kind: 'ambiguous', reason: renderMovedReason(attempt.tool) }
-      : { kind: 'refused', reason: renderChangedBeforeRunReason(attempt.tool) };
+      : { kind: 'refused_retryable', reason: renderChangedBeforeRunReason(attempt.tool) };
   }
 
   if (attempt.attempt > 1 && isRecoveryMoved(reconcile, attempt)) {
@@ -156,7 +156,7 @@ function renderMovedReason(tool: string): string {
 }
 
 function renderChangedBeforeRunReason(tool: string): string {
-  return `${tool} changed after you approved this call, so nothing ran; call it again`;
+  return `${tool} changed before this call ran, so nothing ran`;
 }
 
 function isRecoveryMoved(reconcile: ConnectorReconcile, attempt: ActionAttempt): boolean {

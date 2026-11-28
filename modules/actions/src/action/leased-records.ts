@@ -123,7 +123,10 @@ export async function readQueuedCall(
   const firstAttempt =
     action.attempt_count === 0 ? null : await readFirstAttemptSnapshot(context, action);
 
-  const version = await readCallVersion(context, entry.record.payload['callSequence']);
+  const callVersion = await readCallVersion(context, entry.record.payload['callSequence']);
+  const heldVersion = await readHeldVersion(context, action);
+
+  const version = { ...callVersion, ...heldVersion };
 
   return {
     arguments: args,
@@ -156,6 +159,46 @@ async function readCallVersion(context: TasksContext, callSequence: unknown): Pr
     ...(typeof pinHash === 'string' ? { pinHash } : {}),
     ...(typeof definitionsHash === 'string' ? { definitionsHash } : {}),
   };
+}
+
+// The version of the tool that the latest question about the action was asked on, which an approval
+// covers. Each field is left out when no question recorded it.
+async function readHeldVersion(
+  context: TasksContext,
+  action: Pick<ActionRow, 'action_id' | 'task_id' | 'queued_sequence'>,
+): Promise<CallVersion> {
+  let afterSequence = action.queued_sequence;
+  let latest: CallVersion = {};
+
+  for (;;) {
+    const entries = await readRecords(context.log, {
+      afterSequence,
+      thread: action.task_id,
+      kinds: ['action.held'],
+    });
+
+    for (const entry of entries) {
+      const payload = entry.record.payload;
+
+      if (payload['actionID'] === action.action_id) {
+        const pinHash = payload['pinHash'];
+        const definitionsHash = payload['definitionsHash'];
+
+        latest = {
+          ...(typeof pinHash === 'string' ? { pinHash } : {}),
+          ...(typeof definitionsHash === 'string' ? { definitionsHash } : {}),
+        };
+      }
+    }
+
+    const last = entries.at(-1);
+
+    if (last === undefined) {
+      return latest;
+    }
+
+    afterSequence = last.record.sequence;
+  }
 }
 
 // The snapshot the record of the action's first attempt holds, which names the declaration that the

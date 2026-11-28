@@ -11,6 +11,7 @@ import { buildHeldCheck } from './build-held-check';
 import { buildUnknownRecords } from './build-unknown-records';
 import type { Attempt, Settlement } from './leased-records';
 import { buildOutcomeRecord, readQueuedCall, writeLeasedRecords } from './leased-records';
+import { pickCallVersion } from './pick-call-version';
 import { readAttemptStep } from './read-attempt-step';
 import { isPastDeadline, writeAttemptStarted } from './write-attempt-started';
 import { writeRefusalInTransaction } from './write-refusal-in-transaction';
@@ -120,9 +121,7 @@ async function runInStepAction(
 
   const queued = await readQueuedCall(context, action);
 
-  const args = queued?.arguments ?? null;
-
-  if (args === null || action.call_sequence === null) {
+  if (queued === null || action.call_sequence === null) {
     return writeFailure(context, attempt, 'arguments_unreadable', {});
   }
 
@@ -132,7 +131,11 @@ async function runInStepAction(
     });
   }
 
-  const step = await readAttemptStep(options.checkAttempt, { action, arguments: args });
+  const step = await readAttemptStep(options.checkAttempt, {
+    action,
+    arguments: queued.arguments,
+    version: pickCallVersion(queued),
+  });
 
   if (step.kind !== 'go') {
     const [sequence] = await withWriteTransaction(context.log.writer, async (tx) => {
@@ -169,7 +172,7 @@ async function runInStepAction(
   const request = {
     actionID: action.action_id,
     tool: action.tool,
-    input: args,
+    input: queued.arguments,
     callSequence: action.call_sequence,
     actionHash: action.action_hash,
   };

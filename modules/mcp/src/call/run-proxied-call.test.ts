@@ -207,6 +207,8 @@ async function setupTest(options: StandInMcpOptions = {}) {
   const callInStep = async (allowedTools: readonly string[], beforeRun: () => Promise<void>) => {
     const runner = await ctx.startRunner();
 
+    const aborter = new AbortController();
+
     const stepInput: StepInput = {
       run: null,
       taskID: runner.step.lease.workID,
@@ -215,7 +217,7 @@ async function setupTest(options: StandInMcpOptions = {}) {
       inbox: [],
       wake: runner.step.wake,
       sessionBoundary: null,
-      signal: new AbortController().signal,
+      signal: aborter.signal,
       interrupt: new AbortController().signal,
     };
 
@@ -256,7 +258,22 @@ async function setupTest(options: StandInMcpOptions = {}) {
 
     await runner.runNext();
 
-    await stepRan;
+    // A call whose tool moved stays pending for a later attempt, so its step never answers.
+    await waitForCondition(async () => {
+      const actions = await runner.readActions();
+
+      return (
+        results.length === 1 ||
+        actions.some((action) => action.status === 'pending' && action.attemptCount === 1)
+      );
+    });
+
+    if (results.length === 1) {
+      await stepRan;
+    } else {
+      aborter.abort();
+      void Promise.allSettled([stepRan]);
+    }
 
     return { results, actions: await runner.readActions() };
   };
@@ -1454,7 +1471,7 @@ test('it lets one rule on the whole server run a write of the server, and asks n
   ]).toStrictEqual([['done'], ['item_create']]);
 });
 
-test('it sends no first attempt of a queued call once its tool has another pin, and tells the model to call again', async () => {
+test('it sends no first attempt of a queued call, and leaves it pending to ask again, once its tool has another pin', async () => {
   const ctx = await setupTest();
 
   const ran = await ctx.callInStep(['tracker.*'], async () => {
@@ -1465,26 +1482,12 @@ test('it sends no first attempt of a queued call once its tool has another pin, 
   });
 
   expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
-    ['failed'],
+    ['pending'],
     0,
-  ]);
-
-  expect(ran.results).toStrictEqual([
-    {
-      content: [
-        {
-          type: 'text',
-          text: expect.stringMatching(
-            /^<tool-result source="untrusted" fence="[0-9a-f]+">\naction [0-9a-f-]+ failed: tracker\.item_create changed after you approved this call, so nothing ran; call it again\n<\/tool-result fence="[0-9a-f]+">$/u,
-          ),
-        },
-      ],
-      isError: true,
-    },
   ]);
 });
 
-test('it sends no first attempt of a queued call once its override is replaced with another idempotency argument', async () => {
+test('it sends no first attempt of a queued call, and leaves it pending to ask again, once its override is replaced with another idempotency argument', async () => {
   const ctx = await setupTest();
 
   const keyedCreate = {
@@ -1540,12 +1543,12 @@ test('it sends no first attempt of a queued call once its override is replaced w
   });
 
   expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
-    ['failed'],
+    ['pending'],
     0,
   ]);
 });
 
-test('it sends no first attempt of a queued call once an override is added for its tool', async () => {
+test('it sends no first attempt of a queued call, and leaves it pending to ask again, once an override is added for its tool', async () => {
   const ctx = await setupTest();
 
   const ran = await ctx.callInStep(['tracker.*'], async () => {
@@ -1568,12 +1571,12 @@ test('it sends no first attempt of a queued call once an override is added for i
   });
 
   expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
-    ['failed'],
+    ['pending'],
     0,
   ]);
 });
 
-test('it sends no first attempt of a queued call once the override of its tool is removed', async () => {
+test('it sends no first attempt of a queued call, and leaves it pending to ask again, once the override of its tool is removed', async () => {
   const ctx = await setupTest();
 
   ctx.setOverrides(
@@ -1600,7 +1603,7 @@ test('it sends no first attempt of a queued call once the override of its tool i
   });
 
   expect([ran.actions.map((action) => action.status), ctx.site.calls.length]).toStrictEqual([
-    ['failed'],
+    ['pending'],
     0,
   ]);
 });

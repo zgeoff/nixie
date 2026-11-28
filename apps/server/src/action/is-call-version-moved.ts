@@ -1,10 +1,7 @@
-export interface ToolVersion {
-  readonly pinHash: string | undefined;
-  readonly definitionsHash: string | undefined;
-}
+import type { ToolVersion } from '@heynixie/actions';
 
-// Whether a tool with versions has another pin or another declaration snapshot than the call loaded.
-// A call to a tool with no version never moves.
+// Whether a tool has another pin or another declaration snapshot than the one a decision covered.
+// A decision on a tool with no version never moves.
 export function isCallVersionMoved(loaded: ToolVersion, current: ToolVersion): boolean {
   return (
     loaded.pinHash !== undefined &&

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { buildBuiltInBudgets } from '@heynixie/budgets';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
+import type { ToolSource } from '@heynixie/tools';
 import { buildStubActionQueue, withTestToolClient } from '@heynixie/tools/test-utils';
 import type { StandInMcp } from './start-stand-in-mcp';
 
@@ -14,16 +15,18 @@ export interface ListedTool {
 }
 
 // The tools that a run naming `tools` reads from the tool endpoint over MCP, as the model's CLI
-// reads them: one tools/list through the real endpoint, over the proxy's source.
+// reads them: one tools/list through the real endpoint, over the proxy's source, or over the source
+// that a part of the server started when the caller passes it.
 export async function readListedTools(
   standIn: StandInMcp,
   tools: readonly string[],
+  source: ToolSource = standIn.mcp.tools,
 ): Promise<readonly ListedTool[]> {
   const socketDir = await mkdtemp(join(tmpdir(), 'nixie-mcp-endpoint-'));
 
   onTestFinished(() => rm(socketDir, { recursive: true, force: true }));
 
-  const registry = buildToolRegistry([], [standIn.mcp.tools]);
+  const registry = buildToolRegistry([], [source]);
   const queue = buildStubActionQueue();
 
   const endpoint = await startToolEndpoint({

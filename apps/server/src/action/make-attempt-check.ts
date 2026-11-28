@@ -1,4 +1,9 @@
-import type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from '@heynixie/actions';
+import type {
+  AttemptCheck,
+  AttemptCheckInput,
+  AttemptVerdict,
+  ToolVersion,
+} from '@heynixie/actions';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import type {
@@ -77,16 +82,18 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
         : { effects: stored.inputs.effects.filter((name) => isEffect(name)) }),
     });
 
-    // An action that no approval answered asks again once its tool has another form or declaration,
-    // because a rule that allowed the call decided it for the form it loaded.
+    // An action asks again once its tool has another form or declaration than the one that its call,
+    // or the last question about it, was decided on: a rule or an approval covers only that form.
     const current = options.registry.findTool(stored.tool)?.definition;
 
-    const isMoved =
-      input.action.is_approved !== 1 &&
-      isCallVersionMoved(
-        { pinHash: stored.pinHash, definitionsHash: stored.definitionsHash },
-        { pinHash: current?.pinHash, definitionsHash: current?.definitionsHash },
-      );
+    const currentVersion = {
+      ...(current?.pinHash === undefined ? {} : { pinHash: current.pinHash }),
+      ...(current?.definitionsHash === undefined
+        ? {}
+        : { definitionsHash: current.definitionsHash }),
+    };
+
+    const isMoved = isCallVersionMoved(input.version, currentVersion);
 
     return buildVerdict(options, {
       policy,
@@ -96,6 +103,7 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       destinations: stored.destinations,
       frame: stored.inputs,
       isMoved,
+      currentVersion,
       writeActs: () => writeActedPlaces(options, { policy, stored, declaration }),
     });
   };
@@ -175,6 +183,7 @@ interface VerdictFacts {
 
   // true when the tool has another version than the call loaded, so an allow asks instead
   readonly isMoved?: boolean;
+  readonly currentVersion?: ToolVersion;
 }
 
 function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): AttemptVerdict {
@@ -217,6 +226,7 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     destinations,
     replyTargets,
     proposalID: facts.input.proposalID,
+    ...(facts.currentVersion === undefined ? {} : { version: facts.currentVersion }),
     proposal: {
       definitions: options.definitions(),
       thread: action.task_id,
