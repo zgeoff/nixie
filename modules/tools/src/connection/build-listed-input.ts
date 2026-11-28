@@ -24,7 +24,11 @@ export function buildListedInput(
     Object.entries(properties).filter(([name]) => name !== 'connection'),
   );
 
-  const kept = Array.isArray(required) ? required.filter((name) => name !== 'connection') : [];
+  const listed: readonly unknown[] = Array.isArray(required) ? required : [];
+
+  const kept = listed.filter(
+    (name): name is string => typeof name === 'string' && name !== 'connection',
+  );
 
   if (reachable.length === 1) {
     return { ...rest, properties: others, ...(Array.isArray(required) ? { required: kept } : {}) };

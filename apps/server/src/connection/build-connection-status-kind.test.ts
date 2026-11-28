@@ -81,8 +81,7 @@ test('it lists every connection event of a block that holds more than the cap, s
 
   const block = await ctx.read();
 
-  expect([block.text?.split('\n').length, block.text]).toStrictEqual([
-    12,
-    expect.not.stringContaining('more'),
-  ]);
+  const lines = block.text?.split('\n') ?? [];
+
+  expect([lines.length, lines.some((line) => line.includes('more'))]).toStrictEqual([12, false]);
 });

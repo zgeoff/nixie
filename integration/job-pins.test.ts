@@ -172,7 +172,7 @@ async function setupTest() {
       use: (client: Parameters<Parameters<typeof withTestToolClient>[1]>[0]) => Promise<Result>,
     ) => {
       const run = await endpoint.startRun({
-        runID: `run-${String(crypto.randomUUID())}`,
+        runID: `run-${crypto.randomUUID()}`,
         toolUseMetaKey: null,
         thread: 'run-fire',
         logThread: 'run-fire',

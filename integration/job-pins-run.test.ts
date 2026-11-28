@@ -173,7 +173,7 @@ async function setupTest() {
 
     return endpoint
       .startRun({
-        runID: `handed-${String(crypto.randomUUID())}`,
+        runID: `handed-${crypto.randomUUID()}`,
         toolUseMetaKey: null,
         thread: handed.thread,
         logThread: handed.logThread,
