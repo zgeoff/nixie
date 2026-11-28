@@ -72,12 +72,13 @@ async function setupTest() {
       );
     },
 
-    // The names of the features that a change to the path flags, resolved from the real registry
-    // narrowed to the named features, so each feature's reached files and extra files count.
+    // The names of the features that a change to each path flags, resolved once from the real
+    // registry narrowed to the named features, so each feature's reached files and extra files
+    // count and the ignore globs apply.
     readFlaggedFeatures: async (
-      path: string,
+      paths: readonly string[],
       featureNames: readonly string[],
-    ): Promise<readonly string[]> => {
+    ): Promise<Record<string, readonly string[]>> => {
       const narrowed: Wringer = {
         ...registry,
         features: registry.features.filter((feature) => featureNames.includes(feature.name)),
@@ -85,9 +86,16 @@ async function setupTest() {
 
       const resolved = await resolveFeatures(createNodeRepoHost(), narrowed, rootDir);
 
-      return collectFeatureScopes(resolved.wringer)
-        .filter((scope) => isGlobMatch(path, scope.globs))
-        .map((scope) => scope.name);
+      const scopes = collectFeatureScopes(resolved.wringer);
+
+      return Object.fromEntries(
+        paths.map((path) => [
+          path,
+          isGlobMatch(path, registry.ignore)
+            ? []
+            : scopes.filter((scope) => isGlobMatch(path, scope.globs)).map((scope) => scope.name),
+        ]),
+      );
     },
     collectFeatureNames: () => registry.features.map((feature) => feature.name),
     collectFeatures: () => registry.features,
@@ -169,15 +177,23 @@ test('it gives the proposals route to the policy-proposal feature alone', async 
   expect(claimants).toStrictEqual(['policy-proposal']);
 });
 
-test('it flags only the feature whose entry imports a file that no other entry imports', async () => {
+test('it flags only the feature that reaches a file that no other feature reaches', async () => {
   const ctx = await setupTest();
 
-  const flagged = await ctx.readFlaggedFeatures('apps/web/src/routes/proposals.tsx', [
-    'chat-turn',
-    'policy-proposal',
-  ]);
+  const flagged = await ctx.readFlaggedFeatures(
+    [
+      'apps/web/src/routes/proposals.tsx',
+      'apps/web/src/approval/build-batch-answers.ts',
+      'apps/server/src/connection/render-removed-tools.ts',
+    ],
+    ['chat-turn', 'policy-proposal'],
+  );
 
-  expect(flagged).toStrictEqual(['policy-proposal']);
+  expect(flagged).toStrictEqual({
+    'apps/web/src/routes/proposals.tsx': ['policy-proposal'],
+    'apps/web/src/approval/build-batch-answers.ts': ['policy-proposal'],
+    'apps/server/src/connection/render-removed-tools.ts': ['chat-turn'],
+  });
 });
 
 test('it flags coding-session for a change to the fake coding gateway that it imports', async () => {
