@@ -78,8 +78,8 @@ Before you start:
 
    Expect: `proposals` exits 0. The last row of `data.rows` of the first query is the export call's
    result, with `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool
-   calls. The second query returns one row, with `task` `conversation`: the row records the task
-   that made the call, which is the start of the chain that its card lists.
+   calls. The second query returns one row, with `task` `conversation`. That is the task that made
+   the call, and the chain that its card lists starts there.
 
 4. Script a text reply for the turn that the call's outcome starts, or that turn fails. The later
    steps never check its reply.
@@ -114,9 +114,9 @@ Before you start:
 
    Expect: both clicks exit 0. The snapshot of the expanded item holds the list "How this came
    about" with one entry, "Message conversation: Your message: Export my memory, please.". The
-   conversation made this call itself, in the turn that your message woke, so the chain is that
-   message alone, with no entry for a task. [coding-session](feature-coding-session.md#held-spawn)
-   checks a chain that runs through a task.
+   conversation made this call itself, in the turn that the user's message woke, so the chain is
+   that message alone, with no entry for a task. To check a chain that runs through a task, follow
+   [coding-session](feature-coding-session.md#held-spawn).
 
 7. Check the answer. `proposals --waiting none` checks once, with no wait, and exits 0 when nixie
    holds no call of the tool.

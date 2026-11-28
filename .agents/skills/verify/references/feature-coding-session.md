@@ -206,7 +206,7 @@ journey above has passed, on an `up` of its own:
    holds the list "How this came about" with 2 entries: "Message conversation: Your message: Start a
    coding session on the login test.", then "Task `<id>`: Login fix", where `<id>` is the short ID
    of the coding task. The coding task asked for the spawn, and no session is bound yet, so its
-   entry reads "Task" and not "Coding session".
+   entry reads "Task".
 
 7. Check that the held spawn ran. The session can take a few seconds to bind, so on a result that
    differs from Expect, run the queries again, up to 5 runs in all.

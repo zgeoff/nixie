@@ -139,27 +139,28 @@ nothing started, at an ID with no row, and on an ID it has already seen.
 
 Each step has a `kind`, an `id` and a `name`, and never a UUID:
 
-- A `message` step is the conversation, so the chain starts at the thread that the owner's messages
-  reach. Its `id` is `conversation`, and its `name` says what woke the conversation step that
-  started the work: your message, outside content, a timer, a message from a task, or an earlier
-  message. Your message is named with its text, such as `Your message: Book a ferry`. A text of more
-  than 60 characters is cut there, after each run of whitespace collapses to one space, and ends in
-  a 12-character hash of the whole collapsed text, so 2 chains that 2 messages started read apart
-  even when the messages share their start, though a hash can in theory repeat; a forget that erased
-  the text leaves `Your message`. A step that recorded no cause is named `Conversation`. The text is
-  the one of the message that woke the step, which `task.step_started` records as `source`; a step
-  from before that field has none, so its name reads `Your message`. A task that nothing started,
-  such as a definition's task that a trigger woke, has no conversation step, so its chain starts
-  with a `message` step whose `id` is `outside-content` and whose name is `Outside content`, when
-  outside content woke the task's step that asked.
+- A `message` step is the conversation, so the chain starts at the thread that the user's messages
+  reach. Its `id` is `conversation`. Its `name` is the cause that woke the conversation step that
+  started the work: the user's message, outside content, a timer, a message from a task, or an
+  earlier message. The name of the user's message carries its text, such as
+  `Your message: Book a ferry`. The host collapses each run of whitespace in the text to one space,
+  cuts a text of more than 60 characters to 60, and ends it in a 12-character hash of the whole
+  collapsed text. So 2 chains that 2 messages started read apart even when the messages share their
+  start, though a hash can in theory repeat. A forget that erased the text leaves `Your message`. A
+  step that recorded no cause is named `Conversation`. The text comes from the message that woke the
+  step, which `task.step_started` records as `source`; a step from before that field has none, so
+  its name reads `Your message`. A task that nothing started, such as a definition's task that a
+  trigger woke, has no conversation step. When outside content woke the step of that task that
+  asked, its chain starts with a `message` step whose `id` is `outside-content` and whose name is
+  `Outside content`.
 - A `coding` step is a task that binds a coding session. Its `id` is the session's short ID, which
   the read gives to a session that no listing has named yet.
 - A `task` step is any other task. Its `id` is the task ID, which is a short ID for a started task.
 
 A step's `name` is its entry in the task directory, or else the name its `task.created` record
 holds, or else its `id`. The host reads only the tasks of the chain for those names. The card lists
-the steps when the chain has more than one or starts at a message, so you see when a message or
-outside content set off a chain of tasks before the call.
+the steps when the chain has more than one or starts at a message, so the user sees when a message
+or outside content set off a chain of tasks before the call.
 
 ## The answer
 
