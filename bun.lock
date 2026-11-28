@@ -1702,7 +1702,7 @@
     "@zgeoff/kysely-bun-sqlite": "0.3.3",
     "@zgeoff/rig": "0.3.2",
     "@zgeoff/std": "0.4.5",
-    "@zgeoff/testing": "0.4.2",
+    "@zgeoff/testing": "0.4.3",
     "ajv": "8.20.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.32",
@@ -2885,7 +2885,7 @@
 
     "@zgeoff/std": ["@zgeoff/std@0.4.5", "", {}, "sha512-Z2rD5v0OVXRZTa3Jh2I8zmx9znzvnAa/bC5Ai0NidPh+pfJGfDLmQIVZhshbGXPu/S/9SFdP/chDw+N5Pk/lzg=="],
 
-    "@zgeoff/testing": ["@zgeoff/testing@0.4.2", "", { "dependencies": { "@zgeoff/std": "0.4.5", "bun-pty": "0.6.0" }, "peerDependencies": { "@mswjs/interceptors": ">=0.45.11 <0.46", "msw": ">=3.0.4 <4" }, "optionalPeers": ["@mswjs/interceptors", "msw"] }, "sha512-kXo90cNuLKJ/K1SJtA+qWQWFeenDvUPyvkDkvTaQVormbpqhy1NgRDrDPopWw3in503oqlxvPNIBA/sg4QAGyg=="],
+    "@zgeoff/testing": ["@zgeoff/testing@0.4.3", "", { "dependencies": { "@zgeoff/std": "0.4.5", "bun-pty": "0.6.0" }, "peerDependencies": { "@mswjs/interceptors": ">=0.45.11 <0.46", "msw": ">=3.0.4 <4" }, "optionalPeers": ["@mswjs/interceptors", "msw"] }, "sha512-hJ8/cuMbxbZJAOwomxZeBOGXygT8GwVpOj19HS76aE+c9qimGSRMN0cB0mJZF87ES5cLIvp1uIAGXDGWJLz87A=="],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 
