@@ -1,11 +1,5 @@
 import type { Decision, JSONObject } from '@heynixie/log';
-import type {
-  CallDestination,
-  Effect,
-  EffectDeclaration,
-  NamingRule,
-  PolicyDecision,
-} from '@heynixie/policy';
+import type { CallDestination, NamingRule, PolicyDecision } from '@heynixie/policy';
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
@@ -25,11 +19,13 @@ import type { PaidGate } from './paid/types';
 import { buildConditionNotice } from './policy-call/build-condition-notice';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
+import { joinEffects, pickCallDeclaration } from './policy-call/pick-call-declaration';
 import { pickVariant } from './policy-call/pick-variant';
 import { readAskedRepeat } from './policy-call/read-asked-repeat';
 import { resolveCallDeadline } from './policy-call/resolve-call-deadline';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
+import { withPreparedAmount } from './policy-call/with-prepared-amount';
 import { buildDeclinedMessage } from './settle/build-declined-message';
 import { buildMessage } from './settle/build-message';
 import { buildTypedResult } from './settle/build-typed-result';
@@ -351,37 +347,6 @@ async function writeDirectResult(
   const recorded = await recorder.writeSettled(written.sequence, settled);
 
   return toCallToolResult(recorded.settled);
-}
-
-// A prepared amount stands in for the argument the declaration names as the call's amount.
-function withPreparedAmount(
-  args: JSONObject,
-  registered: RegisteredTool | null,
-  prepared: Prepared | null,
-): JSONObject {
-  const name = registered?.definition.declaration.amount ?? null;
-
-  return prepared?.amount === undefined || name === null
-    ? args
-    : { ...args, [name]: prepared.amount };
-}
-
-// What the call charges: a plan for a paid tool that runs, a result that its check ended with, or
-// the failure of that check, which the call settles as the tool's failure.
-// A prepared call's effects join the declared ones in the proposal the call may write.
-function pickCallDeclaration(
-  registered: RegisteredTool | null,
-  effects: readonly Effect[] | undefined,
-): EffectDeclaration | null {
-  const declaration = registered?.definition.declaration ?? null;
-
-  return declaration === null || effects === undefined
-    ? declaration
-    : { ...declaration, effects: joinEffects(declaration.effects, effects) };
-}
-
-function joinEffects(declared: readonly Effect[], added: readonly Effect[]): readonly Effect[] {
-  return [...new Set([...declared, ...added])];
 }
 
 interface DecidedCall {

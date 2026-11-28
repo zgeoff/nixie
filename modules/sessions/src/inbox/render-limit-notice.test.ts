@@ -34,7 +34,7 @@ test('it renders the notice of a task that paused at its dollar limit with no tu
     payload: {
       taskID: 'k3x9m2p7qa',
       used: { turns: 31, dollars: 2 },
-      limits: { turns: null, dollars: 2 },
+      limits: { turns: 1_000_000_000, dollars: 2 },
     },
   });
 
